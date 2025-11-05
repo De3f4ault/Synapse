@@ -1,0 +1,140 @@
+# --- Python build and cache ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+*.so
+
+# --- Virtual environments ---
+.env
+.venv/
+venv/
+ENV/
+env/
+*.env
+*.env.*
+
+# --- Package and build ---
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# --- Byte-compiled / optimized files ---
+*.pyc
+*.pyo
+*.pyd
+
+# --- Logs ---
+logs/
+*.log
+*.out
+*.err
+*.pid
+
+# --- Local data and uploads ---
+data/uploads/
+data/lancedb/
+data/duckdb/
+data/llama_index/
+*.db
+*.sqlite3
+*.sqlite
+
+# --- Alembic migrations ---
+alembic/versions/*.pyc
+alembic/versions/__pycache__/
+# You may also ignore migration files if generated dynamically:
+# alembic/versions/*.py
+
+# --- Redis / Cache / Temp files ---
+cache/
+tmp/
+temp/
+__cache__/
+*.tmp
+*.bak
+
+# --- Jupyter / Notebooks ---
+.ipynb_checkpoints/
+*.ipynb
+
+# --- Testing and coverage ---
+.coverage
+htmlcov/
+.tox/
+.nox/
+.pytest_cache/
+coverage.xml
+*.cover
+.cache/
+.mypy_cache/
+.dmypy.json
+.pyre/
+.pytype/
+
+# --- Environment files ---
+.env.example
+.env.development
+.env.local
+.env.production
+
+# --- Editor / IDE files ---
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# --- Docker / Deployment ---
+.docker/
+docker-compose.override.yml
+*.pid
+*.sock
+
+# --- Reports and artifacts ---
+reports/
+*.pdf
+*.docx
+*.xlsx
+*.csv
+*.bak
+
+# --- Node-related (for frontends or docs) ---
+node_modules/
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+dist/
+build/
+
+# --- Secrets / Credentials ---
+secrets/
+keys/
+private/
+*.pem
+*.key
+*.crt
+*.csr
+
+# --- Misc ---
+__init__.pyc
+logs/nginx/
+
