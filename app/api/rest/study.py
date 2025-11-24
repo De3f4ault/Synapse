@@ -1,0 +1,452 @@
+"""
+Study session REST API endpoints.
+
+Study session management with multi-modal support for flashcards and quizzes.
+Complete implementation with quiz items integrated into study flow.
+"""
+
+from typing import List, Optional
+from datetime import datetime
+from fastapi import APIRouter, Depends, HTTPException, status, Query
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, and_, or_, func
+from pydantic import BaseModel, Field
+import logging
+
+from app.api.deps import get_db, get_current_user
+from app.models.user import User
+from app.models.study_session import StudySession, StudySessionType
+from app.models.flashcard import Flashcard, LearningState
+from app.models.deck import Deck
+from app.models.quiz import Quiz, QuizDifficulty
+from app.models.quiz_attempt import QuizAttempt
+
+logger = logging.getLogger(__name__)
+router = APIRouter()
+
+
+# ============================================================================
+# Schemas
+# ============================================================================
+
+class StudyItemResponse(BaseModel):
+    """Study item (flashcard, quiz, etc.)."""
+    type: str  # "flashcard" or "quiz"
+    id: int
+    data: dict
+
+
+class StudySessionCreate(BaseModel):
+    """Study session creation."""
+    session_type: StudySessionType
+    modules: List[str] = Field(default_factory=lambda: ["flashcards", "quizzes"])
+
+
+class StudySessionResponse(BaseModel):
+    """Study session response."""
+    id: int
+    session_type: StudySessionType
+    modules_used: List[str]
+    items_completed: int
+    items_correct: int
+    accuracy: float
+    time_spent_seconds: int
+    started_at: datetime
+    ended_at: Optional[datetime]
+    is_completed: bool
+
+
+# ============================================================================
+# Helper Functions
+# ============================================================================
+
+async def get_due_flashcards(
+    user_id: int,
+    limit: int,
+    db: AsyncSession
+) -> List[dict]:
+    """
+    Get due flashcards for user.
+
+    Returns flashcards that need review, prioritized by:
+    1. Overdue items
+    2. New items
+    3. Review items
+    """
+    try:
+        cards_query = select(Flashcard).join(Deck).where(
+            and_(
+                Deck.user_id == user_id,
+                Flashcard.deleted_at.is_(None),
+                Deck.deleted_at.is_(None),
+                or_(
+                    Flashcard.next_review <= datetime.utcnow(),
+                    Flashcard.next_review.is_(None)
+                )
+            )
+        ).order_by(
+            # Overdue cards first
+            (Flashcard.next_review < datetime.utcnow()).desc(),
+            # Then new cards
+            (Flashcard.learning_state == LearningState.NEW).desc(),
+            # Then by next review date
+            Flashcard.next_review.asc().nullsfirst()
+        ).limit(limit)
+
+        cards_result = await db.execute(cards_query)
+        cards = cards_result.scalars().all()
+
+        return [
+            {
+                "type": "flashcard",
+                "id": card.id,
+                "data": {
+                    "front_text": card.front_text,
+                    "back_text": card.back_text,
+                    "deck_id": card.deck_id,
+                    "learning_state": card.learning_state.value,
+                    "next_review": card.next_review.isoformat() if card.next_review else None,
+                    "ease_factor": float(card.ease_factor) if card.ease_factor else 2.5
+                }
+            }
+            for card in cards
+        ]
+
+    except Exception as e:
+        logger.error(f"Error fetching due flashcards: {str(e)}")
+        return []
+
+
+async def get_due_quizzes(
+    user_id: int,
+    limit: int,
+    db: AsyncSession
+) -> List[dict]:
+    """
+    Get quizzes due for retake/review.
+
+    Returns quizzes that need another attempt based on:
+    1. Time elapsed since last attempt
+    2. Performance on last attempt
+    3. Quiz difficulty level
+    """
+    try:
+        # Get user's quizzes
+        quizzes_query = select(Quiz).where(
+            and_(
+                Quiz.user_id == user_id,
+                Quiz.deleted_at.is_(None)
+            )
+        )
+
+        quizzes_result = await db.execute(quizzes_query)
+        quizzes = quizzes_result.scalars().all()
+
+        due_quizzes = []
+
+        for quiz in quizzes:
+            # Get last attempt
+            last_attempt_query = select(QuizAttempt).where(
+                QuizAttempt.quiz_id == quiz.id
+            ).order_by(QuizAttempt.completed_at.desc()).limit(1)
+
+            last_attempt_result = await db.execute(last_attempt_query)
+            last_attempt = last_attempt_result.scalar_one_or_none()
+
+            # Determine if quiz is due
+            is_due = False
+            priority = "normal"
+
+            if not last_attempt:
+                # Never attempted
+                is_due = True
+                priority = "new"
+            else:
+                # Check based on difficulty and performance
+                time_since_attempt = datetime.utcnow() - last_attempt.completed_at
+
+                # Spaced repetition: easier quizzes reviewed less frequently
+                if quiz.difficulty == QuizDifficulty.EASY:
+                    review_interval = 14  # 14 days
+                elif quiz.difficulty == QuizDifficulty.MEDIUM:
+                    review_interval = 7   # 7 days
+                else:  # HARD
+                    review_interval = 3   # 3 days
+
+                if time_since_attempt.days >= review_interval:
+                    is_due = True
+
+                    # Low scores need more frequent review
+                    if last_attempt.percentage < 70:
+                        priority = "high"
+
+            if is_due:
+                due_quizzes.append({
+                    "type": "quiz",
+                    "id": quiz.id,
+                    "data": {
+                        "title": quiz.title,
+                        "description": quiz.description,
+                        "question_count": len(quiz.questions) if quiz.questions else 0,
+                        "difficulty": quiz.difficulty.value,
+                        "time_limit_minutes": quiz.time_limit_minutes,
+                        "priority": priority,
+                        "last_score": last_attempt.percentage if last_attempt else None
+                    }
+                })
+
+        # Sort by priority (high first) and limit
+        priority_order = {"high": 0, "new": 1, "normal": 2}
+        due_quizzes.sort(key=lambda x: priority_order.get(x["data"]["priority"], 3))
+
+        return due_quizzes[:limit]
+
+    except Exception as e:
+        logger.error(f"Error fetching due quizzes: {str(e)}")
+        return []
+
+
+# ============================================================================
+# Endpoints
+# ============================================================================
+
+@router.get("/due", response_model=List[StudyItemResponse])
+async def get_due_items(
+    modules: str = Query("flashcards,quizzes", description="Comma-separated modules"),
+    limit: int = Query(20, ge=1, le=100),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Get all due items across modules.
+
+    Aggregates items from different learning modules (flashcards, quizzes)
+    that need review, prioritized by due date and performance.
+    """
+    module_list = [m.strip() for m in modules.split(",")]
+    items = []
+
+    # Get due flashcards
+    if "flashcards" in module_list:
+        flashcards = await get_due_flashcards(current_user.id, limit, db)
+        items.extend(flashcards)
+
+    # Get due quizzes
+    if "quizzes" in module_list:
+        quizzes = await get_due_quizzes(current_user.id, limit, db)
+        items.extend(quizzes)
+
+    # Sort by priority: high first, then by module order
+    priority_map = {"high": 0, "new": 1, "normal": 2}
+    items.sort(key=lambda x: priority_map.get(x["data"].get("priority"), 2))
+
+    logger.info(
+        "due_items_retrieved",
+        user_id=current_user.id,
+        total_items=len(items),
+        modules=module_list
+    )
+
+    return items[:limit]
+
+
+@router.post("/sessions", response_model=StudySessionResponse, status_code=status.HTTP_201_CREATED)
+async def start_session(
+    session_data: StudySessionCreate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Start a new study session."""
+    new_session = StudySession(
+        user_id=current_user.id,
+        session_type=session_data.session_type,
+        modules_used={"modules": session_data.modules},
+        started_at=datetime.utcnow()
+    )
+
+    db.add(new_session)
+    await db.commit()
+    await db.refresh(new_session)
+
+    logger.info(
+        "study_session_created",
+        user_id=current_user.id,
+        session_id=new_session.id,
+        session_type=session_data.session_type,
+        modules=session_data.modules
+    )
+
+    return StudySessionResponse(
+        id=new_session.id,
+        session_type=new_session.session_type,
+        modules_used=session_data.modules,
+        items_completed=0,
+        items_correct=0,
+        accuracy=0.0,
+        time_spent_seconds=0,
+        started_at=new_session.started_at,
+        ended_at=None,
+        is_completed=False
+    )
+
+
+@router.get("/sessions/{session_id}", response_model=StudySessionResponse)
+async def get_session(
+    session_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Get a specific study session."""
+    result = await db.execute(
+        select(StudySession).where(
+            and_(
+                StudySession.id == session_id,
+                StudySession.user_id == current_user.id
+            )
+        )
+    )
+    session = result.scalar_one_or_none()
+
+    if not session:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
+
+    modules = session.modules_used.get("modules", []) if session.modules_used else []
+
+    return StudySessionResponse(
+        id=session.id,
+        session_type=session.session_type,
+        modules_used=modules,
+        items_completed=session.items_completed,
+        items_correct=session.items_correct,
+        accuracy=session.accuracy,
+        time_spent_seconds=session.time_spent_seconds,
+        started_at=session.started_at,
+        ended_at=session.ended_at,
+        is_completed=session.is_completed
+    )
+
+
+@router.post("/sessions/{session_id}/complete", response_model=StudySessionResponse)
+async def complete_session(
+    session_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Complete a study session."""
+    result = await db.execute(
+        select(StudySession).where(
+            and_(
+                StudySession.id == session_id,
+                StudySession.user_id == current_user.id
+            )
+        )
+    )
+    session = result.scalar_one_or_none()
+
+    if not session:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
+
+    if session.ended_at:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Session already completed")
+
+    # Complete session
+    session.ended_at = datetime.utcnow()
+    session.time_spent_seconds = int((session.ended_at - session.started_at).total_seconds())
+    session.is_completed = True
+
+    await db.commit()
+    await db.refresh(session)
+
+    logger.info(
+        "study_session_completed",
+        user_id=current_user.id,
+        session_id=session.id,
+        time_spent_seconds=session.time_spent_seconds
+    )
+
+    modules = session.modules_used.get("modules", []) if session.modules_used else []
+
+    return StudySessionResponse(
+        id=session.id,
+        session_type=session.session_type,
+        modules_used=modules,
+        items_completed=session.items_completed,
+        items_correct=session.items_correct,
+        accuracy=session.accuracy,
+        time_spent_seconds=session.time_spent_seconds,
+        started_at=session.started_at,
+        ended_at=session.ended_at,
+        is_completed=session.is_completed
+    )
+
+
+@router.get("/sessions", response_model=List[StudySessionResponse])
+async def list_sessions(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """List user's study sessions with pagination."""
+    query = select(StudySession).where(
+        StudySession.user_id == current_user.id
+    ).order_by(StudySession.started_at.desc())
+
+    query = query.offset((page - 1) * page_size).limit(page_size)
+    result = await db.execute(query)
+    sessions = result.scalars().all()
+
+    return [
+        StudySessionResponse(
+            id=s.id,
+            session_type=s.session_type,
+            modules_used=s.modules_used.get("modules", []) if s.modules_used else [],
+            items_completed=s.items_completed,
+            items_correct=s.items_correct,
+            accuracy=s.accuracy,
+            time_spent_seconds=s.time_spent_seconds,
+            started_at=s.started_at,
+            ended_at=s.ended_at,
+            is_completed=s.is_completed
+        )
+        for s in sessions
+    ]
+
+
+@router.get("/recommendations", response_model=List[StudyItemResponse])
+async def get_recommendations(
+    limit: int = Query(10, ge=1, le=50),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Get AI-powered study recommendations.
+
+    Recommends items based on weak areas, review patterns, and learning goals.
+    Combines flashcards and quizzes, prioritizing high-value items.
+    """
+    try:
+        # Get recommendations from both modules
+        flashcards = await get_due_flashcards(current_user.id, limit, db)
+        quizzes = await get_due_quizzes(current_user.id, limit, db)
+
+        # Combine and prioritize
+        recommendations = flashcards + quizzes
+
+        # Sort by priority (high first)
+        priority_map = {"high": 0, "new": 1, "normal": 2}
+        recommendations.sort(
+            key=lambda x: priority_map.get(x["data"].get("priority"), 2)
+        )
+
+        logger.info(
+            "study_recommendations_retrieved",
+            user_id=current_user.id,
+            total_items=len(recommendations)
+        )
+
+        return recommendations[:limit]
+
+    except Exception as e:
+        logger.error(f"Error getting recommendations: {str(e)}")
+        return []

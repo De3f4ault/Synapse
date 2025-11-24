@@ -1,21 +1,9 @@
-# --- Python build and cache ---
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
-*.pyo
-*.pyd
 *.so
-
-# --- Virtual environments ---
-.env
-.venv/
-venv/
-ENV/
-env/
-*.env
-*.env.*
-
-# --- Package and build ---
+.Python
 build/
 develop-eggs/
 dist/
@@ -28,113 +16,53 @@ parts/
 sdist/
 var/
 wheels/
-pip-wheel-metadata/
-share/python-wheels/
 *.egg-info/
 .installed.cfg
 *.egg
-MANIFEST
 
-# --- Byte-compiled / optimized files ---
-*.pyc
-*.pyo
-*.pyd
+# Virtual Environment
+venv/
+.venv/
+env/
+ENV/
 
-# --- Logs ---
-logs/
-*.log
-*.out
-*.err
-*.pid
+# Environment Variables
+.env
+.env.*
+!.env.example
 
-# --- Local data and uploads ---
-data/uploads/
-data/lancedb/
-data/duckdb/
-data/llama_index/
-*.db
-*.sqlite3
-*.sqlite
-
-# --- Alembic migrations ---
-alembic/versions/*.pyc
-alembic/versions/__pycache__/
-# You may also ignore migration files if generated dynamically:
-# alembic/versions/*.py
-
-# --- Redis / Cache / Temp files ---
-cache/
-tmp/
-temp/
-__cache__/
-*.tmp
-*.bak
-
-# --- Jupyter / Notebooks ---
-.ipynb_checkpoints/
-*.ipynb
-
-# --- Testing and coverage ---
-.coverage
-htmlcov/
-.tox/
-.nox/
-.pytest_cache/
-coverage.xml
-*.cover
-.cache/
-.mypy_cache/
-.dmypy.json
-.pyre/
-.pytype/
-
-# --- Environment files ---
-.env.example
-.env.development
-.env.local
-.env.production
-
-# --- Editor / IDE files ---
+# IDEs
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
 .DS_Store
-Thumbs.db
 
-# --- Docker / Deployment ---
-.docker/
-docker-compose.override.yml
-*.pid
-*.sock
+# Data Directories
+data/
+logs/
+*.log
 
-# --- Reports and artifacts ---
-reports/
-*.pdf
-*.docx
-*.xlsx
-*.csv
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Alembic
+alembic/versions/*.pyc
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Misc
+.mypy_cache/
+.ruff_cache/
 *.bak
-
-# --- Node-related (for frontends or docs) ---
-node_modules/
-npm-debug.log
-yarn-debug.log
-yarn-error.log
-dist/
-build/
-
-# --- Secrets / Credentials ---
-secrets/
-keys/
-private/
-*.pem
-*.key
-*.crt
-*.csr
-
-# --- Misc ---
-__init__.pyc
-logs/nginx/
-
+*.tmp
