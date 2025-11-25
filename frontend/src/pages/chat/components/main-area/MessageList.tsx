@@ -1,16 +1,16 @@
 /**
- * MessageList - Scrollable message container
- * Handles auto-scroll and message rendering
+ * MessageList - Integrated with WebSocket streaming
+ * Shows messages + live streaming content
  */
 
 import React, { useRef, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { getMessagesApiV1ChatSessionsSessionIdMessagesGet } from '@/api/generated/services.gen';
+import { useChatMessages } from '@/pages/chat/hooks/useChatMessages';
+import { useStreamingResponse } from '@/pages/chat/hooks/useStreamingResponse';
 import { Message } from '../messages/Message';
 import { Loader2, MessageSquare } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useAutoScroll } from '../../hooks/useAutoScroll';
+import { motion } from 'framer-motion';
 
 interface MessageListProps {
   className?: string;
@@ -19,26 +19,22 @@ interface MessageListProps {
 export const MessageList: React.FC<MessageListProps> = ({ className }) => {
   const { sessionId } = useParams<{ sessionId: string }>();
   const scrollRef = useRef<HTMLDivElement>(null);
-  const { shouldAutoScroll } = useAutoScroll(scrollRef);
+  const numericSessionId = sessionId ? parseInt(sessionId) : undefined;
 
-  // Fetch messages for current session
-  const { data: messages, isLoading } = useQuery({
-    queryKey: ['chat-messages', sessionId],
-    queryFn: () =>
-    getMessagesApiV1ChatSessionsSessionIdMessagesGet({
-      sessionId: parseInt(sessionId!),
-                                                     limit: 100,
-    }),
-    enabled: !!sessionId,
-    refetchOnWindowFocus: false,
-  });
-
-  // Auto-scroll to bottom when new messages arrive
+  // Debug logging
   useEffect(() => {
-    if (shouldAutoScroll && scrollRef.current) {
+    console.log('MessageList - sessionId:', sessionId, 'numeric:', numericSessionId);
+  }, [sessionId, numericSessionId]);
+
+  // Fetch messages
+  const { data: messages, isLoading } = useChatMessages(numericSessionId);
+
+  // Auto-scroll to bottom
+  useEffect(() => {
+    if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages, shouldAutoScroll]);
+  }, [messages]);
 
   // Loading state
   if (isLoading) {
@@ -72,12 +68,22 @@ export const MessageList: React.FC<MessageListProps> = ({ className }) => {
       'flex-1 overflow-y-auto overflow-x-hidden',
       'py-6 space-y-6',
       'scroll-smooth',
+      'scrollbar-thin scrollbar-thumb-[#3F3F46] scrollbar-track-transparent',
       className
     )}
     >
+    <div className="w-full max-w-[800px] mx-auto px-4 md:px-6">
+    {/* Render all messages */}
     {messages.map((message) => (
-      <Message key={message.id} message={message} />
+      <Message
+      key={message.id}
+      id={message.id}
+      role={message.role as 'user' | 'assistant'}
+      content={message.content}
+      timestamp={message.created_at}
+      />
     ))}
+    </div>
     </div>
   );
 };

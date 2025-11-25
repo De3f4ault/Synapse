@@ -38,12 +38,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
   className,
 }) => {
   return (
-    <div
-    className={cn(
-      'flex flex-col items-center justify-center min-h-[calc(100vh-16rem)]',
-                  className
-    )}
-    >
+    <div className={cn('flex flex-col items-center w-full', className)}>
     {/* Main Icon with Gradient */}
     <motion.div
     initial={{ scale: 0.9, opacity: 0 }}
@@ -84,7 +79,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
     initial={{ y: 20, opacity: 0 }}
     animate={{ y: 0, opacity: 1 }}
     transition={{ duration: 0.4, delay: 0.2 }}
-    className="grid grid-cols-1 md:grid-cols-3 gap-3 w-full max-w-3xl"
+    className="grid grid-cols-1 md:grid-cols-3 gap-3 w-full max-w-3xl px-4"
     >
     {suggestedPrompts.map((item, index) => {
       const Icon = item.icon;

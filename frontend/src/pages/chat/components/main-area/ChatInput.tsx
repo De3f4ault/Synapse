@@ -1,31 +1,28 @@
 /**
- * ChatInput.tsx
- * ROLE: The "Sticky" Interface for CONTINUING conversations.
- * LOCATION: src/pages/chat/components/input/ChatInput.tsx
+ * ChatInput.tsx - REST API Fallback (No WebSocket)
+ * Instant optimistic updates with REST API
  */
 
 import React, { useState, useRef, useEffect } from "react";
-import { useParams } from "react-router-dom";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import {
-  sendMessageApiV1ChatSessionsSessionIdMessagesPost,
-} from "@/api/generated/services.gen";
-import { Send, Loader2, Mic, Plus, X } from "lucide-react";
+import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
+import { Send, Loader2, Mic, Plus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import type { ChatMessageResponse } from "@/api/generated/types.gen";
+import { sendMessageApiV1ChatSessionsSessionIdMessagesPost } from "@/api/generated/services.gen";
 
 interface ChatInputProps {
+  sessionId?: number;
   onMessageSent?: () => void;
   className?: string;
 }
 
 export const ChatInput: React.FC<ChatInputProps> = ({
+  sessionId,
   onMessageSent,
   className,
 }) => {
-  // --- 1. Hooks & State ---
-  const { sessionId } = useParams<{ sessionId: string }>();
   const queryClient = useQueryClient();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -35,53 +32,86 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   const [isFocused, setIsFocused] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
 
-  // --- 2. Mutation for sending messages ---
-  const sendMessageMutation = useMutation({
-    mutationFn: async (data: {
-      sessionId: number;
-      requestBody: { content: string };
-    }) => {
-      return sendMessageApiV1ChatSessionsSessionIdMessagesPost(
-        data.sessionId,
-        data.requestBody
+  // REST API mutation
+  const sendMutation = useMutation({
+    mutationFn: (content: string) =>
+    sendMessageApiV1ChatSessionsSessionIdMessagesPost({
+      sessionId: sessionId!,
+      requestBody: { content },
+    }),
+    onSuccess: (response) => {
+      // Add AI response to cache
+      queryClient.setQueryData<ChatMessageResponse[]>(
+        ['chat-messages', sessionId],
+        (old = []) => [...old, response]
       );
+
+      // Invalidate queries to refresh
+      queryClient.invalidateQueries({ queryKey: ['chat-messages', sessionId] });
+      queryClient.invalidateQueries({ queryKey: ['chat-session', sessionId] });
+      queryClient.invalidateQueries({ queryKey: ['chat-sessions'] });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ["chat-messages", sessionId],
-      });
-      queryClient.invalidateQueries({
-        queryKey: ["chat-sessions"],
-      });
+    onError: (error: any, content, context: any) => {
+      toast.error("Failed to send message");
 
-      setInput("");
-      setAttachedFiles([]);
-      onMessageSent?.();
-
-      if (textareaRef.current) {
-        textareaRef.current.style.height = "auto";
-        textareaRef.current.focus();
+      // Rollback optimistic update
+      if (context?.previousMessages) {
+        queryClient.setQueryData(
+          ['chat-messages', sessionId],
+          context.previousMessages
+        );
       }
-    },
-    onError: (error: any) => {
-      toast.error(error.message || "Failed to send message");
     },
   });
 
-  // --- 3. Logic ---
-  const handleSubmit = (e?: React.FormEvent) => {
+  const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault();
-    if (
-      (!input.trim() && attachedFiles.length === 0) ||
-      sendMessageMutation.isPending ||
-      !sessionId
-    )
-      return;
 
-      sendMessageMutation.mutate({
-        sessionId: parseInt(sessionId),
-                                 requestBody: { content: input.trim() },
-      });
+    if (!sessionId) {
+      toast.error("No active session");
+      return;
+    }
+
+    if (!input.trim() || sendMutation.isPending) return;
+
+    const content = input.trim();
+
+    // 1. INSTANT optimistic update - add user message immediately
+    const optimisticUserMessage: ChatMessageResponse = {
+      id: Date.now(),
+      session_id: sessionId,
+      role: 'user',
+      content,
+      tokens: 0,
+      model_used: null,
+      created_at: new Date().toISOString(),
+    };
+
+    // Save previous messages for rollback
+    const previousMessages = queryClient.getQueryData<ChatMessageResponse[]>([
+      'chat-messages',
+      sessionId,
+    ]);
+
+    queryClient.setQueryData<ChatMessageResponse[]>(
+      ['chat-messages', sessionId],
+      (old = []) => [...old, optimisticUserMessage]
+    );
+
+    // 2. Clear input immediately
+    setInput("");
+    setAttachedFiles([]);
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+    }
+
+    // 3. Send via REST API
+    try {
+      await sendMutation.mutateAsync(content);
+      onMessageSent?.();
+    } catch (error) {
+      // Error already handled in mutation
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -119,9 +149,8 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     }
   }, [input]);
 
-  const isLoading = sendMessageMutation.isPending;
+  const isLoading = sendMutation.isPending;
 
-  // --- 4. UI ---
   return (
     <div
     className={cn(
@@ -197,7 +226,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     className="hidden"
     onChange={(e) =>
       e.target.files &&
-      setAttachedFiles((p) => [...p, ...Array.from(e.target.files)])
+      setAttachedFiles((p) => [...p, ...Array.from(e.target.files!)])
     }
     />
 
@@ -219,25 +248,24 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     onFocus={() => setIsFocused(true)}
     onBlur={() => setIsFocused(false)}
     placeholder="Reply to Synapse..."
-    disabled={isLoading}
+    disabled={isLoading || !sessionId}
     rows={1}
     className={cn(
       "flex-1 py-3 px-2",
       "bg-transparent text-white placeholder:text-zinc-500",
       "resize-none outline-none text-[15px] leading-relaxed",
-      "max-h-[180px] overflow-y-auto scrollbar-hide"
+      "max-h-[180px] overflow-y-auto scrollbar-hide",
+      (!sessionId || isLoading) && "opacity-50 cursor-not-allowed"
     )}
     />
 
     {/* Send Button */}
     <button
     type="submit"
-    disabled={
-      (!input.trim() && attachedFiles.length === 0) || isLoading
-    }
+    disabled={!input.trim() || isLoading || !sessionId}
     className={cn(
       "mb-1 p-2 rounded-xl transition-all duration-200",
-      input.trim() || attachedFiles.length > 0
+      input.trim() && !isLoading && sessionId
       ? "bg-blue-600 text-white shadow-lg hover:bg-blue-500"
       : "bg-zinc-700 text-zinc-500 cursor-not-allowed"
     )}
@@ -253,9 +281,11 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 
     <div className="text-center mt-2 hidden sm:block">
     <span className="text-[10px] text-zinc-600">
-    Enter to send, Shift+Enter for newline
+    {isLoading ? "Sending message..." : "Enter to send, Shift+Enter for newline"}
     </span>
     </div>
     </div>
   );
 };
+
+export default ChatInput;

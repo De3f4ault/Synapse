@@ -1,8 +1,6 @@
 /**
- * Message - Wrapper component that routes to UserMessage or AssistantMessage
- * Handles proper styling for each message type
- *
- * Location: src/pages/chat/components/messages/Message.tsx
+ * Message - Wrapper component
+ * Routes to UserMessage or AssistantMessage
  */
 
 import React from 'react';
@@ -19,10 +17,23 @@ export interface MessageProps {
 
 export const Message: React.FC<MessageProps> = (props) => {
   if (props.role === 'user') {
-    return <UserMessage {...props} />;
+    return (
+      <UserMessage
+      id={props.id}
+      content={props.content}
+      timestamp={props.timestamp}
+      />
+    );
   }
 
-  return <AssistantMessage {...props} />;
+  return (
+    <AssistantMessage
+    id={props.id}
+    content={props.content}
+    timestamp={props.timestamp}
+    isStreaming={props.isStreaming}
+    />
+  );
 };
 
 export default Message;

@@ -8,7 +8,6 @@
 import React, { useRef, useEffect } from 'react';
 import { WelcomeScreen } from './WelcomeScreen';
 import { MessageList } from './MessageList';
-import { MainInput } from '../input/MainInput';
 import { cn } from '../../../../lib/utils';
 
 interface ChatContainerProps {
@@ -30,17 +29,9 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
   }, [hasMessages]);
 
   if (!hasMessages) {
-    // Welcome Screen - Fixed, centered vertically and horizontally
-    return (
-      <div className="absolute inset-0 flex flex-col items-center justify-center px-4">
-      <WelcomeScreen />
-
-      {/* Centered Input - Part of welcome screen */}
-      <div className="w-full max-w-[720px] mt-12">
-      <MainInput isCentered={true} />
-      </div>
-      </div>
-    );
+    // Welcome Screen - Just the content, no positioning
+    // Input is handled separately by ChatPage.tsx
+    return <WelcomeScreen />;
   }
 
   // Messages exist - Show scrollable message list
@@ -48,8 +39,7 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
     <div
     ref={scrollRef}
     className={cn(
-      'absolute inset-0',
-      'overflow-y-auto overflow-x-hidden',
+      'flex-1 overflow-y-auto overflow-x-hidden',
       'scrollbar-thin scrollbar-thumb-[#3F3F46] scrollbar-track-transparent',
       className
     )}

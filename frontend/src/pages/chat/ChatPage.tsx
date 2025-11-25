@@ -1,28 +1,25 @@
 /**
- * ChatPage.tsx
- * ROLE: The Orchestrator
- * RESPONSIBILITY:
- * - Detects Session State (New vs Active)
- * - Renders ChatContainer for messages
- * - SWAPS inputs: MainInput (for new) vs ChatInput (for active)
+ * ChatPage.tsx - Fully Integrated
+ * Complete WebSocket integration with optimistic updates
  */
 
 import React from 'react';
 import { useParams } from 'react-router-dom';
 
-// --- Chat Components ---
+// Components
 import { MinimalSidebar } from '@/pages/chat/components/sidebar/MinimalSidebar';
 import { ChatContainer } from '@/pages/chat/components/main-area/ChatContainer';
-import { ChatInput } from '@/pages/chat/components/main-area/ChatInput'; // Corrected path
+import { ChatInput } from '@/pages/chat/components/main-area/ChatInput';
 import { MainInput } from '@/pages/chat/components/input/MainInput';
 import { PreviewSidebar } from '@/pages/chat/components/preview/PreviewSidebar';
 
-// --- Hooks & Utils ---
+// Hooks
 import { useSidebarCollapse } from '@/pages/chat/hooks/useSidebarCollapse';
 import { usePreviewSidebar } from '@/pages/chat/hooks/usePreviewSidebar';
+import { useChatSession } from '@/pages/chat/hooks/useChatSession';
 import { cn } from '@/lib/utils';
 
-// --- Styles ---
+// Styles
 import '@/pages/chat/styles/scrollbar.css';
 import '@/pages/chat/styles/global-overrides.css';
 
@@ -31,18 +28,20 @@ export const ChatPage: React.FC = () => {
     const { isCollapsed, toggle: toggleSidebar } = useSidebarCollapse();
     const { isOpen: isPreviewOpen } = usePreviewSidebar();
 
-    // Check if there is an active chat session
+    // Fetch session data
+    const { data: session } = useChatSession(sessionId ? parseInt(sessionId) : undefined);
     const isActiveSession = !!sessionId;
 
     return (
         <div className="relative h-screen w-screen overflow-hidden bg-[#151517]">
-        {/* 1. Left Sidebar - History & Sessions */}
+        {/* Left Sidebar */}
         <MinimalSidebar />
 
-        {/* 2. Top-Left Controls (Fixed position) */}
-        <div className="fixed top-4 left-4 z-50 flex items-center gap-2">
-        {/* Brand Logo */}
-        <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-[#5685FE] to-[#4574ed] flex items-center justify-center shadow-lg shadow-blue-900/20">
+        {/* Top-Left Branding - Fixed */}
+        <div className="fixed top-4 left-4 z-50 flex items-center gap-3">
+        {/* Synapse Logo */}
+        <div className="flex items-center gap-2">
+        <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-[#5685FE] to-[#4574ed] flex items-center justify-center shadow-lg shadow-blue-500/20">
         <svg
         className="w-5 h-5 text-white"
         viewBox="0 0 24 24"
@@ -54,6 +53,8 @@ export const ChatPage: React.FC = () => {
         <path d="M2 17l10 5 10-5" />
         <path d="M2 12l10 5 10-5" />
         </svg>
+        </div>
+        <span className="text-lg font-semibold text-white">Synapse</span>
         </div>
 
         {/* Sidebar Toggle */}
@@ -77,32 +78,38 @@ export const ChatPage: React.FC = () => {
         </button>
         </div>
 
-        {/* 3. Main Content Area */}
+        {/* Main Content */}
         <main
         className={cn(
-            'h-full w-full relative flex flex-col',
+            'h-full w-full relative',
             isCollapsed ? 'ml-0' : 'ml-[240px]',
             isPreviewOpen ? 'mr-[350px]' : 'mr-0',
             'transition-all duration-300 ease-[cubic-bezier(0.25,0.1,0.25,1.0)]'
         )}
         >
-        {/* Chat Content */}
-        <ChatContainer hasMessages={isActiveSession} />
-
-        {/* Conditional Input Rendering */}
         {isActiveSession ? (
-            <ChatInput className="w-full max-w-4xl mx-auto" />
+            // Active session layout
+            <div className="h-full flex flex-col">
+            <ChatContainer hasMessages={true} />
+            <ChatInput
+            className="w-full max-w-4xl mx-auto"
+            sessionId={sessionId ? parseInt(sessionId) : undefined}
+            />
+            </div>
         ) : (
-            // Centered MainInput for new sessions
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full px-4 z-30 pointer-events-none">
-            <div className="pointer-events-auto">
+            // New session layout
+            <div className="h-full flex flex-col items-center justify-center px-4">
+            <div className="flex-1 flex items-center justify-center max-h-[45vh]">
+            <ChatContainer hasMessages={false} />
+            </div>
+            <div className="w-full max-w-[760px] pb-[10vh]">
             <MainInput isCentered={true} />
             </div>
             </div>
         )}
         </main>
 
-        {/* 4. Right Sidebar - File/Preview */}
+        {/* Right Sidebar */}
         <PreviewSidebar />
         </div>
     );

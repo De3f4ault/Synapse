@@ -1,23 +1,31 @@
 /**
- * AssistantMessage - Appears on dark canvas (#151517 background)
+ * AssistantMessage - Clean, no duplicate labels
  * Left-aligned with avatar, markdown support
- *
- * Location: src/pages/chat/components/messages/AssistantMessage.tsx
  */
 
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Copy, RotateCcw, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { MessageProps } from './Message';
-import { MessageMarkdown } from './MessageMarkdown';
+import { toast } from 'sonner';
 
-export const AssistantMessage: React.FC<MessageProps> = ({
+interface AssistantMessageProps {
+  id: number;
+  content: string;
+  timestamp: string;
+  isStreaming?: boolean;
+}
+
+export const AssistantMessage: React.FC<AssistantMessageProps> = ({
   content,
-  timestamp,
   isStreaming = false,
 }) => {
   const [showActions, setShowActions] = React.useState(false);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(content);
+    toast.success('Copied to clipboard');
+  };
 
   return (
     <motion.div
@@ -31,7 +39,13 @@ export const AssistantMessage: React.FC<MessageProps> = ({
     {/* AI Avatar & Name */}
     <div className="flex items-center gap-2.5 mb-3">
     <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#5685FE] to-[#4574ed] flex items-center justify-center shadow-[0_0_12px_rgba(86,133,254,0.25)]">
-    <svg className="w-4 h-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <svg
+    className="w-4 h-4 text-white"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    >
     <path d="M12 2L2 7l10 5 10-5-10-5z" />
     <path d="M2 17l10 5 10-5" />
     <path d="M2 12l10 5 10-5" />
@@ -40,10 +54,12 @@ export const AssistantMessage: React.FC<MessageProps> = ({
     <span className="text-sm font-medium text-white/90">Synapse</span>
     </div>
 
-    {/* Message Content - On dark background */}
+    {/* Message Content */}
     <div className="relative group pl-9">
     <div className="prose prose-invert max-w-none">
-    <MessageMarkdown content={content} />
+    <p className="text-[15px] leading-relaxed text-white/90 whitespace-pre-wrap break-words">
+    {content}
+    </p>
     </div>
 
     {/* Action Buttons - Show on hover */}
@@ -55,7 +71,7 @@ export const AssistantMessage: React.FC<MessageProps> = ({
       className="flex items-center gap-1 mt-3"
       >
       <button
-      onClick={() => navigator.clipboard.writeText(content)}
+      onClick={handleCopy}
       className="p-1.5 rounded-lg hover:bg-[#2C2C2E] text-white/50 hover:text-white transition-all duration-200"
       title="Copy"
       >
