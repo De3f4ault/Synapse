@@ -12,6 +12,8 @@ Responsibilities:
 - Performance analytics
 - Event emission
 - Cache invalidation
+
+UPDATED: Now broadcasts WebSocket events when actions occur.
 """
 
 from typing import Dict, List, Optional
@@ -27,6 +29,7 @@ from .constants import (
     INITIAL_INTERVAL,
     LearningState
 )
+from app.api.websockets.events import broadcast_card_reviewed
 
 
 class FlashcardService:
@@ -76,13 +79,6 @@ class FlashcardService:
         self.session.add(deck)
         await self.session.commit()
         await self.session.refresh(deck)
-
-        # Emit event: deck.created
-        # await EventDispatcher().emit(Event(
-        #     type=EventType.DECK_CREATED,
-        #     user_id=user_id,
-        #     data={"deck_id": deck.id, "name": deck.name}
-        # ))
 
         return self._deck_to_dict(deck)
 
@@ -201,9 +197,6 @@ class FlashcardService:
         await self.session.commit()
         await self.session.refresh(deck)
 
-        # Invalidate context cache
-        # await cache_manager.delete(f"context:{user_id}")
-
         return self._deck_to_dict(deck)
 
     async def delete_deck(self, deck_id: int, user_id: int) -> bool:
@@ -236,9 +229,6 @@ class FlashcardService:
         deck.deleted_at = datetime.utcnow()
 
         await self.session.commit()
-
-        # Invalidate cache
-        # await cache_manager.delete(f"context:{user_id}")
 
         return True
 
@@ -292,14 +282,6 @@ class FlashcardService:
         self.session.add(card)
         await self.session.commit()
         await self.session.refresh(card)
-
-        # Trigger event: card.created
-        # This will trigger embedding generation in background
-        # await EventDispatcher().emit(Event(
-        #     type=EventType.CARD_CREATED,
-        #     user_id=user_id,
-        #     data={"card_id": card.id, "deck_id": deck.id}
-        # ))
 
         return self._card_to_dict(card)
 
@@ -375,13 +357,6 @@ class FlashcardService:
         await self.session.commit()
         await self.session.refresh(card)
 
-        # Trigger event: card.updated
-        # await EventDispatcher().emit(Event(
-        #     type=EventType.CARD_UPDATED,
-        #     user_id=user_id,
-        #     data={"card_id": card.id}
-        # ))
-
         return self._card_to_dict(card)
 
     async def review_card(
@@ -398,6 +373,8 @@ class FlashcardService:
         2. Calculates new SM-2 values
         3. Updates the card
         4. Creates review history record
+
+        UPDATED: Now broadcasts WebSocket event to dashboard.
 
         Args:
             card_id: Card ID
@@ -431,20 +408,13 @@ class FlashcardService:
         # Commit transaction
         await self.session.commit()
 
-        # Invalidate context cache
-        # await cache_manager.delete(f"context:{user_id}")
-
-        # Trigger event: card.reviewed
-        # await EventDispatcher().emit(Event(
-        #     type=EventType.CARD_REVIEWED,
-        #     user_id=user_id,
-        #     data={
-        #         "card_id": card_id,
-        #         "quality": quality,
-        #         "next_review": review_result["next_review_date"],
-        #         "ease_factor": review_result["new_ease_factor"]
-        #     }
-        # ))
+        # ✅ NEW: Broadcast WebSocket event to dashboard
+        await broadcast_card_reviewed(
+            user_id=user_id,
+            card_id=card_id,
+            quality=quality,
+            next_review=review_result.get("next_review_date").isoformat() if review_result.get("next_review_date") else None
+        )
 
         return review_result
 

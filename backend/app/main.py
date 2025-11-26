@@ -6,7 +6,8 @@ All middleware, routers, and lifecycle events are registered here.
 """
 
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, WebSocket, Query, status
+import asyncio
 from fastapi.responses import JSONResponse
 
 from app.core.config import settings
@@ -17,6 +18,7 @@ from app.core.middleware import (
     global_exception_handler,
 )
 from app.api.rest import api_router
+from app.api.websockets.dashboard import dashboard_websocket_endpoint, get_user_from_token
 from app.db import init_db, close_db
 from app.utils.logging import get_logger
 
@@ -139,6 +141,119 @@ async def lifespan(app: FastAPI):
         logger.error("shutdown_error", error=str(e))
 
 
+async def activity_websocket_endpoint(
+    websocket: WebSocket,
+    token: str = Query(..., description="JWT authentication token")
+):
+    """
+    Activity tracking WebSocket endpoint.
+
+    Provides real-time activity tracking for study sessions and user interactions.
+    """
+    # Authenticate user using the same function as dashboard
+    user = await get_user_from_token(token)
+
+    if not user:
+        logger.warning(
+            "activity_websocket_auth_failed",
+            token_preview=token[:20],
+            reason="Invalid token or user not found"
+        )
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+        return
+
+    session_id = f"activity_{user.id}"
+
+    try:
+        # Accept WebSocket connection
+        await websocket.accept()
+
+        # Send initial confirmation
+        await websocket.send_json({
+            "type": "connected",
+            "user_id": user.id,
+            "session_id": session_id,
+            "message": "Activity WebSocket connected"
+        })
+
+        logger.info(
+            "activity_websocket_connected",
+            user_id=user.id,
+            session_id=session_id,
+            email=user.email if hasattr(user, 'email') else 'N/A'
+        )
+
+        # Heartbeat configuration
+        HEARTBEAT_INTERVAL = 30  # seconds
+
+        # Main message loop
+        while True:
+            try:
+                # Wait for message from the client with timeout
+                data = await asyncio.wait_for(
+                    websocket.receive_json(),
+                    timeout=HEARTBEAT_INTERVAL
+                )
+
+                # Handle ping/pong
+                if data.get("type") == "ping":
+                    await websocket.send_json({"type": "pong"})
+                    logger.debug("activity_heartbeat_pong_sent", user_id=user.id)
+                    continue
+
+                # Handle activity logging
+                if data.get("type") == "activity_log":
+                    logger.debug(
+                        "activity_received",
+                        user_id=user.id,
+                        activity_type=data.get("activity_type")
+                    )
+                    # Future: Store activity in database or broadcast to analytics
+
+            except asyncio.TimeoutError:
+                # No message within interval → send heartbeat
+                await websocket.send_json({"type": "ping"})
+                logger.debug("activity_heartbeat_ping_sent", user_id=user.id)
+                continue
+
+            except WebSocketDisconnect:
+                logger.info(
+                    "activity_websocket_disconnect",
+                    user_id=user.id,
+                    session_id=session_id
+                )
+                break
+
+            except Exception as e:
+                logger.error(
+                    "activity_websocket_error",
+                    user_id=user.id,
+                    error=str(e),
+                    session_id=session_id
+                )
+                if "connection closed" in str(e).lower():
+                    break
+
+    except Exception as e:
+        logger.error(
+            "activity_websocket_connection_error",
+            user_id=user.id if user else "unknown",
+            error=str(e),
+            session_id=session_id
+        )
+        try:
+            await websocket.close(code=status.WS_1011_INTERNAL_ERROR)
+        except Exception:
+            pass  # Ignore errors during close
+
+    finally:
+        logger.info(
+            "activity_websocket_closed",
+            user_id=user.id if user else "unknown",
+            session_id=session_id
+        )
+
+
 def create_app() -> FastAPI:
     """
     Application factory.
@@ -177,6 +292,34 @@ def create_app() -> FastAPI:
     # ==================== ROUTERS ====================
     # Mount REST API router
     app.include_router(api_router, prefix="/api/v1")
+
+    # ==================== WEBSOCKET ENDPOINTS ====================
+    # WebSocket routes must be registered at root level (no /api/v1 prefix)
+    # CRITICAL: Must include Query parameter annotation for proper validation
+
+    @app.websocket("/ws/dashboard")
+    async def dashboard_ws(
+        websocket: WebSocket,
+        token: str = Query(..., description="JWT authentication token")
+    ):
+        """
+        Dashboard WebSocket endpoint with real-time updates.
+
+        Authentication via query parameter: ws://host/ws/dashboard?token=xxx
+        """
+        await dashboard_websocket_endpoint(websocket, token)
+
+    @app.websocket("/ws/activity")
+    async def activity_ws(
+        websocket: WebSocket,
+        token: str = Query(..., description="JWT authentication token")
+    ):
+        """
+        Activity tracking WebSocket endpoint.
+
+        Authentication via query parameter: ws://host/ws/activity?token=xxx
+        """
+        await activity_websocket_endpoint(websocket, token)
 
     # ==================== ROOT ENDPOINTS ====================
     @app.get("/", tags=["Root"])

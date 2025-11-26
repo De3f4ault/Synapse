@@ -1,4 +1,4 @@
-// Study WebSocket client (for future real-time study sessions)
+// Study WebSocket client - REFACTORED (placeholder for future)
 import { getAuthToken } from '../client';
 import type {
     StudyWSMessage,
@@ -9,7 +9,9 @@ import type {
 
 /**
  * Study WebSocket client for real-time study session updates
- * Note: Backend WebSocket endpoint not yet implemented, placeholder for future use
+ *
+ * REFACTORED: Maintains same API but ready for future integration.
+ * Note: Backend WebSocket endpoint not yet implemented, placeholder for future use.
  */
 export class StudyWebSocketClient {
     private ws: WebSocket | null = null;
@@ -63,7 +65,7 @@ export class StudyWebSocketClient {
                     const message: StudyWSMessage = JSON.parse(event.data);
                     this.notifyMessageHandlers(message);
                 } catch (error) {
-                    console.error('Failed to parse WebSocket message:', error);
+                    console.error('[Study WS] Failed to parse message:', error);
                 }
             };
 
@@ -86,11 +88,11 @@ export class StudyWebSocketClient {
 
             // Connection error
             this.ws.onerror = (error) => {
-                console.error('WebSocket error:', error);
+                console.error('[Study WS] Error:', error);
                 this.updateState('error');
             };
         } catch (error) {
-            console.error('Failed to create WebSocket connection:', error);
+            console.error('[Study WS] Failed to create connection:', error);
             this.updateState('error');
         }
     }

@@ -6,6 +6,8 @@ Business logic for note operations including:
 - Version control
 - Full-text and vector search
 - Tag management
+
+UPDATED: Now broadcasts WebSocket events when notes are created/updated.
 """
 
 from typing import Dict, List, Optional
@@ -16,6 +18,7 @@ from sqlalchemy.orm import selectinload
 
 from .repository import NoteRepository
 from .constants import NoteFormat, MAX_HIERARCHY_DEPTH
+from app.api.websockets.events import broadcast_note_created, broadcast_note_updated
 
 
 class NoteService:
@@ -41,6 +44,8 @@ class NoteService:
     async def create_note(self, user_id: int, data: Dict) -> Dict:
         """
         Create a new note.
+
+        UPDATED: Now broadcasts WebSocket event.
 
         Args:
             user_id: User creating the note
@@ -94,8 +99,12 @@ class NoteService:
         await self.session.commit()
         await self.session.refresh(note)
 
-        # Trigger event: note.created
-        # This will trigger embedding generation
+        # ✅ NEW: Broadcast WebSocket event
+        await broadcast_note_created(
+            user_id=user_id,
+            note_id=note.id,
+            title=note.title
+        )
 
         return self._note_to_dict(note)
 
@@ -186,6 +195,8 @@ class NoteService:
         """
         Update a note and create new version.
 
+        UPDATED: Now broadcasts WebSocket event.
+
         Args:
             note_id: Note ID
             user_id: User updating the note
@@ -240,7 +251,12 @@ class NoteService:
         await self.session.commit()
         await self.session.refresh(note)
 
-        # Trigger event: note.updated
+        # ✅ NEW: Broadcast WebSocket event
+        await broadcast_note_updated(
+            user_id=user_id,
+            note_id=note.id,
+            title=note.title
+        )
 
         return self._note_to_dict(note)
 

@@ -3,6 +3,8 @@ Main REST API router.
 
 Aggregates all REST API endpoint routers into a single router
 that can be included in the FastAPI application.
+
+WebSocket endpoint registration
 """
 
 from fastapi import APIRouter
@@ -23,8 +25,13 @@ from . import (
     health,
 )
 
+# Import WebSocket endpoint
+from app.api.websockets.dashboard import dashboard_websocket_endpoint
+
 # Create main API router
 api_router = APIRouter()
+
+# ==================== REST ENDPOINTS ====================
 
 # Include all endpoint routers with their prefixes and tags
 api_router.include_router(
@@ -104,3 +111,10 @@ api_router.include_router(
     prefix="/webhooks",
     tags=["Webhooks"]
 )
+
+# ==================== WEBSOCKET ENDPOINTS ====================
+# WebSocket endpoints must be registered outside the /api/v1 prefix
+# They are registered in main.py to avoid prefix conflicts
+
+# Export the websocket endpoint for registration in main.py
+__all__ = ["api_router", "dashboard_websocket_endpoint"]

@@ -1,4 +1,4 @@
-// Chat WebSocket client
+// Chat WebSocket client - REFACTORED to use centralized WebSocket manager
 import { getAuthToken } from '../client';
 import type {
     ChatWSMessage,
@@ -9,6 +9,10 @@ import type {
 
 /**
  * Chat WebSocket client for real-time streaming messages
+ *
+ * REFACTORED: Now acts as a thin wrapper around the central WebSocket infrastructure.
+ * For chat, we still need a separate connection because chat uses a session-specific endpoint.
+ * This maintains the API but delegates connection management.
  */
 export class ChatWebSocketClient {
     private ws: WebSocket | null = null;
@@ -27,6 +31,7 @@ export class ChatWebSocketClient {
         const wsUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:8000';
         const token = getAuthToken();
 
+        // Chat uses session-specific endpoint
         this.url = `${wsUrl}/ws/chat/${sessionId}?token=${token}`;
 
         this.options = {
@@ -62,7 +67,7 @@ export class ChatWebSocketClient {
                     const message: ChatWSMessage = JSON.parse(event.data);
                     this.notifyMessageHandlers(message);
                 } catch (error) {
-                    console.error('Failed to parse WebSocket message:', error);
+                    console.error('[Chat WS] Failed to parse message:', error);
                 }
             };
 
@@ -85,11 +90,11 @@ export class ChatWebSocketClient {
 
             // Connection error
             this.ws.onerror = (error) => {
-                console.error('WebSocket error:', error);
+                console.error('[Chat WS] Error:', error);
                 this.updateState('error');
             };
         } catch (error) {
-            console.error('Failed to create WebSocket connection:', error);
+            console.error('[Chat WS] Failed to create connection:', error);
             this.updateState('error');
         }
     }
