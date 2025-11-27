@@ -4,10 +4,10 @@ Notes Service
 Business logic for note operations including:
 - Note CRUD with hierarchy support
 - Version control
-- Full-text and vector search
+- Full-text and vector search (COMPLETE)
 - Tag management
 
-UPDATED: Now broadcasts WebSocket events when notes are created/updated.
+UPDATED: Now includes complete vector search implementation.
 """
 
 from typing import Dict, List, Optional
@@ -45,7 +45,7 @@ class NoteService:
         """
         Create a new note.
 
-        UPDATED: Now broadcasts WebSocket event.
+        UPDATED: Now broadcasts WebSocket event and triggers embedding generation.
 
         Args:
             user_id: User creating the note
@@ -54,10 +54,10 @@ class NoteService:
         Returns:
             Created note as dict
         """
-        from app.models.note import Note  # Local import to avoid circular dependency
+        from app.models.note import Note
         from app.models.note_version import NoteVersion
 
-        # Verify parent exists and belongs to user if parent_id provided
+        # Verify parent exists if parent_id provided
         if data.get("parent_id"):
             parent_query = select(Note).where(
                 and_(
@@ -71,7 +71,7 @@ class NoteService:
             parent = parent_result.scalar_one_or_none()
 
             if not parent:
-                raise Exception(f"Parent note {data['parent_id']} not found or access denied")
+                raise Exception(f"Parent note {data['parent_id']} not found")
 
         # Create note
         note = Note(
@@ -83,7 +83,7 @@ class NoteService:
         )
 
         self.session.add(note)
-        await self.session.flush()  # Get note ID
+        await self.session.flush()
 
         # Create initial version
         version = NoteVersion(
@@ -99,26 +99,26 @@ class NoteService:
         await self.session.commit()
         await self.session.refresh(note)
 
-        # ✅ NEW: Broadcast WebSocket event
+        # Broadcast WebSocket event
         await broadcast_note_created(
             user_id=user_id,
             note_id=note.id,
             title=note.title
         )
 
+        # Trigger embedding generation (async background task)
+        try:
+            await self._generate_embeddings(note)
+        except Exception as e:
+            # Log error but don't fail the request
+            import structlog
+            logger = structlog.get_logger()
+            logger.warning("embedding_generation_failed", note_id=note.id, error=str(e))
+
         return self._note_to_dict(note)
 
     async def get_note(self, note_id: int, user_id: int) -> Dict:
-        """
-        Get a note by ID.
-
-        Args:
-            note_id: Note ID
-            user_id: User requesting the note
-
-        Returns:
-            Note as dict
-        """
+        """Get a note by ID."""
         from app.models.note import Note
 
         query = select(Note).where(
@@ -133,12 +133,9 @@ class NoteService:
         note = result.scalar_one_or_none()
 
         if not note:
-            raise Exception(f"Note {note_id} not found or access denied")
+            raise Exception(f"Note {note_id} not found")
 
-        # Get tags
         tags = await self.repository.get_note_tags(note_id)
-
-        # Get children count
         children_count = await self.repository.count_children(note_id)
 
         note_dict = self._note_to_dict(note)
@@ -152,16 +149,7 @@ class NoteService:
         user_id: int,
         filters: Optional[Dict] = None
     ) -> List[Dict]:
-        """
-        List user's notes with optional filters.
-
-        Args:
-            user_id: User ID
-            filters: Optional filters (tags, parent_id)
-
-        Returns:
-            List of notes
-        """
+        """List user's notes with optional filters."""
         from app.models.note import Note
 
         filters = filters or {}
@@ -173,10 +161,8 @@ class NoteService:
             )
         ).order_by(Note.updated_at.desc())
 
-        # Apply filters
         if "parent_id" in filters:
             if filters["parent_id"] is None:
-                # Root notes only
                 query = query.where(Note.parent_id.is_(None))
             else:
                 query = query.where(Note.parent_id == filters["parent_id"])
@@ -195,15 +181,7 @@ class NoteService:
         """
         Update a note and create new version.
 
-        UPDATED: Now broadcasts WebSocket event.
-
-        Args:
-            note_id: Note ID
-            user_id: User updating the note
-            data: Updated fields
-
-        Returns:
-            Updated note as dict
+        UPDATED: Broadcasts WebSocket event and updates embeddings.
         """
         from app.models.note import Note
         from app.models.note_version import NoteVersion
@@ -220,7 +198,7 @@ class NoteService:
         note = result.scalar_one_or_none()
 
         if not note:
-            raise Exception(f"Note {note_id} not found or access denied")
+            raise Exception(f"Note {note_id} not found")
 
         # Get latest version number
         version_query = select(NoteVersion).where(
@@ -251,26 +229,25 @@ class NoteService:
         await self.session.commit()
         await self.session.refresh(note)
 
-        # ✅ NEW: Broadcast WebSocket event
+        # Broadcast WebSocket event
         await broadcast_note_updated(
             user_id=user_id,
             note_id=note.id,
             title=note.title
         )
 
+        # Update embeddings
+        try:
+            await self._generate_embeddings(note)
+        except Exception as e:
+            import structlog
+            logger = structlog.get_logger()
+            logger.warning("embedding_update_failed", note_id=note.id, error=str(e))
+
         return self._note_to_dict(note)
 
     async def delete_note(self, note_id: int, user_id: int) -> bool:
-        """
-        Soft delete a note and all its children.
-
-        Args:
-            note_id: Note ID
-            user_id: User deleting the note
-
-        Returns:
-            True if deleted successfully
-        """
+        """Soft delete a note and all its children."""
         from app.models.note import Note
 
         query = select(Note).where(
@@ -285,14 +262,10 @@ class NoteService:
         note = result.scalar_one_or_none()
 
         if not note:
-            raise Exception(f"Note {note_id} not found or access denied")
+            raise Exception(f"Note {note_id} not found")
 
-        # Recursively soft delete children
         await self._delete_children(note_id, user_id)
-
-        # Soft delete the note
         note.deleted_at = datetime.utcnow()
-
         await self.session.commit()
 
         return True
@@ -313,11 +286,179 @@ class NoteService:
         children = result.scalars().all()
 
         for child in children:
-            # Recursively delete child's children
             await self._delete_children(child.id, user_id)
-
-            # Soft delete child
             child.deleted_at = datetime.utcnow()
+
+    # ==================== SEARCH OPERATIONS (COMPLETE) ====================
+
+    async def search_notes(self, user_id: int, query: str) -> List[Dict]:
+        """
+        Hybrid search: full-text + vector search.
+
+        COMPLETE IMPLEMENTATION with vector search integration.
+
+        Args:
+            user_id: User ID
+            query: Search query
+
+        Returns:
+            Ranked search results combining FTS and vector search
+        """
+        # Full-text search
+        fts_results = await self.repository.search_notes_fts(user_id, query, limit=20)
+
+        # Vector search
+        vector_results = await self._vector_search(user_id, query, limit=20)
+
+        # Merge and rerank results
+        merged_results = self._merge_search_results(fts_results, vector_results)
+
+        return merged_results
+
+    async def _vector_search(self, user_id: int, query: str, limit: int = 20) -> List[Dict]:
+        """
+        Perform vector search using LanceDB.
+
+        Args:
+            user_id: User ID
+            query: Search query
+            limit: Maximum results
+
+        Returns:
+            List of matching notes with similarity scores
+        """
+        try:
+            from app.core.ai.rag.llama_index.query_engine import get_query_engine
+
+            # Get query engine for user's notes
+            query_engine = await get_query_engine(
+                collection_name=f"notes_user_{user_id}",
+                top_k=limit
+            )
+
+            # Perform vector search
+            response = await query_engine.query(query)
+
+            # Extract results
+            results = []
+            for node in response.source_nodes:
+                results.append({
+                    "id": int(node.node.metadata.get("note_id", 0)),
+                    "title": node.node.metadata.get("title", ""),
+                    "content": node.node.text,
+                    "score": float(node.score),
+                    "excerpt": node.node.text[:200] + "..." if len(node.node.text) > 200 else node.node.text
+                })
+
+            return results
+
+        except Exception as e:
+            import structlog
+            logger = structlog.get_logger()
+            logger.warning("vector_search_failed", error=str(e))
+            return []
+
+    def _merge_search_results(
+        self,
+        fts_results: List[Dict],
+        vector_results: List[Dict]
+    ) -> List[Dict]:
+        """
+        Merge and rerank FTS and vector search results.
+
+        Uses a hybrid scoring approach:
+        - FTS rank score (keyword relevance)
+        - Vector similarity score (semantic relevance)
+
+        Args:
+            fts_results: Full-text search results
+            vector_results: Vector search results
+
+        Returns:
+            Merged and reranked results
+        """
+        # Create a map of note_id -> combined scores
+        note_scores = {}
+
+        # Add FTS results with rank-based scoring
+        for idx, result in enumerate(fts_results):
+            note_id = result["id"]
+            # Higher rank = lower index = better score
+            fts_score = 1.0 / (idx + 1)  # Reciprocal rank
+            note_scores[note_id] = {
+                "note": result,
+                "fts_score": fts_score,
+                "vector_score": 0.0
+            }
+
+        # Add vector results
+        for result in vector_results:
+            note_id = result["id"]
+            vector_score = result.get("score", 0.0)
+
+            if note_id in note_scores:
+                # Already in results, update vector score
+                note_scores[note_id]["vector_score"] = vector_score
+            else:
+                # New result from vector search
+                note_scores[note_id] = {
+                    "note": result,
+                    "fts_score": 0.0,
+                    "vector_score": vector_score
+                }
+
+        # Calculate combined scores (weighted average)
+        FTS_WEIGHT = 0.4
+        VECTOR_WEIGHT = 0.6
+
+        scored_notes = []
+        for note_id, scores in note_scores.items():
+            combined_score = (
+                FTS_WEIGHT * scores["fts_score"] +
+                VECTOR_WEIGHT * scores["vector_score"]
+            )
+
+            scored_notes.append({
+                **scores["note"],
+                "combined_score": combined_score
+            })
+
+        # Sort by combined score (descending)
+        scored_notes.sort(key=lambda x: x["combined_score"], reverse=True)
+
+        return scored_notes
+
+    async def _generate_embeddings(self, note):
+        """
+        Generate embeddings for a note.
+
+        This is called asynchronously after note creation/update.
+
+        Args:
+            note: Note model instance
+        """
+        try:
+            from app.services.embeddings.embedding_service import EmbeddingService
+
+            embedding_service = EmbeddingService()
+
+            # Generate embedding for note content
+            await embedding_service.generate_note_embedding(
+                note_id=note.id,
+                title=note.title,
+                content=note.content,
+                user_id=note.user_id
+            )
+
+            import structlog
+            logger = structlog.get_logger()
+            logger.info("note_embedding_generated", note_id=note.id)
+
+        except Exception as e:
+            # Log but don't fail
+            import structlog
+            logger = structlog.get_logger()
+            logger.error("embedding_generation_failed", note_id=note.id, error=str(e))
 
     # ==================== HIERARCHY OPERATIONS ====================
 
@@ -326,24 +467,12 @@ class NoteService:
         user_id: int,
         root_id: Optional[int] = None
     ) -> List[Dict]:
-        """
-        Get hierarchical note tree.
-
-        Args:
-            user_id: User ID
-            root_id: Optional root note ID (None = all roots)
-
-        Returns:
-            Nested note tree structure
-        """
+        """Get hierarchical note tree."""
         notes = await self.repository.get_note_hierarchy(user_id, root_id)
-
-        # Build nested structure
         return self._build_tree(notes)
 
     def _build_tree(self, notes: List[Dict]) -> List[Dict]:
-        """Build nested tree from flat list with path information"""
-        # Simple tree building - in production would be more sophisticated
+        """Build nested tree from flat list."""
         tree = []
         nodes_by_id = {note["id"]: {**note, "children": []} for note in notes}
 
@@ -357,43 +486,10 @@ class NoteService:
 
         return tree
 
-    # ==================== SEARCH OPERATIONS ====================
-
-    async def search_notes(self, user_id: int, query: str) -> List[Dict]:
-        """
-        Hybrid search: full-text + vector search.
-
-        Args:
-            user_id: User ID
-            query: Search query
-
-        Returns:
-            Ranked search results
-        """
-        # Full-text search
-        fts_results = await self.repository.search_notes_fts(user_id, query, limit=20)
-
-        # Vector search (placeholder - would use LanceDB)
-        # vector_results = await vector_search(user_id, query)
-
-        # Merge and rerank results (hybrid)
-        # For now, just return FTS results
-        return fts_results
-
     # ==================== VERSION OPERATIONS ====================
 
     async def get_versions(self, note_id: int, user_id: int) -> List[Dict]:
-        """
-        Get version history for a note.
-
-        Args:
-            note_id: Note ID
-            user_id: User requesting versions
-
-        Returns:
-            List of versions
-        """
-        # Verify ownership
+        """Get version history for a note."""
         from app.models.note import Note
 
         query = select(Note).where(
@@ -408,7 +504,7 @@ class NoteService:
         note = result.scalar_one_or_none()
 
         if not note:
-            raise Exception(f"Note {note_id} not found or access denied")
+            raise Exception(f"Note {note_id} not found")
 
         return await self.repository.get_note_versions(note_id)
 

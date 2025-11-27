@@ -1,99 +1,53 @@
 """
-SQLAlchemy ORM models package.
+Database Models Package
 
-This package contains all database models for the SYNAPSE application.
-All models inherit from Base and use SQLAlchemy 2.0 patterns.
+All SQLAlchemy ORM models are exported from here.
 
-Import this module to access all models and the Base class for migrations:
-    from app.models import Base, User, Deck, Flashcard, ...
+UPDATED: Added ActivityLog model.
 """
 
-# Base and mixins
 from .base import Base
-from .mixins import TimestampMixin, SoftDeleteMixin, UserOwnedMixin
-
-# User model
 from .user import User
-
-# Flashcard models
 from .deck import Deck
-from .flashcard import Flashcard, LearningState
+from .flashcard import Flashcard
 from .review import Review
-
-# Note models
-from .note import Note, NoteFormat
+from .note import Note
 from .note_version import NoteVersion
-from .tag import Tag
-
-# Document models
-from .document import Document, ProcessingStatus
+from .document import Document
 from .document_chunk import DocumentChunk
-
-# Quiz models
-from .quiz import Quiz, QuizSourceType, QuizDifficulty
-from .quiz_question import QuizQuestion, QuestionType
+from .quiz import Quiz
+from .quiz_question import QuizQuestion
 from .quiz_attempt import QuizAttempt
-
-# Chat models
 from .chat_session import ChatSession
-from .chat_message import ChatMessage, MessageRole
-
-# Study session model
-from .study_session import StudySession, StudySessionType
-
-# AI tracking models
+from .chat_message import ChatMessage
+from .study_session import StudySession
+from .activity_log import ActivityLog, ActivityType, ModuleType
+from .tag import Tag
 from .ai_usage import AIUsage
-from .webhook_event import WebhookEvent, WebhookStatus
+from .agent_metric import AgentMetric
+from .webhook_event import WebhookEvent
 
-# Export all models and Base for Alembic migrations
 __all__ = [
-    # Base
     "Base",
-
-    # Mixins
-    "TimestampMixin",
-    "SoftDeleteMixin",
-    "UserOwnedMixin",
-
-    # User
     "User",
-
-    # Flashcards
     "Deck",
     "Flashcard",
-    "LearningState",
     "Review",
-
-    # Notes
     "Note",
-    "NoteFormat",
     "NoteVersion",
-    "Tag",
-
-    # Documents
     "Document",
-    "ProcessingStatus",
     "DocumentChunk",
-
-    # Quizzes
     "Quiz",
-    "QuizSourceType",
-    "QuizDifficulty",
     "QuizQuestion",
-    "QuestionType",
     "QuizAttempt",
-
-    # Chat
     "ChatSession",
     "ChatMessage",
-    "MessageRole",
-
-    # Study
     "StudySession",
-    "StudySessionType",
-
-    # AI Tracking
+    "ActivityLog",
+    "ActivityType",
+    "ModuleType",
+    "Tag",
     "AIUsage",
+    "AgentMetric",
     "WebhookEvent",
-    "WebhookStatus",
 ]
