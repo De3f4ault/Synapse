@@ -1,6 +1,8 @@
 /**
- * FilePreview - Shows uploaded file
- * Routes to ImagePreview or DocumentPreview based on file type
+ * FilePreview - Oracle Theme
+ * Router for artifact types.
+ *
+ * Location: chat/components/preview/FilePreview.tsx
  */
 
 import React from 'react';

@@ -1,6 +1,8 @@
 /**
- * IconButton - Circular glass icon buttons
- * Reusable icon button with glass styling
+ * IconButton - Oracle Theme
+ * Circular interactive triggers.
+ *
+ * Location: chat/components/shared/IconButton.tsx
  */
 
 import React from 'react';
@@ -10,13 +12,13 @@ import { cn } from '@/lib/utils';
 
 interface IconButtonProps {
   icon: React.ElementType;
-  onClick?: () => void;
+  onClick?: (e: React.MouseEvent) => void;
   disabled?: boolean;
   loading?: boolean;
-  variant?: 'default' | 'primary' | 'danger';
+  variant?: 'default' | 'primary' | 'danger' | 'ghost';
   size?: 'sm' | 'md' | 'lg';
   className?: string;
-  'aria-label': string;
+  title?: string;
 }
 
 export const IconButton: React.FC<IconButtonProps> = ({
@@ -27,12 +29,12 @@ export const IconButton: React.FC<IconButtonProps> = ({
   variant = 'default',
   size = 'md',
   className,
-  'aria-label': ariaLabel,
+  title,
 }) => {
   const sizeClasses = {
-    sm: 'w-8 h-8',
-    md: 'w-10 h-10',
-    lg: 'w-12 h-12',
+    sm: 'w-8 h-8 p-1.5',
+    md: 'w-10 h-10 p-2.5',
+    lg: 'w-12 h-12 p-3',
   };
 
   const iconSizes = {
@@ -42,39 +44,31 @@ export const IconButton: React.FC<IconButtonProps> = ({
   };
 
   const variantClasses = {
-    default:
-      'bg-[#353638]/50 hover:bg-[#353638] text-white/70 hover:text-white',
-      primary:
-      'bg-[#5685FE] hover:bg-[#4a74e6] text-white shadow-lg shadow-[#5685FE]/20',
-      danger:
-      'bg-red-500/20 hover:bg-red-500/30 text-red-400 hover:text-red-300',
+    default: 'bg-white/5 border border-white/5 text-slate-400 hover:text-cyan-200 hover:border-cyan-500/30 hover:bg-white/10',
+      primary: 'bg-cyan-600 border border-cyan-400 text-white shadow-[0_0_15px_rgba(6,182,212,0.4)] hover:bg-cyan-500',
+      danger: 'bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 hover:text-red-300',
+      ghost: 'bg-transparent border-transparent text-slate-500 hover:text-cyan-400 hover:bg-white/5',
   };
 
   return (
     <motion.button
     onClick={onClick}
     disabled={disabled || loading}
-    whileHover={disabled || loading ? undefined : { scale: 1.05 }}
-    whileTap={disabled || loading ? undefined : { scale: 0.95 }}
+    whileHover={disabled || loading ? undefined : { scale: 1.1 }}
+    whileTap={disabled || loading ? undefined : { scale: 0.9 }}
     className={cn(
-      'rounded-full',
-      'flex items-center justify-center',
-      'border border-[#353638]',
-      'transition-all duration-200',
+      'rounded-full flex items-center justify-center transition-all duration-300',
       'disabled:opacity-50 disabled:cursor-not-allowed',
       sizeClasses[size],
       variantClasses[variant],
       className
     )}
-    aria-label={ariaLabel}
+    title={title}
     >
     {loading ? (
-      <Loader2
-      className={cn(iconSizes[size], 'animate-spin')}
-      strokeWidth={2}
-      />
+      <Loader2 className={cn(iconSizes[size], 'animate-spin')} />
     ) : (
-      <Icon className={iconSizes[size]} strokeWidth={2} />
+      <Icon className={iconSizes[size]} />
     )}
     </motion.button>
   );

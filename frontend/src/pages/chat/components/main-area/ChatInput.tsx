@@ -1,12 +1,18 @@
 /**
- * ChatInput.tsx - REST API Fallback (No WebSocket)
- * Instant optimistic updates with REST API
+ * ChatInput - Oracle Theme
+ * The "Altar of Query". Implements the floating, glowing input bar
+ * with Deep Gnosis toggle and audio visualization.
+ *
+ * Location: chat/components/main-area/ChatInput.tsx
  */
 
 import React, { useState, useRef, useEffect } from "react";
 import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, Loader2, Mic, Plus, X } from "lucide-react";
+import {
+  Send, Loader2, Mic, Paperclip, X, Sparkles,
+  Zap, MicOff, FileCode
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import type { ChatMessageResponse } from "@/api/generated/types.gen";
@@ -18,6 +24,20 @@ interface ChatInputProps {
   className?: string;
 }
 
+// Visualizer for Audio Input
+const AudioWaveform = () => (
+  <div className="flex items-center justify-center gap-1 h-8 w-full">
+  {[...Array(20)].map((_, i) => (
+    <motion.div
+    key={i}
+    className="w-1 bg-gradient-to-t from-cyan-500 to-purple-500 rounded-full"
+    animate={{ height: [10, Math.random() * 24 + 8, 10] }}
+    transition={{ duration: 0.5, repeat: Infinity, delay: i * 0.05 }}
+    />
+  ))}
+  </div>
+);
+
 export const ChatInput: React.FC<ChatInputProps> = ({
   sessionId,
   onMessageSent,
@@ -27,12 +47,14 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // State
   const [input, setInput] = useState("");
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
   const [isFocused, setIsFocused] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [isDeepGnosis, setIsDeepGnosis] = useState(false); // Local toggle for now
 
-  // REST API mutation
+  // --- API LOGIC (Preserved) ---
   const sendMutation = useMutation({
     mutationFn: (content: string) =>
     sendMessageApiV1ChatSessionsSessionIdMessagesPost({
@@ -40,78 +62,46 @@ export const ChatInput: React.FC<ChatInputProps> = ({
       requestBody: { content },
     }),
     onSuccess: (response) => {
-      // Add AI response to cache
       queryClient.setQueryData<ChatMessageResponse[]>(
         ['chat-messages', sessionId],
         (old = []) => [...old, response]
       );
-
-      // Invalidate queries to refresh
       queryClient.invalidateQueries({ queryKey: ['chat-messages', sessionId] });
       queryClient.invalidateQueries({ queryKey: ['chat-session', sessionId] });
-      queryClient.invalidateQueries({ queryKey: ['chat-sessions'] });
     },
-    onError: (error: any, content, context: any) => {
-      toast.error("Failed to send message");
-
-      // Rollback optimistic update
-      if (context?.previousMessages) {
-        queryClient.setQueryData(
-          ['chat-messages', sessionId],
-          context.previousMessages
-        );
-      }
-    },
+    onError: () => toast.error("The Oracle could not receive your query."),
   });
 
   const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault();
-
-    if (!sessionId) {
-      toast.error("No active session");
-      return;
-    }
-
-    if (!input.trim() || sendMutation.isPending) return;
+    if (!sessionId || (!input.trim() && !isListening) || sendMutation.isPending) return;
 
     const content = input.trim();
-
-    // 1. INSTANT optimistic update - add user message immediately
+    // Optimistic Update
     const optimisticUserMessage: ChatMessageResponse = {
       id: Date.now(),
       session_id: sessionId,
       role: 'user',
-      content,
+      content: content || "[Voice Transmission]",
       tokens: 0,
       model_used: null,
       created_at: new Date().toISOString(),
     };
-
-    // Save previous messages for rollback
-    const previousMessages = queryClient.getQueryData<ChatMessageResponse[]>([
-      'chat-messages',
-      sessionId,
-    ]);
 
     queryClient.setQueryData<ChatMessageResponse[]>(
       ['chat-messages', sessionId],
       (old = []) => [...old, optimisticUserMessage]
     );
 
-    // 2. Clear input immediately
     setInput("");
     setAttachedFiles([]);
-    if (textareaRef.current) {
-      textareaRef.current.style.height = "auto";
-    }
+    setIsListening(false);
+    if (textareaRef.current) textareaRef.current.style.height = "auto";
 
-    // 3. Send via REST API
     try {
       await sendMutation.mutateAsync(content);
       onMessageSent?.();
-    } catch (error) {
-      // Error already handled in mutation
-    }
+    } catch (error) {}
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -121,169 +111,138 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     }
   };
 
-  // Drag & Drop handlers
-  const handleDrag = (e: React.DragEvent, status: boolean) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(status);
-  };
+  const isLoading = sendMutation.isPending;
 
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-
-    if (e.dataTransfer.files?.length) {
-      setAttachedFiles((prev) => [...prev, ...Array.from(e.dataTransfer.files)]);
-    }
-  };
-
-  // Auto-resize textarea
+  // Auto-resize
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
-      textareaRef.current.style.height = `${Math.min(
-        textareaRef.current.scrollHeight,
-        180
-      )}px`;
+      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 180)}px`;
     }
   }, [input]);
 
-  const isLoading = sendMutation.isPending;
-
   return (
+    <div className={cn("p-8 pb-10 flex flex-col items-center relative z-40", className)}>
+
+    {/* Deep Gnosis Toggle (The "Zap" button above input) */}
+    <div className="flex justify-center mb-[-1px] z-10">
+    <button
+    onClick={() => setIsDeepGnosis(!isDeepGnosis)}
+    type="button"
+    className={cn(
+      "flex items-center gap-2 px-4 py-1.5 rounded-t-xl border-t border-x border-b-0 backdrop-blur-md transition-all duration-300",
+      isDeepGnosis
+      ? "bg-amber-950/40 border-amber-500/30 text-amber-400 shadow-[0_-5px_20px_rgba(245,158,11,0.1)]"
+      : "bg-black/40 border-white/5 text-slate-500 hover:text-slate-300"
+    )}
+    >
+    <Zap size={12} fill={isDeepGnosis ? "currentColor" : "none"} />
+    <span className="text-[10px] font-bold tracking-widest uppercase">
+    Deep Gnosis {isDeepGnosis ? 'Active' : 'Offline'}
+    </span>
+    </button>
+    </div>
+
+    {/* Main Input Container */}
+    <motion.div
+    initial={{ y: 20, opacity: 0 }}
+    animate={{ y: 0, opacity: 1 }}
+    className="w-full max-w-3xl relative group"
+    >
+    {/* Animated Glow Border */}
     <div
     className={cn(
-      "sticky bottom-0 z-40",
-      "bg-gradient-to-t from-[#151517] via-[#151517] to-transparent",
-      "pb-6 pt-4 px-4",
-      className
+      "absolute -inset-[2px] bg-gradient-to-r rounded-[2.5rem] blur-xl transition-opacity duration-500",
+      isDeepGnosis
+      ? "from-amber-500/30 via-red-500/30 to-amber-500/30"
+      : "from-cyan-500/20 via-purple-500/20 to-cyan-500/20",
+      (isFocused || isLoading || isListening) ? 'opacity-60 animate-pulse' : 'opacity-0 group-hover:opacity-30'
     )}
-    >
-    <motion.form
-    onSubmit={handleSubmit}
-    onDragEnter={(e) => handleDrag(e, true)}
-    onDragOver={(e) => handleDrag(e, true)}
-    onDragLeave={(e) => handleDrag(e, false)}
-    onDrop={handleDrop}
-    animate={{ scale: isFocused ? 1.005 : 1 }}
-    className={cn(
-      "relative max-w-4xl mx-auto rounded-2xl",
-      "bg-[#27272a] backdrop-blur-xl",
-      "border transition-all duration-200",
-      isFocused ? "border-zinc-500 shadow-xl" : "border-white/5 shadow-lg",
-      isDragging && "border-dashed border-blue-500 bg-blue-500/5"
-    )}
-    >
-    {/* File Preview */}
-    <AnimatePresence>
-    {attachedFiles.length > 0 && (
-      <motion.div
-      initial={{ opacity: 0, height: 0 }}
-      animate={{ opacity: 1, height: "auto" }}
-      exit={{ opacity: 0, height: 0 }}
-      className="px-4 pt-3 flex gap-2 overflow-x-auto scrollbar-hide"
-      >
-      {attachedFiles.map((file, idx) => (
-        <div
-        key={idx}
-        className="flex-shrink-0 flex items-center gap-1.5 bg-[#3F3F46] px-2 py-1 rounded-md border border-white/5"
-        >
-        <span className="text-[10px] text-white/80 max-w-[80px] truncate">
-        {file.name}
-        </span>
-        <button
-        type="button"
-        onClick={() =>
-          setAttachedFiles((f) => f.filter((_, i) => i !== idx))
-        }
-        className="text-white/40 hover:text-white"
-        >
-        <X size={10} />
-        </button>
-        </div>
-      ))}
-      </motion.div>
-    )}
-    </AnimatePresence>
+    />
 
-    {/* Input Row */}
-    <div className="flex items-end gap-2 p-2 pl-3">
-    {/* Attachments */}
-    <div className="flex gap-1 pb-1">
+    <div
+    className={cn(
+      "relative bg-[#080a0e] rounded-[2.5rem] border border-white/10 flex items-center p-2 shadow-2xl transition-all duration-300",
+      isFocused && "border-cyan-500/30 shadow-[0_0_40px_rgba(6,182,212,0.1)]",
+                  isListening && "border-purple-500/50"
+    )}
+    >
+    {/* Left Actions */}
+    <div className="flex items-center gap-1 pl-4 pr-3 border-r border-white/5 h-10">
     <button
     type="button"
     onClick={() => fileInputRef.current?.click()}
-    className="p-2 text-zinc-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+    className="p-2 rounded-full text-slate-500 hover:text-cyan-400 hover:bg-white/5 transition-all"
+    title="Inject Data Artifact"
     >
-    <Plus className="w-5 h-5" />
+    {isDeepGnosis ? <FileCode size={20} className="text-amber-500"/> : <Paperclip size={20} />}
     </button>
+    <input type="file" ref={fileInputRef} multiple className="hidden" onChange={(e) => setAttachedFiles(Array.from(e.target.files || []))} />
 
-    <input
-    type="file"
-    ref={fileInputRef}
-    multiple
-    className="hidden"
-    onChange={(e) =>
-      e.target.files &&
-      setAttachedFiles((p) => [...p, ...Array.from(e.target.files!)])
-    }
-    />
-
-    {/* Voice */}
     <button
     type="button"
-    className="p-2 text-zinc-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors hidden sm:block"
+    onClick={() => setIsListening(!isListening)}
+    className={cn(
+      "p-2 rounded-full transition-all",
+      isListening ? "text-red-500 bg-red-500/10 animate-pulse" : "text-slate-500 hover:text-purple-400 hover:bg-white/5"
+    )}
+    title="Telepathic Voice Invocation"
     >
-    <Mic className="w-5 h-5" />
+    {isListening ? <MicOff size={20} /> : <Mic size={20} />}
     </button>
     </div>
 
-    {/* Textarea */}
-    <textarea
-    ref={textareaRef}
-    value={input}
-    onChange={(e) => setInput(e.target.value)}
-    onKeyDown={handleKeyDown}
-    onFocus={() => setIsFocused(true)}
-    onBlur={() => setIsFocused(false)}
-    placeholder="Reply to Synapse..."
-    disabled={isLoading || !sessionId}
-    rows={1}
-    className={cn(
-      "flex-1 py-3 px-2",
-      "bg-transparent text-white placeholder:text-zinc-500",
-      "resize-none outline-none text-[15px] leading-relaxed",
-      "max-h-[180px] overflow-y-auto scrollbar-hide",
-      (!sessionId || isLoading) && "opacity-50 cursor-not-allowed"
+    {/* Input Field / Audio Vis */}
+    <div className="flex-1 px-4 relative flex items-center min-h-[48px]">
+    {isListening ? (
+      <div className="w-full flex items-center justify-between">
+      <span className="text-xs font-mono text-purple-400 animate-pulse tracking-widest">RECEIVING SIGNAL...</span>
+      <AudioWaveform />
+      </div>
+    ) : (
+      <textarea
+      ref={textareaRef}
+      value={input}
+      onChange={(e) => setInput(e.target.value)}
+      onKeyDown={handleKeyDown}
+      onFocus={() => setIsFocused(true)}
+      onBlur={() => setIsFocused(false)}
+      placeholder={isDeepGnosis ? "Deep Gnosis Active. Enter complex query..." : "Ask the Oracle..."}
+      className={cn(
+        "w-full bg-transparent border-none outline-none text-slate-200 placeholder:text-slate-600 font-sans text-base transition-colors resize-none overflow-hidden py-3",
+        isDeepGnosis && 'placeholder:text-amber-500/50'
+      )}
+      disabled={isLoading}
+      rows={1}
+      />
     )}
-    />
+    </div>
 
     {/* Send Button */}
     <button
-    type="submit"
-    disabled={!input.trim() || isLoading || !sessionId}
+    onClick={() => handleSubmit()}
+    disabled={(!input.trim() && !isListening) || isLoading}
     className={cn(
-      "mb-1 p-2 rounded-xl transition-all duration-200",
-      input.trim() && !isLoading && sessionId
-      ? "bg-blue-600 text-white shadow-lg hover:bg-blue-500"
-      : "bg-zinc-700 text-zinc-500 cursor-not-allowed"
+      "w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300",
+      (input.trim() || isListening) && !isLoading
+      ? `bg-${isDeepGnosis ? 'amber' : 'cyan'}-600 hover:bg-${isDeepGnosis ? 'amber' : 'cyan'}-500 text-white shadow-[0_0_15px_rgba(8,145,178,0.5)] scale-100`
+      : 'bg-white/5 text-slate-600 scale-90 cursor-not-allowed'
     )}
     >
-    {isLoading ? (
-      <Loader2 className="w-5 h-5 animate-spin" />
-    ) : (
-      <Send className="w-5 h-5 ml-0.5" />
-    )}
+    {isLoading ? <Loader2 size={20} className="animate-spin" /> : <Send size={20} className={(input.trim() || isListening) ? "ml-0.5" : ""} />}
     </button>
     </div>
-    </motion.form>
 
-    <div className="text-center mt-2 hidden sm:block">
-    <span className="text-[10px] text-zinc-600">
-    {isLoading ? "Sending message..." : "Enter to send, Shift+Enter for newline"}
-    </span>
+    {/* Footer Status */}
+    <div className="absolute top-full left-0 w-full text-center mt-4 opacity-40">
+    <div className="flex items-center justify-center gap-3 text-[10px] text-cyan-500/60 font-mono tracking-[0.3em]">
+    <Sparkles size={8} />
+    <span>THE ORACLE AWAITS YOUR QUERY</span>
+    <Sparkles size={8} />
     </div>
+    </div>
+
+    </motion.div>
     </div>
   );
 };

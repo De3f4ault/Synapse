@@ -1,26 +1,26 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Mail, Key, ChevronRight, User, Shield } from 'lucide-react';
+
 import { registerApiV1AuthRegisterPost } from '@/api/generated/services.gen';
 import { useAuthStore } from '@/stores/authStore';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
-import { Brain } from 'lucide-react';
-
-/**
- * Register Page
- *
- * User registration with validation.
- */
+import {
+    GatekeeperLayout,
+    SecurityBadge,
+    QuantumInput,
+    BiometricScanner
+} from '@/components/auth/GatekeeperUI';
 
 export function RegisterPage() {
     const navigate = useNavigate();
     const { toast } = useToast();
     const setAuth = useAuthStore((state) => state.setAuth);
+
+    const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+    const [errorMsg, setErrorMsg] = useState('');
 
     const [fullName, setFullName] = useState('');
     const [email, setEmail] = useState('');
@@ -30,46 +30,51 @@ export function RegisterPage() {
     const registerMutation = useMutation({
         mutationFn: registerApiV1AuthRegisterPost,
         onSuccess: async (data) => {
-            setAuth(data.access_token, data as any);
-
-            toast({
-                title: 'Account created!',
-                description: 'Welcome to Synapse. Let\'s start learning.',
-            });
-
-            navigate('/dashboard');
+            setStatus('success');
+            setTimeout(() => {
+                setAuth(data.access_token, data as any);
+                toast({
+                    title: 'Identity Verified',
+                    description: 'Welcome to Synapse. Uplink established.',
+                });
+                navigate('/dashboard');
+            }, 1500);
         },
         onError: (error: any) => {
+            setStatus('error');
+            const message = error.response?.data?.detail || 'Registration Failed';
+            setErrorMsg(message);
             toast({
                 variant: 'destructive',
-                title: 'Registration failed',
-                description: error.response?.data?.detail || 'Please try again',
+                title: 'Registration Failed',
+                description: message,
             });
         },
     });
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        setErrorMsg('');
 
-        // Validate password match
         if (password !== confirmPassword) {
-            toast({
-                variant: 'destructive',
-                title: 'Passwords do not match',
-                description: 'Please ensure both passwords are identical',
-            });
+            setStatus('error');
+            setErrorMsg('PASSWORD_MISMATCH');
             return;
         }
 
-        // Validate password length
         if (password.length < 8) {
-            toast({
-                variant: 'destructive',
-                title: 'Password too short',
-                description: 'Password must be at least 8 characters',
-            });
+            setStatus('error');
+            setErrorMsg('PASSWORD_TOO_SHORT');
             return;
         }
+
+        if (!fullName || !email) {
+            setStatus('error');
+            setErrorMsg('INCOMPLETE_DATA');
+            return;
+        }
+
+        setStatus('loading');
 
         registerMutation.mutate({
             requestBody: {
@@ -81,107 +86,73 @@ export function RegisterPage() {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary/10 to-secondary p-4">
-        <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1 text-center">
-        <div className="flex justify-center mb-2">
-        <Brain className="h-12 w-12 text-primary" />
-        </div>
-        <CardTitle className="text-2xl font-bold">Create an Account</CardTitle>
-        <CardDescription>
-        Sign up to start your learning journey
-        </CardDescription>
-        </CardHeader>
+        <GatekeeperLayout status={status}>
+        <SecurityBadge status={status} />
 
         <form onSubmit={handleSubmit}>
-        <CardContent className="space-y-4">
-        {registerMutation.isError && (
-            <Alert variant="destructive">
-            <AlertDescription>
-            {(registerMutation.error as any)?.response?.data?.detail ||
-                'Registration failed. Please try again.'}
-                </AlertDescription>
-                </Alert>
-        )}
-
-        <div className="space-y-2">
-        <Label htmlFor="fullName">Full Name</Label>
-        <Input
-        id="fullName"
-        type="text"
-        placeholder="John Doe"
+        <AnimatePresence>
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+        <QuantumInput
+        label="OPERATIVE ID (NAME)"
+        icon={User}
         value={fullName}
-        onChange={(e) => setFullName(e.target.value)}
-        required
-        disabled={registerMutation.isPending}
+        onChange={(e: any) => setFullName(e.target.value)}
+        disabled={status === 'loading' || status === 'success'}
         />
-        </div>
+        </motion.div>
+        </AnimatePresence>
 
-        <div className="space-y-2">
-        <Label htmlFor="email">Email</Label>
-        <Input
-        id="email"
+        <QuantumInput
+        label="NEURAL LINK (EMAIL)"
+        icon={Mail}
         type="email"
-        placeholder="you@example.com"
         value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        required
-        disabled={registerMutation.isPending}
+        onChange={(e: any) => setEmail(e.target.value)}
+        disabled={status === 'loading' || status === 'success'}
         />
-        </div>
 
-        <div className="space-y-2">
-        <Label htmlFor="password">Password</Label>
-        <Input
-        id="password"
+        <QuantumInput
+        label="ACCESS CODE"
+        icon={Key}
         type="password"
-        placeholder="••••••••"
         value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        required
-        minLength={8}
-        disabled={registerMutation.isPending}
+        onChange={(e: any) => setPassword(e.target.value)}
+        disabled={status === 'loading' || status === 'success'}
+        error={errorMsg && !password ? 'REQUIRED' : undefined}
         />
-        <p className="text-xs text-muted-foreground">
-        Must be at least 8 characters
-        </p>
-        </div>
 
-        <div className="space-y-2">
-        <Label htmlFor="confirmPassword">Confirm Password</Label>
-        <Input
-        id="confirmPassword"
+        <QuantumInput
+        label="VERIFY CODE"
+        icon={Shield}
         type="password"
-        placeholder="••••••••"
         value={confirmPassword}
-        onChange={(e) => setConfirmPassword(e.target.value)}
-        required
-        disabled={registerMutation.isPending}
+        onChange={(e: any) => setConfirmPassword(e.target.value)}
+        disabled={status === 'loading' || status === 'success'}
+        error={errorMsg === 'PASSWORD_MISMATCH' ? 'MISMATCH' : undefined}
         />
-        </div>
-        </CardContent>
 
-        <CardFooter className="flex flex-col space-y-4">
-        <Button
-        type="submit"
-        className="w-full"
-        disabled={registerMutation.isPending}
-        >
-        {registerMutation.isPending ? 'Creating Account...' : 'Create Account'}
-        </Button>
+        <BiometricScanner
+        onClick={handleSubmit}
+        loading={status === 'loading'}
+        label="INITIALIZE UPLINK"
+        disabled={status === 'success'}
+        />
+        </form>
 
-        <p className="text-sm text-center text-muted-foreground">
-        Already have an account?{' '}
+        <div className="mt-8 text-center">
         <Link
         to="/auth/login"
-        className="text-primary hover:underline font-medium"
-        >
-        Log in
-        </Link>
-        </p>
-        </CardFooter>
-        </form>
-        </Card>
-        </div>
+        className={`
+            inline-flex items-center gap-2 text-[10px] font-mono tracking-widest text-slate-500
+            hover:text-cyan-400 transition-colors uppercase
+            ${status === 'loading' ? 'pointer-events-none opacity-50' : ''}
+            `}
+            >
+            <span>ALREADY CREDENTIALED?</span>
+            <span className="border-b border-cyan-500/30 pb-0.5">ACCESS TERMINAL</span>
+            <ChevronRight size={10} />
+            </Link>
+            </div>
+            </GatekeeperLayout>
     );
 }

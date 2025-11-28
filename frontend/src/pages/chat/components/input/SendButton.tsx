@@ -1,10 +1,12 @@
 /**
- * SendButton - Arrow up circle (primary color)
- * Animated send button with loading state
+ * SendButton - Oracle Theme
+ * "Transmit Query" Interface
+ *
+ * Location: chat/components/input/SendButton.tsx
  */
 
 import React from 'react';
-import { ArrowUp, Loader2 } from 'lucide-react';
+import { Send, Loader2, ArrowUp } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
@@ -13,6 +15,7 @@ interface SendButtonProps {
   disabled?: boolean;
   isLoading?: boolean;
   className?: string;
+  isDeepGnosis?: boolean;
 }
 
 export const SendButton: React.FC<SendButtonProps> = ({
@@ -20,6 +23,7 @@ export const SendButton: React.FC<SendButtonProps> = ({
   disabled = false,
   isLoading = false,
   className,
+  isDeepGnosis = false,
 }) => {
   return (
     <motion.button
@@ -29,40 +33,37 @@ export const SendButton: React.FC<SendButtonProps> = ({
     whileHover={{ scale: disabled ? 1 : 1.05 }}
     whileTap={{ scale: disabled ? 1 : 0.95 }}
     className={cn(
-      'p-2.5 rounded-full',
-      'transition-all duration-200',
-      'flex items-center justify-center',
+      'w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300',
       disabled
-      ? 'bg-[#353638] text-white/40 cursor-not-allowed'
-      : 'bg-[#5685FE] text-white hover:bg-[#4a74e6] shadow-lg shadow-[#5685FE]/20',
-      className
+      ? 'bg-white/5 text-slate-600 cursor-not-allowed scale-90'
+    : cn(
+      'text-white shadow-[0_0_15px_rgba(8,145,178,0.5)]',
+         isDeepGnosis
+         ? 'bg-amber-600 hover:bg-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.5)]'
+         : 'bg-cyan-600 hover:bg-cyan-500 shadow-[0_0_15px_rgba(8,145,178,0.5)]'
+    ),
+    className
     )}
-    aria-label={isLoading ? 'Sending...' : 'Send message'}
     >
     <AnimatePresence mode="wait">
     {isLoading ? (
       <motion.div
       key="loading"
-      initial={{ rotate: 0 }}
-      animate={{ rotate: 360 }}
-      exit={{ opacity: 0, scale: 0.8 }}
-      transition={{
-        duration: 1,
-        repeat: Infinity,
-        ease: 'linear',
-      }}
+      initial={{ opacity: 0, rotate: -180 }}
+      animate={{ opacity: 1, rotate: 0 }}
+      exit={{ opacity: 0, rotate: 180 }}
       >
-      <Loader2 className="w-5 h-5" strokeWidth={2.5} />
+      <Loader2 size={20} className="animate-spin" />
       </motion.div>
     ) : (
       <motion.div
       key="send"
-      initial={{ scale: 0.8, opacity: 0 }}
-      animate={{ scale: 1, opacity: 1 }}
-      exit={{ scale: 0.8, opacity: 0 }}
-      transition={{ duration: 0.2 }}
+      initial={{ opacity: 0, scale: 0.5 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.5 }}
       >
-      <ArrowUp className="w-5 h-5" strokeWidth={2.5} />
+      {/* The Oracle uses Send, but ArrowUp is fine if you prefer it */}
+      <Send size={20} className="ml-0.5" />
       </motion.div>
     )}
     </AnimatePresence>

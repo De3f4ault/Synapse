@@ -1,12 +1,14 @@
 /**
- * CodeBlock - Syntax highlighted code
- * Uses Prism.js with copy button
+ * CodeBlock - Oracle Theme
+ * Syntax highlighting container with terminal aesthetics.
+ *
+ * Location: chat/components/messages/CodeBlock.tsx
  */
 
 import React, { useState } from 'react';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
-import { Copy, Check } from 'lucide-react';
+import { Copy, Check, Terminal } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn, copyToClipboard } from '@/lib/utils';
 
@@ -27,22 +29,20 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({ code, language }) => {
   };
 
   return (
-    <div className="my-4 rounded-lg overflow-hidden border border-medium bg-darker">
-    {/* Header */}
-    <div className="flex items-center justify-between px-4 py-2 bg-darker/50 border-b border-medium">
-    <span className="text-xs font-mono text-white/60 uppercase">
-    {language}
+    <div className="my-4 rounded-lg overflow-hidden border border-white/10 bg-[#0A0A0A] shadow-lg">
+    {/* Terminal Header */}
+    <div className="flex items-center justify-between px-4 py-2 bg-white/5 border-b border-white/10">
+    <div className="flex items-center gap-2">
+    <Terminal size={12} className="text-amber-400/80" />
+    <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider">
+    {language || 'PLAINTEXT'}
     </span>
+    </div>
+
     <button
     onClick={handleCopy}
-    className={cn(
-      'flex items-center gap-2 px-2.5 py-1.5 rounded-md',
-      'text-xs font-medium',
-      'transition-colors duration-200',
-      copied
-      ? 'bg-green-500/20 text-green-400'
-      : 'bg-white/5 text-white/60 hover:bg-white/10 hover:text-white'
-    )}
+    className="flex items-center gap-1.5 text-slate-500 hover:text-cyan-400 transition-colors"
+    title="Copy Code"
     >
     <AnimatePresence mode="wait">
     {copied ? (
@@ -51,10 +51,8 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({ code, language }) => {
       initial={{ scale: 0.8, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
       exit={{ scale: 0.8, opacity: 0 }}
-      className="flex items-center gap-1.5"
       >
-      <Check className="w-3.5 h-3.5" />
-      <span>Copied!</span>
+      <Check size={14} className="text-emerald-500" />
       </motion.div>
     ) : (
       <motion.div
@@ -62,10 +60,8 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({ code, language }) => {
       initial={{ scale: 0.8, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
       exit={{ scale: 0.8, opacity: 0 }}
-      className="flex items-center gap-1.5"
       >
-      <Copy className="w-3.5 h-3.5" />
-      <span>Copy</span>
+      <Copy size={14} />
       </motion.div>
     )}
     </AnimatePresence>
@@ -73,23 +69,22 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({ code, language }) => {
     </div>
 
     {/* Code Content */}
-    <div className="overflow-x-auto">
+    <div className="relative font-mono text-xs md:text-sm">
     <SyntaxHighlighter
     language={language}
     style={vscDarkPlus}
     customStyle={{
       margin: 0,
-      padding: '1rem',
-      background: 'transparent',
-      fontSize: '0.875rem',
-      lineHeight: '1.5',
+      padding: '1.5rem',
+      background: 'transparent', // Let container bg show through
+      lineHeight: '1.6',
     }}
-    showLineNumbers
+    showLineNumbers={true}
     lineNumberStyle={{
-      minWidth: '3em',
+      minWidth: '2.5em',
       paddingRight: '1em',
-      color: 'rgba(255, 255, 255, 0.3)',
-          userSelect: 'none',
+      color: 'rgba(255, 255, 255, 0.1)',
+          textAlign: 'right'
     }}
     >
     {code}

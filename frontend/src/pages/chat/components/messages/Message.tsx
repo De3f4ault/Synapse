@@ -1,18 +1,24 @@
 /**
- * Message - Wrapper component
- * Routes to UserMessage or AssistantMessage
+ * Message - Oracle Theme
+ * Router for the visual representation of data streams.
+ *
+ * Location: chat/components/messages/Message.tsx
  */
 
 import React from 'react';
 import { UserMessage } from './UserMessage';
 import { AssistantMessage } from './AssistantMessage';
+import type { ChatMessage } from '../../types/chat.types';
 
 export interface MessageProps {
-  id: number;
-  role: 'user' | 'assistant';
+  id: string | number;
+  role: 'user' | 'assistant' | 'system';
   content: string;
-  timestamp: string;
+  timestamp?: string | number;
   isStreaming?: boolean;
+  // Oracle Specifics
+  artifact?: ChatMessage['artifact'];
+  isDecryption?: boolean;
 }
 
 export const Message: React.FC<MessageProps> = (props) => {
@@ -32,6 +38,7 @@ export const Message: React.FC<MessageProps> = (props) => {
     content={props.content}
     timestamp={props.timestamp}
     isStreaming={props.isStreaming}
+    artifact={props.artifact}
     />
   );
 };

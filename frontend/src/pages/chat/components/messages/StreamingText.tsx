@@ -1,58 +1,45 @@
 /**
- * StreamingText - Typewriter effect
- * Animates text character by character
+ * StreamingText - Utility
+ * Pure typewriter effect for plain text.
+ *
+ * Location: chat/components/messages/StreamingText.tsx
  */
 
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import React, { useState, useEffect, useRef } from 'react';
 
 interface StreamingTextProps {
   text: string;
-  speed?: number; // milliseconds per character
+  speed?: number;
   onComplete?: () => void;
   className?: string;
 }
 
 export const StreamingText: React.FC<StreamingTextProps> = ({
   text,
-  speed = 20,
+  speed = 15,
   onComplete,
   className,
 }) => {
-  const [displayedText, setDisplayedText] = useState('');
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const [displayedText, setDisplayedText] = useState("");
+  const index = useRef(0);
 
   useEffect(() => {
-    if (currentIndex < text.length) {
-      const timer = setTimeout(() => {
-        setDisplayedText((prev) => prev + text[currentIndex]);
-        setCurrentIndex((prev) => prev + 1);
-      }, speed);
+    index.current = 0;
+    setDisplayedText("");
+    const interval = setInterval(() => {
+      if (index.current < text.length) {
+        setDisplayedText((prev) => prev + text.charAt(index.current));
+        index.current++;
+      } else {
+        clearInterval(interval);
+        if (onComplete) onComplete();
+      }
+    }, speed);
 
-      return () => clearTimeout(timer);
-    } else if (currentIndex === text.length && onComplete) {
-      onComplete();
-    }
-  }, [currentIndex, text, speed, onComplete]);
+    return () => clearInterval(interval);
+  }, [text, speed, onComplete]);
 
-  // Reset when text changes
-  useEffect(() => {
-    setDisplayedText('');
-    setCurrentIndex(0);
-  }, [text]);
-
-  return (
-    <span className={className}>
-    {displayedText}
-    {currentIndex < text.length && (
-      <motion.span
-      animate={{ opacity: [1, 0] }}
-      transition={{ duration: 0.5, repeat: Infinity }}
-      className="inline-block w-1 h-4 bg-primary ml-0.5 align-middle"
-      />
-    )}
-    </span>
-  );
+  return <span className={className}>{displayedText}</span>;
 };
 
 export default StreamingText;

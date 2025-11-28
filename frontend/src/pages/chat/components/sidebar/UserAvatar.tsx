@@ -1,11 +1,13 @@
 /**
- * UserAvatar - Bottom profile pill
- * Shows user info and settings access
+ * UserAvatar - Oracle Theme
+ * "Identity Matrix" - Footer profile and settings.
+ *
+ * Location: chat/components/sidebar/UserAvatar.tsx
  */
 
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Settings, LogOut, User } from 'lucide-react';
+import { Settings, LogOut, Sliders } from 'lucide-react';
 import { cn, getInitials } from '@/lib/utils';
 import { useAuthStore } from '@/stores/authStore';
 import { useNavigate } from 'react-router-dom';
@@ -30,91 +32,59 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({ isCollapsed }) => {
     navigate('/login');
   };
 
-  const handleSettings = () => {
-    navigate('/settings');
-  };
-
   if (!user) return null;
 
   return (
     <DropdownMenu>
     <DropdownMenuTrigger asChild>
-    <motion.button
-    whileHover={{ scale: 1.02 }}
-    whileTap={{ scale: 0.98 }}
+    <button
     className={cn(
-      'w-full flex items-center gap-3 p-2 rounded-lg',
-      'text-white/70 hover:text-white hover:bg-medium/50',
-      'transition-all duration-200',
-      'focus:outline-none focus:ring-2 focus:ring-primary/50',
-      isCollapsed && 'justify-center'
+      "flex items-center justify-between w-full text-xs text-slate-500 font-mono transition-colors group",
+      "hover:text-cyan-400"
     )}
     >
-    {/* Avatar Circle */}
-    <div
-    className={cn(
-      'flex items-center justify-center rounded-full',
-      'bg-gradient-to-br from-primary to-primary/70',
-      'text-white font-semibold text-sm',
-      isCollapsed ? 'w-8 h-8' : 'w-9 h-9'
-    )}
-    >
-    {getInitials(user.full_name)}
+    {/* Left Side: Version / Label */}
+    <span className="truncate">
+    ID: {user.full_name.toUpperCase()}
+    </span>
+
+    {/* Right Side: Settings Icon */}
+    <div className="flex items-center gap-2">
+    <Sliders size={14} className="group-hover:rotate-90 transition-transform duration-500" />
     </div>
-
-    {/* User Info - Hidden when collapsed */}
-    <AnimatePresence mode="wait">
-    {!isCollapsed && (
-      <motion.div
-      initial={{ opacity: 0, x: -10 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -10 }}
-      transition={{ duration: 0.2 }}
-      className="flex-1 min-w-0 text-left"
-      >
-      <p className="text-sm font-medium text-white truncate">
-      {user.full_name}
-      </p>
-      <p className="text-xs text-white/40 truncate">{user.email}</p>
-      </motion.div>
-    )}
-    </AnimatePresence>
-
-    {/* Settings Icon - Hidden when collapsed */}
-    {!isCollapsed && (
-      <Settings className="w-4 h-4 text-white/40 group-hover:text-white/60 flex-shrink-0" />
-    )}
-    </motion.button>
+    </button>
     </DropdownMenuTrigger>
 
+    {/* Styled Dropdown */}
     <DropdownMenuContent
-    side="right"
-    align="end"
-    className="w-56 bg-darker border-medium"
+    side="top"
+    align="start"
+    className="w-56 bg-black/90 border border-white/10 backdrop-blur-xl text-slate-300"
     >
-    <div className="px-2 py-1.5">
-    <p className="text-sm font-medium text-white">{user.full_name}</p>
-    <p className="text-xs text-white/40">{user.email}</p>
+    <div className="px-2 py-2">
+    <p className="text-xs font-mono uppercase tracking-wider text-cyan-500/80 mb-1">Current Identity</p>
+    <p className="text-sm font-bold text-white truncate">{user.full_name}</p>
+    <p className="text-xs text-slate-500 truncate">{user.email}</p>
     </div>
 
-    <DropdownMenuSeparator className="bg-medium" />
+    <DropdownMenuSeparator className="bg-white/10" />
 
     <DropdownMenuItem
-    onClick={handleSettings}
-    className="text-white/70 hover:text-white hover:bg-medium/50 cursor-pointer"
+    onClick={() => navigate('/settings')}
+    className="text-xs font-mono uppercase tracking-widest focus:bg-cyan-900/20 focus:text-cyan-400 cursor-pointer py-2"
     >
-    <User className="w-4 h-4 mr-2" />
-    Profile Settings
+    <Settings className="w-3.5 h-3.5 mr-2" />
+    Config Matrix
     </DropdownMenuItem>
 
-    <DropdownMenuSeparator className="bg-medium" />
+    <DropdownMenuSeparator className="bg-white/10" />
 
     <DropdownMenuItem
     onClick={handleLogout}
-    className="text-red-400 hover:text-red-300 hover:bg-red-500/10 cursor-pointer"
+    className="text-xs font-mono uppercase tracking-widest text-red-400 focus:bg-red-900/20 focus:text-red-300 cursor-pointer py-2"
     >
-    <LogOut className="w-4 h-4 mr-2" />
-    Logout
+    <LogOut className="w-3.5 h-3.5 mr-2" />
+    Sever Connection
     </DropdownMenuItem>
     </DropdownMenuContent>
     </DropdownMenu>

@@ -1,3 +1,11 @@
+/**
+ * MainInput - Oracle Theme
+ * The standalone input module used on Welcome/Landing screens.
+ * Features: Deep Gnosis Toggle, Artifact Injection, Telepathy.
+ *
+ * Location: chat/components/input/MainInput.tsx
+ */
+
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -8,17 +16,14 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import {
-  Paperclip,
-  Mic,
-  ArrowUp,
-  X,
-  Globe,
-  FileText,
-  Image as ImageIcon,
-  Sparkles,
-  BrainCircuit
-} from 'lucide-react';
+import { X, FileText, Image as ImageIcon, Sparkles, Zap } from 'lucide-react';
+
+// Import our new Oracle-themed sub-components
+import { AttachmentButton } from './AttachmentButton';
+import { VoiceButton } from './VoiceButton';
+import { SendButton } from './SendButton';
+import { ModeToggle } from './ModeToggle';
+import { InputActions } from './InputActions';
 
 interface MainInputProps {
   onMessageSent?: () => void;
@@ -31,20 +36,23 @@ export type ChatMode = 'synapse' | 'standard' | 'web';
 export const MainInput: React.FC<MainInputProps> = ({
   onMessageSent,
   className,
-  isCentered = true,
+  isCentered = false,
 }) => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [input, setInput] = useState('');
   const [mode, setMode] = useState<ChatMode>('synapse');
   const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
-  const [isDragging, setIsDragging] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
 
-  // Mutations
+  // "Deep Gnosis" is visual sugar for the 'synapse' mode in this context,
+  // or it can be a separate toggle. Let's link it to mode for consistency.
+  const isDeepGnosis = mode === 'synapse';
+
+  // --- API LOGIC ---
   const createSessionMutation = useMutation({
     mutationFn: createSessionApiV1ChatSessionsPost,
   });
@@ -56,31 +64,28 @@ export const MainInput: React.FC<MainInputProps> = ({
       onMessageSent?.();
     },
     onError: (error: any) => {
-      toast.error(error.message || 'Failed to initialize Synapse session');
+      toast.error(error.message || 'The Oracle is silent.');
     },
   });
 
-  // Submit Logic
   const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault();
-    if ((!input.trim() && attachedFiles.length === 0) || sendMessageMutation.isPending) return;
+    if ((!input.trim() && attachedFiles.length === 0) || createSessionMutation.isPending) return;
 
     let finalContent = input.trim();
-    if (mode === 'synapse') finalContent = `[SYNAPSE] ${finalContent}`;
-    else if (mode === 'web') finalContent = `[WEB] ${finalContent}`;
+    // Prefix content based on mode if needed by your backend
+    if (mode === 'synapse') finalContent = `[DEEP_GNOSIS] ${finalContent}`;
+    else if (mode === 'web') finalContent = `[WEB_SEARCH] ${finalContent}`;
 
-    // Always create NEW session
     createSessionMutation.mutate(
-      { requestBody: { title: input.slice(0, 50) || 'New Synapse Session' } },
+      { requestBody: { title: input.slice(0, 50) || 'New Vision' } },
                                  {
                                    onSuccess: (sessionData) => {
                                      sendMessageMutation.mutate({
                                        sessionId: sessionData.id,
                                        requestBody: { content: finalContent },
                                      }, {
-                                       onSuccess: () => {
-                                         navigate(`/chat/${sessionData.id}`);
-                                       }
+                                       onSuccess: () => navigate(`/chat/${sessionData.id}`)
                                      });
                                    },
                                  }
@@ -94,23 +99,26 @@ export const MainInput: React.FC<MainInputProps> = ({
     }
   };
 
-  // Drag & Drop
+  // --- DRAG & DROP ---
   const handleDrag = (e: React.DragEvent, status: boolean) => {
-    e.preventDefault(); e.stopPropagation(); setIsDragging(status);
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(status);
   };
 
   const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault(); e.stopPropagation(); setIsDragging(false);
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
     if (e.dataTransfer.files?.length) {
       setAttachedFiles(prev => [...prev, ...Array.from(e.dataTransfer.files)]);
     }
   };
 
-  // Auto-resize
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 300)}px`;
+      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 120)}px`;
     }
   }, [input]);
 
@@ -118,79 +126,57 @@ export const MainInput: React.FC<MainInputProps> = ({
 
   return (
     <div className={cn(
-      'w-full transition-all duration-500 ease-out z-10',
-      isCentered ? 'max-w-[760px] mx-auto' : 'w-full',
+      'w-full flex flex-col items-center relative z-20 transition-all duration-500',
+      isCentered ? 'justify-center' : '',
       className
     )}>
 
-    {/* Synapse Mode Selector */}
-    <div className="flex justify-center mb-6">
-    <div className="bg-[#18181b]/60 backdrop-blur-xl p-1.5 rounded-full flex items-center border border-white/10 shadow-2xl ring-1 ring-white/5">
-    {[
-      { id: 'standard', label: 'Standard', icon: <Sparkles className="w-4 h-4 text-zinc-400" /> },
-      { id: 'synapse', label: 'Synapse', icon: <BrainCircuit className="w-4 h-4 text-amber-400 fill-amber-400/20" /> },
-      { id: 'web', label: 'Web', icon: <Globe className="w-4 h-4 text-emerald-400" /> },
-    ].map((m) => (
-      <button
-      key={m.id}
-      onClick={() => setMode(m.id as ChatMode)}
-      className={cn(
-        "relative px-5 py-2 rounded-full text-xs font-semibold flex items-center gap-2 transition-all duration-300",
-        mode === m.id ? "text-white" : "text-zinc-500 hover:text-zinc-300"
-      )}
-      >
-      {mode === m.id && (
-        <motion.div
-        layoutId="active-mode-pill"
-        className="absolute inset-0 bg-[#3F3F46] rounded-full shadow-inner"
-        transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-        />
-      )}
-      <span className="relative z-10 flex items-center gap-2">
-      {m.icon} {m.label}
-      </span>
-      </button>
-    ))}
-    </div>
+    {/* 1. Mode Selector (Deep Gnosis Control) */}
+    <div className="mb-6 relative z-30">
+    <ModeToggle mode={mode} onModeChange={setMode} />
     </div>
 
-    {/* Input Box */}
+    {/* 2. Main Input Container */}
     <motion.div
     layout
     onDragEnter={(e) => handleDrag(e, true)}
     onDragOver={(e) => handleDrag(e, true)}
     onDragLeave={(e) => handleDrag(e, false)}
     onDrop={handleDrop}
+    className="w-full max-w-3xl relative group"
+    >
+    {/* Animated Glow Border */}
+    <div
     className={cn(
-      "relative group rounded-[32px] bg-[#27272a] transition-all duration-300",
-      "border border-white/5 shadow-2xl",
-      isFocused ? "ring-2 ring-blue-500/20 border-blue-500/40" : "hover:border-white/10",
-      isDragging && "border-dashed border-amber-500 bg-amber-500/5 ring-2 ring-amber-500/20"
+      "absolute -inset-[2px] bg-gradient-to-r rounded-[2.5rem] blur-xl transition-opacity duration-500",
+      isDeepGnosis
+      ? "from-amber-500/30 via-red-500/30 to-amber-500/30"
+      : "from-cyan-500/20 via-purple-500/20 to-cyan-500/20",
+      (isFocused || isLoading) ? 'opacity-60 animate-pulse' : 'opacity-0 group-hover:opacity-30'
+    )}
+    />
+
+    <div
+    className={cn(
+      "relative bg-[#080a0e] rounded-[2.5rem] border border-white/10 flex flex-col p-2 shadow-2xl transition-all duration-300",
+      isFocused && "border-cyan-500/30 shadow-[0_0_40px_rgba(6,182,212,0.1)]",
+                  isDragging && "border-dashed border-cyan-400 bg-cyan-500/10"
     )}
     >
-    <AnimatePresence>
-    {isDragging && (
-      <motion.div
-      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      className="absolute inset-0 z-50 rounded-[32px] bg-[#27272a]/95 flex flex-col items-center justify-center text-amber-400 backdrop-blur-sm"
-      >
-      <Paperclip className="w-10 h-10 mb-3 animate-bounce" />
-      <span className="font-semibold text-lg">Drop to analyze with Synapse</span>
-      </motion.div>
-    )}
-    </AnimatePresence>
-
+    {/* File Previews */}
     <AnimatePresence>
     {attachedFiles.length > 0 && (
       <motion.div
-      initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
-      className="px-6 pt-5 flex gap-3 flex-wrap"
+      initial={{ opacity: 0, height: 0 }}
+      animate={{ opacity: 1, height: 'auto' }}
+      exit={{ opacity: 0, height: 0 }}
+      className="px-6 pt-3 flex gap-2 flex-wrap"
       >
       {attachedFiles.map((file, idx) => (
-        <div key={idx} className="flex items-center gap-2 bg-[#3F3F46] px-3 py-1.5 rounded-lg border border-white/10">
-        {file.type.startsWith('image') ? <ImageIcon size={14} className="text-purple-400"/> : <FileText size={14} className="text-blue-400"/>}
-        <span className="text-xs text-white/90 truncate max-w-[100px]">{file.name}</span>
-        <button onClick={() => setAttachedFiles(f => f.filter((_, i) => i !== idx))} className="text-white/40 hover:text-white ml-1">
+        <div key={idx} className="flex items-center gap-2 bg-cyan-500/10 px-3 py-1.5 rounded-lg border border-cyan-500/20">
+        {file.type.startsWith('image') ? <ImageIcon size={12} className="text-cyan-400" /> : <FileText size={12} className="text-cyan-400" />}
+        <span className="text-[10px] text-cyan-300 truncate max-w-[80px] font-mono">{file.name}</span>
+        <button onClick={() => setAttachedFiles(f => f.filter((_, i) => i !== idx))} className="text-cyan-400/60 hover:text-cyan-300">
         <X size={12} />
         </button>
         </div>
@@ -199,54 +185,66 @@ export const MainInput: React.FC<MainInputProps> = ({
     )}
     </AnimatePresence>
 
+    {/* Input Row */}
+    <div className="flex items-center min-h-[52px]">
+    {/* Left Actions */}
+    <div className="flex items-center pl-2 pr-2 border-r border-white/5 h-8 gap-1">
+    <AttachmentButton
+    onFilesSelected={(files) => setAttachedFiles(p => [...p, ...files])}
+    disabled={isLoading}
+    isDeepGnosis={isDeepGnosis}
+    />
+    <VoiceButton disabled={isLoading} />
+    </div>
+
+    {/* Text Area */}
+    <div className="flex-1 px-4 relative">
     <textarea
     ref={textareaRef}
     value={input}
     onChange={(e) => setInput(e.target.value)}
+    onKeyDown={handleKeyDown}
     onFocus={() => setIsFocused(true)}
     onBlur={() => setIsFocused(false)}
-    onKeyDown={handleKeyDown}
-    placeholder={
-      mode === 'synapse' ? "Reason with Synapse..." :
-      mode === 'web' ? "Search the globe..." :
-      "Ask anything..."
-    }
-    className="w-full bg-transparent text-[16px] text-white/90 placeholder:text-white/20 px-6 py-5 min-h-[64px] max-h-[400px] resize-none focus:outline-none leading-relaxed scrollbar-thin scrollbar-thumb-zinc-700"
+    placeholder={isDeepGnosis ? "Enter Deep Gnosis query..." : "Ask the Oracle..."}
+    className={cn(
+      "w-full bg-transparent border-none outline-none text-slate-200 placeholder:text-slate-600 font-sans text-base transition-colors resize-none overflow-hidden py-3",
+      isDeepGnosis && 'placeholder:text-amber-500/50'
+    )}
+    disabled={isLoading}
     rows={1}
     />
-
-    <div className="flex justify-between items-center px-4 pb-4">
-    <div className="flex items-center gap-1">
-    <button onClick={() => fileInputRef.current?.click()} className="p-2.5 rounded-full text-zinc-400 hover:text-white hover:bg-white/10 transition-colors tooltip" title="Attach Files">
-    <Paperclip size={20} />
-    </button>
-    <input type="file" ref={fileInputRef} multiple className="hidden" onChange={(e) => e.target.files && setAttachedFiles(p => [...p, ...Array.from(e.target.files)])} />
-
-    <button className="p-2.5 rounded-full text-zinc-400 hover:text-white hover:bg-white/10 transition-colors" title="Voice Input">
-    <Mic size={20} />
-    </button>
     </div>
 
-    <button
-    onClick={() => handleSubmit()}
+    {/* Send Button */}
+    <div className="pr-1">
+    <SendButton
+    onClick={(e) => handleSubmit(e)}
     disabled={(!input.trim() && attachedFiles.length === 0) || isLoading}
-    className={cn(
-      "flex items-center justify-center w-10 h-10 rounded-full transition-all duration-300",
-      (input.trim() || attachedFiles.length > 0) && !isLoading
-      ? "bg-white text-black hover:scale-110 hover:shadow-glow-white"
-      : "bg-[#3F3F46] text-zinc-500 cursor-not-allowed"
-    )}
-    >
-    {isLoading ? <div className="w-5 h-5 border-2 border-zinc-500 border-t-transparent rounded-full animate-spin" /> : <ArrowUp size={22} strokeWidth={2.5} />}
-    </button>
+    isLoading={isLoading}
+    isDeepGnosis={isDeepGnosis}
+    />
+    </div>
+    </div>
+    </div>
+
+    {/* Footer Status */}
+    <div className="absolute top-full left-0 w-full text-center mt-4 opacity-40">
+    <div className="flex items-center justify-center gap-3 text-[10px] text-cyan-500/60 font-mono tracking-[0.3em]">
+    <Sparkles size={8} />
+    <span>THE ORACLE AWAITS YOUR QUERY</span>
+    <Sparkles size={8} />
+    </div>
     </div>
     </motion.div>
 
-    {isCentered && (
-      <p className="mt-6 text-center text-xs text-zinc-600 font-medium">
-      Synapse AI can make mistakes. Please verify important information.
-      </p>
-    )}
+    {/* 3. Quick Actions (Below Input) */}
+    <div className="mt-8 relative z-30">
+    <InputActions onActionClick={(action) => setInput(prev => `${prev} [${action.toUpperCase()}] `)} />
+    </div>
+
     </div>
   );
 };
+
+export default MainInput;

@@ -1,16 +1,14 @@
 /**
- * MessageMarkdown - DeepSeek-style markdown rendering
- * Beautiful tables, code blocks, all formatting
+ * MessageMarkdown - Oracle Theme
+ * Renders Markdown with Oracle typography and syntax highlighting.
  *
- * Location: src/pages/chat/components/messages/MessageMarkdown.tsx
+ * Location: chat/components/messages/MessageMarkdown.tsx
  */
 
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
-import { Copy, Check } from 'lucide-react';
+import { CodeBlock } from './CodeBlock'; // We will update this next
 import { cn } from '@/lib/utils';
 
 interface MessageMarkdownProps {
@@ -23,74 +21,27 @@ export const MessageMarkdown: React.FC<MessageMarkdownProps> = ({
   className,
 }) => {
   return (
-    <div className={cn('message-markdown', className)}>
+    <div className={cn('prose prose-invert max-w-none', className)}>
     <ReactMarkdown
     remarkPlugins={[remarkGfm]}
     components={{
-      // Code blocks with syntax highlighting
+      // Code Blocks
       code({ node, inline, className, children, ...props }) {
-        const [copied, setCopied] = React.useState(false);
         const match = /language-(\w+)/.exec(className || '');
         const language = match ? match[1] : '';
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(String(children));
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
   if (!inline && language) {
     return (
-      <div className="relative group my-4">
-      {/* Header with language + copy button */}
-      <div className="flex items-center justify-between px-4 py-2.5 bg-[#2C2C2E] border border-[#3F3F46] border-b-0 rounded-t-[16px]">
-      <span className="text-xs text-white/60 font-mono uppercase">
-      {language}
-      </span>
-      <button
-      onClick={handleCopy}
-      className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg hover:bg-[#3F3F46] text-white/60 hover:text-white transition-all text-xs"
-      >
-      {copied ? (
-        <>
-        <Check className="w-3 h-3" />
-        Copied
-        </>
-      ) : (
-        <>
-        <Copy className="w-3 h-3" />
-        Copy
-        </>
-      )}
-      </button>
-      </div>
-
-      {/* Code content */}
-      <div className="rounded-b-[16px] overflow-hidden border border-[#3F3F46]">
-      <SyntaxHighlighter
-      style={vscDarkPlus}
+      <CodeBlock
+      code={String(children).replace(/\n$/, '')}
       language={language}
-      PreTag="div"
-      customStyle={{
-        margin: 0,
-        padding: '1rem',
-        background: '#2C2C2E',
-        fontSize: '13px',
-        lineHeight: '1.6',
-      }}
-      {...props}
-      >
-      {String(children).replace(/\n$/, '')}
-      </SyntaxHighlighter>
-      </div>
-      </div>
+      />
     );
   }
 
-  // Inline code
   return (
     <code
-    className="px-2 py-0.5 rounded-md bg-[#2C2C2E] text-[#5685FE] text-sm font-mono border border-[#3F3F46]"
+    className="px-1.5 py-0.5 rounded-sm bg-cyan-950/40 text-cyan-200 text-xs font-mono border border-cyan-500/20"
     {...props}
     >
     {children}
@@ -98,153 +49,37 @@ export const MessageMarkdown: React.FC<MessageMarkdownProps> = ({
   );
       },
 
-      // Tables - DeepSeek beautiful style
-      table({ children }) {
-        return (
-          <div className="my-4 overflow-x-auto rounded-[16px] border border-[#3F3F46]">
-          <table className="w-full border-collapse">
-          {children}
-          </table>
-          </div>
-        );
-      },
+      // Headings - Serif font for gravitas
+      h1: ({children}) => <h1 className="font-serif text-2xl text-cyan-100 mt-6 mb-4">{children}</h1>,
+          h2: ({children}) => <h2 className="font-serif text-xl text-cyan-100 mt-5 mb-3">{children}</h2>,
+          h3: ({children}) => <h3 className="font-serif text-lg text-cyan-200 mt-4 mb-2">{children}</h3>,
 
-      thead({ children }) {
-        return (
-          <thead className="bg-[#2C2C2E]">
-          {children}
-          </thead>
-        );
-      },
+          // Paragraphs - Slate for readability, slightly distinct from headings
+          p: ({children}) => <p className="mb-4 text-cyan-50/90 leading-7 font-sans">{children}</p>,
 
-      th({ children }) {
-        return (
-          <th className="px-4 py-3 text-left text-sm font-medium text-white/90 border-b border-[#3F3F46]">
-          {children}
-          </th>
-        );
-      },
+          // Links
+          a: ({href, children}) => (
+            <a href={href} target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:text-cyan-300 underline decoration-cyan-500/30 underline-offset-2 transition-colors">
+            {children}
+            </a>
+          ),
 
-      td({ children }) {
-        return (
-          <td className="px-4 py-3 text-sm text-white/80 border-b border-[#3F3F46] last:border-b-0">
-          {children}
-          </td>
-        );
-      },
+          // Lists
+          ul: ({children}) => <ul className="list-disc list-outside ml-4 mb-4 text-cyan-50/90 marker:text-cyan-500/50">{children}</ul>,
+          ol: ({children}) => <ol className="list-decimal list-outside ml-4 mb-4 text-cyan-50/90 marker:text-cyan-500/50">{children}</ol>,
 
-      tbody({ children }) {
-        return (
-          <tbody className="bg-[#151517]">
-          {children}
-          </tbody>
-        );
-      },
+          // Blockquotes
+          blockquote: ({children}) => (
+            <blockquote className="border-l-2 border-cyan-500/30 pl-4 my-4 italic text-slate-400 bg-black/20 py-2 pr-2 rounded-r-lg">
+            {children}
+            </blockquote>
+          ),
 
-      // Lists
-      ul({ children }) {
-        return (
-          <ul className="my-2 ml-5 space-y-1.5 list-disc marker:text-white/40">
-          {children}
-          </ul>
-        );
-      },
-
-      ol({ children }) {
-        return (
-          <ol className="my-2 ml-5 space-y-1.5 list-decimal marker:text-white/40">
-          {children}
-          </ol>
-        );
-      },
-
-      li({ children }) {
-        return (
-          <li className="text-white/80 text-[15px] leading-relaxed">
-          {children}
-          </li>
-        );
-      },
-
-      // Links
-      a({ href, children }) {
-        return (
-          <a
-          href={href}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-[#5685FE] hover:underline transition-colors"
-          >
-          {children}
-          </a>
-        );
-      },
-
-      // Paragraphs
-      p({ children }) {
-        return (
-          <p className="text-white/80 text-[15px] leading-relaxed mb-4 last:mb-0">
-          {children}
-          </p>
-        );
-      },
-
-      // Headings
-      h1({ children }) {
-        return (
-          <h1 className="text-2xl font-semibold text-white mb-4 mt-6">
-          {children}
-          </h1>
-        );
-      },
-
-      h2({ children }) {
-        return (
-          <h2 className="text-xl font-semibold text-white mb-3 mt-5">
-          {children}
-          </h2>
-        );
-      },
-
-      h3({ children }) {
-        return (
-          <h3 className="text-lg font-semibold text-white mb-2 mt-4">
-          {children}
-          </h3>
-        );
-      },
-
-      // Blockquotes
-      blockquote({ children }) {
-        return (
-          <blockquote className="my-4 pl-4 border-l-2 border-[#5685FE] text-white/70 italic">
-          {children}
-          </blockquote>
-        );
-      },
-
-      // Horizontal rule
-      hr() {
-        return <hr className="my-6 border-t border-[#3F3F46]" />;
-      },
-
-      // Strong (bold)
-      strong({ children }) {
-        return (
-          <strong className="font-semibold text-white">
-          {children}
-          </strong>
-        );
-      },
-
-      // Emphasis (italic)
-      em({ children }) {
-        return (
-          <em className="italic text-white/90">
-          {children}
-          </em>
-        );
-      },
+          // Tables
+          table: ({children}) => <div className="overflow-x-auto my-4 rounded-lg border border-white/10"><table className="w-full text-sm text-left">{children}</table></div>,
+          thead: ({children}) => <thead className="bg-white/5 text-cyan-200 uppercase font-mono text-xs">{children}</thead>,
+          th: ({children}) => <th className="px-4 py-3 font-medium border-b border-white/10">{children}</th>,
+          td: ({children}) => <td className="px-4 py-3 border-b border-white/5 text-slate-300">{children}</td>,
     }}
     >
     {content}

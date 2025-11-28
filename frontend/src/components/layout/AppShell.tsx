@@ -1,96 +1,66 @@
-import { useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Header } from './Header';
-import { Sidebar } from './Sidebar';
-import { SearchCommand } from './SearchCommand';
-import { useUIStore } from '@/stores/uiStore';
+/**
+ * AppShell - Oracle Theme (Sidebar Removed)
+ * "Neural Container" - Simplified layout with header-only navigation
+ *
+ * Location: components/layout/AppShell.tsx
+ */
 
-interface AppShellProps {
-    children: React.ReactNode;
-}
+import React from 'react';
+import { Outlet } from 'react-router-dom';
+import { Header } from './Header';
+import { cn } from '@/lib/utils';
 
 /**
- * AppShell Component (ENHANCED)
+ * AppShell Component
  *
- * Main application layout with:
- * - Responsive sidebar with collapse state
- * - Smooth animations
- * - Persistent sidebar state
- * - Global search command palette
- * - Constrained content width for readability
+ * Provides the main layout structure:
+ * - Fixed header at top with all navigation
+ * - Full-height content area below
+ * - No sidebar (consolidated into header)
  */
+
+interface AppShellProps {
+    children?: React.ReactNode;
+}
+
 export function AppShell({ children }: AppShellProps) {
-    const { sidebarOpen, sidebarCollapsed, setSidebarOpen, toggleSidebarCollapse } = useUIStore();
-
-    // Load collapsed state from localStorage on mount
-    useEffect(() => {
-        const savedCollapsed = localStorage.getItem('sidebar-collapsed');
-        if (savedCollapsed === 'true' && !sidebarCollapsed) {
-            toggleSidebarCollapse();
-        }
-    }, []);
-
-    // Save collapsed state to localStorage
-    useEffect(() => {
-        localStorage.setItem('sidebar-collapsed', String(sidebarCollapsed));
-    }, [sidebarCollapsed]);
-
-    // Keyboard shortcut for sidebar (⌘B / Ctrl+B)
-    useEffect(() => {
-        const down = (e: KeyboardEvent) => {
-            if (e.key === 'b' && (e.metaKey || e.ctrlKey)) {
-                e.preventDefault();
-                toggleSidebarCollapse();
-            }
-        };
-
-        document.addEventListener('keydown', down);
-        return () => document.removeEventListener('keydown', down);
-    }, [toggleSidebarCollapse]);
-
     return (
-        <div className="flex h-screen overflow-hidden bg-slate-50 dark:bg-slate-900">
-        {/* Sidebar */}
-        <Sidebar
-        open={sidebarOpen}
-        collapsed={sidebarCollapsed}
-        onClose={() => setSidebarOpen(false)}
-        onToggleCollapse={toggleSidebarCollapse}
-        />
+        <div className="relative min-h-screen bg-[#020408] text-slate-200">
+        {/* Header - Fixed at top */}
+        <Header />
 
-        {/* Main content area */}
-        <div className="flex flex-1 flex-col overflow-hidden">
-        {/* Header */}
-        <Header onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
-
-        {/* Page content */}
-        <main className="flex-1 overflow-y-auto">
-        <motion.div
-        className="mx-auto h-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8"
-        layout
-        transition={{ duration: 0.3, ease: 'easeInOut' }}
-        >
-        {children}
-        </motion.div>
+        {/* Main Content Area - Below header */}
+        <main className="pt-16 h-screen overflow-hidden">
+        {/* Render child routes or passed children */}
+        {children || <Outlet />}
         </main>
-        </div>
 
-        {/* Global Search Command Palette */}
-        <SearchCommand />
+        {/* Background Effects - Oracle Theme */}
+        <div className="fixed inset-0 -z-10 pointer-events-none">
+        {/* Gradient background */}
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900 via-[#020408] to-black" />
 
-        {/* Mobile Backdrop */}
-        <AnimatePresence>
-        {sidebarOpen && (
-            <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-sm lg:hidden"
-            onClick={() => setSidebarOpen(false)}
+        {/* Noise texture */}
+        <div className="absolute inset-0 opacity-20 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-overlay" />
+
+        {/* Mystical particles */}
+        <div className="absolute inset-0 overflow-hidden">
+        {[...Array(20)].map((_, i) => (
+            <div
+            key={i}
+            className="absolute w-1 h-1 bg-cyan-500/10 rounded-full animate-float"
+            style={{
+                left: `${Math.random() * 100}%`,
+                                       top: `${Math.random() * 100}%`,
+                                       animationDelay: `${Math.random() * 5}s`,
+                                       animationDuration: `${5 + Math.random() * 5}s`,
+            }}
             />
-        )}
-        </AnimatePresence>
+        ))}
+        </div>
+        </div>
         </div>
     );
 }
+
+export default AppShell;

@@ -1,6 +1,8 @@
 /**
- * VoiceButton - Microphone icon
- * Voice input recording (placeholder for future implementation)
+ * VoiceButton - Oracle Theme
+ * "Telepathic Invocation" Interface
+ *
+ * Location: chat/components/input/VoiceButton.tsx
  */
 
 import React, { useState } from 'react';
@@ -23,19 +25,12 @@ export const VoiceButton: React.FC<VoiceButtonProps> = ({
   const handleClick = () => {
     if (disabled) return;
 
-    // TODO: Implement voice recording
-    // For now, just show a toast
     if (!isRecording) {
       setIsRecording(true);
-      toast.info('Voice input feature coming soon!');
-
-      // Auto-stop after 3 seconds (demo)
-      setTimeout(() => {
-        setIsRecording(false);
-      }, 3000);
+      toast.info('Channeling voice input...');
+      setTimeout(() => setIsRecording(false), 3000); // Mock
     } else {
       setIsRecording(false);
-      toast.info('Recording stopped');
     }
   };
 
@@ -44,57 +39,39 @@ export const VoiceButton: React.FC<VoiceButtonProps> = ({
     type="button"
     onClick={handleClick}
     disabled={disabled}
-    whileHover={{ scale: disabled ? 1 : 1.05 }}
-    whileTap={{ scale: disabled ? 1 : 0.95 }}
+    whileHover={{ scale: 1.1 }}
+    whileTap={{ scale: 0.95 }}
     className={cn(
-      'relative p-2 rounded-lg',
-      'transition-colors duration-200',
-      disabled
-      ? 'text-white/30 cursor-not-allowed'
-      : isRecording
-      ? 'text-red-400 bg-red-500/20'
-      : 'text-white/60 hover:text-white hover:bg-white/10',
+      'p-2.5 rounded-full transition-all duration-300 relative',
+      disabled ? 'text-slate-700 cursor-not-allowed' : '',
+      !disabled && !isRecording ? 'text-slate-500 hover:text-purple-400 hover:bg-white/5' : '',
+      isRecording ? 'text-red-500 bg-red-500/10' : '',
       className
     )}
-    aria-label={isRecording ? 'Stop recording' : 'Start voice input'}
+    title="Telepathic Voice Invocation"
     >
     <AnimatePresence mode="wait">
     {isRecording ? (
       <motion.div
       key="recording"
-      initial={{ scale: 0.8, opacity: 0 }}
+      initial={{ scale: 0.5, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
-      exit={{ scale: 0.8, opacity: 0 }}
-      transition={{ duration: 0.2 }}
+      exit={{ scale: 0.5, opacity: 0 }}
       >
-      <MicOff className="w-5 h-5" strokeWidth={2} />
+      <MicOff size={20} />
+      <span className="absolute inset-0 rounded-full animate-ping bg-red-500/20" />
       </motion.div>
     ) : (
       <motion.div
       key="idle"
-      initial={{ scale: 0.8, opacity: 0 }}
+      initial={{ scale: 0.5, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
-      exit={{ scale: 0.8, opacity: 0 }}
-      transition={{ duration: 0.2 }}
+      exit={{ scale: 0.5, opacity: 0 }}
       >
-      <Mic className="w-5 h-5" strokeWidth={2} />
+      <Mic size={20} />
       </motion.div>
     )}
     </AnimatePresence>
-
-    {/* Recording Pulse Animation */}
-    {isRecording && (
-      <motion.div
-      className="absolute inset-0 rounded-lg bg-red-500"
-      initial={{ scale: 1, opacity: 0.5 }}
-      animate={{ scale: 1.5, opacity: 0 }}
-      transition={{
-        duration: 1,
-        repeat: Infinity,
-        ease: 'easeOut',
-      }}
-      />
-    )}
     </motion.button>
   );
 };

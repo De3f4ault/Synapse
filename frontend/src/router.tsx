@@ -2,7 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom
 import { useAuthStore } from '@/stores/authStore';
 import { AppShell } from '@/components/layout/AppShell';
 
-// Auth Pages
+// Auth pages
 import { LoginPage } from '@/pages/auth/LoginPage';
 import { RegisterPage } from '@/pages/auth/RegisterPage';
 
@@ -37,10 +37,9 @@ import { AnalyticsPage } from '@/pages/analytics/AnalyticsPage';
 // 404
 import { NotFoundPage } from '@/pages/NotFoundPage';
 
-
 /* -----------------------------------------------------
- * PROTECTED ROUTE WRAPPER
- * Blocks pages unless authenticated
+ * PROTECTED ROUTE (Final)
+ * Wraps content with AppShell — no sidebar logic required
  * ---------------------------------------------------- */
 function ProtectedRoute() {
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -57,8 +56,8 @@ function ProtectedRoute() {
 }
 
 /* -----------------------------------------------------
- * AUTH ROUTE WRAPPER
- * Blocks login/register if already logged in
+ * AUTH ROUTE
+ * Prevents access to login/register when logged in
  * ---------------------------------------------------- */
 function AuthRoute() {
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -70,26 +69,24 @@ function AuthRoute() {
     return <Outlet />;
 }
 
-
 /* -----------------------------------------------------
- * MAIN ROUTER CONFIGURATION — FINAL FIXED VERSION
+ * MAIN ROUTER (FINAL VERSION)
  * ---------------------------------------------------- */
 export function Router() {
     return (
         <BrowserRouter>
         <Routes>
 
-        {/* AUTH ROUTES */}
+        {/* Auth routes */}
         <Route element={<AuthRoute />}>
         <Route path="/auth/login" element={<LoginPage />} />
         <Route path="/auth/register" element={<RegisterPage />} />
         </Route>
 
-        {/* PROTECTED ROUTES */}
+        {/* Protected routes (wrapped in AppShell) */}
         <Route element={<ProtectedRoute />}>
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
-        {/* Dashboard */}
         <Route path="/dashboard" element={<DashboardPage />} />
 
         {/* Flashcards */}
@@ -112,7 +109,7 @@ export function Router() {
         <Route path="/quizzes" element={<QuizzesPage />} />
         <Route path="/quizzes/:quizId/take" element={<QuizTakePage />} />
 
-        {/* CHAT — FINAL FIX ✔✔ */}
+        {/* Chat */}
         <Route path="/chat" element={<ChatPage />} />
         <Route path="/chat/:sessionId" element={<ChatPage />} />
 
@@ -120,7 +117,7 @@ export function Router() {
         <Route path="/analytics" element={<AnalyticsPage />} />
         </Route>
 
-        {/* 404 PAGE */}
+        {/* 404 fallback */}
         <Route path="*" element={<NotFoundPage />} />
         </Routes>
         </BrowserRouter>

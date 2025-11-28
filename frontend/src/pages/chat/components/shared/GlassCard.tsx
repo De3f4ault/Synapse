@@ -1,6 +1,8 @@
 /**
- * GlassCard - Reusable glass card
- * Glassmorphism card component with backdrop blur
+ * GlassCard - Oracle Theme
+ * Standard container with deep glassmorphism and cyan interactive borders.
+ *
+ * Location: chat/components/shared/GlassCard.tsx
  */
 
 import React from 'react';
@@ -24,10 +26,10 @@ export const GlassCard: React.FC<GlassCardProps> = ({
     whileHover={hover ? { y: -2, scale: 1.01 } : undefined}
     className={cn(
       'rounded-xl',
-      'bg-[#1D1E22]/60 backdrop-blur-xl',
-      'border border-[#353638]',
-      'shadow-lg',
-      hover && 'transition-shadow duration-200 hover:shadow-xl',
+      'bg-black/40 backdrop-blur-xl',
+      'border border-white/5',
+      'shadow-lg shadow-black/50',
+      hover && 'transition-all duration-300 hover:border-cyan-500/30 hover:shadow-cyan-500/10',
       className
     )}
     {...motionProps}

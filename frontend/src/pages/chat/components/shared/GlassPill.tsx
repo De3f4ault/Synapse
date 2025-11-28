@@ -1,6 +1,8 @@
 /**
- * GlassPill - Rounded pill buttons (mode toggles)
- * Pill-shaped button with glass styling
+ * GlassPill - Oracle Theme
+ * Toggle buttons and tags.
+ *
+ * Location: chat/components/shared/GlassPill.tsx
  */
 
 import React from 'react';
@@ -26,17 +28,19 @@ export const GlassPill: React.FC<GlassPillProps> = ({
     <motion.button
     onClick={onClick}
     disabled={disabled}
-    whileHover={disabled ? undefined : { scale: 1.02 }}
-    whileTap={disabled ? undefined : { scale: 0.98 }}
+    whileHover={disabled ? undefined : { scale: 1.05 }}
+    whileTap={disabled ? undefined : { scale: 0.95 }}
     className={cn(
-      'relative px-4 py-2 rounded-full',
-      'text-sm font-medium transition-all duration-200',
-      'flex items-center gap-2',
+      'relative px-4 py-1.5 rounded-full',
+      'text-xs font-mono uppercase tracking-wider transition-all duration-300',
+      'flex items-center gap-2 border',
       disabled && 'opacity-50 cursor-not-allowed',
-      !disabled && !active && 'hover:bg-[#353638]/30',
+
+      // Active State: Cyan Glow
       active
-      ? 'bg-[#5685FE] text-white shadow-lg shadow-[#5685FE]/20'
-      : 'bg-[#1D1E22]/60 backdrop-blur-sm border border-[#353638] text-white/70',
+      ? 'bg-cyan-900/40 border-cyan-500/50 text-cyan-100 shadow-[0_0_15px_rgba(6,182,212,0.2)]'
+      : 'bg-white/5 border-white/5 text-slate-400 hover:text-cyan-200 hover:border-cyan-500/20 hover:bg-white/10',
+
       className
     )}
     >

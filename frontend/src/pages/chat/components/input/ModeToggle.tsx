@@ -1,11 +1,13 @@
 /**
- * ModeToggle - Pills: "DeepThink" | "Search" | "Normal"
- * Pill-style mode selector with smooth transitions
+ * ModeToggle - Oracle Theme
+ * "Consciousness State" Selector
+ *
+ * Location: chat/components/input/ModeToggle.tsx
  */
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Brain, Search, MessageSquare } from 'lucide-react';
+import { Brain, Search, MessageSquare, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { ChatMode } from './MainInput';
 
@@ -19,26 +21,10 @@ const modes: Array<{
   value: ChatMode;
   label: string;
   icon: React.ElementType;
-  description: string;
 }> = [
-  {
-    value: 'normal',
-    label: 'Normal',
-    icon: MessageSquare,
-    description: 'Standard AI responses',
-  },
-{
-  value: 'deepthink',
-  label: 'DeepThink',
-  icon: Brain,
-  description: 'Detailed reasoning process',
-},
-{
-  value: 'search',
-  label: 'Search',
-  icon: Search,
-  description: 'Web-enhanced answers',
-},
+  { value: 'synapse', label: 'Synapse', icon: Sparkles },
+{ value: 'standard', label: 'Standard', icon: MessageSquare },
+{ value: 'web', label: 'Web', icon: Search },
 ];
 
 export const ModeToggle: React.FC<ModeToggleProps> = ({
@@ -47,61 +33,36 @@ export const ModeToggle: React.FC<ModeToggleProps> = ({
   className,
 }) => {
   return (
-    <div
-    className={cn(
-      'inline-flex items-center gap-1 p-1 rounded-full',
-      'bg-[#1D1E22]/80 backdrop-blur-sm',
-      'border border-[#353638]',
-      className
-    )}
-    >
-    {modes.map((modeOption) => {
-      const Icon = modeOption.icon;
-      const isActive = mode === modeOption.value;
+    <div className={cn("flex justify-center", className)}>
+    <div className="bg-black/60 backdrop-blur-xl p-1 rounded-full flex items-center border border-cyan-500/20 shadow-[0_0_20px_rgba(6,182,212,0.15)]">
+    {modes.map((m) => {
+      const isActive = mode === m.value;
+      const Icon = m.icon;
 
       return (
-        <motion.button
-        key={modeOption.value}
-        onClick={() => onModeChange(modeOption.value)}
+        <button
+        key={m.value}
+        onClick={() => onModeChange(m.value)}
         className={cn(
-          'relative px-4 py-1.5 rounded-full',
-          'text-sm font-medium transition-colors duration-200',
-          'flex items-center gap-2',
-          isActive
-          ? 'text-white'
-          : 'text-white/60 hover:text-white/80'
+          "relative px-4 py-2 rounded-full text-[10px] md:text-xs font-mono font-semibold flex items-center gap-2 transition-all duration-300 uppercase tracking-wider",
+          isActive ? "text-white" : "text-slate-500 hover:text-slate-300"
         )}
-        whileHover={{ scale: 1.02 }}
-        whileTap={{ scale: 0.98 }}
-        title={modeOption.description}
         >
-        {/* Active Background */}
         {isActive && (
           <motion.div
-          layoutId="activeModeBackground"
-          className="absolute inset-0 rounded-full bg-[#5685FE]"
-          transition={{
-            type: 'spring',
-            stiffness: 500,
-            damping: 30,
-          }}
+          layoutId="active-mode-pill"
+          className="absolute inset-0 bg-cyan-900/40 border border-cyan-500/30 rounded-full shadow-[0_0_10px_rgba(6,182,212,0.2)]"
+          transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
           />
         )}
-
-        {/* Icon */}
-        <Icon
-        className={cn(
-          'w-4 h-4 relative z-10',
-          isActive ? 'text-white' : 'text-white/60'
-        )}
-        strokeWidth={2}
-        />
-
-        {/* Label */}
-        <span className="relative z-10">{modeOption.label}</span>
-        </motion.button>
+        <span className="relative z-10 flex items-center gap-2">
+        <Icon size={12} className={isActive ? "text-cyan-400" : "text-slate-600"} />
+        {m.label}
+        </span>
+        </button>
       );
     })}
+    </div>
     </div>
   );
 };

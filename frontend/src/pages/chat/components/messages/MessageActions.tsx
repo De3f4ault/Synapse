@@ -1,92 +1,58 @@
 /**
- * MessageActions - Copy, regenerate icons
- * Appears on hover with smooth animations
+ * MessageActions - Oracle Theme
+ * Bottom action bar for Oracle responses.
+ *
+ * Location: chat/components/messages/MessageActions.tsx
  */
 
 import React, { useState } from 'react';
-import { Copy, Check, RotateCcw } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { Copy, Check, ThumbsUp, ThumbsDown, Share2, MoreVertical } from 'lucide-react';
 import { cn, copyToClipboard } from '@/lib/utils';
-import type { ChatMessageResponse } from '@/api/generated/types.gen';
 import { toast } from 'sonner';
 
 interface MessageActionsProps {
-  message: ChatMessageResponse;
+  content: string;
 }
 
-export const MessageActions: React.FC<MessageActionsProps> = ({ message }) => {
+export const MessageActions: React.FC<MessageActionsProps> = ({ content }) => {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
-    const success = await copyToClipboard(message.content);
+    const success = await copyToClipboard(content);
     if (success) {
       setCopied(true);
-      toast.success('Copied to clipboard');
       setTimeout(() => setCopied(false), 2000);
-    } else {
-      toast.error('Failed to copy');
     }
   };
 
-  const handleRegenerate = () => {
-    toast.info('Regenerate feature coming soon');
-    // TODO: Implement regenerate message functionality
-  };
-
   return (
-    <div className="mt-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-    {/* Copy Button */}
-    <motion.button
-    onClick={handleCopy}
-    whileHover={{ scale: 1.05 }}
-    whileTap={{ scale: 0.95 }}
-    className={cn(
-      'p-1.5 rounded-md',
-      'transition-colors duration-200',
-      copied
-      ? 'bg-green-500/20 text-green-400'
-      : 'bg-white/5 text-white/60 hover:bg-white/10 hover:text-white'
-    )}
-    aria-label="Copy message"
-    >
-    <AnimatePresence mode="wait">
-    {copied ? (
-      <motion.div
-      key="check"
-      initial={{ scale: 0.5, opacity: 0 }}
-      animate={{ scale: 1, opacity: 1 }}
-      exit={{ scale: 0.5, opacity: 0 }}
-      >
-      <Check className="w-4 h-4" />
-      </motion.div>
-    ) : (
-      <motion.div
-      key="copy"
-      initial={{ scale: 0.5, opacity: 0 }}
-      animate={{ scale: 1, opacity: 1 }}
-      exit={{ scale: 0.5, opacity: 0 }}
-      >
-      <Copy className="w-4 h-4" />
-      </motion.div>
-    )}
-    </AnimatePresence>
-    </motion.button>
+    <div className="flex items-center gap-3 mt-3 pt-3 border-t border-white/5 text-slate-500">
+    <button className="p-1.5 hover:text-cyan-400 hover:bg-white/5 rounded-md transition-all">
+    <ThumbsUp size={14} />
+    </button>
+    <button className="p-1.5 hover:text-red-400 hover:bg-white/5 rounded-md transition-all">
+    <ThumbsDown size={14} />
+    </button>
 
-    {/* Regenerate Button */}
-    <motion.button
-    onClick={handleRegenerate}
-    whileHover={{ scale: 1.05 }}
-    whileTap={{ scale: 0.95 }}
-    className={cn(
-      'p-1.5 rounded-md',
-      'bg-white/5 text-white/60',
-      'hover:bg-white/10 hover:text-white',
-      'transition-colors duration-200'
-    )}
-    aria-label="Regenerate response"
+    <div className="w-px h-3 bg-white/10 mx-1" />
+
+    <button className="p-1.5 hover:text-purple-400 hover:bg-white/5 rounded-md transition-all">
+    <Share2 size={14} />
+    </button>
+
+    <button
+    onClick={handleCopy}
+    className="p-1.5 hover:text-emerald-400 hover:bg-white/5 rounded-md transition-all flex items-center gap-1"
+    title="Copy to Clipboard"
     >
-    <RotateCcw className="w-4 h-4" />
-    </motion.button>
+    {copied ? <Check size={14} className="text-emerald-500"/> : <Copy size={14} />}
+    </button>
+
+    <div className="flex-1" />
+
+    <button className="p-1.5 hover:text-white hover:bg-white/5 rounded-md transition-all">
+    <MoreVertical size={14} />
+    </button>
     </div>
   );
 };

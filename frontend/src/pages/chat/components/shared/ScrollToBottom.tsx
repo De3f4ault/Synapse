@@ -1,6 +1,8 @@
 /**
- * ScrollToBottom - Floating scroll button
- * Appears when user scrolls up, scrolls to bottom on click
+ * ScrollToBottom - Oracle Theme
+ * Floating navigation anchor.
+ *
+ * Location: chat/components/shared/ScrollToBottom.tsx
  */
 
 import React, { useState, useEffect } from 'react';
@@ -16,7 +18,7 @@ interface ScrollToBottomProps {
 
 export const ScrollToBottom: React.FC<ScrollToBottomProps> = ({
   scrollRef,
-  threshold = 100,
+  threshold = 200,
   className,
 }) => {
   const [isVisible, setIsVisible] = useState(false);
@@ -46,26 +48,23 @@ export const ScrollToBottom: React.FC<ScrollToBottomProps> = ({
     <AnimatePresence>
     {isVisible && (
       <motion.button
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, scale: 0.8 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.8 }}
       onClick={scrollToBottom}
       className={cn(
-        'fixed bottom-24 right-8 z-20',
+        'fixed bottom-28 right-8 z-30',
         'p-3 rounded-full',
-        'bg-[#1D1E22]/90 backdrop-blur-xl',
-        'border border-[#353638]',
-        'text-white/80 hover:text-white',
-        'hover:bg-[#353638]/80',
-        'shadow-lg shadow-black/20',
-        'transition-colors duration-200',
+        'bg-black/80 backdrop-blur-md',
+        'border border-white/10 hover:border-cyan-500/50',
+        'text-slate-400 hover:text-cyan-300',
+        'shadow-lg shadow-black/50 hover:shadow-cyan-500/20',
+        'transition-all duration-300',
         className
       )}
-      whileHover={{ scale: 1.05 }}
-      whileTap={{ scale: 0.95 }}
-      aria-label="Scroll to bottom"
+      title="Return to present"
       >
-      <ArrowDown className="w-5 h-5" strokeWidth={2} />
+      <ArrowDown size={20} />
       </motion.button>
     )}
     </AnimatePresence>

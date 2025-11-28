@@ -1,11 +1,13 @@
 /**
- * DocumentPreview - PDF/doc viewer
- * Displays document file info with icon
+ * DocumentPreview - Oracle Theme
+ * "Text Record" Viewer.
+ *
+ * Location: chat/components/preview/DocumentPreview.tsx
  */
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { FileText, File } from 'lucide-react';
+import { FileText, FileCode, Binary } from 'lucide-react';
 import { cn, formatFileSize } from '@/lib/utils';
 import { PreviewActions } from './PreviewActions';
 
@@ -33,63 +35,50 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({
   };
 
   const getFileIcon = () => {
-    if (file.type === 'application/pdf') {
-      return FileText;
-    }
-    return File;
-  };
-
-  const getFileColor = () => {
-    if (file.type === 'application/pdf') {
-      return 'text-red-400';
-    }
-    return 'text-blue-400';
+    if (file.type === 'application/pdf') return FileText;
+    if (file.name.endsWith('.json') || file.name.endsWith('.js') || file.name.endsWith('.ts')) return FileCode;
+    return Binary;
   };
 
   const Icon = getFileIcon();
-  const colorClass = getFileColor();
 
   return (
     <motion.div
-    initial={{ opacity: 0, y: 10 }}
-    animate={{ opacity: 1, y: 0 }}
+    initial={{ opacity: 0, x: 20 }}
+    animate={{ opacity: 1, x: 0 }}
     transition={{ delay: index * 0.05 }}
     className={cn(
-      'relative rounded-lg',
-      'bg-[#19191C] border border-[#353638]',
-      'p-4'
+      'relative rounded-lg p-3',
+      'bg-black/40 border border-white/10',
+      'hover:border-cyan-500/30 hover:bg-white/5 transition-all duration-300'
     )}
     >
-    <div className="flex items-start gap-3">
-    {/* Icon */}
-    <div
-    className={cn(
-      'w-12 h-12 rounded-lg flex-shrink-0',
-      'bg-[#353638]/50 border border-[#353638]',
-      'flex items-center justify-center'
-    )}
-    >
-    <Icon className={cn('w-6 h-6', colorClass)} strokeWidth={2} />
+    <div className="flex items-start gap-4">
+    {/* Icon Box */}
+    <div className={cn(
+      'w-10 h-10 rounded-lg flex-shrink-0 flex items-center justify-center',
+      'bg-cyan-950/30 border border-cyan-500/20 text-cyan-400'
+    )}>
+    <Icon className="w-5 h-5" strokeWidth={1.5} />
     </div>
 
     {/* Info */}
     <div className="flex-1 min-w-0">
-    <p className="text-sm font-medium text-white truncate mb-1">
+    <p className="text-xs font-medium text-cyan-100 truncate mb-1 font-mono">
     {file.name}
     </p>
-    <div className="flex items-center gap-2 text-xs text-white/40">
+    <div className="flex items-center gap-2 text-[10px] text-slate-500 font-mono uppercase">
     <span>{formatFileSize(file.size)}</span>
-    <span>•</span>
-    <span>{file.type.split('/')[1].toUpperCase()}</span>
+    <span className="text-slate-700">•</span>
+    <span>{file.name.split('.').pop()}</span>
     </div>
     </div>
     </div>
 
-    {/* Actions */}
-    <PreviewActions
-    onDownload={handleDownload}
-    onRemove={handleRemove}
-    />
+    {/* Actions (Inline for Documents) */}
+    <div className="mt-3 pt-2 border-t border-white/5 flex justify-end">
+    <PreviewActions onDownload={handleDownload} onRemove={handleRemove} />
+    </div>
     </motion.div>
   );
 };

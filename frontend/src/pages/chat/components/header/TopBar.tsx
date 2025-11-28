@@ -1,11 +1,13 @@
 /**
- * TopBar - Minimal top bar (logo, model selector)
- * Transparent header with glassmorphism
+ * TopBar - Oracle Theme
+ * "Command Interface" - Global navigation and model control.
+ *
+ * Location: chat/components/header/TopBar.tsx
  */
 
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Brain } from 'lucide-react';
+import { Atom } from 'lucide-react'; // Switched Brain for Atom for Oracle vibe
 import { cn } from '@/lib/utils';
 import { ModelSelector } from './ModelSelector';
 import { SettingsMenu } from './SettingsMenu';
@@ -18,36 +20,42 @@ export const TopBar: React.FC<TopBarProps> = ({ className }) => {
   return (
     <header
     className={cn(
-      'sticky top-0 z-30',
-      'h-16 px-4',
-      'bg-[#19191C]/80 backdrop-blur-xl',
-      'border-b border-[#353638]',
+      'absolute top-0 left-0 right-0 z-30', // Absolute positioning to float over background
+      'h-20 px-6',
       'flex items-center justify-between',
+      'bg-gradient-to-b from-black/80 to-transparent', // Gradient fade instead of solid border
       className
     )}
     >
-    {/* Logo */}
+    {/* Left - Branding */}
     <Link
     to="/dashboard"
-    className={cn(
-      'flex items-center gap-2',
-      'text-white hover:text-white/80',
-      'transition-colors duration-200'
-    )}
+    className="flex items-center gap-3 group"
     >
-    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#5685FE] to-[#4a74e6] flex items-center justify-center">
-    <Brain className="w-5 h-5 text-white" strokeWidth={2} />
+    <div className="relative w-8 h-8 flex items-center justify-center">
+    <div className="absolute inset-0 bg-cyan-500/20 rounded-full blur-md group-hover:bg-cyan-500/40 transition-colors" />
+    <Atom className="w-6 h-6 text-cyan-400 relative z-10 animate-spin-slow" />
     </div>
-    <span className="font-semibold text-lg">Synapse</span>
+    <div className="flex flex-col">
+    <span className="font-serif text-lg text-white font-bold tracking-[0.2em]">ORACLE</span>
+    <span className="text-[8px] font-mono text-cyan-500/60 uppercase tracking-[0.3em] pl-0.5">Network Active</span>
+    </div>
     </Link>
 
-    {/* Center - Model Selector */}
-    <div className="absolute left-1/2 -translate-x-1/2">
+    {/* Center - Neural Core Selector (Model) */}
+    <div className="absolute left-1/2 -translate-x-1/2 hidden md:block">
     <ModelSelector />
     </div>
 
-    {/* Right - Settings */}
+    {/* Right - System Controls */}
+    <div className="flex items-center gap-4">
+    {/* Mobile Model Selector (Visible only on small screens) */}
+    <div className="md:hidden">
+    <ModelSelector />
+    </div>
+
     <SettingsMenu />
+    </div>
     </header>
   );
 };

@@ -1,20 +1,20 @@
 /**
- * SettingsMenu - User settings dropdown
- * User profile and settings access
+ * SettingsMenu - Oracle Theme
+ * "System Configuration" - Global settings and tools.
+ *
+ * Location: chat/components/header/SettingsMenu.tsx
  */
 
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Settings,
-  User,
-  LogOut,
-  FileText,
-  CreditCard,
   HelpCircle,
+  Cpu,
+  Shield,
+  Activity
 } from 'lucide-react';
-import { cn, getInitials } from '@/lib/utils';
-import { useAuthStore } from '@/stores/authStore';
+import { cn } from '@/lib/utils';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,91 +24,67 @@ import {
 } from '@/components/ui/dropdown-menu';
 
 export const SettingsMenu: React.FC = () => {
-  const { user, clearAuth } = useAuthStore();
   const navigate = useNavigate();
-
-  const handleLogout = () => {
-    clearAuth();
-    navigate('/login');
-  };
-
-  if (!user) return null;
 
   return (
     <DropdownMenu>
     <DropdownMenuTrigger asChild>
     <button
     className={cn(
-      'flex items-center gap-3 px-3 py-2 rounded-lg',
-      'hover:bg-[#353638]/50',
-      'transition-colors duration-200',
-      'focus:outline-none focus:ring-2 focus:ring-[#5685FE]/50'
+      'flex items-center justify-center w-10 h-10 rounded-full',
+      'bg-black/40 border border-white/5 hover:border-cyan-500/30',
+      'text-slate-400 hover:text-cyan-300',
+      'transition-all duration-200 hover:shadow-[0_0_15px_rgba(6,182,212,0.15)]',
+                  'focus:outline-none focus:ring-1 focus:ring-cyan-500/50'
     )}
+    aria-label="System Menu"
     >
-    {/* Avatar */}
-    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#5685FE] to-[#4a74e6] flex items-center justify-center text-white text-sm font-semibold">
-    {getInitials(user.full_name)}
-    </div>
-
-    {/* Settings Icon */}
-    <Settings className="w-5 h-5 text-white/60" strokeWidth={2} />
+    <Settings className="w-5 h-5" strokeWidth={1.5} />
     </button>
     </DropdownMenuTrigger>
 
     <DropdownMenuContent
     align="end"
-    className="w-56 bg-[#1D1E22] border-[#353638]"
+    className="w-60 bg-[#050505]/95 border border-white/10 backdrop-blur-xl text-slate-300 z-50"
     >
-    {/* User Info */}
-    <div className="px-2 py-1.5">
-    <p className="text-sm font-medium text-white">{user.full_name}</p>
-    <p className="text-xs text-white/40 truncate">{user.email}</p>
+    <div className="px-3 py-2">
+    <p className="text-[10px] font-mono uppercase tracking-widest text-slate-500">System Controls</p>
     </div>
 
-    <DropdownMenuSeparator className="bg-[#353638]" />
+    <DropdownMenuSeparator className="bg-white/10" />
 
-    {/* Menu Items */}
     <DropdownMenuItem
-    onClick={() => navigate('/settings/profile')}
-    className="text-white/70 hover:text-white hover:bg-[#353638]/50 cursor-pointer"
+    onClick={() => navigate('/settings/system')}
+    className="group cursor-pointer py-2 focus:bg-white/5 focus:text-cyan-300"
     >
-    <User className="w-4 h-4 mr-2" />
-    Profile Settings
+    <Cpu className="w-4 h-4 mr-3 text-slate-500 group-hover:text-cyan-400" />
+    <span className="text-xs font-medium uppercase tracking-wide">Interface Config</span>
     </DropdownMenuItem>
 
     <DropdownMenuItem
-    onClick={() => navigate('/documents')}
-    className="text-white/70 hover:text-white hover:bg-[#353638]/50 cursor-pointer"
+    onClick={() => navigate('/status')}
+    className="group cursor-pointer py-2 focus:bg-white/5 focus:text-cyan-300"
     >
-    <FileText className="w-4 h-4 mr-2" />
-    My Documents
+    <Activity className="w-4 h-4 mr-3 text-slate-500 group-hover:text-emerald-400" />
+    <span className="text-xs font-medium uppercase tracking-wide">Network Status</span>
     </DropdownMenuItem>
 
     <DropdownMenuItem
-    onClick={() => navigate('/settings/billing')}
-    className="text-white/70 hover:text-white hover:bg-[#353638]/50 cursor-pointer"
+    onClick={() => navigate('/security')}
+    className="group cursor-pointer py-2 focus:bg-white/5 focus:text-cyan-300"
     >
-    <CreditCard className="w-4 h-4 mr-2" />
-    Billing
+    <Shield className="w-4 h-4 mr-3 text-slate-500 group-hover:text-amber-400" />
+    <span className="text-xs font-medium uppercase tracking-wide">Security Protocols</span>
     </DropdownMenuItem>
+
+    <DropdownMenuSeparator className="bg-white/10" />
 
     <DropdownMenuItem
     onClick={() => navigate('/help')}
-    className="text-white/70 hover:text-white hover:bg-[#353638]/50 cursor-pointer"
+    className="group cursor-pointer py-2 focus:bg-white/5 focus:text-cyan-300"
     >
-    <HelpCircle className="w-4 h-4 mr-2" />
-    Help & Support
-    </DropdownMenuItem>
-
-    <DropdownMenuSeparator className="bg-[#353638]" />
-
-    {/* Logout */}
-    <DropdownMenuItem
-    onClick={handleLogout}
-    className="text-red-400 hover:text-red-300 hover:bg-red-500/10 cursor-pointer"
-    >
-    <LogOut className="w-4 h-4 mr-2" />
-    Logout
+    <HelpCircle className="w-4 h-4 mr-3 text-slate-500 group-hover:text-purple-400" />
+    <span className="text-xs font-medium uppercase tracking-wide">Oracle Guide</span>
     </DropdownMenuItem>
     </DropdownMenuContent>
     </DropdownMenu>

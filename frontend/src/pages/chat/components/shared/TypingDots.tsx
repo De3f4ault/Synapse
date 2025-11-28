@@ -1,6 +1,8 @@
 /**
- * TypingDots - Animated typing indicator
- * Three dots bouncing animation for AI thinking state
+ * TypingDots - Oracle Theme
+ * Minimalist thinking indicator.
+ *
+ * Location: chat/components/shared/TypingDots.tsx
  */
 
 import React from 'react';
@@ -13,8 +15,8 @@ interface TypingDotsProps {
 
 export const TypingDots: React.FC<TypingDotsProps> = ({ className }) => {
   const dotVariants = {
-    initial: { y: 0 },
-    animate: { y: -8 },
+    initial: { y: 0, opacity: 0.5 },
+    animate: { y: -6, opacity: 1 },
   };
 
   const containerVariants = {
@@ -38,11 +40,8 @@ export const TypingDots: React.FC<TypingDotsProps> = ({ className }) => {
       <motion.div
       key={index}
       variants={dotVariants}
-      transition={{
-        duration: 0.4,
-        ease: 'easeInOut',
-      }}
-      className="w-2 h-2 rounded-full bg-[#5685FE]"
+      transition={{ duration: 0.4, ease: 'easeInOut' }}
+      className="w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_4px_cyan]"
       />
     ))}
     </motion.div>

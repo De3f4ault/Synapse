@@ -1,15 +1,19 @@
 /**
- * Available AI models
- * Model configuration for chat interface
+ * Available AI models - Oracle Theme
+ * "Neural Cores" configuration.
+ *
+ * Location: chat/constants/modelOptions.ts
  */
+
+import { BrainCircuit, Zap, Sparkles, Cpu, Eye } from 'lucide-react';
 
 export interface AIModel {
   id: string;
-  name: string;
+  name: string; // Display Name (Thematic)
   description: string;
   provider: 'openai' | 'anthropic' | 'google' | 'meta';
-  contextWindow: number; // tokens
-  maxOutput: number; // tokens
+  contextWindow: number;
+  maxOutput: number;
   features: {
     streaming: boolean;
     functionCalling: boolean;
@@ -17,17 +21,17 @@ export interface AIModel {
     codeExecution: boolean;
   };
   pricing: {
-    input: number; // per million tokens
-    output: number; // per million tokens
+    input: number;
+    output: number;
   };
-  icon?: string;
+  icon?: any; // Changed to any to accept Lucide components directly if needed
 }
 
 export const availableModels: AIModel[] = [
   {
     id: 'gpt-4-turbo',
-    name: 'GPT-4 Turbo',
-    description: 'Most capable model, best for complex tasks',
+    name: 'OMNI-PRIME (GPT-4)',
+    description: 'Maximum coherence for complex reasoning tasks.',
     provider: 'openai',
     contextWindow: 128000,
     maxOutput: 4096,
@@ -37,15 +41,13 @@ export const availableModels: AIModel[] = [
       vision: true,
       codeExecution: false,
     },
-    pricing: {
-      input: 10,
-      output: 30,
-    },
+    pricing: { input: 10, output: 30 },
+    icon: BrainCircuit
   },
 {
   id: 'gpt-4',
-  name: 'GPT-4',
-  description: 'Previous generation, reliable and capable',
+  name: 'LEGACY-CORE (GPT-4)',
+  description: 'Reliable, previous generation intelligence.',
   provider: 'openai',
   contextWindow: 8192,
   maxOutput: 4096,
@@ -55,15 +57,13 @@ export const availableModels: AIModel[] = [
     vision: false,
     codeExecution: false,
   },
-  pricing: {
-    input: 30,
-    output: 60,
-  },
+  pricing: { input: 30, output: 60 },
+  icon: Cpu
 },
 {
   id: 'gpt-3.5-turbo',
-  name: 'GPT-3.5 Turbo',
-  description: 'Fast and efficient for simpler tasks',
+  name: 'VELOCITY-CORE (GPT-3.5)',
+  description: 'High-speed processor for rapid queries.',
   provider: 'openai',
   contextWindow: 16385,
   maxOutput: 4096,
@@ -73,15 +73,13 @@ export const availableModels: AIModel[] = [
     vision: false,
     codeExecution: false,
   },
-  pricing: {
-    input: 0.5,
-    output: 1.5,
-  },
+  pricing: { input: 0.5, output: 1.5 },
+  icon: Zap
 },
 {
   id: 'claude-3-opus',
-  name: 'Claude 3 Opus',
-  description: 'Most powerful Claude model',
+  name: 'ANTHRO-OPUS',
+  description: 'Deep semantic understanding and creative synthesis.',
   provider: 'anthropic',
   contextWindow: 200000,
   maxOutput: 4096,
@@ -91,15 +89,13 @@ export const availableModels: AIModel[] = [
     vision: true,
     codeExecution: false,
   },
-  pricing: {
-    input: 15,
-    output: 75,
-  },
+  pricing: { input: 15, output: 75 },
+  icon: Sparkles
 },
 {
   id: 'claude-3-sonnet',
-  name: 'Claude 3 Sonnet',
-  description: 'Balanced performance and speed',
+  name: 'ANTHRO-SONNET',
+  description: 'Balanced logic gate for general tasks.',
   provider: 'anthropic',
   contextWindow: 200000,
   maxOutput: 4096,
@@ -109,33 +105,13 @@ export const availableModels: AIModel[] = [
     vision: true,
     codeExecution: false,
   },
-  pricing: {
-    input: 3,
-    output: 15,
-  },
-},
-{
-  id: 'claude-3-haiku',
-  name: 'Claude 3 Haiku',
-  description: 'Fastest Claude model',
-  provider: 'anthropic',
-  contextWindow: 200000,
-  maxOutput: 4096,
-  features: {
-    streaming: true,
-    functionCalling: true,
-    vision: true,
-    codeExecution: false,
-  },
-  pricing: {
-    input: 0.25,
-    output: 1.25,
-  },
+  pricing: { input: 3, output: 15 },
+  icon: Sparkles
 },
 {
   id: 'gemini-pro',
-  name: 'Gemini Pro',
-  description: 'Google\'s most capable model',
+  name: 'GEMINI-PRO',
+  description: 'Google neural network integration.',
   provider: 'google',
   contextWindow: 32768,
   maxOutput: 8192,
@@ -145,10 +121,8 @@ export const availableModels: AIModel[] = [
     vision: false,
     codeExecution: false,
   },
-  pricing: {
-    input: 0.5,
-    output: 1.5,
-  },
+  pricing: { input: 0.5, output: 1.5 },
+  icon: Eye
 },
 ];
 
@@ -178,10 +152,10 @@ export const getModelsByProvider = (
  */
 export const formatContextWindow = (tokens: number): string => {
   if (tokens >= 1000000) {
-    return `${(tokens / 1000000).toFixed(1)}M`;
+    return `${(tokens / 1000000).toFixed(1)}M TOKENS`;
   }
   if (tokens >= 1000) {
-    return `${(tokens / 1000).toFixed(0)}K`;
+    return `${(tokens / 1000).toFixed(0)}K TOKENS`;
   }
   return `${tokens}`;
 };

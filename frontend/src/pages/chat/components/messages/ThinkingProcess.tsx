@@ -1,77 +1,90 @@
 /**
- * ThinkingProcess - DeepThink collapsible reasoning
- * Shows AI's thought process (function_calls metadata)
+ * ThinkingProcess - Oracle Theme
+ * Visualizes the "Gnosis" or "Decryption" phase of generation.
+ *
+ * Location: chat/components/messages/ThinkingProcess.tsx
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronDown, Brain, Zap } from 'lucide-react';
+import { Loader2, ChevronDown, Brain } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface ThinkingProcessProps {
-  data: any; // function_calls metadata from backend
+  data?: any;
+  isStreaming?: boolean;
   className?: string;
 }
 
+const THOUGHTS = [
+  "PARSING_SEMANTIC_VECTORS...",
+"ACCESSING_DEEP_ARCHIVE...",
+"CROSS_REFERENCING_NODES...",
+"SYNTHESIZING_LOGIC_GATES...",
+"DECRYPTING_TRUTH_MATRIX...",
+"CHECKING_ENTROPY_LEVELS..."
+];
+
 export const ThinkingProcess: React.FC<ThinkingProcessProps> = ({
   data,
+  isStreaming,
   className,
 }) => {
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [currentThought, setCurrentThought] = useState(THOUGHTS[0]);
+  const [isExpanded, setIsExpanded] = useState(isStreaming);
 
-  // Parse thinking data
+  // Cycle thoughts while streaming
+  useEffect(() => {
+    if (!isStreaming) return;
+    const interval = setInterval(() => {
+      setCurrentThought(THOUGHTS[Math.floor(Math.random() * THOUGHTS.length)]);
+    }, 1200);
+    return () => clearInterval(interval);
+  }, [isStreaming]);
+
+  // If we have actual thinking data (from DeepThink), we show the collapsible
+  // If we are just visualising the wait time, we show the pulsing text
+
+  if (isStreaming && !data) {
+    return (
+      <div className={cn("flex items-center gap-3 text-cyan-500/80 font-mono text-xs tracking-widest animate-pulse mb-4", className)}>
+      <Loader2 size={14} className="animate-spin" />
+      <span className="uppercase">{currentThought}</span>
+      </div>
+    );
+  }
+
+  if (!data) return null;
+
+  // DeepThink Data Display
   const thinkingText = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
-  const hasContent = thinkingText && thinkingText.length > 0;
-
-  if (!hasContent) return null;
 
   return (
-    <div className={cn('mb-3', className)}>
-    {/* Collapsed Header */}
-    <motion.button
+    <div className={cn('mb-4', className)}>
+    <button
     onClick={() => setIsExpanded(!isExpanded)}
-    whileHover={{ scale: 1.01 }}
-    whileTap={{ scale: 0.99 }}
     className={cn(
-      'w-full flex items-center gap-2 px-3 py-2 rounded-lg',
-      'bg-purple-500/10 border border-purple-500/20',
-      'hover:bg-purple-500/15 transition-colors duration-200',
-      'text-left'
+      "flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-mono uppercase tracking-wider transition-all",
+      "bg-cyan-950/30 border-cyan-500/20 text-cyan-400 hover:bg-cyan-950/50"
     )}
     >
-    <Brain className="w-4 h-4 text-purple-400 flex-shrink-0" />
-    <span className="text-sm font-medium text-purple-300 flex-1">
-    Thinking Process
-    </span>
-    <Zap className="w-3.5 h-3.5 text-purple-400/60" />
-    <motion.div
-    animate={{ rotate: isExpanded ? 180 : 0 }}
-    transition={{ duration: 0.2 }}
-    >
-    <ChevronDown className="w-4 h-4 text-purple-400" />
+    <Brain size={12} />
+    <span>Thought Process</span>
+    <motion.div animate={{ rotate: isExpanded ? 180 : 0 }}>
+    <ChevronDown size={12} />
     </motion.div>
-    </motion.button>
+    </button>
 
-    {/* Expanded Content */}
     <AnimatePresence>
     {isExpanded && (
       <motion.div
       initial={{ height: 0, opacity: 0 }}
       animate={{ height: 'auto', opacity: 1 }}
       exit={{ height: 0, opacity: 0 }}
-      transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
       className="overflow-hidden"
       >
-      <div
-      className={cn(
-        'mt-2 p-4 rounded-lg',
-        'bg-purple-500/5 border border-purple-500/10',
-        'text-sm text-purple-200/80 leading-relaxed'
-      )}
-      >
-      <pre className="whitespace-pre-wrap font-mono text-xs">
+      <div className="mt-2 p-3 rounded-lg bg-black/40 border border-cyan-500/10 text-slate-400 text-xs font-mono whitespace-pre-wrap">
       {thinkingText}
-      </pre>
       </div>
       </motion.div>
     )}

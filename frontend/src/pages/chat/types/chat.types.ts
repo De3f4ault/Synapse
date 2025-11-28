@@ -17,6 +17,9 @@ export interface ChatSession extends ChatSessionResponse {
   isActive?: boolean;
   unreadCount?: number;
   lastViewedAt?: string;
+  // Oracle Specific
+  neuralDensity?: 'HIGH' | 'LOW';
+  isDeepGnosis?: boolean;
 }
 
 /**
@@ -27,6 +30,13 @@ export interface ChatMessage extends ChatMessageResponse {
   error?: string;
   isOptimistic?: boolean; // For optimistic updates
   retryCount?: number;
+  // Oracle Specific
+  isDecryption?: boolean;
+  artifact?: {
+    title: string;
+    type: 'code' | 'stats' | 'system' | 'vision';
+    content: string;
+  } | null;
 }
 
 /**
@@ -177,4 +187,15 @@ export interface ChatWebSocketState {
   lastDisconnected?: string;
   reconnectAttempts: number;
   error?: string;
+}
+
+// --- ORACLE SPECIFIC TYPES ---
+export type NeuralDensity = 'HIGH' | 'LOW';
+
+export interface OracleUiState {
+  isDeepGnosis: boolean;
+  neuralDensity: NeuralDensity;
+  sidebarOpen: boolean;
+  isListening: boolean;
+  isProcessing: boolean;
 }

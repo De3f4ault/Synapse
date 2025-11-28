@@ -1,79 +1,55 @@
 /**
- * SessionList - Time-grouped chat sessions
- * Groups: Today, Yesterday, Last 7 Days, Last 30 Days, Older
+ * SessionList - Oracle Theme
+ * Groups sessions into "Visions" based on time.
+ *
+ * Location: chat/components/sidebar/SessionList.tsx
  */
 
 import React from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { listSessionsApiV1ChatSessionsGet } from '@/api/generated/services.gen';
 import type { ChatSessionResponse } from '@/api/generated/types.gen';
 import { SessionItem } from './SessionItem';
 import { groupSessionsByDate } from '../../utils/dateGrouper';
-import { Loader2, MessageSquare } from 'lucide-react';
+import { MessageSquare, Loader2 } from 'lucide-react';
 
-export const SessionList: React.FC = () => {
-  // Fetch sessions
-  const { data, isLoading, error } = useQuery({
-    queryKey: ['chat-sessions'],
-    queryFn: () => listSessionsApiV1ChatSessionsGet({ page: 1, pageSize: 100 }),
-                                              refetchOnWindowFocus: false,
-                                              staleTime: 1000 * 60 * 5, // 5 minutes
-  });
+interface SessionListProps {
+  sessions: ChatSessionResponse[];
+  isLoading?: boolean;
+}
 
-  // Extract actual session list
-  const sessions: ChatSessionResponse[] = data?.items ?? [];
-
-  // Loading state
+export const SessionList: React.FC<SessionListProps> = ({ sessions, isLoading }) => {
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center h-32 gap-2">
-      <Loader2 className="w-5 h-5 text-primary animate-spin" />
-      <p className="text-xs text-white/40">Loading sessions...</p>
+      <div className="flex flex-col items-center justify-center h-32 gap-3 text-cyan-500/50">
+      <Loader2 className="w-5 h-5 animate-spin" />
+      <p className="text-[10px] font-mono tracking-widest uppercase">Consulting Archives...</p>
       </div>
     );
   }
 
-  // Error state (handles 401 too)
-  if (error) {
-    return (
-      <div className="flex flex-col items-center justify-center h-32 gap-2 px-4">
-      <MessageSquare className="w-5 h-5 text-red-400" />
-      <p className="text-xs text-red-400 text-center">Failed to load sessions</p>
-      </div>
-    );
-  }
-
-  // Empty state
   if (sessions.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-32 gap-2 px-4">
-      <MessageSquare className="w-8 h-8 text-white/20" />
-      <p className="text-xs text-white/40 text-center">
-      No conversations yet
-      </p>
-      <p className="text-xs text-white/30 text-center">
-      Start a new chat to begin
+      <div className="flex flex-col items-center justify-center h-32 gap-2 px-4 opacity-50">
+      <MessageSquare className="w-8 h-8 text-slate-600" />
+      <p className="text-[10px] font-mono text-slate-500 uppercase tracking-widest text-center">
+      No visions recorded
       </p>
       </div>
     );
   }
 
-  // Group sessions by date
+  // Use your existing grouping utility
   const groupedSessions = groupSessionsByDate(sessions);
 
   return (
-    <div className="py-2">
+    <div className="pb-4">
     {Object.entries(groupedSessions).map(([group, groupSessions]) => (
-      <div key={group} className="mb-4">
-      {/* Group Header */}
-      <div className="px-3 py-2">
-      <h3 className="text-xs font-semibold text-white/50 uppercase tracking-wider">
+      <div key={group} className="mb-6 last:mb-0">
+      <div className="px-3 mb-2">
+      <h3 className="text-[9px] font-mono text-slate-600 uppercase tracking-[0.2em] pl-1">
       {group}
       </h3>
       </div>
-
-      {/* Sessions in Group */}
-      <div className="space-y-1 px-2">
+      <div className="space-y-1">
       {groupSessions.map((session) => (
         <SessionItem key={session.id} session={session} />
       ))}

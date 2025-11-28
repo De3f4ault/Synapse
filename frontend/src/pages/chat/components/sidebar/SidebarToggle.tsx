@@ -1,11 +1,12 @@
 /**
- * SidebarToggle - DeepSeek style sidebar toggle
- * Clean, minimal toggle button with smooth animation
+ * SidebarToggle - Oracle Theme
+ *
+ * Location: chat/components/sidebar/SidebarToggle.tsx
  */
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface SidebarToggleProps {
@@ -23,32 +24,22 @@ export const SidebarToggle: React.FC<SidebarToggleProps> = ({
     <button
     onClick={onClick}
     className={cn(
-      'flex items-center justify-center',
-      'w-8 h-8 rounded-md',
-      'text-white/60 hover:text-white',
-      'hover:bg-white/5',
-      'transition-all duration-150',
-      'focus:outline-none focus:ring-1 focus:ring-white/20',
+      'p-2 text-slate-500 hover:text-cyan-400 transition-colors rounded-full hover:bg-white/5',
+      'focus:outline-none',
       className
     )}
-    aria-label={isCollapsed ? 'Open sidebar' : 'Close sidebar'}
+    aria-label={isCollapsed ? 'Expand Grimoire' : 'Collapse Grimoire'}
     >
     <motion.div
     initial={false}
-    animate={{
-      rotate: isCollapsed ? 0 : 180,
-      scale: isCollapsed ? 1 : 0.95
-    }}
-    transition={{
-      type: "spring",
-      stiffness: 400,
-      damping: 25
-    }}
+    animate={{ scale: 1 }}
+    whileHover={{ scale: 1.1 }}
+    whileTap={{ scale: 0.9 }}
     >
     {isCollapsed ? (
-      <PanelLeftOpen className="w-4 h-4" strokeWidth={2} />
+      <ChevronRight size={24} />
     ) : (
-      <PanelLeftClose className="w-4 h-4" strokeWidth={2} />
+      <ChevronLeft size={24} />
     )}
     </motion.div>
     </button>

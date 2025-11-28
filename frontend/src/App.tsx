@@ -5,19 +5,19 @@ import { WebSocketProvider } from '@/api/websocket/context/WebSocketProvider';
 
 /**
  * App Component
- *
- * Root component with providers.
- *
- * UPDATED: Added WebSocketProvider to wrap entire app
+ * Root application providers:
+ * - React Query
+ * - WebSocketProvider
+ * - App Router
+ * - Global Toaster
  */
 
-// Create QueryClient instance
 const queryClient = new QueryClient({
     defaultOptions: {
         queries: {
             retry: 1,
             refetchOnWindowFocus: false,
-            staleTime: 5 * 60 * 1000, // 5 minutes
+            staleTime: 5 * 60 * 1000,
         },
     },
 });
