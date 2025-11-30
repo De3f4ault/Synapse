@@ -11,6 +11,7 @@ import {
     getDueCardsApiV1CardsDueGet,
     reviewCardApiV1CardsCardIdReviewPost,
     getCardApiV1CardsCardIdGet,
+    updateCardApiV1CardsCardIdPut,
     deleteCardApiV1CardsCardIdDelete,
 } from '../generated';
 import type {
@@ -19,6 +20,7 @@ import type {
     DeckUpdate,
     FlashcardResponse,
     FlashcardCreate,
+    FlashcardUpdate,
     FlashcardGenerateRequest,
     ReviewSubmit,
     ReviewResult,
@@ -133,6 +135,27 @@ export const useCard = (cardId: number) => {
         queryKey: queryKeys.flashcards.cards.detail(cardId),
                                        queryFn: () => getCardApiV1CardsCardIdGet({ cardId }),
                                        enabled: !!cardId,
+    });
+};
+
+/**
+ * ✅ NEW: Hook to update a flashcard
+ */
+export const useUpdateCard = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ cardId, data }: { cardId: number; data: FlashcardUpdate }) =>
+        updateCardApiV1CardsCardIdPut({ cardId, requestBody: data }),
+                       onSuccess: (updatedCard, variables) => {
+                           // Invalidate the specific card
+                           queryClient.invalidateQueries({ queryKey: queryKeys.flashcards.cards.detail(variables.cardId) });
+                           // Invalidate the deck that contains this card
+                           if (updatedCard.deck_id) {
+                               queryClient.invalidateQueries({ queryKey: queryKeys.flashcards.detail(updatedCard.deck_id) });
+                           }
+                           // Invalidate due cards list
+                           queryClient.invalidateQueries({ queryKey: queryKeys.flashcards.cards.due() });
+                       },
     });
 };
 

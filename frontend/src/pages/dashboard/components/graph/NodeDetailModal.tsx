@@ -1,4 +1,4 @@
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
     Dialog,
     DialogContent,
@@ -7,18 +7,16 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import {
     ExternalLink,
     Calendar,
-    FileText,
     Target,
     Link2,
-    Clock
+    X,
+    Sparkles
 } from 'lucide-react';
-import { cn, formatRelativeTime, formatFileSize } from '@/lib/utils';
+import { cn, formatRelativeTime } from '@/lib/utils';
 import type { GraphNode } from '../../types/graph.types';
-import { ModuleBadge } from '../shared/ModuleBadge';
 import { getNodeIcon } from './GraphNode';
 
 interface NodeDetailModalProps {
@@ -29,13 +27,8 @@ interface NodeDetailModalProps {
 }
 
 /**
- * NodeDetailModal - Detailed view of graph node
- *
- * Features:
- * - Node metadata display
- * - Connected nodes list
- * - Quick actions (open, edit, delete)
- * - Type-specific information
+ * NodeDetailModal - "Mini AI Window" Style
+ * Dark glass backdrop, neon accents, and crisp details.
  */
 export function NodeDetailModal({
     node,
@@ -44,262 +37,91 @@ export function NodeDetailModal({
     onNodeClick
 }: NodeDetailModalProps) {
     if (!node) return null;
-
     const Icon = getNodeIcon(node.type);
 
     return (
         <Dialog open={!!node} onOpenChange={(open) => !open && onClose()}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-        <DialogHeader>
-        <div className="flex items-start gap-3">
-        <div className={cn(
-            'p-2 rounded-lg',
-            'bg-primary/10'
-        )}>
-        <Icon className="h-6 w-6 text-primary" />
-        </div>
-        <div className="flex-1 min-w-0">
-        <DialogTitle className="text-xl mb-1">
-        {node.label}
-        </DialogTitle>
-        <ModuleBadge moduleType={node.type} />
-        </div>
-        </div>
-        </DialogHeader>
+        <DialogContent className="max-w-md bg-[#0A0A0A]/95 backdrop-blur-2xl border border-white/10 shadow-2xl p-0 gap-0 overflow-hidden">
 
-        <div className="space-y-6">
-        {/* Metadata Section */}
-        <div className="space-y-3">
-        <h4 className="text-sm font-semibold flex items-center gap-2">
-        <FileText className="h-4 w-4" />
-        Information
-        </h4>
-
-        <div className="grid grid-cols-2 gap-3 text-sm">
-        {renderNodeMetadata(node)}
+        {/* Header */}
+        <div className="p-4 border-b border-white/10 flex justify-between items-center bg-white/5">
+        <div className="flex items-center gap-2">
+        <Sparkles className="w-4 h-4 text-cyan-400" />
+        <span className="text-xs font-bold text-white tracking-wide">Node Inspection</span>
         </div>
+        <button onClick={onClose} className="text-slate-500 hover:text-white transition-colors">
+        <X className="w-4 h-4" />
+        </button>
         </div>
 
-        {/* Connections Section */}
+        {/* Body */}
+        <div className="p-6 space-y-6">
+        {/* Title Block */}
+        <div className="flex items-start gap-4">
+        <div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center border border-purple-500/30 flex-shrink-0">
+        <Icon className="w-5 h-5 text-purple-400" />
+        </div>
+        <div>
+        <h2 className="text-lg font-bold text-white leading-tight">{node.label}</h2>
+        <div className="flex items-center gap-2 mt-1">
+        <Badge variant="outline" className="text-[10px] uppercase border-white/10 text-slate-400 bg-white/5">
+        {node.type}
+        </Badge>
+        <span className="text-[10px] text-slate-500 font-mono">
+        ID-{node.id.slice(0,4)}
+        </span>
+        </div>
+        </div>
+        </div>
+
+        {/* Metadata Grid */}
+        <div className="grid grid-cols-2 gap-3">
+        <div className="p-3 rounded-lg bg-white/5 border border-white/5">
+        <span className="text-[10px] text-slate-500 uppercase tracking-wider block mb-1">Created</span>
+        <span className="text-sm font-medium text-slate-200">
+        {node.metadata.createdAt ? formatRelativeTime(node.metadata.createdAt) : 'Unknown'}
+        </span>
+        </div>
+        <div className="p-3 rounded-lg bg-white/5 border border-white/5">
+        <span className="text-[10px] text-slate-500 uppercase tracking-wider block mb-1">Status</span>
+        <span className="text-sm font-medium text-emerald-400">Active</span>
+        </div>
+        </div>
+
+        {/* Connections */}
         {connections.length > 0 && (
-            <>
-            <Separator />
-            <div className="space-y-3">
-            <h4 className="text-sm font-semibold flex items-center gap-2">
-            <Link2 className="h-4 w-4" />
-            Connected Resources ({connections.length})
+            <div>
+            <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3 flex items-center gap-2">
+            <Link2 className="w-3 h-3" /> Linked Nodes ({connections.length})
             </h4>
-
-            <div className="space-y-2 max-h-48 overflow-y-auto">
-            {connections.slice(0, 10).map((connectedNode) => {
-                const ConnectedIcon = getNodeIcon(connectedNode.type);
+            <div className="space-y-2 max-h-40 overflow-y-auto custom-scrollbar">
+            {connections.slice(0, 5).map(conn => {
+                const ConnIcon = getNodeIcon(conn.type);
                 return (
-                    <motion.button
-                    key={connectedNode.id}
-                    whileHover={{ scale: 1.02, x: 4 }}
-                    className="w-full flex items-center gap-3 p-3 rounded-lg border hover:bg-accent transition-colors text-left"
-                    onClick={() => onNodeClick?.(connectedNode)}
+                    <button
+                    key={conn.id}
+                    onClick={() => onNodeClick?.(conn)}
+                    className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-white/10 transition-colors text-left group"
                     >
-                    <ConnectedIcon className="h-4 w-4 text-muted-foreground" />
-                    <span className="flex-1 truncate text-sm">
-                    {connectedNode.label}
+                    <ConnIcon className="w-3 h-3 text-slate-600 group-hover:text-cyan-400 transition-colors" />
+                    <span className="text-xs text-slate-400 group-hover:text-slate-200 truncate flex-1">
+                    {conn.label}
                     </span>
-                    <ModuleBadge moduleType={connectedNode.type} size="sm" />
-                    </motion.button>
+                    </button>
                 );
             })}
-            {connections.length > 10 && (
-                <p className="text-xs text-muted-foreground text-center py-2">
-                ... and {connections.length - 10} more
-                </p>
-            )}
             </div>
             </div>
-            </>
         )}
 
-        {/* Actions */}
-        <div className="flex gap-2 pt-4">
-        <Button
-        className="flex-1"
-        onClick={() => {
-            window.location.href = getNodeUrl(node);
-        }}
-        >
-        <ExternalLink className="mr-2 h-4 w-4" />
-        Open
-        </Button>
-        <Button
-        variant="outline"
-        onClick={onClose}
-        >
-        Close
+        {/* Action Bar */}
+        <div className="flex gap-3 pt-2">
+        <Button className="flex-1 bg-white text-black hover:bg-slate-200 font-bold text-xs" onClick={() => window.open(node.metadata.url || '#', '_blank')}>
+        <ExternalLink className="w-3 h-3 mr-2" /> Open Resource
         </Button>
         </div>
         </div>
         </DialogContent>
         </Dialog>
     );
-}
-
-// Render node-specific metadata
-function renderNodeMetadata(node: GraphNode) {
-    const metadata = node.metadata;
-    const items: React.ReactNode[] = [];
-
-    // Common fields
-    if (metadata.createdAt) {
-        items.push(
-            <div key="created" className="flex flex-col gap-1">
-            <span className="text-muted-foreground text-xs flex items-center gap-1">
-            <Calendar className="h-3 w-3" />
-            Created
-            </span>
-            <span className="font-medium">
-            {formatRelativeTime(metadata.createdAt)}
-            </span>
-            </div>
-        );
-    }
-
-    // Type-specific fields
-    switch (node.type) {
-        case 'document':
-            if (metadata.fileSize) {
-                items.push(
-                    <div key="size" className="flex flex-col gap-1">
-                    <span className="text-muted-foreground text-xs">File Size</span>
-                    <span className="font-medium">{formatFileSize(metadata.fileSize)}</span>
-                    </div>
-                );
-            }
-            if (metadata.pageCount) {
-                items.push(
-                    <div key="pages" className="flex flex-col gap-1">
-                    <span className="text-muted-foreground text-xs">Pages</span>
-                    <span className="font-medium">{metadata.pageCount}</span>
-                    </div>
-                );
-            }
-            break;
-
-        case 'note':
-            if (metadata.contentLength) {
-                items.push(
-                    <div key="length" className="flex flex-col gap-1">
-                    <span className="text-muted-foreground text-xs">Length</span>
-                    <span className="font-medium">{metadata.contentLength} chars</span>
-                    </div>
-                );
-            }
-            if (metadata.childrenCount !== undefined) {
-                items.push(
-                    <div key="children" className="flex flex-col gap-1">
-                    <span className="text-muted-foreground text-xs">Sub-notes</span>
-                    <span className="font-medium">{metadata.childrenCount}</span>
-                    </div>
-                );
-            }
-            break;
-
-        case 'flashcard':
-            if (metadata.timesReviewed !== undefined) {
-                items.push(
-                    <div key="reviews" className="flex flex-col gap-1">
-                    <span className="text-muted-foreground text-xs flex items-center gap-1">
-                    <Target className="h-3 w-3" />
-                    Reviews
-                    </span>
-                    <span className="font-medium">{metadata.timesReviewed}</span>
-                    </div>
-                );
-            }
-            if (metadata.accuracy !== undefined) {
-                items.push(
-                    <div key="accuracy" className="flex flex-col gap-1">
-                    <span className="text-muted-foreground text-xs">Accuracy</span>
-                    <span className={cn(
-                        'font-medium',
-                        metadata.accuracy >= 0.7 ? 'text-green-600' :
-                        metadata.accuracy >= 0.5 ? 'text-yellow-600' :
-                        'text-red-600'
-                    )}>
-                    {(metadata.accuracy * 100).toFixed(0)}%
-                    </span>
-                    </div>
-                );
-            }
-            if (metadata.nextReview) {
-                items.push(
-                    <div key="next" className="flex flex-col gap-1">
-                    <span className="text-muted-foreground text-xs flex items-center gap-1">
-                    <Clock className="h-3 w-3" />
-                    Next Review
-                    </span>
-                    <span className="font-medium">
-                    {formatRelativeTime(metadata.nextReview)}
-                    </span>
-                    </div>
-                );
-            }
-            break;
-
-        case 'chat':
-            if (metadata.messageCount) {
-                items.push(
-                    <div key="messages" className="flex flex-col gap-1">
-                    <span className="text-muted-foreground text-xs">Messages</span>
-                    <span className="font-medium">{metadata.messageCount}</span>
-                    </div>
-                );
-            }
-            break;
-
-        case 'quiz':
-            if (metadata.questionCount) {
-                items.push(
-                    <div key="questions" className="flex flex-col gap-1">
-                    <span className="text-muted-foreground text-xs">Questions</span>
-                    <span className="font-medium">{metadata.questionCount}</span>
-                    </div>
-                );
-            }
-            if (metadata.difficulty) {
-                items.push(
-                    <div key="difficulty" className="flex flex-col gap-1">
-                    <span className="text-muted-foreground text-xs">Difficulty</span>
-                    <Badge variant="outline" className="w-fit capitalize">
-                    {metadata.difficulty}
-                    </Badge>
-                    </div>
-                );
-            }
-            break;
-    }
-
-    return items.length > 0 ? items : (
-        <p className="text-sm text-muted-foreground col-span-2">
-        No additional information available
-        </p>
-    );
-}
-
-// Get URL for node
-function getNodeUrl(node: GraphNode): string {
-    const id = node.metadata.id;
-
-    switch (node.type) {
-        case 'document':
-            return `/documents/${id}`;
-        case 'note':
-            return `/notes/${id}`;
-        case 'flashcard':
-            return `/flashcards/review?card=${id}`;
-        case 'chat':
-            return `/chat/${id}`;
-        case 'quiz':
-            return `/quizzes/${id}`;
-        default:
-            return '/dashboard';
-    }
 }

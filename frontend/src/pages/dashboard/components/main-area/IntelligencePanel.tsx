@@ -1,4 +1,3 @@
-import { motion } from 'framer-motion';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Lightbulb, TrendingDown, Sparkles, Trophy } from 'lucide-react';
 import type { DashboardData } from '../../types/dashboard.types';
@@ -7,7 +6,6 @@ import { ContextCard } from '../intelligence/ContextCard';
 import { WeakAreaCard } from '../intelligence/WeakAreaCard';
 import { NextActionCard } from '../intelligence/NextActionCard';
 import { MilestoneCard } from '../intelligence/MilestoneCard';
-import { ActivityHeatmap } from '../activity/ActivityHeatmap';
 import { ActivityFeed } from '../activity/ActivityFeed';
 import { ActivitySparkline } from '../activity/ActivitySparkline';
 
@@ -16,53 +14,18 @@ interface IntelligencePanelProps {
 }
 
 /**
- * IntelligencePanel - Left panel showing AI insights and activity trends
- *
- * Displays:
- * - Next recommended action (prominent)
- * - Weak areas needing attention
- * - Context insights
- * - Milestone achievements
- * - Performance trends (sparklines)
- * - Activity Overview (heatmap + recent activity feed)
+ * IntelligencePanel - "Cortex Feed" (Left Sidebar)
  */
 export function IntelligencePanel({ data }: IntelligencePanelProps) {
     const intelligence = useIntelligence(data);
 
-    // Loading state
     if (intelligence.isLoading) {
         return (
-            <div className="h-full flex items-center justify-center">
+            <div className="h-full flex items-center justify-center dashboard-glass rounded-2xl">
             <div className="text-center space-y-2">
-            <Lightbulb className="h-8 w-8 mx-auto text-muted-foreground animate-pulse" />
-            <p className="text-sm text-muted-foreground">
-            Analyzing your learning data...
-            </p>
-            </div>
-            </div>
-        );
-    }
-
-    const hasContent =
-    intelligence.nextAction ||
-    intelligence.weakAreas.length > 0 ||
-    intelligence.milestones.length > 0 ||
-    intelligence.contextInsights.length > 0;
-
-    // Empty state
-    if (!hasContent) {
-        return (
-            <div className="h-full flex items-center justify-center p-6">
-            <div className="text-center space-y-3 max-w-sm">
-            <motion.div
-            animate={{ rotate: [0, 10, -10, 0] }}
-            transition={{ duration: 2, repeat: Infinity }}
-            >
-            <Sparkles className="h-12 w-12 mx-auto text-muted-foreground/50" />
-            </motion.div>
-            <h3 className="font-semibold">All Caught Up!</h3>
-            <p className="text-sm text-muted-foreground">
-            No immediate actions needed. Keep up the great work! 🎉
+            <Lightbulb className="h-6 w-6 mx-auto text-purple-500 animate-pulse" />
+            <p className="text-xs text-slate-500 font-mono uppercase tracking-widest">
+            ANALYZING DATA STREAM...
             </p>
             </div>
             </div>
@@ -70,100 +33,85 @@ export function IntelligencePanel({ data }: IntelligencePanelProps) {
     }
 
     return (
-        <div className="h-full flex flex-col">
-        <ScrollArea className="flex-1">
-        {/* ============================================
-            Performance Trends (Sparklines)
-    ============================================ */}
-    <div className="p-4 border-b border-border">
-    <h3 className="text-sm font-semibold text-foreground mb-3">
-    Performance Trends
-    </h3>
-    <ActivitySparkline />
-    </div>
-
-    <div className="p-4 space-y-4">
-    {/* Header */}
-    <div className="flex items-center gap-2 mb-2">
-    <Lightbulb className="h-5 w-5 text-primary" />
-    <h2 className="text-lg font-semibold">Intelligence</h2>
-    </div>
-
-    {/* Next Action (Most Prominent) */}
-    {intelligence.nextAction && (
-        <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.4 }}
-        >
-        <NextActionCard recommendation={intelligence.nextAction} />
-        </motion.div>
-    )}
-
-    {/* Milestones Section */}
-    {intelligence.milestones.length > 0 && (
-        <div className="space-y-3">
-        <div className="flex items-center gap-2">
-        <Trophy className="h-4 w-4 text-yellow-600" />
-        <h3 className="text-sm font-semibold">Achievements</h3>
+        <div className="h-full flex flex-col gap-4">
+        {/* Header */}
+        <div className="dashboard-glass rounded-2xl p-4 flex items-center justify-between shrink-0">
+        <div className="flex items-center gap-3">
+        <div className="p-2 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400">
+        <Sparkles className="w-4 h-4" />
         </div>
-        {intelligence.milestones.map((milestone) => (
-            <MilestoneCard
-            key={milestone.id}
-            milestone={milestone}
-            onShare={() => console.log('Share milestone:', milestone)}
-            />
-        ))}
+        <span className="text-xs font-bold text-white tracking-widest uppercase">Cortex Feed</span>
         </div>
-    )}
+        <div className="flex gap-1">
+        <span className="h-1.5 w-1.5 rounded-full bg-purple-500 animate-pulse" />
+        </div>
+        </div>
 
-    {/* Weak Areas Section */}
-    {intelligence.weakAreas.length > 0 && (
-        <div className="space-y-3">
-        <div className="flex items-center gap-2">
-        <TrendingDown className="h-4 w-4 text-orange-600" />
-        <h3 className="text-sm font-semibold">Needs Attention</h3>
-        </div>
-        {intelligence.weakAreas.map((area) => (
-            <WeakAreaCard key={area.topic} weakArea={area} />
-        ))}
-        </div>
-    )}
+        <ScrollArea className="flex-1 dashboard-glass rounded-2xl overflow-hidden border border-white/5">
+        <div className="p-4 space-y-6">
 
-    {/* Context Insights Section */}
-    {intelligence.contextInsights.length > 0 && (
-        <div className="space-y-3">
-        <div className="flex items-center gap-2">
-        <Sparkles className="h-4 w-4 text-blue-600" />
-        <h3 className="text-sm font-semibold">Insights</h3>
-        </div>
-        {intelligence.contextInsights.map((insight, index) => (
-            <ContextCard
-            key={`${insight.type}-${index}`}
-            insight={insight}
-            />
-        ))}
-        </div>
-    )}
-    </div>
-    </ScrollArea>
-
-    {/* ============================================
-        Activity Tracking Section
-        ============================================ */}
-        <div className="p-4 space-y-4 border-t border-border mt-auto">
-        <h3 className="text-sm font-semibold text-foreground">
-        Activity Overview
+        {/* Performance Sparklines */}
+        <div className="space-y-2">
+        <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-1">
+        Neural Metrics
         </h3>
+        <ActivitySparkline />
+        </div>
 
-        {/* Activity Heatmap */}
-        <ActivityHeatmap />
+        {/* Next Action (Priority) */}
+        {intelligence.nextAction && (
+            <div>
+            <NextActionCard recommendation={intelligence.nextAction} />
+            </div>
+        )}
 
-        {/* Recent Activity Feed */}
-        <div className="mt-4">
-        <h4 className="text-xs font-medium text-muted-foreground mb-2">
-        Recent Activity
-        </h4>
+        {/* Milestones */}
+        {intelligence.milestones.length > 0 && (
+            <div className="space-y-2">
+            <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-1 flex items-center gap-2">
+            <Trophy className="w-3 h-3" /> Breakthroughs
+            </h3>
+            {intelligence.milestones.map((milestone) => (
+                <MilestoneCard
+                key={milestone.id}
+                milestone={milestone}
+                />
+            ))}
+            </div>
+        )}
+
+        {/* Weak Areas */}
+        {intelligence.weakAreas.length > 0 && (
+            <div className="space-y-2">
+            <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-1 flex items-center gap-2">
+            <TrendingDown className="w-3 h-3 text-red-400" /> Retention Alerts
+            </h3>
+            {intelligence.weakAreas.map((area) => (
+                <WeakAreaCard key={area.topic} weakArea={area} />
+            ))}
+            </div>
+        )}
+
+        {/* Context Insights */}
+        {intelligence.contextInsights.length > 0 && (
+            <div className="space-y-2">
+            <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-1">
+            Optimization
+            </h3>
+            {intelligence.contextInsights.map((insight, index) => (
+                <ContextCard
+                key={`${insight.type}-${index}`}
+                insight={insight}
+                />
+            ))}
+            </div>
+        )}
+        </div>
+        </ScrollArea>
+
+        {/* Bottom: Activity */}
+        <div className="h-1/3 flex flex-col gap-4 shrink-0">
+        <div className="flex-1 dashboard-glass rounded-2xl overflow-hidden">
         <ActivityFeed />
         </div>
         </div>

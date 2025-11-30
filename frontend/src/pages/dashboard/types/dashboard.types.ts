@@ -31,45 +31,32 @@ export interface DashboardData {
 }
 
 /**
- * Intelligence insights generated from dashboard data
- */
-export interface IntelligenceInsight {
-    type: 'context' | 'weak_area' | 'milestone' | 'next_action';
-    title: string;
-    message: string;
-    severity?: 'low' | 'medium' | 'high';
-    action?: {
-        label: string;
-        onClick: () => void;
-    };
-    metadata?: Record<string, unknown>;
-}
-
-/**
  * Priority levels for queue items
  */
 export type PriorityLevel = 'urgent' | 'high' | 'medium' | 'low';
 
 /**
+ * Module types
+ */
+export type ModuleType = 'flashcards' | 'notes' | 'documents' | 'chat' | 'quizzes';
+
+/**
  * Queue item representing an actionable task
+ * FIXED: Aligned with actual usage in useFocusQueue
  */
 export interface QueueItem {
     id: string;
     type: 'flashcard' | 'note' | 'document' | 'quiz' | 'chat';
+    moduleType: ModuleType; // Which module this belongs to
     title: string;
     description?: string;
-    priority: PriorityLevel;
-    priorityScore: number; // 0-1 calculated score
+    priority: number; // 0-1 calculated priority score
     dueDate?: string;
+    estimatedMinutes?: number;
     metadata: {
-        moduleId: number;
-        moduleName: string;
-        accuracy?: number;
-        reviewCount?: number;
-        lastReviewed?: string;
         [key: string]: unknown;
     };
-    action: () => void;
+    actionUrl: string; // Direct navigation URL
 }
 
 /**

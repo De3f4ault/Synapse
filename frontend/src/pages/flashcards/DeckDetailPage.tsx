@@ -22,7 +22,6 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
-import { Progress } from '@/components/ui/progress';
 import {
     ArrowLeft,
     Play,
@@ -32,27 +31,19 @@ import {
     X,
     Trash2,
     Target,
-    BookOpen,
-    Clock,
-    TrendingUp,
     Layers,
+    Clock,
     Brain,
     Zap,
     Sparkles,
+    Edit,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
 /**
  * Neural Core Control Panel - Enhanced Deck Detail
- *
- * Features:
- * - Deep space neural aesthetic
- * - Inline editing with glassmorphic inputs
- * - Enhanced stat visualizations
- * - Tech-themed progress indicators
- * - Color-coded learning state badges
- * - Preserved full CRUD functionality
+ * STANDARDIZED WITH DASHBOARD (#020202)
  */
 
 export function DeckDetailPage() {
@@ -168,7 +159,7 @@ export function DeckDetailPage() {
 
     if (deckLoading) {
         return (
-            <div className="min-h-screen bg-[#020408] flex items-center justify-center">
+            <div className="min-h-screen bg-[#020202] flex items-center justify-center">
             <div className="flex flex-col items-center gap-4">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-500" />
             <p className="text-slate-400 font-mono text-sm uppercase tracking-wider">
@@ -181,12 +172,12 @@ export function DeckDetailPage() {
 
     if (!deck) {
         return (
-            <div className="min-h-screen bg-[#020408] flex items-center justify-center text-white">
+            <div className="min-h-screen bg-[#020202] flex items-center justify-center text-white">
             <div className="text-center">
             <Brain className="h-16 w-16 text-red-500 mx-auto mb-4" />
             <h2 className="text-2xl font-serif font-bold mb-2">Core Not Found</h2>
             <p className="text-slate-400 font-mono text-sm mb-6">Neural link severed</p>
-            <Button onClick={() => navigate('/flashcards')} variant="outline">
+            <Button onClick={() => navigate('/flashcards')} variant="outline" className="bg-white/5 border-white/5">
             <ArrowLeft className="mr-2 h-4 w-4" />
             Return to Hub
             </Button>
@@ -196,7 +187,7 @@ export function DeckDetailPage() {
     }
 
     return (
-        <div className="min-h-screen bg-[#020408] text-slate-200 relative overflow-hidden">
+        <div className="min-h-screen bg-[#020202] text-slate-200 relative overflow-hidden">
         {/* Noise Texture */}
         <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10 pointer-events-none" />
 
@@ -316,7 +307,7 @@ export function DeckDetailPage() {
         animate={{ opacity: 1, scale: 1 }}
         transition={{ delay: 0.1 }}
         >
-        <Card className="bg-black/40 border-white/10 backdrop-blur-md">
+        <Card className="bg-[rgba(10,10,10,0.6)] backdrop-blur-xl border-white/5">
         <CardContent className="flex flex-col items-center justify-center py-6">
         <div className="relative w-32 h-32">
         <svg className="transform -rotate-90 w-32 h-32">
@@ -379,7 +370,7 @@ export function DeckDetailPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2 + index * 0.1 }}
                 >
-                <Card className="bg-black/40 border-white/10 backdrop-blur-md relative overflow-hidden">
+                <Card className="bg-[rgba(10,10,10,0.6)] backdrop-blur-xl border-white/5 relative overflow-hidden">
                 <div className={`absolute inset-0 bg-gradient-to-br ${colors.split(' ')[1]} via-transparent to-transparent opacity-50`} />
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative z-10">
                 <p className="text-xs font-mono text-slate-400 uppercase tracking-wider">
@@ -402,7 +393,7 @@ export function DeckDetailPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.6 }}
         >
-        <Card className="bg-black/40 border-white/10 backdrop-blur-md">
+        <Card className="bg-[rgba(10,10,10,0.6)] backdrop-blur-xl border-white/5">
         <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle className="text-white font-serif text-xl">
         Memory Fragments ({totalCards})
@@ -427,7 +418,7 @@ export function DeckDetailPage() {
             <p className="text-slate-400 font-mono text-sm mb-4">No fragments detected</p>
             <Button
             variant="outline"
-            className="bg-white/5 hover:bg-white/10 border-white/10 text-white"
+            className="bg-white/5 hover:bg-white/10 border-white/5 text-white"
             onClick={() => navigate(`/flashcards/${id}/cards/new`)}
             >
             Construct First Fragment
@@ -489,6 +480,15 @@ export function DeckDetailPage() {
                 </div>
                 </TableCell>
                 <TableCell className="text-right">
+                <div className="flex justify-end gap-1">
+                <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => navigate(`/flashcards/${id}/cards/${card.id}/edit`)}
+                className="hover:bg-cyan-500/20 text-cyan-400"
+                >
+                <Edit className="h-4 w-4" />
+                </Button>
                 <Button
                 variant="ghost"
                 size="icon"
@@ -497,6 +497,7 @@ export function DeckDetailPage() {
                 >
                 <Trash2 className="h-4 w-4" />
                 </Button>
+                </div>
                 </TableCell>
                 </TableRow>
             ))}

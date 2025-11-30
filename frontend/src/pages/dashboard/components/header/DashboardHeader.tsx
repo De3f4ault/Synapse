@@ -1,76 +1,87 @@
-import { Search, Bell, Wifi, WifiOff } from 'lucide-react';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { QuickActions } from './QuickActions';
+import { motion } from 'framer-motion';
+import { Layout, Network, Target, BarChart2, Maximize2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { useState } from 'react';
+import { QuickActions } from './QuickActions';
 
-interface DashboardHeaderProps {
-    wsConnected: boolean;
+interface CommandDeckProps {
+    activeView?: string;
+    onViewChange?: (view: string) => void;
 }
 
 /**
- * Top navigation bar for dashboard
- * Contains search, notifications, WebSocket status, and quick actions
+ * CommandDeck (Exported as DashboardHeader)
+ *
+ * FINAL FIX:
+ * - Acts purely as the FOOTER.
+ * - Positioned `fixed bottom-8` with high Z-index.
+ * - Contains QuickActions inside the pill.
  */
-export function DashboardHeader({ wsConnected }: DashboardHeaderProps) {
-    const [searchQuery, setSearchQuery] = useState('');
+export function DashboardHeader({ activeView = 'tactical', onViewChange }: CommandDeckProps) {
+    const [current, setCurrent] = useState(activeView);
+
+    const handleViewChange = (id: string) => {
+        setCurrent(id);
+        onViewChange?.(id);
+    };
+
+    const navItems = [
+        { id: 'tactical', icon: Layout, label: 'Deck' },
+        { id: 'nexus', icon: Network, label: 'Map' },
+        { id: 'flow', icon: Target, label: 'Flow' },
+        { id: 'analytics', icon: BarChart2, label: 'Data' }
+    ];
 
     return (
-        <header className="h-16 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
-        <div className="container h-full flex items-center justify-between gap-4 px-6">
-        {/* Left: Title + Search */}
-        <div className="flex items-center gap-4 flex-1">
-        <h1 className="text-xl font-bold">Dashboard</h1>
-
-        <div className="relative max-w-md flex-1">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-        type="search"
-        placeholder="Search resources..."
-        value={searchQuery}
-        onChange={(e) => setSearchQuery(e.target.value)}
-        className="pl-10 pr-4"
-        />
-        </div>
-        </div>
-
-        {/* Right: Quick Actions + Notifications + Status */}
-        <div className="flex items-center gap-3">
-        {/* WebSocket Connection Status */}
-        <div className="flex items-center gap-2">
-        {wsConnected ? (
-            <>
-            <Wifi className="h-4 w-4 text-green-600 dark:text-green-400" />
-            <span className="text-xs text-muted-foreground hidden sm:inline">
-            Live
-            </span>
-            </>
-        ) : (
-            <>
-            <WifiOff className="h-4 w-4 text-muted-foreground" />
-            <span className="text-xs text-muted-foreground hidden sm:inline">
-            Offline
-            </span>
-            </>
-        )}
-        </div>
-
-        {/* Notifications */}
-        <Button variant="ghost" size="icon" className="relative">
-        <Bell className="h-5 w-5" />
-        <Badge
-        variant="destructive"
-        className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
+        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[110] flex items-center gap-4 pointer-events-none">
+        {/* The Control Pill - pointer-events-auto allows click-through */}
+        <motion.div
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        className="pointer-events-auto flex items-center gap-1 p-1.5 rounded-full bg-[#0F0F0F]/90 backdrop-blur-2xl border border-white/10 shadow-[0_20px_60px_-10px_rgba(0,0,0,0.8)]"
         >
-        3
-        </Badge>
-        </Button>
+        {navItems.map((item) => (
+            <button
+            key={item.id}
+            onClick={() => handleViewChange(item.id)}
+            className={cn(
+                "relative px-5 py-2.5 rounded-full flex items-center gap-2 transition-all duration-300 z-10",
+                current === item.id ? "text-black" : "text-slate-500 hover:text-white"
+            )}
+            >
+            {current === item.id && (
+                <motion.div
+                layoutId="activeTab"
+                className="absolute inset-0 bg-white rounded-full -z-10"
+                transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                />
+            )}
+            <item.icon className={cn("w-4 h-4", current === item.id ? "stroke-[2.5px]" : "stroke-[1.5px]")} />
+            {current === item.id && (
+                <motion.span
+                initial={{ opacity: 0, x: -5 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="text-xs font-bold tracking-wide"
+                >
+                {item.label}
+                </motion.span>
+            )}
+            </button>
+        ))}
 
-        {/* Quick Actions Dropdown */}
+        <div className="w-px h-6 bg-white/10 mx-2" />
+
+        {/* Quick Actions Integration */}
+        <div className="relative z-10">
         <QuickActions />
         </div>
+
+        <div className="w-px h-6 bg-white/10 mx-2" />
+
+        <button className="p-2.5 rounded-full hover:bg-white/10 text-slate-400 hover:text-white transition-colors relative z-10">
+        <Maximize2 className="w-4 h-4" />
+        </button>
+        </motion.div>
         </div>
-        </header>
     );
 }

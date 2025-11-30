@@ -1,17 +1,9 @@
 import { motion } from 'framer-motion';
-import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import {
-    Zap,
-    Clock,
-    Target,
-    ArrowRight,
-    Sparkles
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { formatStudyTime } from '@/lib/utils';
+import { Zap, Clock, Target, ArrowRight, Sparkles } from 'lucide-react';
+import { cn, formatStudyTime } from '@/lib/utils';
 import type { NextActionRecommendation } from '../../types/intelligence.types';
 import { ModuleBadge } from '../shared/ModuleBadge';
 
@@ -21,182 +13,97 @@ interface NextActionCardProps {
 }
 
 /**
- * NextActionCard - AI-recommended "What to do next"
- *
- * Features:
- * - Prominent gradient design
- * - Priority visualization (progress ring)
- * - Time estimate
- * - Confidence score
- * - Reasoning explanation
- * - Module badge
- * - Item count (if applicable)
+ * NextActionCard - "Protocol" Style
  */
 export function NextActionCard({ recommendation, onAction }: NextActionCardProps) {
-    const priorityColor = getPriorityGradient(recommendation.priority);
+    const priorityColor = getPriorityTheme(recommendation.priority);
 
     return (
         <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.4, type: 'spring' }}
-        whileHover={{ scale: 1.03 }}
-        >
-        <Card className={cn(
-            'relative overflow-hidden shadow-lg hover:shadow-xl transition-all',
-            'border-2',
+        whileHover={{ scale: 1.02 }}
+        className={cn(
+            "relative overflow-hidden rounded-xl border p-4 group cursor-pointer",
+            "bg-[#0F0F0F] hover:bg-[#151515] transition-all",
             priorityColor.border
-        )}>
-        {/* Gradient Background Overlay */}
-        <div className={cn(
-            'absolute inset-0 opacity-5',
-            priorityColor.gradient
-        )} />
-
-        <CardContent className="relative p-6 space-y-4">
-        {/* Header with Badge */}
-        <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-2">
-        <motion.div
-        animate={{
-            scale: [1, 1.2, 1],
-            rotate: [0, 5, -5, 0]
-        }}
-        transition={{
-            duration: 2,
-            repeat: Infinity,
-            repeatDelay: 3
-        }}
+        )}
         >
-        <Sparkles className={cn('h-5 w-5', priorityColor.text)} />
-        </motion.div>
-        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-        Recommended Next
+        {/* Animated Background Gradient */}
+        <div className={cn("absolute inset-0 opacity-10 blur-xl transition-opacity group-hover:opacity-20", priorityColor.bg)} />
+
+        <div className="relative z-10 space-y-3">
+        {/* Header */}
+        <div className="flex justify-between items-start">
+        <div className="flex items-center gap-2">
+        <div className={cn("p-1.5 rounded-lg border", priorityColor.iconBg, priorityColor.iconBorder)}>
+        <Sparkles className={cn("w-3 h-3", priorityColor.text)} />
+        </div>
+        <span className={cn("text-[10px] font-bold uppercase tracking-widest", priorityColor.text)}>
+        Recommended Protocol
         </span>
         </div>
-
         <ModuleBadge moduleType={recommendation.moduleType} />
         </div>
 
-        {/* Main Action */}
-        <div className="space-y-2">
-        <h3 className="text-xl font-bold leading-tight">
+        {/* Content */}
+        <div>
+        <h3 className="text-sm font-bold text-white mb-1 group-hover:text-cyan-400 transition-colors">
         {recommendation.title}
         </h3>
-        <p className="text-sm text-muted-foreground">
+        <p className="text-xs text-slate-400 leading-relaxed">
         {recommendation.description}
         </p>
         </div>
 
-        {/* Metrics Grid */}
-        <div className="grid grid-cols-3 gap-3">
-        {/* Priority */}
-        <div className="flex flex-col gap-1">
-        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-        <Target className="h-3 w-3" />
-        <span>Priority</span>
+        {/* Stats */}
+        <div className="grid grid-cols-3 gap-2 py-2 border-y border-white/5 bg-black/20 rounded-lg px-2">
+        <StatItem icon={Target} label="Priority" value={`${(recommendation.priority * 100).toFixed(0)}%`} color={priorityColor.text} />
+        <StatItem icon={Clock} label="Est. Time" value={formatStudyTime(recommendation.estimatedMinutes)} />
+        <StatItem icon={Zap} label="Confidence" value={`${(recommendation.confidence * 100).toFixed(0)}%`} />
         </div>
-        <div className="flex items-center gap-2">
-        <Progress
-        value={recommendation.priority * 100}
-        className="h-1.5 flex-1"
-        // @ts-ignore
-        indicatorClassName={priorityColor.progress}
-        />
-        <span className={cn('text-xs font-bold', priorityColor.text)}>
-        {(recommendation.priority * 100).toFixed(0)}%
-        </span>
-        </div>
-        </div>
-
-        {/* Time Estimate */}
-        <div className="flex flex-col gap-1">
-        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-        <Clock className="h-3 w-3" />
-        <span>Time</span>
-        </div>
-        <span className="text-sm font-semibold">
-        {formatStudyTime(recommendation.estimatedMinutes)}
-        </span>
-        </div>
-
-        {/* Confidence */}
-        <div className="flex flex-col gap-1">
-        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-        <Zap className="h-3 w-3" />
-        <span>Confidence</span>
-        </div>
-        <span className="text-sm font-semibold">
-        {(recommendation.confidence * 100).toFixed(0)}%
-        </span>
-        </div>
-        </div>
-
-        {/* Item Count Badge (if applicable) */}
-        {recommendation.itemCount && recommendation.itemCount > 1 && (
-            <Badge variant="secondary" className="text-xs">
-            {recommendation.itemCount} items
-            </Badge>
-        )}
 
         {/* Reasoning */}
-        <div className="text-xs text-muted-foreground italic bg-muted/50 p-3 rounded-lg">
-        💡 {recommendation.reasoning}
+        <div className="text-[10px] text-slate-500 italic bg-white/5 p-2 rounded border border-white/5">
+        "{recommendation.reasoning}"
         </div>
 
-        {/* Action Button */}
         <Button
-        size="lg"
-        className={cn(
-            'w-full group text-base font-semibold',
-            priorityColor.button
-        )}
-        onClick={onAction || (() => {
-            window.location.href = recommendation.actionUrl;
-        })}
+        size="sm"
+        className={cn("w-full h-8 text-xs font-bold uppercase tracking-wide", priorityColor.button)}
+        onClick={onAction || (() => window.location.href = recommendation.actionUrl)}
         >
-        Start Now
-        <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
+        Initialize <ArrowRight className="ml-2 h-3 w-3" />
         </Button>
-        </CardContent>
-        </Card>
+        </div>
         </motion.div>
     );
 }
 
-// Get priority-based color scheme
-function getPriorityGradient(priority: number) {
+const StatItem = ({ icon: Icon, label, value, color }: any) => (
+    <div className="flex flex-col items-center justify-center text-center">
+    <div className="flex items-center gap-1 text-[9px] text-slate-500 uppercase">
+    <Icon className="w-2.5 h-2.5" /> {label}
+    </div>
+    <div className={cn("text-xs font-mono font-bold", color || "text-slate-300")}>{value}</div>
+    </div>
+);
+
+function getPriorityTheme(priority: number) {
     if (priority >= 0.8) {
         return {
-            border: 'border-red-500',
-            gradient: 'bg-gradient-to-br from-red-500 to-orange-500',
-            text: 'text-red-600 dark:text-red-400',
-            progress: 'bg-red-600',
-            button: 'bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700 text-white',
-        };
-    } else if (priority >= 0.6) {
-        return {
-            border: 'border-orange-500',
-            gradient: 'bg-gradient-to-br from-orange-500 to-yellow-500',
-            text: 'text-orange-600 dark:text-orange-400',
-            progress: 'bg-orange-600',
-            button: 'bg-gradient-to-r from-orange-600 to-yellow-600 hover:from-orange-700 hover:to-yellow-700 text-white',
-        };
-    } else if (priority >= 0.4) {
-        return {
-            border: 'border-blue-500',
-            gradient: 'bg-gradient-to-br from-blue-500 to-cyan-500',
-            text: 'text-blue-600 dark:text-blue-400',
-            progress: 'bg-blue-600',
-            button: 'bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white',
-        };
-    } else {
-        return {
-            border: 'border-gray-500',
-            gradient: 'bg-gradient-to-br from-gray-500 to-slate-500',
-            text: 'text-gray-600 dark:text-gray-400',
-            progress: 'bg-gray-600',
-            button: 'bg-gradient-to-r from-gray-600 to-slate-600 hover:from-gray-700 hover:to-slate-700 text-white',
+            border: 'border-red-500/30',
+            bg: 'bg-red-600',
+            iconBg: 'bg-red-500/10',
+            iconBorder: 'border-red-500/20',
+            text: 'text-red-400',
+            button: 'bg-red-600 hover:bg-red-500 text-white shadow-[0_0_15px_rgba(220,38,38,0.4)]'
         };
     }
+    return {
+        border: 'border-cyan-500/30',
+        bg: 'bg-cyan-600',
+        iconBg: 'bg-cyan-500/10',
+        iconBorder: 'border-cyan-500/20',
+        text: 'text-cyan-400',
+        button: 'bg-cyan-600 hover:bg-cyan-500 text-white shadow-[0_0_15px_rgba(8,145,178,0.4)]'
+    };
 }

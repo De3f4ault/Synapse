@@ -1,272 +1,37 @@
 import { motion } from 'framer-motion';
 import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import {
-    Trophy,
-    Share2,
-    Sparkles,
-    Star,
-    Award
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { formatRelativeTime } from '@/lib/utils';
+import { Trophy, Share2, Sparkles, Star } from 'lucide-react';
+import { cn, formatRelativeTime } from '@/lib/utils';
 import type { MilestoneAchievement } from '../../types/intelligence.types';
 
-interface MilestoneCardProps {
-    milestone: MilestoneAchievement;
-    onShare?: () => void;
-}
-
 /**
- * MilestoneCard - Celebrate achievements and breakthroughs
- *
- * Features:
- * - Celebration animations (confetti-style)
- * - Achievement level badges (common, rare, epic, legendary)
- * - Share functionality
- * - Value display with formatting
- * - Icon animations
+ * MilestoneCard - "Achievement" Style
  */
-export function MilestoneCard({ milestone, onShare }: MilestoneCardProps) {
-    const levelColors = getLevelColors(milestone.level);
-
+export function MilestoneCard({ milestone, onShare }: { milestone: MilestoneAchievement; onShare?: () => void }) {
     return (
-        <motion.div
-        initial={{ opacity: 0, scale: 0.8, y: 20 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        transition={{
-            duration: 0.5,
-            type: 'spring',
-            bounce: 0.4
-        }}
-        >
-        <Card className={cn(
-            'relative overflow-hidden',
-            'border-2 shadow-lg hover:shadow-xl transition-all',
-            levelColors.border
-        )}>
-        {/* Animated Background */}
-        <div className={cn(
-            'absolute inset-0 opacity-10',
-            levelColors.gradient
-        )} />
-
-        {/* Sparkle Decorations */}
-        <motion.div
-        className="absolute top-4 right-4"
-        animate={{
-            rotate: [0, 360],
-            scale: [1, 1.2, 1]
-        }}
-        transition={{
-            duration: 3,
-            repeat: Infinity,
-            ease: 'linear'
-        }}
-        >
-        <Sparkles className={cn('h-6 w-6', levelColors.icon)} />
-        </motion.div>
-
-        <CardContent className="relative p-6 space-y-4">
-        {/* Achievement Badge */}
-        <div className="flex items-center justify-between">
-        <Badge
-        className={cn(
-            'text-xs font-bold px-3 py-1',
-            levelColors.badge
-        )}
-        >
-        {milestone.level.toUpperCase()}
-        </Badge>
-
-        <motion.div
-        animate={{
-            scale: [1, 1.3, 1],
-            rotate: [0, 15, -15, 0]
-        }}
-        transition={{
-            duration: 2,
-            repeat: Infinity,
-            repeatDelay: 2
-        }}
-        >
-        {getLevelIcon(milestone.level)}
-        </motion.div>
+        <motion.div whileHover={{ scale: 1.02, rotate: 1 }}>
+        <Card className="bg-gradient-to-br from-[#1a1528] to-[#0F0F0F] border border-purple-500/30 overflow-hidden relative">
+        <div className="absolute top-0 right-0 p-3 opacity-20">
+        <Sparkles className="w-12 h-12 text-purple-500" />
         </div>
 
-        {/* Main Content */}
-        <div className="text-center space-y-2">
-        {/* Large Emoji Icon */}
-        <motion.div
-        className="text-6xl"
-        animate={{
-            scale: [1, 1.1, 1],
-            rotate: [0, 5, -5, 0]
-        }}
-        transition={{
-            duration: 1.5,
-            repeat: Infinity,
-            repeatDelay: 1
-        }}
-        >
-        {milestone.icon}
-        </motion.div>
-
-        {/* Title */}
-        <h3 className="text-2xl font-bold">
-        {milestone.title}
-        </h3>
-
-        {/* Description */}
-        <p className="text-sm text-muted-foreground">
-        {milestone.description}
-        </p>
-
-        {/* Value Display */}
-        {milestone.value && (
-            <div className={cn(
-                'inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold',
-                levelColors.valueBg
-            )}>
-            <Star className="h-4 w-4" />
-            <span>{formatMilestoneValue(milestone)}</span>
-            </div>
-        )}
+        <CardContent className="p-3 flex items-center gap-3 relative z-10">
+        <div className="w-10 h-10 rounded-full bg-purple-500/20 border border-purple-500/40 flex items-center justify-center flex-shrink-0 shadow-[0_0_15px_rgba(168,85,247,0.3)]">
+        <Trophy className="w-5 h-5 text-purple-400" />
         </div>
 
-        {/* Timestamp */}
-        <p className="text-xs text-center text-muted-foreground">
-        Achieved {formatRelativeTime(milestone.timestamp)}
-        </p>
-
-        {/* Action Buttons */}
-        <div className="flex gap-2">
-        <Button
-        variant="outline"
-        size="sm"
-        className="flex-1"
-        onClick={onShare}
-        >
-        <Share2 className="mr-2 h-4 w-4" />
-        Share
-        </Button>
-        <Button
-        variant="outline"
-        size="sm"
-        className="flex-1"
-        onClick={() => {
-            window.location.href = '/analytics';
-        }}
-        >
-        <Trophy className="mr-2 h-4 w-4" />
-        View Stats
-        </Button>
+        <div className="flex-1 min-w-0">
+        <div className="flex justify-between items-center mb-0.5">
+        <h4 className="text-xs font-bold text-white">{milestone.title}</h4>
+        <span className="text-[9px] text-purple-400 font-mono border border-purple-500/30 px-1 rounded">
+        {milestone.level}
+        </span>
+        </div>
+        <p className="text-[10px] text-slate-400 leading-tight line-clamp-2">{milestone.description}</p>
         </div>
         </CardContent>
-
-        {/* Celebration Particles (CSS animation) */}
-        <div className="absolute inset-0 pointer-events-none">
-        {Array.from({ length: 6 }).map((_, i) => (
-            <motion.div
-            key={i}
-            className={cn(
-                'absolute w-2 h-2 rounded-full',
-                levelColors.particle
-            )}
-            initial={{
-                x: '50%',
-                y: '50%',
-                scale: 0
-            }}
-            animate={{
-                x: `${50 + (Math.random() - 0.5) * 100}%`,
-                                                  y: `${50 + (Math.random() - 0.5) * 100}%`,
-                                                  scale: [0, 1, 0],
-                                                  opacity: [0, 1, 0]
-            }}
-            transition={{
-                duration: 2,
-                repeat: Infinity,
-                delay: i * 0.3,
-                ease: 'easeOut'
-            }}
-            />
-        ))}
-        </div>
         </Card>
         </motion.div>
     );
-}
-
-// Get color scheme based on achievement level
-function getLevelColors(level: string) {
-    switch (level) {
-        case 'legendary':
-            return {
-                border: 'border-purple-500',
-                gradient: 'bg-gradient-to-br from-purple-500 via-pink-500 to-orange-500',
-                badge: 'bg-gradient-to-r from-purple-600 to-pink-600 text-white border-0',
-                icon: 'text-purple-600',
-                valueBg: 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300',
-                particle: 'bg-purple-500',
-            };
-        case 'epic':
-            return {
-                border: 'border-blue-500',
-                gradient: 'bg-gradient-to-br from-blue-500 to-cyan-500',
-                badge: 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white border-0',
-                icon: 'text-blue-600',
-                valueBg: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300',
-                particle: 'bg-blue-500',
-            };
-        case 'rare':
-            return {
-                border: 'border-green-500',
-                gradient: 'bg-gradient-to-br from-green-500 to-emerald-500',
-                badge: 'bg-gradient-to-r from-green-600 to-emerald-600 text-white border-0',
-                icon: 'text-green-600',
-                valueBg: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300',
-                particle: 'bg-green-500',
-            };
-        default: // common
-            return {
-                border: 'border-gray-400',
-                gradient: 'bg-gradient-to-br from-gray-400 to-gray-500',
-                badge: 'bg-gradient-to-r from-gray-600 to-gray-700 text-white border-0',
-                icon: 'text-gray-600',
-                valueBg: 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300',
-                particle: 'bg-gray-500',
-            };
-    }
-}
-
-// Get icon based on level
-function getLevelIcon(level: string) {
-    switch (level) {
-        case 'legendary':
-            return <Trophy className="h-8 w-8 text-purple-600" />;
-        case 'epic':
-            return <Award className="h-8 w-8 text-blue-600" />;
-        case 'rare':
-            return <Star className="h-8 w-8 text-green-600" />;
-        default:
-            return <Badge className="h-8 w-8 text-gray-600" />;
-    }
-}
-
-// Format milestone value for display
-function formatMilestoneValue(milestone: MilestoneAchievement): string {
-    switch (milestone.type) {
-        case 'streak':
-            return `${milestone.value} days`;
-        case 'mastery':
-            return `${(milestone.value * 100).toFixed(0)}% accuracy`;
-        case 'volume':
-            return `${milestone.value.toLocaleString()} reviews`;
-        case 'productivity':
-            return `${milestone.value} cards today`;
-        default:
-            return `${milestone.value}`;
-    }
 }

@@ -1,86 +1,79 @@
 import { useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
     BookOpen,
     FileText,
     MessageSquare,
-    CreditCard,
+    Zap,
     Clock,
-    CheckCircle2,
+    Activity,
+    Sparkles
 } from 'lucide-react';
 import { useSessionTracking } from '../../hooks/useSessionTracking';
-import { formatRelativeTime } from '@/lib/utils';
-import { ModuleBadge } from '../shared/ModuleBadge';
+import { formatRelativeTime, cn } from '@/lib/utils';
 
 /**
- * ActivityFeed - Live activity stream
- *
- * Features:
- * - Real-time activity list (last 20 items)
- * - Activity type icons (review, note, upload, etc.)
- * - Relative timestamps ("2 minutes ago")
- * - Clickable items (navigate to resource) - future enhancement
- * - Auto-scroll on new items
- * - Grouped by time periods (Today, Yesterday, etc.)
- *
- * Data Source: WebSocket ws://localhost:8000/ws/activity (via useSessionTracking)
+ * ActivityFeed - "Cortex Feed" Style
+ * FIXED: Removed dynamic Tailwind classes, using static color mapping
  */
 export function ActivityFeed() {
-    const { activityLog, isInSession, currentSession } = useSessionTracking();
+    const { activityLog, isInSession } = useSessionTracking();
     const scrollRef = useRef<HTMLDivElement>(null);
 
-    // Auto-scroll to bottom when new activity arrives
+    // Auto-scroll to bottom
     useEffect(() => {
         if (scrollRef.current) {
             scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
         }
     }, [activityLog.length]);
 
-    // Group activities by time period
     const groupedActivities = groupActivitiesByTime(activityLog);
 
     return (
-        <Card className="h-full flex flex-col">
-        <CardHeader>
-        <div className="flex items-center justify-between">
-        <div>
-        <CardTitle>Activity Feed</CardTitle>
-        <CardDescription>Recent learning activity</CardDescription>
+        <div className="h-full flex flex-col dashboard-glass rounded-2xl overflow-hidden relative">
+        {/* Header - Matches Intelligence Panel Header */}
+        <div className="p-6 border-b border-white/5 flex items-center justify-between bg-white/[0.02]">
+        <div className="flex items-center gap-3">
+        <div className={cn(
+            "p-2 rounded-xl border",
+            isInSession
+            ? "bg-purple-500/10 border-purple-500/20 text-purple-400"
+            : "bg-slate-500/10 border-slate-500/20 text-slate-400"
+        )}>
+        <Activity className="w-4 h-4" />
         </div>
-        {isInSession && currentSession && (
-            <Badge variant="secondary" className="flex items-center gap-1">
-            <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-            Active Session
-            </Badge>
+        <span className="text-xs font-bold text-white tracking-widest uppercase">
+        System Activity
+        </span>
+        </div>
+        {isInSession && (
+            <div className="flex gap-1">
+            <span className="h-1.5 w-1.5 rounded-full bg-purple-500 animate-pulse" />
+            </div>
         )}
         </div>
-        </CardHeader>
 
-        <CardContent className="flex-1 overflow-hidden p-0">
-        <ScrollArea ref={scrollRef} className="h-full px-6 pb-6">
+        {/* Content Area */}
+        <div className="flex-1 overflow-hidden relative">
+        {/* Cinematic Scanline Overlay */}
+        <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[length:100%_2px,3px_100%] opacity-10 z-10" />
+
+        <ScrollArea ref={scrollRef} className="h-full px-4 pb-4">
         {activityLog.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-32 text-center">
-            <Clock className="h-8 w-8 text-muted-foreground mb-2" />
-            <p className="text-sm text-muted-foreground">
-            No recent activity
-            </p>
-            <p className="text-xs text-muted-foreground">
-            Start studying to see your activity here
-            </p>
+            <div className="flex flex-col items-center justify-center h-48 text-center space-y-3 opacity-50">
+            <Sparkles className="h-8 w-8 text-slate-500" />
+            <p className="text-xs text-slate-500 font-mono tracking-wider">NO DATA STREAM</p>
             </div>
         ) : (
-            <div className="space-y-6">
+            <div className="space-y-6 pt-4">
             {Object.entries(groupedActivities).map(([period, activities]) => (
-                <div key={period} className="space-y-3">
-                {/* Time Period Header */}
-                <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                <div key={period} className="space-y-2">
+                <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest px-2 opacity-70">
                 {period}
                 </h4>
 
-                {/* Activity List */}
+                <div className="space-y-2">
                 <AnimatePresence mode="popLayout">
                 {activities.map((activity, index) => (
                     <ActivityItem
@@ -91,18 +84,16 @@ export function ActivityFeed() {
                 ))}
                 </AnimatePresence>
                 </div>
+                </div>
             ))}
             </div>
         )}
         </ScrollArea>
-        </CardContent>
-        </Card>
+        </div>
+        </div>
     );
 }
 
-/**
- * Individual activity item
- */
 interface ActivityItemProps {
     activity: {
         id: string;
@@ -121,76 +112,116 @@ function ActivityItem({ activity, index }: ActivityItemProps) {
     const description = getActivityDescription(activity);
     const relativeTime = formatRelativeTime(activity.timestamp);
 
+    // FIXED: Get static color classes based on module
+    const colors = getModuleColorClasses(activity.module);
+
     return (
         <motion.div
-        initial={{ opacity: 0, x: -20 }}
+        initial={{ opacity: 0, x: -10 }}
         animate={{ opacity: 1, x: 0 }}
-        exit={{ opacity: 0, x: 20 }}
-        transition={{ duration: 0.2, delay: index * 0.05 }}
         layout
-        className="flex items-start gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
+        className={cn(
+            "group relative p-3 rounded-xl border transition-all cursor-pointer overflow-hidden",
+            "bg-white/5 border-white/5 hover:bg-white/10",
+            colors.border
+        )}
         >
-        {/* Icon */}
-        <div className="flex-shrink-0 mt-0.5">
-        <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+        {/* Hover Glow Effect */}
+        <div className={cn(
+            "absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity",
+            colors.bg
+        )} />
+
+        <div className="flex items-start gap-3 relative z-10">
+        <div className={cn(
+            "p-2 rounded-lg flex items-center justify-center border",
+            colors.iconBg,
+            colors.iconBorder,
+            colors.iconText
+        )}>
         {icon}
         </div>
-        </div>
 
-        {/* Content */}
         <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-1">
-        <ModuleBadge module={activity.module} size="sm" />
-        <span className="text-xs text-muted-foreground">{relativeTime}</span>
-        </div>
-        <p className="text-sm font-medium truncate">{description}</p>
-        {activity.resource_title && (
-            <p className="text-xs text-muted-foreground truncate mt-0.5">
-            {activity.resource_title}
-            </p>
-        )}
+        <div className="flex justify-between items-start mb-0.5">
+        <span className="text-xs font-bold text-slate-200 group-hover:text-white transition-colors">
+        {activity.resource_title || 'Unknown Resource'}
+        </span>
+        <span className="text-[9px] text-slate-500 font-mono ml-2 whitespace-nowrap">
+        {relativeTime}
+        </span>
         </div>
 
-        {/* Completion indicator */}
-        {activity.activity_type === 'review' && (
-            <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0 mt-1" />
-        )}
+        <p className="text-[10px] text-slate-400 leading-relaxed truncate">
+        {description}
+        </p>
+        </div>
+        </div>
         </motion.div>
     );
 }
 
-/**
- * Get icon for activity type
- */
 function getActivityIcon(module: string, activityType: string) {
-    const iconClass = 'h-4 w-4 text-primary';
+    const iconClass = "w-3 h-3";
 
-    if (activityType === 'review') {
-        return <CreditCard className={iconClass} />;
-    }
+    if (activityType === 'review') return <Zap className={iconClass} />;
 
     switch (module) {
-        case 'flashcards':
-            return <CreditCard className={iconClass} />;
-        case 'notes':
-            return <BookOpen className={iconClass} />;
-        case 'documents':
-            return <FileText className={iconClass} />;
-        case 'chat':
-            return <MessageSquare className={iconClass} />;
-        default:
-            return <Clock className={iconClass} />;
+        case 'flashcards': return <Zap className={iconClass} />;
+        case 'notes': return <BookOpen className={iconClass} />;
+        case 'documents': return <FileText className={iconClass} />;
+        case 'chat': return <MessageSquare className={iconClass} />;
+        default: return <Clock className={iconClass} />;
     }
 }
 
-/**
- * Get human-readable activity description
- */
-function getActivityDescription(activity: {
-    activity_type: string;
-    module: string;
-    resource_title?: string;
-}): string {
+// FIXED: Return static Tailwind classes instead of dynamic ones
+function getModuleColorClasses(module: string) {
+    switch (module) {
+        case 'flashcards':
+            return {
+                bg: 'bg-purple-500',
+                border: 'border-purple-500/20',
+                iconBg: 'bg-purple-500/10',
+                iconBorder: 'border-purple-500/20',
+                iconText: 'text-purple-400'
+            };
+        case 'notes':
+            return {
+                bg: 'bg-emerald-500',
+                border: 'border-emerald-500/20',
+                iconBg: 'bg-emerald-500/10',
+                iconBorder: 'border-emerald-500/20',
+                iconText: 'text-emerald-400'
+            };
+        case 'documents':
+            return {
+                bg: 'bg-cyan-500',
+                border: 'border-cyan-500/20',
+                iconBg: 'bg-cyan-500/10',
+                iconBorder: 'border-cyan-500/20',
+                iconText: 'text-cyan-400'
+            };
+        case 'chat':
+            return {
+                bg: 'bg-amber-500',
+                border: 'border-amber-500/20',
+                iconBg: 'bg-amber-500/10',
+                iconBorder: 'border-amber-500/20',
+                iconText: 'text-amber-400'
+            };
+        default:
+            return {
+                bg: 'bg-slate-500',
+                border: 'border-slate-500/20',
+                iconBg: 'bg-slate-500/10',
+                iconBorder: 'border-slate-500/20',
+                iconText: 'text-slate-400'
+            };
+    }
+}
+
+function getActivityDescription(activity: any): string {
     const { activity_type, module, resource_title } = activity;
 
     switch (activity_type) {
@@ -209,9 +240,6 @@ function getActivityDescription(activity: {
     }
 }
 
-/**
- * Group activities by time period (Today, Yesterday, This Week, Older)
- */
 function groupActivitiesByTime(
     activities: Array<{
         id: string;

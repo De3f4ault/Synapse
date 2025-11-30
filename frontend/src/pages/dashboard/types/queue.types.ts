@@ -1,23 +1,24 @@
-import type { QueueItem, PriorityLevel } from './dashboard.types';
+import type { QueueItem, PriorityLevel, ModuleType } from './dashboard.types';
 
 /**
  * Queue section grouping
+ * FIXED: Now imports QueueItem from dashboard.types to avoid duplication
  */
 export interface QueueSection {
     id: string;
     title: string;
     description?: string;
-    color: string;
+    color: string; // 'red', 'orange', 'blue', 'gray' for visual styling
     icon?: string;
     items: QueueItem[];
-    collapsed: boolean;
+    priority: number; // Section priority for ordering
 }
 
 /**
  * Queue filter options
  */
 export interface QueueFilter {
-    modules: Set<string>;
+    modules: Set<ModuleType>;
     priorities: Set<PriorityLevel>;
     dueDateRange?: {
         start: Date;
@@ -49,3 +50,6 @@ export interface QueueStats {
     overdue: number;
     dueToday: number;
 }
+
+// Re-export for convenience
+export type { QueueItem, PriorityLevel, ModuleType };

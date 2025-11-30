@@ -1,11 +1,9 @@
 /**
- * GlassCard - Glassmorphism card component
- *
- * Features:
- * - Glass morphism styling with blur and transparency
- * - Optional hover effects
- * - Smooth animations via Framer Motion
- * - Flexible styling with className override
+ * GlassCard - "Synapse" Base Component
+ * * Features:
+ * - Specific backdrop blur and noise texture for the sci-fi look
+ * - Neon border glow on hover
+ * - Standardized rounded corners and padding
  */
 
 import React from 'react';
@@ -25,37 +23,34 @@ const GlassCard = React.forwardRef<HTMLDivElement, GlassCardProps>(
             <motion.div
             ref={ref}
             className={cn(
-                // Base glass morphism styles
+                // Base Structure
                 'relative overflow-hidden rounded-xl',
-                'bg-white/5 backdrop-blur-xl',
-                'border border-white/10',
-                'shadow-lg shadow-black/20',
+                // Glass Background & Border
+                'bg-[#0A0A0A]/60 backdrop-blur-xl border border-white/5',
+                // Shadow
+                'shadow-2xl shadow-black/50',
 
-                // Hover effects
+                // Interaction
                 hover && [
                     'transition-all duration-300',
-                    'hover:bg-white/8',
-                    'hover:border-white/20',
-                    'hover:shadow-xl hover:shadow-black/30',
+                    'hover:bg-[#0A0A0A]/80 hover:border-white/10',
+                    'hover:shadow-[0_0_30px_rgba(0,0,0,0.5)]'
                 ],
-
-                // Click handler cursor
                 onClick && 'cursor-pointer',
 
-                // Custom classes
                 className
             )}
             onClick={onClick}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, ease: 'easeOut' }}
             {...motionProps}
             >
-            {/* Subtle gradient overlay */}
-            <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent pointer-events-none" />
+            {/* Noise Texture Overlay */}
+            <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03] pointer-events-none z-0" />
+
+            {/* Gradient Reflection */}
+            <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] to-transparent pointer-events-none z-0" />
 
             {/* Content */}
-            <div className="relative z-10">
+            <div className="relative z-10 h-full">
             {children}
             </div>
             </motion.div>

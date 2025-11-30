@@ -7,21 +7,27 @@ import type {
     QuizResponse
 } from '@/api/generated/types.gen';
 import type { DashboardData } from '../types/dashboard.types';
-import { MODULE_COLORS } from '../constants/colors';
 
 /**
  * Graph Transformers
  *
- * Transforms API data into D3-compatible graph structures:
- * - Converts resources to nodes with metadata
- * - Infers connections between resources
- * - Calculates node sizes and colors
- *
- * FIXED: Added defensive programming to handle invalid/missing data
+ * Transforms API data into D3-compatible graph structures
+ * FIXED:
+ * - Uses correct color keys from MODULE_COLORS (document/note/flashcard not plural)
+ * - Added defensive programming for all array checks
+ * - Removed dependency on data.decks (not in DashboardData)
  */
 
+// Module color mapping (matching colors.ts structure)
+const MODULE_COLORS = {
+    document: '#3b82f6', // Blue
+    note: '#a855f7',     // Purple
+    flashcard: '#10b981', // Green
+    chat: '#06b6d4',     // Cyan
+    quiz: '#f59e0b',     // Orange
+} as const;
+
 // Transform documents to graph nodes
-// FIXED: Add array validation
 export function transformDocumentsToNodes(documents: DocumentResponse[] | undefined | null): GraphNode[] {
     if (!documents || !Array.isArray(documents)) {
         console.warn('[graphTransformers] Invalid documents data:', documents);
@@ -36,7 +42,7 @@ export function transformDocumentsToNodes(documents: DocumentResponse[] | undefi
             pageCount: doc.page_count || 0,
             wordCount: doc.word_count || 0,
         }),
-        color: MODULE_COLORS.documents,
+        color: MODULE_COLORS.document,
         metadata: {
             id: doc.id,
             filename: doc.filename,
@@ -46,6 +52,9 @@ export function transformDocumentsToNodes(documents: DocumentResponse[] | undefi
             wordCount: doc.word_count,
             processingStatus: doc.processing_status,
             createdAt: doc.created_at,
+            moduleId: doc.id,
+            created: doc.created_at,
+            connections: 0,
         },
         x: 0,
         y: 0,
@@ -53,7 +62,6 @@ export function transformDocumentsToNodes(documents: DocumentResponse[] | undefi
 }
 
 // Transform notes to graph nodes
-// FIXED: Add array validation
 export function transformNotesToNodes(notes: NoteResponse[] | undefined | null): GraphNode[] {
     if (!notes || !Array.isArray(notes)) {
         console.warn('[graphTransformers] Invalid notes data:', notes);
@@ -68,7 +76,7 @@ export function transformNotesToNodes(notes: NoteResponse[] | undefined | null):
             contentLength: note.content?.length || 0,
             hasChildren: (note.children_count || 0) > 0,
         }),
-        color: MODULE_COLORS.notes,
+        color: MODULE_COLORS.note,
         metadata: {
             id: note.id,
             title: note.title,
@@ -78,6 +86,9 @@ export function transformNotesToNodes(notes: NoteResponse[] | undefined | null):
                 childrenCount: note.children_count,
                 createdAt: note.created_at,
                 updatedAt: note.updated_at,
+                moduleId: note.id,
+                created: note.created_at,
+                connections: 0,
         },
         x: 0,
         y: 0,
@@ -85,7 +96,6 @@ export function transformNotesToNodes(notes: NoteResponse[] | undefined | null):
 }
 
 // Transform flashcards to graph nodes
-// FIXED: Add array validation
 export function transformFlashcardsToNodes(cards: FlashcardResponse[] | undefined | null): GraphNode[] {
     if (!cards || !Array.isArray(cards)) {
         console.warn('[graphTransformers] Invalid cards data:', cards);
@@ -108,12 +118,16 @@ export function transformFlashcardsToNodes(cards: FlashcardResponse[] | undefine
             color: getFlashcardColor(card.learning_state, card.accuracy || 0),
                      metadata: {
                          id: card.id,
-                     deckId: card.deck_id,
-                     frontText: card.front_text,
-                     timesReviewed: card.times_reviewed,
-                     accuracy: card.accuracy,
-                     learningState: card.learning_state,
-                     nextReview: card.next_review,
+                         deckId: card.deck_id,
+                         frontText: card.front_text,
+                         timesReviewed: card.times_reviewed,
+                         accuracy: card.accuracy,
+                         learningState: card.learning_state,
+                         nextReview: card.next_review,
+                         moduleId: card.id,
+                         created: card.created_at || new Date().toISOString(),
+                     connections: 0,
+                     mastery: card.accuracy,
                      },
                      x: 0,
                      y: 0,
@@ -122,7 +136,6 @@ export function transformFlashcardsToNodes(cards: FlashcardResponse[] | undefine
 }
 
 // Transform chat sessions to graph nodes
-// FIXED: Add array validation
 export function transformChatsToNodes(chats: ChatSessionResponse[] | undefined | null): GraphNode[] {
     if (!chats || !Array.isArray(chats)) {
         console.warn('[graphTransformers] Invalid chats data:', chats);
@@ -146,6 +159,9 @@ export function transformChatsToNodes(chats: ChatSessionResponse[] | undefined |
             documentId: chat.document_id,
             createdAt: chat.created_at,
             updatedAt: chat.updated_at,
+            moduleId: chat.id,
+            created: chat.created_at,
+            connections: 0,
         },
         x: 0,
         y: 0,
@@ -153,7 +169,6 @@ export function transformChatsToNodes(chats: ChatSessionResponse[] | undefined |
 }
 
 // Transform quizzes to graph nodes
-// FIXED: Add array validation
 export function transformQuizzesToNodes(quizzes: QuizResponse[] | undefined | null): GraphNode[] {
     if (!quizzes || !Array.isArray(quizzes)) {
         console.warn('[graphTransformers] Invalid quizzes data:', quizzes);
@@ -168,7 +183,7 @@ export function transformQuizzesToNodes(quizzes: QuizResponse[] | undefined | nu
             questionCount: quiz.question_count || 0,
             difficulty: quiz.difficulty,
         }),
-        color: MODULE_COLORS.quizzes,
+        color: MODULE_COLORS.quiz,
         metadata: {
             id: quiz.id,
             title: quiz.title,
@@ -176,6 +191,9 @@ export function transformQuizzesToNodes(quizzes: QuizResponse[] | undefined | nu
             questionCount: quiz.question_count,
             timeLimitMinutes: quiz.time_limit_minutes,
             createdAt: quiz.created_at,
+            moduleId: quiz.id,
+            created: quiz.created_at,
+            connections: 0,
         },
         x: 0,
         y: 0,
@@ -189,11 +207,8 @@ export function inferConnections(nodes: GraphNode[], data: DashboardData | undef
     const links: GraphLink[] = [];
 
     // 1. Document → Note connections (notes created from documents)
-    // This is a heuristic: if a note was created shortly after a document was uploaded, they're likely related
-    // FIXED: Add array validation
     if (data.documents && Array.isArray(data.documents) && data.notes && Array.isArray(data.notes)) {
         data.notes.forEach(note => {
-            // Check if note content mentions any document filename
             data.documents?.forEach(doc => {
                 const docFilename = doc.filename || '';
                 const docFilenameBase = docFilename.split('.')[0].toLowerCase();
@@ -202,6 +217,7 @@ export function inferConnections(nodes: GraphNode[], data: DashboardData | undef
 
                 if (noteTitle.includes(docFilenameBase) || noteContent.includes(docFilenameBase)) {
                     links.push({
+                        id: `doc-${doc.id}-note-${note.id}`,
                         source: `doc-${doc.id}`,
                         target: `note-${note.id}`,
                         type: 'derived_from',
@@ -213,98 +229,93 @@ export function inferConnections(nodes: GraphNode[], data: DashboardData | undef
     }
 
     // 2. Note → Note connections (parent-child relationships)
-    // FIXED: Add array validation
     if (data.notes && Array.isArray(data.notes)) {
         data.notes.forEach(note => {
             if (note.parent_id) {
                 links.push({
+                    id: `note-${note.parent_id}-note-${note.id}`,
                     source: `note-${note.parent_id}`,
                     target: `note-${note.id}`,
-                    type: 'hierarchy',
+                    type: 'related_to',
                     strength: 1.0,
                 });
             }
         });
     }
 
-    // 3. Note → Flashcard connections (flashcards generated from notes)
-    // Heuristic: if flashcard belongs to a deck with similar name to note
-    // FIXED: Add array validation
-    if (data.notes && Array.isArray(data.notes) &&
-        data.dueCards && Array.isArray(data.dueCards) &&
-        data.decks && Array.isArray(data.decks)) {
+    // 3. Note → Flashcard connections (heuristic based on similar titles)
+    if (data.notes && Array.isArray(data.notes) && data.dueCards && Array.isArray(data.dueCards)) {
         data.dueCards.forEach(card => {
-            const deck = data.decks?.find(d => d.id === card.deck_id);
-            if (deck) {
-                data.notes?.forEach(note => {
-                    const noteTitleLower = (note.title || '').toLowerCase();
-                    const deckNameLower = (deck.name || '').toLowerCase();
-                    if (noteTitleLower.includes(deckNameLower) ||
-                        deckNameLower.includes(noteTitleLower)) {
-                        links.push({
-                            source: `note-${note.id}`,
-                            target: `card-${card.id}`,
-                            type: 'generated_from',
-                            strength: 0.6,
-                        });
-                        }
-                });
-            }
-        });
-        }
+            const cardText = (card.front_text || '').toLowerCase();
 
-        // 4. Chat → Document connections (chat sessions with document context)
-        // FIXED: Add array validation
-        if (data.chatSessions && Array.isArray(data.chatSessions) &&
-            data.documents && Array.isArray(data.documents)) {
-            data.chatSessions.forEach(chat => {
-                if (chat.document_id) {
+            data.notes?.forEach(note => {
+                const noteTitleLower = (note.title || '').toLowerCase();
+                const noteContentLower = (note.content || '').toLowerCase();
+
+                // Check if card text appears in note
+                if (cardText.length > 10 && (noteContentLower.includes(cardText) || noteTitleLower.includes(cardText))) {
                     links.push({
-                        source: `doc-${chat.document_id}`,
-                        target: `chat-${chat.id}`,
-                        type: 'referenced_in',
-                        strength: 0.9,
+                        id: `note-${note.id}-card-${card.id}`,
+                        source: `note-${note.id}`,
+                        target: `card-${card.id}`,
+                        type: 'generated_from',
+                        strength: 0.6,
                     });
                 }
             });
-            }
+        });
+    }
 
-            // 5. Flashcard → Flashcard connections (same deck)
-            // FIXED: Add array validation
-            if (data.dueCards && Array.isArray(data.dueCards)) {
-                const cardsByDeck = data.dueCards.reduce((acc, card) => {
-                    if (!acc[card.deck_id]) acc[card.deck_id] = [];
-                    acc[card.deck_id].push(card);
-                    return acc;
-                }, {} as Record<number, FlashcardResponse[]>);
-
-                Object.values(cardsByDeck).forEach(deckCards => {
-                    // Connect cards in same deck (limit to avoid clutter)
-                    for (let i = 0; i < Math.min(deckCards.length - 1, 3); i++) {
-                        links.push({
-                            source: `card-${deckCards[i].id}`,
-                            target: `card-${deckCards[i + 1].id}`,
-                            type: 'same_deck',
-                            strength: 0.3,
-                        });
-                    }
+    // 4. Chat → Document connections (chat sessions with document context)
+    if (data.chatSessions && Array.isArray(data.chatSessions) && data.documents && Array.isArray(data.documents)) {
+        data.chatSessions.forEach(chat => {
+            if (chat.document_id) {
+                links.push({
+                    id: `doc-${chat.document_id}-chat-${chat.id}`,
+                    source: `doc-${chat.document_id}`,
+                    target: `chat-${chat.id}`,
+                    type: 'referenced_in',
+                    strength: 0.9,
                 });
             }
+        });
+    }
 
-            // Remove duplicate links
-            const uniqueLinks = links.filter((link, index, self) =>
-            index === self.findIndex(l =>
-            l.source === link.source &&
-            l.target === link.target &&
-            l.type === link.type
-            )
-            );
+    // 5. Flashcard → Flashcard connections (same deck - limit to avoid clutter)
+    if (data.dueCards && Array.isArray(data.dueCards)) {
+        const cardsByDeck = data.dueCards.reduce((acc, card) => {
+            if (!acc[card.deck_id]) acc[card.deck_id] = [];
+            acc[card.deck_id].push(card);
+            return acc;
+        }, {} as Record<number, FlashcardResponse[]>);
 
-            return uniqueLinks;
+        Object.values(cardsByDeck).forEach(deckCards => {
+            // Connect first 3 cards in same deck
+            for (let i = 0; i < Math.min(deckCards.length - 1, 2); i++) {
+                links.push({
+                    id: `card-${deckCards[i].id}-card-${deckCards[i + 1].id}`,
+                    source: `card-${deckCards[i].id}`,
+                    target: `card-${deckCards[i + 1].id}`,
+                    type: 'related_to',
+                    strength: 0.3,
+                });
+            }
+        });
+    }
+
+    // Remove duplicate links
+    const uniqueLinks = links.filter((link, index, self) =>
+    index === self.findIndex(l =>
+    l.source === link.source &&
+    l.target === link.target &&
+    l.type === link.type
+    )
+    );
+
+    return uniqueLinks;
 }
 
 // Calculate node size based on importance metrics
-// FIXED: Add default values for all metrics
 function calculateNodeSize(
     type: string,
     metrics: Record<string, any>
@@ -314,29 +325,24 @@ function calculateNodeSize(
 
     switch (type) {
         case 'document':
-            // Size by page count
             const pageScore = Math.min((metrics.pageCount || 0) / 100, 1);
             return baseSize + (maxSize - baseSize) * pageScore;
 
         case 'note':
-            // Size by content length and children
             const contentScore = Math.min((metrics.contentLength || 0) / 5000, 0.7);
             const childrenScore = metrics.hasChildren ? 0.3 : 0;
             return baseSize + (maxSize - baseSize) * (contentScore + childrenScore);
 
         case 'flashcard':
-            // Size by review count and accuracy
             const reviewScore = Math.min((metrics.timesReviewed || 0) / 50, 0.6);
             const accuracyScore = (metrics.accuracy || 0) * 0.4;
             return baseSize + (maxSize - baseSize) * (reviewScore + accuracyScore);
 
         case 'chat':
-            // Size by message count
             const messageScore = Math.min((metrics.messageCount || 0) / 100, 1);
             return baseSize + (maxSize - baseSize) * messageScore;
 
         case 'quiz':
-            // Size by question count and difficulty
             const questionScore = Math.min((metrics.questionCount || 0) / 50, 0.7);
             const difficultyScore =
             metrics.difficulty === 'hard' ? 0.3 :
@@ -349,12 +355,11 @@ function calculateNodeSize(
 }
 
 // Get flashcard color based on learning state and accuracy
-// FIXED: Add default value for accuracy
 function getFlashcardColor(learningState: string, accuracy: number): string {
     const safeAccuracy = accuracy || 0;
 
     if (learningState === 'mastered') {
-        return MODULE_COLORS.flashcards; // Green for mastered
+        return MODULE_COLORS.flashcard; // Green for mastered
     } else if (learningState === 'learning') {
         return '#3b82f6'; // Blue for learning
     } else if (safeAccuracy < 0.5) {
@@ -362,5 +367,5 @@ function getFlashcardColor(learningState: string, accuracy: number): string {
     } else if (safeAccuracy < 0.7) {
         return '#f59e0b'; // Orange for medium accuracy
     }
-    return MODULE_COLORS.flashcards;
+    return MODULE_COLORS.flashcard;
 }

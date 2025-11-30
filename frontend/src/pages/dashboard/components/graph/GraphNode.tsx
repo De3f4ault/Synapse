@@ -1,5 +1,11 @@
 import type { GraphNode as GraphNodeType } from '../../types/graph.types';
-import { FileText, StickyNote, CreditCard, MessageSquare, ClipboardList } from 'lucide-react';
+import {
+    FileText,
+    StickyNote,
+    Zap, // Replaces CreditCard for Flashcards (Sci-Fi Theme)
+    MessageSquare,
+    ClipboardList
+} from 'lucide-react';
 
 interface GraphNodeProps {
     node: GraphNodeType;
@@ -11,31 +17,16 @@ interface GraphNodeProps {
 }
 
 /**
- * GraphNode - Individual SVG node component
- *
- * This component is primarily used for type definitions and helpers.
- * The actual rendering is done in GraphCanvas using D3.
- *
- * Features:
- * - Type-specific icons
- * - Status badges (due, mastered, etc.)
- * - Pulse animation for active items
- * - Color coding by module
+ * GraphNode - Helper utilities
+ * Rendering is handled by D3 in GraphCanvas, but these helpers ensure consistent icons/colors.
  */
-export function GraphNode({
-    node,
-    isSelected,
-    isHovered,
-    isConnected,
-    onClick,
-    onHover
-}: GraphNodeProps) {
-    // This is a placeholder component - actual rendering happens in D3
+export function GraphNode({ node }: GraphNodeProps) {
     return null;
 }
 
 /**
  * Get icon component for node type
+ * Updated to use Lucide icons matching the Sci-Fi template.
  */
 export function getNodeIcon(type: string) {
     switch (type) {
@@ -44,7 +35,7 @@ export function getNodeIcon(type: string) {
         case 'note':
             return StickyNote;
         case 'flashcard':
-            return CreditCard;
+            return Zap; // Matches "Energy/Flash" metaphor
         case 'chat':
             return MessageSquare;
         case 'quiz':
@@ -63,54 +54,16 @@ export function getNodeStatus(node: GraphNodeType): {
 } | null {
     const metadata = node.metadata;
 
-    // Flashcard statuses
     if (node.type === 'flashcard') {
         if (metadata.learningState === 'mastered') {
-            return { label: 'Mastered', color: '#10b981' };
+            return { label: 'Mastered', color: '#10b981' }; // Emerald
         }
         if (metadata.nextReview && new Date(metadata.nextReview) < new Date()) {
-            return { label: 'Due', color: '#ef4444' };
+            return { label: 'Due', color: '#ef4444' }; // Red
         }
         if (metadata.learningState === 'learning') {
-            return { label: 'Learning', color: '#3b82f6' };
+            return { label: 'Active', color: '#3b82f6' }; // Blue
         }
     }
-
-    // Document statuses
-    if (node.type === 'document') {
-        if (metadata.processingStatus === 'processing') {
-            return { label: 'Processing', color: '#f59e0b' };
-        }
-        if (metadata.processingStatus === 'failed') {
-            return { label: 'Failed', color: '#ef4444' };
-        }
-    }
-
-    // Note statuses
-    if (node.type === 'note') {
-        if (metadata.contentLength < 200) {
-            return { label: 'Incomplete', color: '#f59e0b' };
-        }
-    }
-
     return null;
-}
-
-/**
- * Calculate pulse animation for active nodes
- */
-export function shouldPulse(node: GraphNodeType): boolean {
-    const metadata = node.metadata;
-
-    // Pulse for due flashcards
-    if (node.type === 'flashcard' && metadata.nextReview) {
-        return new Date(metadata.nextReview) < new Date();
-    }
-
-    // Pulse for processing documents
-    if (node.type === 'document' && metadata.processingStatus === 'processing') {
-        return true;
-    }
-
-    return false;
 }

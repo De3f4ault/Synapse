@@ -1,24 +1,15 @@
 import { motion } from 'framer-motion';
-import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
-    Clock,
-    ChevronRight,
-    X,
-    Calendar,
-    MoreVertical
+    Clock, ChevronRight, Calendar, MoreVertical
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn, formatStudyTime } from '@/lib/utils';
 import { formatDueDate } from '../../utils/dateFormatters';
-import { formatStudyTime } from '@/lib/utils';
 import type { QueueItem as QueueItemType } from '../../types/queue.types';
 import { ModuleBadge } from '../shared/ModuleBadge';
 import { PriorityBadge } from '../shared/PriorityBadge';
 import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
+    DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
 interface QueueItemProps {
@@ -30,16 +21,8 @@ interface QueueItemProps {
 }
 
 /**
- * QueueItem - Single actionable item in focus queue
- *
- * Features:
- * - Module and priority badges
- * - Due date display
- * - Time estimate
- * - Progress indicator (for multi-step items)
- * - Context menu (snooze, dismiss)
- * - Click to navigate
- * - Hover effects
+ * QueueItem - "Tactical Card" Style
+ * Dark, bordered, with neon accents representing priority.
  */
 export function QueueItem({
     item,
@@ -48,144 +31,83 @@ export function QueueItem({
     onDismiss,
     onSnooze
 }: QueueItemProps) {
-    const borderColor = getBorderColor(sectionColor);
+
+    // Map section color to neon palette
+    const accentColor =
+    sectionColor === 'red' ? 'border-red-500/50' :
+    sectionColor === 'orange' ? 'border-orange-500/50' :
+    sectionColor === 'blue' ? 'border-blue-500/50' :
+    'border-slate-500/50';
 
     return (
         <motion.div
-        whileHover={{ scale: 1.01, x: 4 }}
+        whileHover={{ scale: 1.01, x: 2 }}
         whileTap={{ scale: 0.99 }}
+        className="group relative"
         >
-        <Card
+        <div
         className={cn(
-            'cursor-pointer transition-all hover:shadow-md',
-            'border-l-4',
-            borderColor
+            "relative overflow-hidden rounded-lg bg-[#111] border border-white/5 hover:bg-[#161616] hover:border-white/10 transition-all cursor-pointer p-3",
+            "border-l-[3px]",
+            accentColor
         )}
-        onClick={onClick || (() => {
-            window.location.href = item.actionUrl;
-        })}
+        onClick={onClick || (() => window.location.href = item.actionUrl)}
         >
-        <CardContent className="p-4">
-        <div className="flex items-start justify-between gap-3">
-        {/* Main Content */}
+        <div className="flex items-start justify-between gap-3 relative z-10">
         <div className="flex-1 min-w-0 space-y-2">
-        {/* Header: Title & Badges */}
-        <div className="flex items-start gap-2 flex-wrap">
-        <h4 className="font-semibold text-sm truncate flex-1">
+        {/* Header */}
+        <div className="flex items-start justify-between">
+        <h4 className="font-bold text-xs text-slate-200 group-hover:text-white truncate pr-2">
         {item.title}
         </h4>
-        <div className="flex items-center gap-1.5">
-        <ModuleBadge moduleType={item.moduleType} size="sm" />
-        <PriorityBadge priority={item.priority} size="sm" />
-        </div>
+        <ModuleBadge type={item.moduleType} showIcon={false} className="opacity-80 scale-90 origin-right" />
         </div>
 
-        {/* Description */}
-        <p className="text-xs text-muted-foreground leading-relaxed">
-        {item.description}
-        </p>
-
-        {/* Metadata Row */}
-        <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
-        {/* Due Date */}
+        {/* Metadata */}
+        <div className="flex items-center gap-3 text-[10px] text-slate-500 font-mono">
         {item.dueDate && (
-            <div className="flex items-center gap-1">
-            <Calendar className="h-3 w-3" />
-            <span className={cn(
-                isDueToday(item.dueDate) && 'text-red-600 dark:text-red-400 font-semibold',
-                                isOverdue(item.dueDate) && 'text-red-700 dark:text-red-300 font-bold'
-            )}>
+            <div className={cn("flex items-center gap-1", isDueToday(item.dueDate) && "text-red-400 font-bold")}>
+            <Calendar className="w-3 h-3" />
             {formatDueDate(item.dueDate)}
-            </span>
             </div>
         )}
-
-        {/* Time Estimate */}
         {item.estimatedMinutes && (
             <div className="flex items-center gap-1">
-            <Clock className="h-3 w-3" />
-            <span>{formatStudyTime(item.estimatedMinutes)}</span>
-            </div>
-        )}
-
-        {/* Progress (if metadata contains progress info) */}
-        {item.metadata?.progress !== undefined && (
-            <div className="flex items-center gap-1">
-            <span className="font-medium">
-            {Math.round(item.metadata.progress * 100)}% complete
-            </span>
+            <Clock className="w-3 h-3" />
+            {formatStudyTime(item.estimatedMinutes)}
             </div>
         )}
         </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex items-center gap-1">
-        {/* Context Menu */}
+        {/* Actions */}
+        <div className="flex flex-col gap-1 items-end">
+        <PriorityBadge priority={item.priority} showIcon={false} className="scale-75 origin-right" />
+
+        <div className="flex items-center mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
         <DropdownMenu>
         <DropdownMenuTrigger asChild>
-        <Button
-        variant="ghost"
-        size="sm"
-        className="h-8 w-8 p-0"
-        onClick={(e) => e.stopPropagation()}
-        >
-        <MoreVertical className="h-4 w-4" />
+        <Button variant="ghost" size="sm" className="h-6 w-6 p-0 hover:bg-white/10" onClick={(e) => e.stopPropagation()}>
+        <MoreVertical className="h-3 w-3 text-slate-400" />
         </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-        <DropdownMenuItem onClick={() => onSnooze?.(1)}>
-        Snooze 1 hour
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => onSnooze?.(24)}>
-        Snooze 1 day
-        </DropdownMenuItem>
-        <DropdownMenuItem
-        onClick={onDismiss}
-        className="text-destructive"
-        >
-        Dismiss
-        </DropdownMenuItem>
+        <DropdownMenuContent align="end" className="bg-[#0A0A0A] border-white/10 text-slate-300">
+        <DropdownMenuItem onClick={() => onSnooze?.(1)}>Snooze 1h</DropdownMenuItem>
+        <DropdownMenuItem onClick={() => onSnooze?.(24)}>Snooze 1d</DropdownMenuItem>
+        <DropdownMenuItem onClick={onDismiss} className="text-red-400 focus:text-red-300">Dismiss</DropdownMenuItem>
         </DropdownMenuContent>
         </DropdownMenu>
-
-        {/* Navigate Arrow */}
-        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+        <ChevronRight className="h-3 w-3 text-slate-500 ml-1" />
         </div>
         </div>
-        </CardContent>
-        </Card>
+        </div>
+        </div>
         </motion.div>
     );
 }
 
-// Get border color based on section color
-function getBorderColor(sectionColor: string): string {
-    switch (sectionColor) {
-        case 'red':
-            return 'border-l-red-600';
-        case 'orange':
-            return 'border-l-orange-600';
-        case 'blue':
-            return 'border-l-blue-600';
-        case 'gray':
-        default:
-            return 'border-l-gray-400';
-    }
-}
-
-// Check if due today
 function isDueToday(dueDate: string): boolean {
     const due = new Date(dueDate);
     const today = new Date();
-    return (
-        due.getDate() === today.getDate() &&
-        due.getMonth() === today.getMonth() &&
-        due.getFullYear() === today.getFullYear()
-    );
-}
-
-// Check if overdue
-function isOverdue(dueDate: string): boolean {
-    return new Date(dueDate) < new Date();
+    return due.toDateString() === today.toDateString();
 }

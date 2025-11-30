@@ -5,7 +5,7 @@ import { BookOpen, MessageSquare } from 'lucide-react';
 export function NotesCreatedCard({ value, trend }: { value: number; trend?: any }) {
     return (
         <StatCard
-        label="Notes Created"
+        label="Knowledge Nodes"
         value={value}
         formatter={(v) => v.toLocaleString()}
         trend={trend}
@@ -18,7 +18,7 @@ export function NotesCreatedCard({ value, trend }: { value: number; trend?: any 
 export function ChatSessionsCard({ value, trend }: { value: number; trend?: any }) {
     return (
         <StatCard
-        label="Chat Sessions"
+        label="AI Interactions"
         value={value}
         trend={trend}
         icon={MessageSquare}

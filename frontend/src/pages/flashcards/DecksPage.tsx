@@ -17,8 +17,6 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { EmptyState } from '@/components/common/EmptyState';
-import { Skeleton } from '@/components/ui/skeleton';
 import {
     Plus,
     Search,
@@ -26,9 +24,6 @@ import {
     Edit,
     Trash2,
     Play,
-    BookOpen,
-    Clock,
-    Target,
     Layers,
     Sparkles,
     AlertTriangle,
@@ -38,7 +33,7 @@ import type { DeckResponse } from '@/api/generated/types.gen';
 
 /**
  * Mnemosyne Protocol Hub - Enhanced Flashcard Decks Interface
- * FIXED VERSION - Proper Error Handling
+ * STANDARDIZED WITH DASHBOARD DESIGN (#020202)
  *
  * Features:
  * - Holographic deck pods with glassmorphic design
@@ -76,7 +71,7 @@ export function DecksPage() {
                                                },
     });
 
-    // FIXED: Ensure decksData is an array before filtering
+    // Ensure decksData is an array
     const decks = Array.isArray(decksData) ? decksData : [];
 
     // Filter decks by search query
@@ -114,7 +109,7 @@ export function DecksPage() {
     };
 
     return (
-        <div className="min-h-screen bg-[#020408] text-slate-200 relative overflow-hidden">
+        <div className="min-h-screen bg-[#020202] text-slate-200 relative overflow-hidden">
         {/* Ambient Noise Texture */}
         <div className="absolute inset-0 z-0 opacity-10 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-overlay pointer-events-none" />
 
@@ -135,7 +130,7 @@ export function DecksPage() {
         </div>
         <Button
         onClick={() => navigate('/flashcards/create')}
-        className="flex items-center gap-2 px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-sm font-bold text-white transition-all group"
+        className="flex items-center gap-2 px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/5 rounded-lg text-sm font-bold text-white transition-all group"
         variant="ghost"
         >
         <Plus size={16} className="group-hover:rotate-90 transition-transform duration-300" />
@@ -155,7 +150,7 @@ export function DecksPage() {
         placeholder="Search memory cores..."
         value={searchQuery}
         onChange={(e) => setSearchQuery(e.target.value)}
-        className="pl-11 bg-black/40 border-white/10 text-white placeholder:text-slate-600 focus:border-cyan-500/50 transition-colors font-mono text-sm"
+        className="pl-11 bg-black/40 border-white/5 text-white placeholder:text-slate-600 focus:border-cyan-500/50 transition-colors font-mono text-sm"
         />
         </motion.div>
 
@@ -163,12 +158,12 @@ export function DecksPage() {
         {isLoading && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[...Array(6)].map((_, i) => (
-                <div key={i} className="h-48 rounded-2xl bg-black/40 border border-white/10 animate-pulse" />
+                <div key={i} className="h-48 rounded-2xl bg-black/40 border border-white/5 animate-pulse" />
             ))}
             </div>
         )}
 
-        {/* Error State - NEW */}
+        {/* Error State */}
         {isError && (
             <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -196,7 +191,7 @@ export function DecksPage() {
                 </Button>
                 <Button
                 onClick={() => navigate('/auth/login')}
-                className="bg-white/5 hover:bg-white/10 border border-white/10 text-white"
+                className="bg-white/5 hover:bg-white/10 border border-white/5 text-white"
                 variant="ghost"
                 >
                 Re-authenticate
@@ -274,7 +269,6 @@ interface DeckPodProps {
 function DeckPod({ deck, color, variants, onDelete, onEdit, onReview, onClick }: DeckPodProps) {
     const dueCount = 0; // TODO: Get from API
     const masteryPercent = Math.round((deck.card_count || 0) * 0.3); // Mock calculation
-    const lastReviewed = '2h ago'; // TODO: Get from API
 
     // Color mapping for Tailwind classes
     const colorClasses = {
@@ -349,7 +343,7 @@ function DeckPod({ deck, color, variants, onDelete, onEdit, onReview, onClick }:
         whileTap={{ scale: 0.98 }}
         transition={{ duration: 0.2 }}
         onClick={onClick}
-        className={`relative group cursor-pointer h-48 rounded-2xl bg-black/40 border ${colors.border} backdrop-blur-md overflow-hidden flex flex-col p-6 transition-all ${colors.hoverBorder} hover:shadow-[0_0_30px_rgba(0,0,0,0.5)]`}
+        className={`relative group cursor-pointer h-48 rounded-2xl bg-[rgba(10,10,10,0.6)] backdrop-blur-xl border ${colors.border} overflow-hidden flex flex-col p-6 transition-all ${colors.hoverBorder} hover:shadow-[0_0_30px_rgba(0,0,0,0.5)]`}
         >
         {/* Gradient Overlay */}
         <div className={`absolute inset-0 bg-gradient-to-br ${colors.gradient} via-transparent to-transparent opacity-50`} />
@@ -363,15 +357,15 @@ function DeckPod({ deck, color, variants, onDelete, onEdit, onReview, onClick }:
         </div>
         </div>
 
-        {/* Dropdown Menu - Top Right (visible on hover) */}
+        {/* Dropdown Menu - Top Left (visible on hover) */}
         <div className="absolute top-3 left-3 opacity-0 group-hover:opacity-100 transition-opacity z-20">
         <DropdownMenu>
         <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-        <Button variant="ghost" size="icon" className="h-7 w-7 bg-black/60 hover:bg-black/80 border border-white/10">
+        <Button variant="ghost" size="icon" className="h-7 w-7 bg-black/60 hover:bg-black/80 border border-white/5">
         <MoreVertical className="h-3 w-3 text-white" />
         </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="bg-[#0a0c12] border-white/10">
+        <DropdownMenuContent align="start" className="bg-[rgba(10,10,10,0.95)] backdrop-blur-xl border-white/5">
         <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onReview(); }} className="text-white">
         <Play className="mr-2 h-4 w-4" />
         Review

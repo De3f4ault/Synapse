@@ -1,5 +1,6 @@
 /**
  * Color scheme for dashboard modules and components
+ * FIXED: Changed keys to singular form (document, note, flashcard, chat, quiz)
  */
 
 export const MODULE_COLORS = {

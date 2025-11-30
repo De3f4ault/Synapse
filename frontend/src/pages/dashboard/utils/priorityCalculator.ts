@@ -1,23 +1,42 @@
 import { PRIORITY_WEIGHTS, PRIORITY_THRESHOLDS } from '../constants/priorityWeights';
-import type { PriorityLevel, QueueItem } from '../types/dashboard.types';
+import type { PriorityLevel } from '../types/dashboard.types';
+
+/**
+ * Priority Calculator
+ * FIXED: Uses correct number-based priority (0-1) and proper typing
+ */
+
+/**
+ * Input parameters for priority calculation
+ */
+export interface PriorityInput {
+    dueDate?: string | null;
+    isWeakArea?: boolean;
+    accuracy?: number;
+    hasPrerequisites?: boolean;
+    lastAccessed?: string | null;
+}
 
 /**
  * Calculate priority score for a queue item (0-1)
+ *
+ * @param input - Priority calculation parameters
+ * @returns Priority score between 0 and 1
  */
-export function calculatePriority(item: Partial<QueueItem>): number {
-    const { dueDate, metadata } = item;
+export function calculatePriority(input: PriorityInput): number {
+    const { dueDate, isWeakArea = false, accuracy = 1, hasPrerequisites = false, lastAccessed } = input;
 
     // 1. Due urgency score (0-1)
     const dueScore = calculateDueScore(dueDate);
 
     // 2. Weak area score (0-1)
-    const weakScore = metadata?.accuracy ? 1 - metadata.accuracy : 0;
+    const weakScore = isWeakArea ? (1 - accuracy) : 0;
 
     // 3. Dependency score (has prerequisites or unlocks content)
-    const depScore = metadata?.hasPrerequisites ? 0.8 : 0;
+    const depScore = hasPrerequisites ? 0.8 : 0;
 
     // 4. Recency score (recently accessed = lower priority)
-    const recencyScore = calculateRecencyScore(metadata?.lastReviewed);
+    const recencyScore = calculateRecencyScore(lastAccessed);
 
     // Weighted sum
     const totalScore =
@@ -31,6 +50,9 @@ export function calculatePriority(item: Partial<QueueItem>): number {
 
 /**
  * Convert priority score to priority level
+ *
+ * @param score - Priority score (0-1)
+ * @returns Priority level enum
  */
 export function scoreToPriorityLevel(score: number): PriorityLevel {
     if (score >= PRIORITY_THRESHOLDS.urgent) return 'urgent';
@@ -47,7 +69,7 @@ export function scoreToPriorityLevel(score: number): PriorityLevel {
  * - Due in 4-7 days = 0.4-0.6
  * - Due > 1 week = 0-0.3
  */
-function calculateDueScore(dueDate?: string): number {
+function calculateDueScore(dueDate?: string | null): number {
     if (!dueDate) return 0;
 
     const now = new Date();
@@ -69,22 +91,15 @@ function calculateDueScore(dueDate?: string): number {
  * - Accessed 7-30 days ago = 0.5-0.8
  * - Accessed < 7 days ago = 0-0.5
  */
-function calculateRecencyScore(lastReviewed?: string): number {
-    if (!lastReviewed) return 1.0; // Never accessed
+function calculateRecencyScore(lastAccessed?: string | null): number {
+    if (!lastAccessed) return 1.0; // Never accessed
 
     const now = new Date();
-    const last = new Date(lastReviewed);
+    const last = new Date(lastAccessed);
     const diffMs = now.getTime() - last.getTime();
     const diffDays = diffMs / (1000 * 60 * 60 * 24);
 
     if (diffDays > 30) return 1.0;
     if (diffDays > 7) return 0.5 + (diffDays - 7) / 23 * 0.3;
     return Math.min(1, diffDays / 7 * 0.5);
-}
-
-/**
- * Sort queue items by priority score
- */
-export function sortByPriority(items: QueueItem[]): QueueItem[] {
-    return [...items].sort((a, b) => b.priorityScore - a.priorityScore);
 }

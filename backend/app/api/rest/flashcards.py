@@ -367,6 +367,82 @@ async def get_card(
         )
 
 
+@router.put(
+    "/{card_id}",
+    response_model=FlashcardResponse,
+    summary="Update flashcard",
+    description="Update an existing flashcard"
+)
+async def update_card(
+    card_id: int,
+    card_data: FlashcardUpdate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Update a flashcard.
+
+    Only updates provided fields (partial update).
+    Verifies ownership through deck relationship.
+    """
+    try:
+        # Verify card exists and user owns it
+        result = await db.execute(
+            select(Flashcard).join(Deck).where(
+                and_(
+                    Flashcard.id == card_id,
+                    Deck.user_id == current_user.id,
+                    Flashcard.deleted_at.is_(None),
+                    Deck.deleted_at.is_(None)
+                )
+            )
+        )
+        card = result.scalar_one_or_none()
+
+        if not card:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Card not found or access denied"
+            )
+
+        # Update only provided fields
+        update_data = card_data.model_dump(exclude_unset=True)
+
+        for field, value in update_data.items():
+            setattr(card, field, value)
+
+        # Update timestamp
+        card.updated_at = datetime.utcnow()
+
+        await db.commit()
+        await db.refresh(card)
+
+        logger.info(
+            "update_card_success",
+            card_id=card_id,
+            user_id=current_user.id,
+            updated_fields=list(update_data.keys())
+        )
+
+        return card
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(
+            "update_card_error",
+            error=str(e),
+            card_id=card_id,
+            user_id=current_user.id,
+            exc_info=True
+        )
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to update card"
+        )
+
+
 @router.delete(
     "/{card_id}",
     response_model=MessageResponse,

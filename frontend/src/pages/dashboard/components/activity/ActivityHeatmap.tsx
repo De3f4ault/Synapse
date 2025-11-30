@@ -1,202 +1,99 @@
 import { motion } from 'framer-motion';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Flame, TrendingUp } from 'lucide-react';
+import { Flame, TrendingUp, Info } from 'lucide-react';
 import { useActivityData } from '../../hooks/useActivityData';
 import { LoadingState } from '../shared/LoadingState';
 import { formatDate } from '@/lib/utils';
 
 /**
- * ActivityHeatmap - GitHub-style contribution heatmap
- *
- * Features:
- * - 365-day grid (52 weeks x 7 days)
- * - Color intensity by activity level (0-4 scale)
- * - Hover tooltips with date and activity count
- * - Streak calculation and display
- * - Click to filter dashboard by date (future enhancement)
- *
- * Color Scale:
- * - Level 0: No activity (bg-muted)
- * - Level 1: 1-2 activities (bg-green-500/20)
- * - Level 2: 3-5 activities (bg-green-500/40)
- * - Level 3: 6-10 activities (bg-green-500/60)
- * - Level 4: 11+ activities (bg-green-500)
+ * ActivityHeatmap - "Study Consistency" Style
+ * Refactored to match the AnalyticsView from the template.
  */
 export function ActivityHeatmap() {
-    const { heatmapData, stats, isLoading, error } = useActivityData(365);
+    const { heatmapData, stats, isLoading } = useActivityData(365);
 
-    if (isLoading) {
-        return (
-            <Card className="h-full">
-            <CardHeader>
-            <CardTitle>Activity Overview</CardTitle>
-            </CardHeader>
-            <CardContent>
-            <LoadingState />
-            </CardContent>
-            </Card>
-        );
-    }
+    if (isLoading) return <LoadingState />;
 
-    if (error) {
-        return (
-            <Card className="h-full">
-            <CardHeader>
-            <CardTitle>Activity Overview</CardTitle>
-            </CardHeader>
-            <CardContent>
-            <p className="text-sm text-muted-foreground">Failed to load activity data</p>
-            </CardContent>
-            </Card>
-        );
-    }
-
-    // Generate 365 days of data (fill missing days with 0)
-    const fullYearData = generateFullYearData(heatmapData);
-
-    // Group by weeks (7 days per week)
-    const weeks = chunkArray(fullYearData, 7);
+    // Fill data for grid
+    const fullYearData = generateFullYearData(heatmapData || []);
+    // Only take last ~150 days to fit the wider sci-fi grid look comfortably or keep 365 but smaller
+    // Template uses a grid of approx 50 items. We'll stick to a denser grid but styled like the template.
+    const displayData = fullYearData.slice(0, 140);
 
     return (
-        <Card className="h-full">
-        <CardHeader>
-        <div className="flex items-center justify-between">
+        <div className="dashboard-glass rounded-2xl p-6 h-full flex flex-col relative overflow-hidden">
+        {/* Header */}
+        <div className="mb-6 relative z-10 flex justify-between items-start">
         <div>
-        <CardTitle>Activity Overview</CardTitle>
-        <CardDescription>Last 365 days</CardDescription>
+        <h3 className="text-sm font-bold text-slate-200 flex items-center gap-2">
+        Consistency Matrix
+        <Info className="w-3 h-3 text-slate-600" />
+        </h3>
+        <p className="text-[10px] text-slate-500 uppercase tracking-wider mt-1">
+        Temporal Habit Tracking
+        </p>
         </div>
         {stats && (
-            <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-            <Flame className="h-4 w-4 text-orange-500" />
-            <div className="text-right">
-            <p className="text-2xl font-bold">{stats.currentStreak}</p>
-            <p className="text-xs text-muted-foreground">day streak</p>
-            </div>
-            </div>
-            <div className="flex items-center gap-2">
-            <TrendingUp className="h-4 w-4 text-primary" />
-            <div className="text-right">
-            <p className="text-2xl font-bold">{Math.round(stats.weeklyAverage)}</p>
-            <p className="text-xs text-muted-foreground">weekly avg</p>
-            </div>
+            <div className="flex gap-2">
+            <div className="px-2 py-1 rounded bg-orange-500/10 border border-orange-500/20 text-[10px] font-bold text-orange-400 flex items-center gap-1">
+            <Flame className="w-3 h-3" /> {stats.currentStreak} DAY STREAK
             </div>
             </div>
         )}
         </div>
-        </CardHeader>
 
-        <CardContent>
-        <div className="space-y-6">
         {/* Heatmap Grid */}
-        <div className="overflow-x-auto pb-4">
-        <div className="inline-flex gap-1">
-        {weeks.map((week, weekIndex) => (
-            <div key={weekIndex} className="flex flex-col gap-1">
-            {week.map((day, dayIndex) => (
-                <HeatmapCell
-                key={`${weekIndex}-${dayIndex}`}
-                date={day.date}
-                count={day.activity_count}
-                level={getActivityLevel(day.activity_count)}
-                />
-            ))}
-            </div>
-        ))}
-        </div>
+        <div className="flex-1 flex flex-col justify-center relative z-10">
+        <div className="flex flex-wrap gap-1.5 content-start">
+        {displayData.map((day, i) => {
+            const intensity = getActivityLevel(day.activity_count);
+            return (
+                <TooltipProvider key={i} delayDuration={0}>
+                <Tooltip>
+                <TooltipTrigger asChild>
+                <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ delay: i * 0.005 }}
+                className={`
+                    w-3 h-3 rounded-sm border border-black/20 transition-all duration-300
+                    ${getLevelColor(intensity)}
+                    hover:scale-150 hover:z-20 hover:border-white
+                    `}
+                    />
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="bg-black/90 border-white/10 text-xs">
+                    <p className="font-bold text-emerald-400">{formatDate(new Date(day.date), { month: 'short', day: 'numeric' })}</p>
+                    <p className="text-slate-400">{day.activity_count} Ops</p>
+                    </TooltipContent>
+                    </Tooltip>
+                    </TooltipProvider>
+            )
+        })}
         </div>
 
         {/* Legend */}
-        <div className="flex items-center justify-between text-sm">
-        <div className="flex items-center gap-2 text-muted-foreground">
-        <span>Less</span>
+        <div className="flex justify-between items-center mt-6 pt-4 border-t border-white/5">
+        <span className="text-[9px] text-slate-500 font-mono">ACTIVITY_DENSITY</span>
+        <div className="flex items-center gap-2">
+        <span className="text-[9px] text-slate-600">IDLE</span>
         <div className="flex gap-1">
-        {[0, 1, 2, 3, 4].map((level) => (
-            <div
-            key={level}
-            className={`h-3 w-3 rounded-sm ${getLevelColor(level)}`}
-            />
-        ))}
+        <div className="w-2 h-2 rounded-sm bg-white/5" />
+        <div className="w-2 h-2 rounded-sm bg-emerald-900/50" />
+        <div className="w-2 h-2 rounded-sm bg-emerald-600" />
+        <div className="w-2 h-2 rounded-sm bg-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.5)]" />
         </div>
-        <span>More</span>
+        <span className="text-[9px] text-slate-600">PEAK</span>
         </div>
-
-        {stats && stats.longestStreak > 0 && (
-            <Badge variant="secondary">
-            Longest streak: {stats.longestStreak} days
-            </Badge>
-        )}
+        </div>
         </div>
 
-        {/* Stats Summary */}
-        {stats && (
-            <div className="grid grid-cols-3 gap-4 pt-4 border-t">
-            <div>
-            <p className="text-2xl font-bold">{stats.totalActivities}</p>
-            <p className="text-xs text-muted-foreground">Total activities</p>
-            </div>
-            <div>
-            <p className="text-2xl font-bold">{Math.round(stats.averageDaily)}</p>
-            <p className="text-xs text-muted-foreground">Daily average</p>
-            </div>
-            <div>
-            <p className="text-2xl font-bold">
-            {stats.peakDay ? stats.peakDay.count : 0}
-            </p>
-            <p className="text-xs text-muted-foreground">Most in a day</p>
-            </div>
-            </div>
-        )}
+        {/* Decorative Background Elements */}
+        <div className="absolute -right-10 -bottom-10 w-32 h-32 bg-emerald-500/5 blur-[50px] rounded-full pointer-events-none" />
         </div>
-        </CardContent>
-        </Card>
     );
 }
 
-/**
- * Individual heatmap cell with tooltip
- */
-interface HeatmapCellProps {
-    date: string;
-    count: number;
-    level: number;
-}
-
-function HeatmapCell({ date, count, level }: HeatmapCellProps) {
-    const formattedDate = formatDate(new Date(date), {
-        weekday: 'short',
-        month: 'short',
-        day: 'numeric',
-    });
-
-    return (
-        <TooltipProvider delayDuration={100}>
-        <Tooltip>
-        <TooltipTrigger asChild>
-        <motion.div
-        whileHover={{ scale: 1.2 }}
-        transition={{ duration: 0.1 }}
-        className={`h-3 w-3 rounded-sm cursor-pointer ${getLevelColor(level)}`}
-        />
-        </TooltipTrigger>
-        <TooltipContent>
-        <div className="text-xs">
-        <p className="font-medium">{formattedDate}</p>
-        <p className="text-muted-foreground">
-        {count} {count === 1 ? 'activity' : 'activities'}
-        </p>
-        </div>
-        </TooltipContent>
-        </Tooltip>
-        </TooltipProvider>
-    );
-}
-
-/**
- * Get activity level (0-4) based on count
- */
 function getActivityLevel(count: number): number {
     if (count === 0) return 0;
     if (count <= 2) return 1;
@@ -205,55 +102,29 @@ function getActivityLevel(count: number): number {
     return 4;
 }
 
-/**
- * Get Tailwind class for activity level
- */
 function getLevelColor(level: number): string {
     switch (level) {
-        case 0:
-            return 'bg-muted dark:bg-muted/30';
-        case 1:
-            return 'bg-green-500/20 dark:bg-green-500/30';
-        case 2:
-            return 'bg-green-500/40 dark:bg-green-500/50';
-        case 3:
-            return 'bg-green-500/60 dark:bg-green-500/70';
-        case 4:
-            return 'bg-green-500 dark:bg-green-500';
-        default:
-            return 'bg-muted';
+        case 0: return 'bg-white/5';
+        case 1: return 'bg-emerald-900/40';
+        case 2: return 'bg-emerald-700/60';
+        case 3: return 'bg-emerald-500';
+        case 4: return 'bg-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.4)]';
+        default: return 'bg-white/5';
     }
 }
 
-/**
- * Generate full year of data (fill missing days with 0)
- */
-function generateFullYearData(data: Array<{ date: string; activity_count: number }>) {
+function generateFullYearData(data: any[]) {
     const dataMap = new Map(data.map((d) => [d.date, d.activity_count]));
-    const fullYear: Array<{ date: string; activity_count: number }> = [];
-
+    const fullYear = [];
     const today = new Date();
-    for (let i = 364; i >= 0; i--) {
+    for (let i = 139; i >= 0; i--) { // Generating 140 days for the grid
         const date = new Date(today);
         date.setDate(date.getDate() - i);
         const dateStr = date.toISOString().split('T')[0];
-
         fullYear.push({
             date: dateStr,
             activity_count: dataMap.get(dateStr) || 0,
         });
     }
-
     return fullYear;
-}
-
-/**
- * Chunk array into subarrays of specified size
- */
-function chunkArray<T>(array: T[], size: number): T[][] {
-    const chunks: T[][] = [];
-    for (let i = 0; i < array.length; i += size) {
-        chunks.push(array.slice(i, i + size));
-    }
-    return chunks;
 }

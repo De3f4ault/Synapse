@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronUp, Circle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { QueueSection as QueueSectionType } from '../../types/queue.types';
 import { QueueItem } from './QueueItem';
@@ -15,14 +15,8 @@ interface QueueSectionProps {
 }
 
 /**
- * QueueSection - Collapsible section for grouped queue items
- *
- * Features:
- * - Color-coded by priority level
- * - Collapsible with smooth animation
- * - Item count badge
- * - Staggered item animations
- * - Section-specific styling
+ * QueueSection - "Tactical Group" Style
+ * Minimal headers with neon indicators.
  */
 export function QueueSection({
     section,
@@ -31,57 +25,28 @@ export function QueueSection({
     defaultExpanded = true
 }: QueueSectionProps) {
     const [isExpanded, setIsExpanded] = useState(defaultExpanded);
-    const colorScheme = getSectionColorScheme(section.color);
+    const colorClass = getSectionColor(section.color);
 
     return (
-        <div className="space-y-2">
-        {/* Section Header */}
+        <div className="space-y-1">
         <Button
         variant="ghost"
-        className={cn(
-            'w-full justify-between p-3 h-auto group',
-            'hover:bg-opacity-10 transition-all'
-        )}
+        className="w-full justify-between p-2 h-auto hover:bg-white/5 group rounded-lg"
         onClick={() => setIsExpanded(!isExpanded)}
         >
-        <div className="flex items-center gap-3">
-        {/* Color Indicator */}
-        <div className={cn(
-            'w-1 h-8 rounded-full',
-            colorScheme.indicator
-        )} />
-
-        {/* Title and Count */}
         <div className="flex items-center gap-2">
-        <h3 className="font-semibold text-sm">
+        <Circle className={cn("w-2 h-2 fill-current", colorClass)} />
+        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider group-hover:text-white transition-colors">
         {section.title}
-        </h3>
-        <Badge
-        variant="secondary"
-        className={cn(
-            'text-xs',
-            colorScheme.badge
-        )}
-        >
-        {section.items.length}
-        </Badge>
-        </div>
+        </span>
+        <span className="text-[10px] text-slate-600 font-mono ml-1">
+        [{section.items.length}]
+        </span>
         </div>
 
-        {/* Expand/Collapse Icon */}
-        <motion.div
-        animate={{ rotate: isExpanded ? 0 : -90 }}
-        transition={{ duration: 0.2 }}
-        >
-        {isExpanded ? (
-            <ChevronUp className="h-4 w-4 text-muted-foreground" />
-        ) : (
-            <ChevronDown className="h-4 w-4 text-muted-foreground" />
-        )}
-        </motion.div>
+        {isExpanded ? <ChevronUp className="w-3 h-3 text-slate-600" /> : <ChevronDown className="w-3 h-3 text-slate-600" />}
         </Button>
 
-        {/* Items List with Animation */}
         <AnimatePresence initial={false}>
         {isExpanded && (
             <motion.div
@@ -89,18 +54,14 @@ export function QueueSection({
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.3, ease: 'easeInOut' }}
-            className="space-y-2 overflow-hidden"
+            className="space-y-2 pl-2 border-l border-white/5 ml-3"
             >
             {section.items.map((item, index) => (
                 <motion.div
                 key={item.id}
-                initial={{ opacity: 0, x: -20 }}
+                initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 20 }}
-                transition={{
-                    duration: 0.2,
-                    delay: index * 0.05
-                }}
+                transition={{ delay: index * 0.05 }}
                 >
                 <QueueItem
                 item={item}
@@ -117,29 +78,11 @@ export function QueueSection({
     );
 }
 
-// Get color scheme based on section color
-function getSectionColorScheme(color: string) {
+function getSectionColor(color: string) {
     switch (color) {
-        case 'red':
-            return {
-                indicator: 'bg-red-600',
-                badge: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 border-red-300 dark:border-red-700',
-            };
-        case 'orange':
-            return {
-                indicator: 'bg-orange-600',
-                badge: 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 border-orange-300 dark:border-orange-700',
-            };
-        case 'blue':
-            return {
-                indicator: 'bg-blue-600',
-                badge: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-700',
-            };
-        case 'gray':
-        default:
-            return {
-                indicator: 'bg-gray-400',
-                badge: 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-700',
-            };
+        case 'red': return 'text-red-500';
+        case 'orange': return 'text-orange-500';
+        case 'blue': return 'text-blue-500';
+        default: return 'text-slate-500';
     }
 }

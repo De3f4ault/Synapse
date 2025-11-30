@@ -1,5 +1,4 @@
 import { Badge } from '@/components/ui/badge';
-import { PRIORITY_COLORS } from '../../constants/colors';
 import { AlertCircle, AlertTriangle, Info, Circle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { PriorityLevel } from '../../types/dashboard.types';
@@ -8,6 +7,7 @@ interface PriorityBadgeProps {
     priority: PriorityLevel;
     className?: string;
     showIcon?: boolean;
+    size?: 'sm' | 'default';
 }
 
 const PRIORITY_ICONS = {
@@ -15,51 +15,45 @@ const PRIORITY_ICONS = {
     high: AlertTriangle,
     medium: Info,
     low: Circle,
-} as const;
-
-const PRIORITY_LABELS = {
-    urgent: 'Urgent',
-    high: 'High',
-    medium: 'Medium',
-    low: 'Low',
-} as const;
+};
 
 /**
- * Badge component for displaying priority level
- * Color-coded with urgency indicators
+ * PriorityBadge - Neon Style
  */
-export function PriorityBadge({ priority, className, showIcon = true }: PriorityBadgeProps) {
+export function PriorityBadge({ priority, className, showIcon = true, size = 'default' }: PriorityBadgeProps) {
     const Icon = PRIORITY_ICONS[priority];
-    const colors = PRIORITY_COLORS[priority];
-    const label = PRIORITY_LABELS[priority];
+    const colors = getPriorityColors(priority);
 
     return (
         <Badge
         variant="outline"
         className={cn(
-            'flex items-center gap-1',
-            colors.text,
+            'flex items-center gap-1 border font-mono font-bold uppercase tracking-tight',
             colors.bg,
+            colors.text,
             colors.border,
+            size === 'sm' ? 'text-[9px] px-1 h-4' : 'text-[10px] px-2 h-5',
             className
         )}
         >
-        {showIcon && <Icon className="h-3 w-3" />}
-        <span className="text-xs font-medium">{label}</span>
+        {showIcon && <Icon className={cn(size === 'sm' ? 'w-2 h-2' : 'w-3 h-3')} />}
+        <span>{priority}</span>
         </Badge>
     );
 }
 
-/**
- * Priority indicator dot (for compact display)
- */
-export function PriorityDot({ priority, className }: { priority: PriorityLevel; className?: string }) {
-    const colors = PRIORITY_COLORS[priority];
+function getPriorityColors(priority: PriorityLevel) {
+    switch (priority) {
+        case 'urgent': return { bg: 'bg-red-500/10', text: 'text-red-500', border: 'border-red-500/30' };
+        case 'high': return { bg: 'bg-orange-500/10', text: 'text-orange-500', border: 'border-orange-500/30' };
+        case 'medium': return { bg: 'bg-yellow-500/10', text: 'text-yellow-500', border: 'border-yellow-500/30' };
+        case 'low': return { bg: 'bg-slate-500/10', text: 'text-slate-500', border: 'border-slate-500/30' };
+    }
+}
 
+export function PriorityDot({ priority, className }: { priority: PriorityLevel; className?: string }) {
+    const colors = getPriorityColors(priority);
     return (
-        <div
-        className={cn('h-2 w-2 rounded-full', colors.bg, className)}
-        title={PRIORITY_LABELS[priority]}
-        />
+        <div className={cn('h-1.5 w-1.5 rounded-full', colors.bg.replace('/10', ''), colors.text.replace('text-', 'bg-'), className)} />
     );
 }

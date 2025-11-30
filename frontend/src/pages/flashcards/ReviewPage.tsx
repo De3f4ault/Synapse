@@ -10,7 +10,6 @@ import {
 import { queryKeys } from '@/lib/queryKeys';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
 import {
     ChevronLeft,
     RotateCcw,
@@ -23,8 +22,6 @@ import {
     Brain,
     Zap,
     Sparkles,
-    Lightbulb,
-    BookOpen,
     Loader2,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -34,15 +31,7 @@ type ReviewQuality = 'again' | 'hard' | 'good' | 'easy';
 
 /**
  * Imprint Card System - Enhanced Review Experience
- *
- * Features:
- * - 3D card flip animation with neural theme
- * - Deep space aesthetic with noise texture
- * - Neural HUD with progress tracking
- * - Quality rating with keyboard shortcuts (1-4)
- * - Session timer and stats
- * - Confetti celebration on completion
- * - TODO: Neural Tutor sidebar (AI feature)
+ * STANDARDIZED WITH DASHBOARD (#020202)
  */
 
 export function ReviewPage() {
@@ -183,7 +172,7 @@ export function ReviewPage() {
 
     if (isLoading) {
         return (
-            <div className="min-h-screen bg-[#050505] flex items-center justify-center">
+            <div className="min-h-screen bg-[#020202] flex items-center justify-center">
             <div className="flex flex-col items-center gap-4">
             <Loader2 className="h-12 w-12 text-cyan-500 animate-spin" />
             <p className="text-slate-400 font-mono text-sm">INITIALIZING NEURAL LINK...</p>
@@ -194,7 +183,7 @@ export function ReviewPage() {
 
     if (!dueCards || dueCards.length === 0) {
         return (
-            <div className="min-h-screen bg-[#050505] flex flex-col items-center justify-center">
+            <div className="min-h-screen bg-[#020202] flex flex-col items-center justify-center">
             <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10 pointer-events-none" />
             <Trophy className="h-16 w-16 text-emerald-500 mb-4" />
             <h2 className="text-2xl font-serif font-bold text-white mb-2">Neural Sync Complete</h2>
@@ -203,7 +192,7 @@ export function ReviewPage() {
             </p>
             <Button
             onClick={() => navigate('/flashcards')}
-            className="bg-white/5 hover:bg-white/10 border border-white/10 text-white"
+            className="bg-white/5 hover:bg-white/10 border border-white/5 text-white"
             >
             <ChevronLeft className="mr-2 h-4 w-4" />
             EXIT SIMULATION
@@ -218,7 +207,7 @@ export function ReviewPage() {
         const accuracy = totalReviewed > 0 ? (sessionStats.correct / totalReviewed) * 100 : 0;
 
         return (
-            <div className="min-h-screen bg-[#050505] flex items-center justify-center p-8">
+            <div className="min-h-screen bg-[#020202] flex items-center justify-center p-8">
             <Confetti recycle={false} numberOfPieces={500} />
             <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10 pointer-events-none" />
 
@@ -227,7 +216,7 @@ export function ReviewPage() {
             animate={{ opacity: 1, scale: 1 }}
             className="max-w-2xl w-full relative z-10"
             >
-            <Card className="bg-black/40 border-white/10 backdrop-blur-xl text-center">
+            <Card className="bg-[rgba(10,10,10,0.6)] backdrop-blur-xl border-white/5 text-center">
             <CardContent className="py-12">
             <motion.div
             initial={{ scale: 0 }}
@@ -288,7 +277,7 @@ export function ReviewPage() {
             <Button
             variant="outline"
             onClick={() => navigate('/flashcards')}
-            className="bg-white/5 hover:bg-white/10 border-white/10 text-white"
+            className="bg-white/5 hover:bg-white/10 border-white/5 text-white"
             >
             <ChevronLeft className="mr-2 h-4 w-4" />
             Return to Hub
@@ -309,7 +298,7 @@ export function ReviewPage() {
     }
 
     return (
-        <div className="h-screen bg-[#050505] flex flex-col overflow-hidden">
+        <div className="h-screen bg-[#020202] flex flex-col overflow-hidden">
         {/* Noise Texture */}
         <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10 pointer-events-none" />
 
@@ -341,7 +330,7 @@ export function ReviewPage() {
         <Timer className="h-4 w-4" />
         <span>{formatTime(elapsedTime)}</span>
         </div>
-        <div className="px-3 py-1 bg-white/5 border border-white/10 rounded text-xs font-mono text-slate-300">
+        <div className="px-3 py-1 bg-white/5 border border-white/5 rounded text-xs font-mono text-slate-300">
         {remainingCards} REMAINING
         </div>
         </div>
@@ -423,14 +412,7 @@ export function ReviewPage() {
         )}
         </AnimatePresence>
         </div>
-
-        {/* TODO: Neural Tutor Sidebar */}
-        {/*
-            <NeuralTutorSidebar card={currentCard} />
-            Note: This component needs to be implemented with Gemini API integration
-            Features: Mnemonic generation, ELI5 explanations, hint system
-            */}
-            </div>
+        </div>
     );
 }
 
@@ -458,7 +440,7 @@ function ImprintCard({ card, isFlipped, onFlip }: ImprintCardProps) {
         >
         {/* FRONT */}
         <div
-        className="absolute inset-0 rounded-3xl bg-[#080a0e] border border-white/10 shadow-2xl flex flex-col items-center justify-center p-12 text-center overflow-hidden"
+        className="absolute inset-0 rounded-3xl bg-[rgba(8,10,14,0.9)] backdrop-blur-xl border border-white/5 shadow-2xl flex flex-col items-center justify-center p-12 text-center overflow-hidden"
         style={{ backfaceVisibility: 'hidden' }}
         >
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_var(--tw-gradient-stops))] from-cyan-900/20 via-transparent to-transparent opacity-50" />
@@ -476,7 +458,7 @@ function ImprintCard({ card, isFlipped, onFlip }: ImprintCardProps) {
 
         {/* BACK */}
         <div
-        className="absolute inset-0 rounded-3xl bg-[#0a0c12] border border-purple-500/30 shadow-[0_0_50px_rgba(168,85,247,0.15)] flex flex-col items-center justify-center p-12 text-center overflow-hidden"
+        className="absolute inset-0 rounded-3xl bg-[rgba(10,12,18,0.9)] backdrop-blur-xl border border-purple-500/30 shadow-[0_0_50px_rgba(168,85,247,0.15)] flex flex-col items-center justify-center p-12 text-center overflow-hidden"
         style={{
             backfaceVisibility: 'hidden',
             transform: 'rotateY(180deg)',
