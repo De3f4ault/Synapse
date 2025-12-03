@@ -1,6 +1,7 @@
 /**
  * useSidebarCollapse - Left sidebar state
  * Manages session sidebar collapse/expand state
+ * DEFAULT: Open (not collapsed)
  */
 
 import { create } from 'zustand';
@@ -16,7 +17,7 @@ interface SidebarCollapseState {
 export const useSidebarCollapse = create<SidebarCollapseState>()(
   persist(
     (set) => ({
-      isCollapsed: false,
+      isCollapsed: false, // DEFAULT: Open/visible
 
       collapse: () => set({ isCollapsed: true }),
 

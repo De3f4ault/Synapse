@@ -2,19 +2,22 @@
 SQL Function Executor
 
 Helper module to execute PostgreSQL functions from Python.
+
+FIXED: Added transaction isolation and proper error handling
 """
 
 import json
 from typing import Any, Dict, List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
+from sqlalchemy.exc import DBAPIError, ProgrammingError
 import structlog
 
 logger = structlog.get_logger(__name__)
 
 
 class SQLExecutor:
-    """Executes SQL functions and parses results"""
+    """Executes SQL functions and parses results with transaction safety"""
 
     def __init__(self, session: AsyncSession):
         """
@@ -28,7 +31,8 @@ class SQLExecutor:
     async def execute_sql_function(
         self,
         function_name: str,
-        params: Dict[str, Any]
+        params: Dict[str, Any],
+        retry_on_abort: bool = True
     ) -> Any:
         """
         Execute a PostgreSQL function with parameters
@@ -36,73 +40,121 @@ class SQLExecutor:
         Args:
             function_name: Name of the SQL function to execute
             params: Dictionary of parameters to pass to the function
+            retry_on_abort: Whether to retry if transaction is aborted
 
         Returns:
             Function result (parsed from JSON if applicable)
 
         Raises:
-            Exception: If function execution fails
+            Exception: If function execution fails after retries
         """
-        try:
-            # Build parameter list for SQL function call
-            param_names = list(params.keys())
-            param_values = list(params.values())
+        max_retries = 2 if retry_on_abort else 1
+        last_error = None
 
-            # Create parameterized query
-            # e.g., SELECT * FROM function_name(:param1, :param2)
-            param_placeholders = ", ".join(f":{name}" for name in param_names)
-            query = text(f"SELECT * FROM {function_name}({param_placeholders})")
+        for attempt in range(max_retries):
+            try:
+                # Build parameter list for SQL function call
+                param_names = list(params.keys())
+                param_values = list(params.values())
 
-            logger.debug(
-                "executing_sql_function",
-                function=function_name,
-                params=params
-            )
+                # Create parameterized query
+                # e.g., SELECT * FROM function_name(:param1, :param2)
+                param_placeholders = ", ".join(f":{name}" for name in param_names)
+                query = text(f"SELECT * FROM {function_name}({param_placeholders})")
 
-            # Execute query
-            result = await self.session.execute(query, params)
-
-            # Fetch results
-            rows = result.fetchall()
-
-            # If no results, return None
-            if not rows:
-                logger.warning(
-                    "sql_function_no_results",
+                logger.debug(
+                    "executing_sql_function",
                     function=function_name,
-                    params=params
+                    params=params,
+                    attempt=attempt + 1
                 )
-                return None
 
-            # If single row with single column, return that value
-            if len(rows) == 1 and len(rows[0]) == 1:
-                value = rows[0][0]
+                # Execute query
+                result = await self.session.execute(query, params)
 
-                # Try to parse as JSON if it's a string
-                if isinstance(value, str):
-                    try:
-                        return json.loads(value)
-                    except json.JSONDecodeError:
-                        return value
+                # Fetch results
+                rows = result.fetchall()
 
-                return value
+                # If no results, return None
+                if not rows:
+                    logger.warning(
+                        "sql_function_no_results",
+                        function=function_name,
+                        params=params
+                    )
+                    return None
 
-            # If single row with multiple columns, return as dict
-            if len(rows) == 1:
-                return dict(rows[0]._mapping)
+                # If single row with single column, return that value
+                if len(rows) == 1 and len(rows[0]) == 1:
+                    value = rows[0][0]
 
-            # If multiple rows, return as list of dicts
-            return [dict(row._mapping) for row in rows]
+                    # Try to parse as JSON if it's a string
+                    if isinstance(value, str):
+                        try:
+                            return json.loads(value)
+                        except json.JSONDecodeError:
+                            return value
 
-        except Exception as e:
-            logger.error(
-                "sql_function_execution_failed",
-                function=function_name,
-                params=params,
-                error=str(e),
-                exc_info=True
-            )
-            raise
+                    return value
+
+                # If single row with multiple columns, return as dict
+                if len(rows) == 1:
+                    return dict(rows[0]._mapping)
+
+                # If multiple rows, return as list of dicts
+                return [dict(row._mapping) for row in rows]
+
+            except (DBAPIError, ProgrammingError) as e:
+                last_error = e
+                error_msg = str(e)
+
+                # Check if this is an "aborted transaction" error
+                if "InFailedSQLTransactionError" in error_msg or "current transaction is aborted" in error_msg:
+                    logger.warning(
+                        "sql_function_transaction_aborted",
+                        function=function_name,
+                        params=params,
+                        attempt=attempt + 1,
+                        max_retries=max_retries
+                    )
+
+                    if attempt < max_retries - 1:
+                        # Rollback the current transaction
+                        await self.session.rollback()
+                        logger.info("transaction_rolled_back", function=function_name)
+                        continue
+                    else:
+                        logger.error(
+                            "sql_function_all_retries_failed",
+                            function=function_name,
+                            params=params,
+                            error=error_msg
+                        )
+                        raise
+
+                # For other errors, log and raise immediately
+                logger.error(
+                    "sql_function_execution_failed",
+                    function=function_name,
+                    params=params,
+                    error=error_msg,
+                    exc_info=True
+                )
+                raise
+
+            except Exception as e:
+                logger.error(
+                    "sql_function_unexpected_error",
+                    function=function_name,
+                    params=params,
+                    error=str(e),
+                    exc_info=True
+                )
+                raise
+
+        # If we exhausted all retries
+        if last_error:
+            raise last_error
 
     async def call_build_user_context(self, user_id: int) -> Dict[str, Any]:
         """
@@ -114,19 +166,32 @@ class SQLExecutor:
         Returns:
             Complete user context as dict
         """
-        result = await self.execute_sql_function(
-            "build_user_context",
-            {"p_user_id": user_id}
-        )
+        try:
+            result = await self.execute_sql_function(
+                "developer_schema.build_user_context",
+                {"p_user_id": user_id},
+                retry_on_abort=True
+            )
 
-        # Ensure we return a dict
-        if result is None:
+            # Ensure we return a dict
+            if result is None:
+                logger.warning("build_user_context_returned_none", user_id=user_id)
+                return {}
+
+            if isinstance(result, str):
+                return json.loads(result)
+
+            return result
+
+        except Exception as e:
+            logger.error(
+                "call_build_user_context_failed",
+                user_id=user_id,
+                error=str(e),
+                exc_info=True
+            )
+            # Return empty context on error to prevent cascading failures
             return {}
-
-        if isinstance(result, str):
-            return json.loads(result)
-
-        return result
 
     async def call_detect_weak_areas(self, user_id: int) -> List[Dict[str, Any]]:
         """
@@ -138,50 +203,72 @@ class SQLExecutor:
         Returns:
             List of weak areas with details
         """
-        result = await self.execute_sql_function(
-            "detect_weak_areas",
-            {"p_user_id": user_id}
-        )
+        try:
+            result = await self.execute_sql_function(
+                "developer_schema.detect_weak_areas",
+                {"p_user_id": user_id},
+                retry_on_abort=True
+            )
 
-        # Ensure we return a list
-        if result is None:
+            # Ensure we return a list
+            if result is None:
+                return []
+
+            if not isinstance(result, list):
+                return [result]
+
+            return result
+
+        except Exception as e:
+            logger.error(
+                "call_detect_weak_areas_failed",
+                user_id=user_id,
+                error=str(e),
+                exc_info=True
+            )
             return []
-
-        if not isinstance(result, list):
-            return [result]
-
-        return result
 
     async def call_calculate_mastery(
         self,
         user_id: int,
-        topic: Optional[str] = None
-    ) -> Dict[str, float]:
+        deck_id: Optional[int] = None
+    ) -> List[Dict[str, Any]]:
         """
         Call the calculate_mastery SQL function
 
         Args:
             user_id: User ID
-            topic: Optional specific topic (if None, get all topics)
+            deck_id: Optional specific deck ID
 
         Returns:
-            Dict mapping topics to mastery scores
+            List of mastery score dictionaries
         """
-        params = {"p_user_id": user_id}
-        if topic:
-            params["p_topic"] = topic
+        try:
+            params = {"p_user_id": user_id}
+            if deck_id is not None:
+                params["p_deck_id"] = deck_id
 
-        result = await self.execute_sql_function(
-            "calculate_mastery",
-            params
-        )
+            result = await self.execute_sql_function(
+                "developer_schema.calculate_mastery",
+                params,
+                retry_on_abort=True
+            )
 
-        # Convert result to dict format
-        if result is None:
-            return {}
+            # Ensure we return a list
+            if result is None:
+                return []
 
-        if isinstance(result, list):
-            # Convert list of {topic, score} to dict
-            return {item["topic"]: item["score"] for item in result}
+            if not isinstance(result, list):
+                return [result]
 
-        return result
+            return result
+
+        except Exception as e:
+            logger.error(
+                "call_calculate_mastery_failed",
+                user_id=user_id,
+                deck_id=deck_id,
+                error=str(e),
+                exc_info=True
+            )
+            return []

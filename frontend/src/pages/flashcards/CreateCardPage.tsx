@@ -1,13 +1,13 @@
+/**
+ * CreateCardPage - Fragment Constructor
+ * REFACTORED: Now uses FlashcardEditor component
+ */
+
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { FlashcardEditor } from '@/modules/flashcards/components/FlashcardEditor';
-
-/**
- * CreateCardPage - Fragment Constructor
- * Standardized with Dashboard design
- */
+import { FlashcardEditor } from './components/card/FlashcardEditor';
 
 export function CreateCardPage() {
     const navigate = useNavigate();

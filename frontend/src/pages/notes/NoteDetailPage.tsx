@@ -1,518 +1,286 @@
-import { useState, useRef, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useParams, useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import {
-    getNoteApiV1NotesNoteIdGet,
-    updateNoteApiV1NotesNoteIdPut,
-    deleteNoteApiV1NotesNoteIdDelete
-} from '@/api/generated/services.gen';
-import { queryKeys } from '@/lib/queryKeys';
-import {
-    Clock, Hash, Edit3, Eye, Bold, Italic,
-    List, Code, Bot, Tag, Save, Loader2, Share2,
-    MoreVertical, Trash2, ChevronRight, Sparkles,
-    Brain, Zap, CornerDownRight, X, Check
-} from 'lucide-react';
-import { format } from 'date-fns';
-import { toast } from 'sonner';
-import { cn } from '@/lib/utils';
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-    DropdownMenuSeparator,
-} from '@/components/ui/dropdown-menu';
-
-// TODO: Implement AI Features
-// File: src/api/services/gemini.ts
-// - Neural Synthesis (summarization)
-// - Auto-tagging system
-// - Content expansion
-// - Grammar correction
-const mockAiSummarize = async (text: string) => {
-    await new Promise(r => setTimeout(r, 2000));
-    return "Neural synthesis: The system operates within optimal parameters. Knowledge infrastructure is stable.";
-};
-
-const mockAiTags = async (text: string) => {
-    await new Promise(r => setTimeout(r, 1500));
-    return ['AI', 'System', 'Neural'];
-};
-
 /**
- * Protocol: ARCHIVE - HoloEditor Interface
- *
- * Features:
- * - Transparent glass morphic editing surface
- * - Floating tool dock with AI assistance
- * - Auto-saving with optimistic updates
- * - Edit/View mode toggling
- * - Rich formatting toolbar (edit mode only)
- * - Neural synthesis AI integration
- * - Auto-tagging system
- * - Breadcrumb navigation
- * - Share and delete actions
+ * Complete Note Detail Page - Fully Functional
+ * File: frontend/src/pages/notes/NoteDetailPage.tsx
  */
+
+import { useEffect, useRef } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { ArrowLeft, Loader2, AlertCircle } from 'lucide-react';
+import { toast } from 'sonner';
+
+// Hooks
+import { useNote, useNotes } from './hooks/useNotes';
+import { useNoteEditor } from './hooks/useNoteEditor';
+
+// Components
+import { NoteEditor } from './components/editor/NoteEditor';
+import { EditorToolbar } from './components/editor/EditorToolbar';
+import { MarkdownPreview } from './components/editor/MarkdownPreview';
+import { NoteHeader } from './components/detail/NoteHeader';
+import { NoteTags } from './components/detail/NoteTags';
+
+// Services
+import { NoteAIService } from '@/services/noteAI.service';
+
+// Types
+import type { ToolDockAction } from './types/notes.types';
 
 export function NoteDetailPage() {
     const { noteId } = useParams<{ noteId: string }>();
     const navigate = useNavigate();
-    const id = parseInt(noteId || '0', 10);
-    const queryClient = useQueryClient();
+    const numericNoteId = noteId ? parseInt(noteId) : 0;
 
-    // Local State
-    const [isEditing, setIsEditing] = useState(true);
-    const [isProcessing, setIsProcessing] = useState(false);
-    const [isSaving, setIsSaving] = useState(false);
+    // Refs for textarea access
     const textareaRef = useRef<HTMLTextAreaElement>(null);
-    const titleRef = useRef<HTMLInputElement>(null);
 
-    // Local form state for optimistic updates
-    const [localNote, setLocalNote] = useState<{ title: string; content: string; tags?: string[] } | null>(null);
-    const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+    // Fetch note data
+    const { note, isLoading, error } = useNote(numericNoteId);
+    const { updateNote, deleteNote, isUpdating } = useNotes();
 
-    // Fetch Note
-    const { data: note, isLoading } = useQuery({
-        queryKey: queryKeys.notes.detail(id),
-                                               queryFn: () => getNoteApiV1NotesNoteIdGet({ noteId: id }),
-                                               enabled: !!id,
-    });
-
-    // Sync local state when note loads
-    useEffect(() => {
-        if (note) {
-            setLocalNote({
-                title: note.title,
-                content: note.content || '',
-                tags: note.tags || []
-            });
-            setHasUnsavedChanges(false);
-        }
-    }, [note]);
-
-    // Auto-resize textarea
-    useEffect(() => {
-        if (textareaRef.current) {
-            textareaRef.current.style.height = 'auto';
-            textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px';
-        }
-    }, [localNote?.content]);
-
-    // Track unsaved changes
-    useEffect(() => {
-        if (note && localNote) {
-            const changed =
-            localNote.title !== note.title ||
-            localNote.content !== (note.content || '');
-            setHasUnsavedChanges(changed);
-        }
-    }, [localNote, note]);
-
-    // Update Mutation
-    const { mutate: saveNote } = useMutation({
-        mutationFn: () => {
-            if (!localNote) throw new Error('No local note data');
-            return updateNoteApiV1NotesNoteIdPut({
-                noteId: id,
-                requestBody: {
-                    title: localNote.title,
-                    content: localNote.content,
-                    tags: localNote.tags,
-                }
-            });
+    // Editor state management
+    const {
+        mode,
+        localNote,
+        hasUnsavedChanges,
+        aiStatus,
+        updateTitle,
+        updateContent,
+        removeTag,
+        addTag,
+        toggleMode,
+        save,
+        startAIProcessing,
+        stopAIProcessing,
+    } = useNoteEditor({
+        note,
+        onSave: (data) => {
+            if (numericNoteId) {
+                updateNote({
+                    noteId: numericNoteId,
+                    data: {
+                        title: data.title,
+                        content: data.content,
+                        tags: data.tags,
+                    },
+                });
+            }
         },
-        onMutate: () => setIsSaving(true),
-                                             onSuccess: () => {
-                                                 queryClient.invalidateQueries({ queryKey: queryKeys.notes.detail(id) });
-                                                 queryClient.invalidateQueries({ queryKey: queryKeys.notes.list() });
-                                                 setHasUnsavedChanges(false);
-                                                 toast.success('ARTIFACT SYNCHRONIZED');
-                                             },
-                                             onError: (error) => {
-                                                 toast.error('SYNC FAILED', {
-                                                     description: error instanceof Error ? error.message : 'Unknown error',
-                                                 });
-                                             },
-                                             onSettled: () => setIsSaving(false),
     });
-
-    // Delete Mutation
-    const { mutate: deleteNote } = useMutation({
-        mutationFn: () => deleteNoteApiV1NotesNoteIdDelete({ noteId: id }),
-                                               onSuccess: () => {
-                                                   queryClient.invalidateQueries({ queryKey: queryKeys.notes.all });
-                                                   toast.success('FRAGMENT ARCHIVED');
-                                                   navigate('/notes');
-                                               },
-                                               onError: (error) => {
-                                                   toast.error('ARCHIVE FAILED', {
-                                                       description: error instanceof Error ? error.message : 'Unknown error',
-                                                   });
-                                               },
-    });
-
-    // Action Handlers
-    const handleAction = async (action: string) => {
-        if (action === 'toggle_edit') {
-            setIsEditing(!isEditing);
-        }
-
-        if (action === 'save') {
-            if (hasUnsavedChanges) {
-                saveNote();
-            } else {
-                toast.info('No changes to sync');
-            }
-        }
-
-        if (action === 'ai_summarize' && localNote) {
-            setIsProcessing(true);
-            try {
-                // TODO: Replace with actual Gemini API call
-                const summary = await mockAiSummarize(localNote.content);
-                const newContent = localNote.content + `\n\n---\n\n**NEURAL SYNTHESIS:**\n${summary}`;
-                setLocalNote(prev => prev ? { ...prev, content: newContent } : null);
-                setHasUnsavedChanges(true);
-                toast.success('SYNTHESIS COMPLETE');
-            } catch (e) {
-                toast.error('NEURAL LINK FAILURE');
-            }
-            setIsProcessing(false);
-        }
-
-        if (action === 'ai_tags' && localNote) {
-            setIsProcessing(true);
-            try {
-                // TODO: Replace with actual Gemini API call
-                const newTags = await mockAiTags(localNote.content);
-                setLocalNote(prev => prev ? {
-                    ...prev,
-                    tags: [...new Set([...(prev.tags || []), ...newTags])]
-                } : null);
-                setHasUnsavedChanges(true);
-                toast.success('TAGS GENERATED');
-            } catch (e) {
-                toast.error('TAG GENERATION FAILED');
-            }
-            setIsProcessing(false);
-        }
-
-        if (action === 'delete') {
-            if (confirm('Archive this neural fragment permanently? This cannot be undone.')) {
-                deleteNote();
-            }
-        }
-    };
 
     // Keyboard shortcuts
     useEffect(() => {
-        const handleKeyPress = (e: KeyboardEvent) => {
+        const handleKeyDown = (e: KeyboardEvent) => {
             // Cmd/Ctrl + S to save
             if ((e.metaKey || e.ctrlKey) && e.key === 's') {
                 e.preventDefault();
-                handleAction('save');
+                save();
             }
-            // Cmd/Ctrl + E to toggle edit
+            // Cmd/Ctrl + E to toggle edit mode
             if ((e.metaKey || e.ctrlKey) && e.key === 'e') {
                 e.preventDefault();
-                handleAction('toggle_edit');
+                toggleMode();
             }
         };
 
-        window.addEventListener('keydown', handleKeyPress);
-        return () => window.removeEventListener('keydown', handleKeyPress);
-    }, [hasUnsavedChanges]);
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [save, toggleMode]);
 
-    const removeTag = (tagToRemove: string) => {
-        setLocalNote(prev => prev ? {
-            ...prev,
-            tags: prev.tags?.filter(t => t !== tagToRemove) || []
-        } : null);
-        setHasUnsavedChanges(true);
+    // Handle toolbar actions
+    const handleAction = async (action: ToolDockAction) => {
+        if (!localNote) return;
+
+        switch (action) {
+            case 'toggle_edit':
+                toggleMode();
+                break;
+
+            case 'save':
+                save();
+                break;
+
+            case 'ai_summarize':
+                try {
+                    startAIProcessing('summarize');
+                    const summary = await NoteAIService.summarize(localNote.content);
+
+                    // Append summary to content
+                    const newContent = `${localNote.content}\n\n---\n\n**NEURAL SYNTHESIS:**\n${summary}`;
+                    updateContent(newContent);
+
+                    toast.success('SYNTHESIS COMPLETE');
+                } catch (error) {
+                    toast.error('Neural link failure', {
+                        description: error instanceof Error ? error.message : 'Unknown error'
+                    });
+                } finally {
+                    stopAIProcessing();
+                }
+                break;
+
+            case 'ai_tags':
+                try {
+                    startAIProcessing('tags');
+                    const newTags = await NoteAIService.generateTags(localNote.title, localNote.content);
+
+                    // Add new tags to existing ones (remove duplicates)
+                    const allTags = [...new Set([...(localNote.tags || []), ...newTags])];
+                    updateContent(localNote.content); // Trigger update
+                    localNote.tags = allTags;
+
+                    toast.success(`Generated ${newTags.length} tags`);
+                } catch (error) {
+                    toast.error('Tag generation failed', {
+                        description: error instanceof Error ? error.message : 'Unknown error'
+                    });
+                } finally {
+                    stopAIProcessing();
+                }
+                break;
+
+            case 'delete':
+                if (window.confirm('Archive this fragment permanently?')) {
+                    deleteNote(numericNoteId, {
+                        onSuccess: () => navigate('/notes'),
+                    });
+                }
+                break;
+        }
     };
 
-    if (isLoading || !localNote) {
+    // Loading state
+    if (isLoading) {
         return (
-            <div className="h-full flex flex-col items-center justify-center">
-            <div className="relative">
-            <Loader2 className="w-12 h-12 text-cyan-500 animate-spin" />
-            <Brain size={24} className="absolute inset-0 m-auto text-cyan-500 animate-pulse" />
-            </div>
-            <p className="mt-4 text-xs font-mono text-slate-500 uppercase tracking-wider">
+            <div className="h-screen w-screen bg-[#020408] flex items-center justify-center">
+            <div className="flex flex-col items-center">
+            <Loader2 className="h-12 w-12 animate-spin text-cyan-400 mb-4" />
+            <p className="text-xs font-mono text-cyan-500 tracking-widest uppercase">
             Loading Fragment...
             </p>
+            </div>
+            </div>
+        );
+    }
+
+    // Error state
+    if (error || !note) {
+        return (
+            <div className="h-screen w-screen bg-[#020408] flex items-center justify-center">
+            <div className="flex flex-col items-center text-center max-w-md">
+            <AlertCircle className="h-16 w-16 text-red-400 mb-4" />
+            <h2 className="text-xl font-bold text-white mb-2">Fragment Not Found</h2>
+            <p className="text-slate-400 mb-6">
+            The requested neural fragment does not exist or has been archived.
+            </p>
+            <button
+            onClick={() => navigate('/notes')}
+            className="flex items-center gap-2 px-6 py-3 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 rounded-lg text-cyan-300 text-sm font-bold uppercase tracking-widest transition-all"
+            >
+            <ArrowLeft size={16} />
+            Return to Codex
+            </button>
+            </div>
             </div>
         );
     }
 
     return (
-        <div className="relative w-full h-full flex flex-col">
-        {/* Top Bar - Navigation & Actions */}
-        <div className="h-16 flex items-center justify-between px-8 border-b border-white/5 bg-black/10 backdrop-blur-sm z-20 relative">
-        {/* Breadcrumb */}
-        <div className="flex items-center gap-2 text-xs font-mono text-slate-500">
-        <span className="opacity-50">root</span>
-        <ChevronRight size={12} />
-        <span className="opacity-50">...</span>
-        <ChevronRight size={12} />
-        <span className="text-cyan-500 flex items-center gap-2">
-        {localNote.title}
-        {hasUnsavedChanges && (
-            <motion.span
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            className="w-1.5 h-1.5 bg-amber-500 rounded-full"
+        <div className="relative w-full min-h-screen bg-[#020408] text-slate-200 font-sans overflow-hidden flex flex-col">
+        {/* Background Effects */}
+        <div className="absolute inset-0 z-0 opacity-10 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-overlay pointer-events-none" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900/30 via-[#020408] to-black opacity-70" />
+
+        {/* Header */}
+        <NoteHeader
+        title={localNote?.title || 'Untitled'}
+        hasUnsavedChanges={hasUnsavedChanges}
+        isSaving={isUpdating}
+        onAction={handleAction}
+        />
+
+        {/* Main Content Area */}
+        <div className="flex-1 relative z-10 overflow-y-auto custom-scrollbar">
+        <div className="max-w-4xl mx-auto px-8 py-12">
+        {/* Back Button */}
+        <button
+        onClick={() => navigate('/notes')}
+        className="mb-8 flex items-center gap-2 text-sm text-slate-500 hover:text-cyan-400 transition-colors group"
+        >
+        <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
+        <span className="font-mono uppercase tracking-wider">Back to Codex</span>
+        </button>
+
+        {/* Editor / Preview */}
+        <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="mb-8"
+        >
+        {mode === 'edit' && localNote ? (
+            <NoteEditor
+            title={localNote.title}
+            content={localNote.content}
+            onTitleChange={updateTitle}
+            onContentChange={updateContent}
+            mode={mode}
+            textareaRef={textareaRef}
+            />
+        ) : (
+            <div className="space-y-6">
+            <h1 className="text-4xl md:text-5xl font-serif text-white font-bold tracking-tight">
+            {note.title || 'Untitled'}
+            </h1>
+            <div className="prose prose-invert prose-cyan max-w-none">
+            <MarkdownPreview content={note.content || ''} />
+            </div>
+            </div>
+        )}
+        </motion.div>
+
+        {/* Tags & Metadata */}
+        {localNote && (
+            <NoteTags
+            tags={localNote.tags || []}
+            updatedAt={note.updated_at}
+            isEditing={mode === 'edit'}
+            onRemoveTag={removeTag}
             />
         )}
-        </span>
-        </div>
 
-        {/* Actions */}
-        <div className="flex items-center gap-3">
-        {/* Save Indicator */}
-        <AnimatePresence>
-        {isSaving && (
-            <motion.div
-            initial={{ opacity: 0, x: -10 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -10 }}
-            className="flex items-center gap-2 text-xs font-mono text-cyan-500"
-            >
-            <Loader2 size={14} className="animate-spin" />
-            SYNCING...
-            </motion.div>
-        )}
-        </AnimatePresence>
-
-        <button
-        className="p-2 hover:bg-white/5 rounded-md text-slate-500 hover:text-white transition-colors"
-        title="Share Fragment"
-        >
-        <Share2 size={18} />
-        </button>
-
-        <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-        <button className="p-2 hover:bg-white/5 rounded-md text-slate-500 hover:text-white transition-colors">
-        <MoreVertical size={18} />
-        </button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="bg-[#0a0c12] border-white/10">
-        <DropdownMenuItem onClick={() => handleAction('save')} className="text-white">
-        <Save className="mr-2 h-4 w-4" />
-        Save Changes
-        </DropdownMenuItem>
-        <DropdownMenuSeparator className="bg-white/5" />
-        <DropdownMenuItem
-        onClick={() => handleAction('delete')}
-        className="text-red-400 focus:text-red-300"
-        >
-        <Trash2 className="mr-2 h-4 w-4" />
-        Archive Fragment
-        </DropdownMenuItem>
-        </DropdownMenuContent>
-        </DropdownMenu>
+        {/* Spacer for toolbar */}
+        <div className="h-32" />
         </div>
         </div>
 
-        {/* HoloEditor Surface */}
-        <div className="relative z-10 flex-1 overflow-y-auto custom-scrollbar p-8 md:p-16 pb-32">
-        {/* Glass Sheet Background */}
-        <div className="absolute inset-0 bg-gradient-to-b from-white/[0.02] via-white/[0.01] to-transparent pointer-events-none" />
-
-        {/* Maximum Width Container */}
-        <div className="max-w-4xl mx-auto relative z-10">
-        {/* Title Area */}
-        <div className="mb-8 border-b border-white/5 pb-6">
-        <input
-        ref={titleRef}
-        value={localNote.title}
-        onChange={(e) => {
-            setLocalNote({ ...localNote, title: e.target.value });
-            setHasUnsavedChanges(true);
-        }}
-        className="w-full bg-transparent text-4xl md:text-5xl font-serif text-white placeholder:text-slate-700 outline-none font-bold tracking-tight"
-        placeholder="Untitled Artifact"
-        disabled={!isEditing}
-        spellCheck={false}
-        />
-
-        {/* Metadata Row */}
-        <div className="flex flex-wrap items-center gap-3 mt-4">
-        {/* Timestamp */}
-        <span className="flex items-center gap-1.5 text-xs font-mono text-cyan-500/60 bg-cyan-950/20 px-2 py-1 rounded border border-cyan-900/30">
-        <Clock size={10} />
-        {note?.updated_at ? format(new Date(note.updated_at), 'MMM d, HH:mm') : 'Unsaved'}
-        </span>
-
-        {/* Tags */}
-        {localNote.tags && localNote.tags.map(tag => (
-            <motion.span
-            key={tag}
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className="group flex items-center gap-1.5 bg-white/5 px-2 py-1 rounded hover:text-cyan-300 hover:bg-white/10 transition-all cursor-pointer text-xs font-mono text-slate-400"
-            >
-            <Hash size={10} />
-            {tag}
-            {isEditing && (
-                <button
-                onClick={() => removeTag(tag)}
-                className="opacity-0 group-hover:opacity-100 hover:text-red-400 transition-opacity ml-1"
-                >
-                <X size={10} />
-                </button>
-            )}
-            </motion.span>
-        ))}
-        </div>
-        </div>
-
-        {/* Main Content Editor */}
-        <textarea
-        ref={textareaRef}
-        value={localNote.content}
-        onChange={(e) => {
-            setLocalNote({ ...localNote, content: e.target.value });
-            setHasUnsavedChanges(true);
-        }}
-        className={cn(
-            "w-full bg-transparent outline-none text-lg leading-relaxed resize-none font-serif text-slate-300 placeholder:text-slate-700 min-h-[500px] selection:bg-cyan-500/30",
-            !isEditing && 'cursor-default'
-        )}
-        placeholder="Initialize thought sequence...
-
-        ## Neural Pathways
-
-        Start documenting your knowledge architecture here. The system supports markdown formatting for optimal clarity.
-
-        - Bullet points for structured lists
-        - **Bold** for emphasis
-        - `Code blocks` for technical notation
-
-        Begin transmission..."
-        spellCheck={false}
-        disabled={!isEditing}
-        />
-        </div>
-        </div>
-
-        {/* Floating Tool Dock */}
-        <ToolDock
+        {/* Floating Toolbar */}
+        <EditorToolbar
+        mode={mode}
         onAction={handleAction}
-        isEditing={isEditing}
-        isProcessing={isProcessing}
+        isProcessing={aiStatus.isProcessing}
         hasUnsavedChanges={hasUnsavedChanges}
+        isSaving={isUpdating}
+        textareaRef={textareaRef}
         />
-        </div>
-    );
-}
 
-/**
- * Tool Dock - Floating Action Pill
- */
-interface ToolDockProps {
-    onAction: (action: string) => void;
-    isEditing: boolean;
-    isProcessing: boolean;
-    hasUnsavedChanges: boolean;
-}
-
-const ToolDock = ({ onAction, isEditing, isProcessing, hasUnsavedChanges }: ToolDockProps) => {
-    return (
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-50">
-        <motion.div
-        initial={{ y: 50, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        className="flex items-center gap-1 p-1.5 bg-[#080a0e]/95 backdrop-blur-xl border border-white/10 rounded-full shadow-2xl shadow-black/50"
-        >
-        {/* Edit Toggle */}
-        <div className="flex items-center gap-1 px-2 border-r border-white/10">
-        <button
-        onClick={() => onAction('toggle_edit')}
-        className={cn(
-            "p-3 rounded-full transition-all relative group",
-            isEditing
-            ? "bg-cyan-500/20 text-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.3)]"
-            : "text-slate-500 hover:text-white hover:bg-white/5"
-        )}
-        title={isEditing ? "View Mode (⌘E)" : "Edit Mode (⌘E)"}
-        >
-        {isEditing ? <Edit3 size={18} /> : <Eye size={18} />}
-        <div className="absolute inset-0 bg-cyan-500/20 rounded-full blur-md opacity-0 group-hover:opacity-100 transition-opacity" />
-        </button>
-        </div>
-
-        {/* Formatting Tools (Edit Mode Only) */}
-        <AnimatePresence>
-        {isEditing && (
+        {/* AI Processing Overlay */}
+        {aiStatus.isProcessing && (
             <motion.div
-            initial={{ width: 0, opacity: 0 }}
-            animate={{ width: 'auto', opacity: 1 }}
-            exit={{ width: 0, opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="flex items-center gap-1 px-2 overflow-hidden"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm flex items-center justify-center"
             >
-            <button className="p-2.5 text-slate-500 hover:text-white hover:bg-white/5 rounded-full transition-colors" title="Bold">
-            <Bold size={16} />
-            </button>
-            <button className="p-2.5 text-slate-500 hover:text-white hover:bg-white/5 rounded-full transition-colors" title="Italic">
-            <Italic size={16} />
-            </button>
-            <button className="p-2.5 text-slate-500 hover:text-white hover:bg-white/5 rounded-full transition-colors" title="List">
-            <List size={16} />
-            </button>
-            <button className="p-2.5 text-slate-500 hover:text-white hover:bg-white/5 rounded-full transition-colors" title="Code">
-            <Code size={16} />
-            </button>
+            <div className="bg-[#0a0c12] border border-cyan-500/30 rounded-xl p-8 flex flex-col items-center gap-4">
+            <Loader2 className="h-12 w-12 animate-spin text-cyan-400" />
+            <p className="text-sm font-mono text-cyan-400 uppercase tracking-widest">
+            {aiStatus.action === 'summarize' && 'Neural Synthesis In Progress...'}
+            {aiStatus.action === 'tags' && 'Analyzing Semantic Vectors...'}
+            {aiStatus.action === 'expand' && 'Expanding Thought Sequence...'}
+            {aiStatus.action === 'correct' && 'Optimizing Structure...'}
+            </p>
+            </div>
             </motion.div>
         )}
-        </AnimatePresence>
-
-        {/* AI Actions */}
-        <div className="flex items-center gap-1 px-2 border-l border-white/10">
-        <button
-        onClick={() => onAction('ai_summarize')}
-        className="p-2.5 text-slate-500 hover:text-purple-400 hover:bg-purple-500/10 rounded-full transition-colors group relative"
-        title="Neural Synthesis"
-        disabled={isProcessing}
-        >
-        {isProcessing ? (
-            <Loader2 size={18} className="animate-spin text-purple-500" />
-        ) : (
-            <Bot size={18} />
-        )}
-        <div className="absolute inset-0 bg-purple-500/20 rounded-full blur-md opacity-0 group-hover:opacity-100 transition-opacity" />
-        </button>
-        <button
-        onClick={() => onAction('ai_tags')}
-        className="p-2.5 text-slate-500 hover:text-emerald-400 hover:bg-emerald-500/10 rounded-full transition-colors group relative"
-        title="Auto-Tag"
-        disabled={isProcessing}
-        >
-        <Tag size={18} />
-        <div className="absolute inset-0 bg-emerald-500/20 rounded-full blur-md opacity-0 group-hover:opacity-100 transition-opacity" />
-        </button>
-        </div>
-
-        {/* Save Action */}
-        <motion.button
-        onClick={() => onAction('save')}
-        className={cn(
-            "ml-2 w-10 h-10 rounded-full flex items-center justify-center text-white shadow-lg transition-all",
-            hasUnsavedChanges
-            ? "bg-cyan-600 hover:bg-cyan-500 shadow-cyan-900/50 hover:scale-105 active:scale-95"
-            : "bg-emerald-600 hover:bg-emerald-500 shadow-emerald-900/50"
-        )}
-        animate={hasUnsavedChanges ? { scale: [1, 1.1, 1] } : {}}
-        transition={{ duration: 2, repeat: Infinity }}
-        title={hasUnsavedChanges ? "Save Changes (⌘S)" : "All Changes Saved"}
-        >
-        {hasUnsavedChanges ? <Save size={18} /> : <Check size={18} />}
-        </motion.button>
-        </motion.div>
         </div>
     );
-};
+}

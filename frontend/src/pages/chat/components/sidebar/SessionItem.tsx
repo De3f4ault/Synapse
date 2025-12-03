@@ -1,19 +1,16 @@
 /**
  * SessionItem - Oracle Theme
- * Individual "Vision" entry in the Grimoire.
+ * Individual session item with click handler and active state
  *
- * Location: chat/components/sidebar/SessionItem.tsx
+ * Location: frontend/src/pages/chat/components/sidebar/SessionItem.tsx
  */
 
 import React from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { Trash2 } from 'lucide-react';
+import { MessageSquare, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { ChatSessionResponse } from '@/api/generated/types.gen';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { deleteSessionApiV1ChatSessionsSessionIdDelete } from '@/api/generated/services.gen';
-import { toast } from 'sonner';
+import { useDeleteSession } from '../../hooks/useChatSession';
 
 interface SessionItemProps {
   session: ChatSessionResponse;
@@ -22,71 +19,95 @@ interface SessionItemProps {
 export const SessionItem: React.FC<SessionItemProps> = ({ session }) => {
   const navigate = useNavigate();
   const { sessionId } = useParams<{ sessionId: string }>();
-  const queryClient = useQueryClient();
+  const deleteSession = useDeleteSession();
+
   const isActive = sessionId === String(session.id);
 
-  // Delete mutation (Preserved)
-  const deleteMutation = useMutation({
-    mutationFn: () => deleteSessionApiV1ChatSessionsSessionIdDelete({ sessionId: session.id }),
-                                     onSuccess: () => {
-                                       queryClient.invalidateQueries({ queryKey: ['chat-sessions'] });
-                                       toast.success('Vision erased from archives');
-                                       if (isActive) navigate('/chat');
-                                     },
-                                     onError: () => toast.error('Failed to erase vision'),
-  });
+  const handleClick = () => {
+    navigate(`/chat/${session.id}`);
+  };
 
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
-    // Using native confirm for now, as per original template
-    if (confirm('Permanently erase this vision?')) {
-      deleteMutation.mutate();
+    if (confirm(`Delete "${session.title}"?`)) {
+      deleteSession.mutate(session.id);
     }
   };
 
   return (
-    <motion.button
-    onClick={() => navigate(`/chat/${session.id}`)}
+    <div
+    onClick={handleClick}
     className={cn(
-      'group relative w-full text-left',
-      'px-3 py-2 rounded transition-all duration-200',
+      'group relative w-full px-3 py-2.5 rounded-lg transition-all cursor-pointer',
       'flex items-center gap-3',
       isActive
-      ? 'bg-cyan-900/10 text-cyan-100' // Active State
-      : 'text-slate-400 hover:text-cyan-100 hover:bg-cyan-900/5' // Inactive State
+      ? 'bg-cyan-900/20 border border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.1)]'
+      : 'hover:bg-white/5 border border-transparent hover:border-white/10'
     )}
     >
-    {/* Indicator Dot */}
+    {/* Active Indicator */}
     <div
     className={cn(
-      "w-1 h-1 rounded-full transition-colors",
-      isActive ? "bg-cyan-400 shadow-[0_0_8px_cyan]" : "bg-slate-700 group-hover:bg-cyan-400"
+      'w-1 h-1 rounded-full transition-all',
+      isActive
+      ? 'bg-cyan-400 shadow-[0_0_8px_rgba(6,182,212,0.8)]'
+      : 'bg-slate-700 group-hover:bg-cyan-400/50'
     )}
     />
 
-    {/* Content */}
-    <div className="flex-1 min-w-0">
-    <p className={cn(
-      "text-sm font-serif truncate transition-colors",
-      isActive ? "text-cyan-100" : "text-slate-400 group-hover:text-cyan-200"
-    )}>
-    {session.title || 'Untitled Vision'}
-    </p>
-    </div>
-
-    {/* Delete Button (Hover Only) */}
-    <div
-    role="button"
-    tabIndex={0}
-    onClick={handleDelete}
+    {/* Icon */}
+    <MessageSquare
+    size={14}
     className={cn(
-      'opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded hover:bg-red-500/10 hover:text-red-400 text-slate-600',
-      deleteMutation.isPending && 'opacity-50 cursor-not-allowed'
+      'flex-shrink-0 transition-colors',
+      isActive ? 'text-cyan-400' : 'text-slate-500 group-hover:text-slate-300'
+    )}
+    />
+
+    {/* Title */}
+    <span
+    className={cn(
+      'flex-1 text-sm font-serif truncate transition-colors',
+      isActive
+      ? 'text-cyan-100 font-medium'
+      : 'text-slate-400 group-hover:text-slate-200'
     )}
     >
+    {session.title}
+    </span>
+
+    {/* Message Count Badge */}
+    {session.message_count > 0 && (
+      <span
+      className={cn(
+        'px-1.5 py-0.5 rounded text-[10px] font-mono transition-colors',
+        isActive
+        ? 'bg-cyan-500/20 text-cyan-300'
+        : 'bg-white/5 text-slate-500 group-hover:bg-white/10'
+      )}
+      >
+      {session.message_count}
+      </span>
+    )}
+
+    {/* Delete Button (Appears on Hover) */}
+    <button
+    onClick={handleDelete}
+    className={cn(
+      'opacity-0 group-hover:opacity-100 transition-opacity',
+      'p-1 rounded hover:bg-red-500/20 text-slate-500 hover:text-red-400',
+      isActive && 'opacity-100'
+    )}
+    title="Delete session"
+    >
     <Trash2 size={12} />
+    </button>
+
+    {/* Glow effect for active session */}
+    {isActive && (
+      <div className="absolute inset-0 rounded-lg bg-gradient-to-r from-cyan-500/5 to-purple-500/5 pointer-events-none" />
+    )}
     </div>
-    </motion.button>
   );
 };
 

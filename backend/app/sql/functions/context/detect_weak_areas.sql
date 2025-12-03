@@ -4,6 +4,8 @@
 --
 -- Detects topics/decks where the user is struggling using window functions
 -- and trend analysis. Returns prioritized list of weak areas.
+--
+-- FIXED: All ROUND() calls now cast to NUMERIC
 -- ============================================================================
 
 -- Drop existing function if exists
@@ -41,12 +43,12 @@ BEGIN
             d.name AS deck_name,
             -- Overall accuracy for the period
             ROUND(
-                AVG(CASE WHEN r.quality >= 3 THEN 1.0 ELSE 0.0 END) * 100,
+                (AVG(CASE WHEN r.quality >= 3 THEN 1.0 ELSE 0.0 END) * 100)::NUMERIC,
                 2
             ) AS accuracy_pct,
             COUNT(r.id) AS review_count,
             COUNT(DISTINCT r.card_id) AS unique_cards,
-            ROUND(AVG(r.quality), 2) AS avg_quality,
+            ROUND(AVG(r.quality)::NUMERIC, 2) AS avg_quality,
 
             -- Calculate recent vs older performance for trend
             AVG(CASE WHEN r.quality >= 3 THEN 1.0 ELSE 0.0 END) FILTER (
@@ -63,7 +65,7 @@ BEGIN
                     'front_preview', LEFT(f.front_text, 50),
                     'card_accuracy', CASE
                         WHEN f.times_reviewed > 0
-                        THEN ROUND((f.times_correct::DECIMAL / f.times_reviewed) * 100, 1)
+                        THEN ROUND(((f.times_correct::DECIMAL / f.times_reviewed) * 100)::NUMERIC, 1)
                         ELSE 0
                     END
                 )
@@ -97,7 +99,7 @@ BEGIN
             END AS trend,
             -- Calculate trend change percentage
             COALESCE(
-                ROUND((dp.recent_accuracy - dp.older_accuracy) * 100, 2),
+                ROUND(((dp.recent_accuracy - dp.older_accuracy) * 100)::NUMERIC, 2),
                 0.00
             ) AS trend_change,
             -- Weakness score formula:
@@ -105,13 +107,15 @@ BEGIN
             -- Weight: multiply by log of review count for confidence
             -- Trend boost: declining trends get boosted
             ROUND(
-                (1 - (dp.accuracy_pct / 100.0))
-                * (1 + 0.2 * LN(dp.review_count + 1))
-                * CASE
-                    WHEN dp.recent_accuracy < dp.older_accuracy - 0.1 THEN 1.3  -- Declining
-                    WHEN dp.recent_accuracy > dp.older_accuracy + 0.1 THEN 0.7  -- Improving
-                    ELSE 1.0  -- Stable
-                END,
+                (
+                    (1 - (dp.accuracy_pct / 100.0))
+                    * (1 + 0.2 * LN(dp.review_count + 1))
+                    * CASE
+                        WHEN dp.recent_accuracy < dp.older_accuracy - 0.1 THEN 1.3  -- Declining
+                        WHEN dp.recent_accuracy > dp.older_accuracy + 0.1 THEN 0.7  -- Improving
+                        ELSE 1.0  -- Stable
+                    END
+                )::NUMERIC,
                 3
             ) AS weakness_score
         FROM deck_performance dp
@@ -148,6 +152,8 @@ $$;
 -- Add function comment
 COMMENT ON FUNCTION developer_schema.detect_weak_areas(INT, INT, INT) IS
 'Detects weak areas using performance analysis and trend detection.
+
+FIXED: All ROUND() calls cast to NUMERIC to prevent double precision errors.
 
 Uses window functions to analyze:
 - Overall accuracy per deck

@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+mport React, { useRef, useEffect } from 'react';
 import { motion, AnimatePresence, useTransform } from 'framer-motion';
 import { Grid, AlignLeft, Hexagon, Activity } from 'lucide-react';
 import { cn } from '@/lib/utils';

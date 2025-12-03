@@ -1,14 +1,14 @@
 /**
- * ChatPage - Oracle Theme Integration
- * Complete mystical interface with eye tracking and ethereal animations
+ * ChatPage - Oracle Theme with Streaming Integration
+ * Complete mystical interface with eye tracking and real-time streaming
  *
- * Location: ChatPage.tsx
+ * Location: frontend/src/pages/chat/ChatPage.tsx
  */
 
 import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Atom, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 // Components
 import { MinimalSidebar } from './components/sidebar/MinimalSidebar';
@@ -21,6 +21,7 @@ import { PreviewSidebar } from './components/preview/PreviewSidebar';
 import { useSidebarCollapse } from './hooks/useSidebarCollapse';
 import { usePreviewSidebar } from './hooks/usePreviewSidebar';
 import { useChatSession } from './hooks/useChatSession';
+import { useStreamingResponse } from './hooks/useStreamingResponse';
 import { cn } from '@/lib/utils';
 
 // Styles
@@ -129,15 +130,18 @@ export const ChatPage: React.FC = () => {
     const { data: session } = useChatSession(sessionId ? parseInt(sessionId) : undefined);
     const isActiveSession = !!sessionId;
 
+    // Get streaming state to activate the eye
+    const { isStreaming } = useStreamingResponse({
+        sessionId: sessionId ? parseInt(sessionId) : undefined,
+                                                 autoConnect: false, // Managed by ChatInput
+    });
+
     // Oracle UI State
     const [neuralDensity, setNeuralDensity] = useState<NeuralDensity>('HIGH');
     const [isDeepGnosis, setIsDeepGnosis] = useState(false);
 
-    // Simulate processing state for visual FX
-    const isProcessing = false;
-
     return (
-        <div className={`fixed inset-0 bg-[#020408] text-slate-200 font-sans selection:bg-cyan-500/30 flex overflow-hidden ${isDeepGnosis ? 'gnosis-active' : ''}`}>
+        <div className={`h-screen w-screen bg-[#020408] text-slate-200 font-sans selection:bg-cyan-500/30 flex overflow-hidden relative ${isDeepGnosis ? 'gnosis-active' : ''}`}>
 
         {/* Chromatic Aberration & Grain (Deep Gnosis) */}
         {isDeepGnosis && (
@@ -150,10 +154,10 @@ export const ChatPage: React.FC = () => {
         {/* Ambient Background Layer 2 (Noise) */}
         <div className={`absolute inset-0 z-0 bg-noise mix-blend-overlay pointer-events-none transition-opacity duration-1000 ${neuralDensity === 'HIGH' ? 'opacity-20' : 'opacity-5'}`} />
 
-        {/* Left Sidebar (Grimoire) */}
+        {/* GRIMOIRE SIDEBAR - Left Side */}
         <MinimalSidebar />
 
-        {/* Main Content Area */}
+        {/* Main Content Area - NO HEADER */}
         <main
         className={cn(
             'flex-1 h-screen relative z-10 flex flex-col',
@@ -161,33 +165,25 @@ export const ChatPage: React.FC = () => {
                       'overflow-hidden'
         )}
         >
-        {/* Top Header Bar with Toggle */}
-        <div className="h-20 flex items-center justify-between px-8 z-20 relative flex-shrink-0">
+        {/* Sidebar Toggle Button - Top Left */}
+        <div className="absolute top-6 left-6 z-30">
         <button
         onClick={toggleSidebar}
-        className="p-2 -ml-2 text-slate-500 hover:text-cyan-400 transition-colors rounded-full hover:bg-white/5"
+        className={cn(
+            'p-3 rounded-full transition-all duration-300',
+            'bg-black/60 border border-white/10 backdrop-blur-md',
+            'text-slate-400 hover:text-cyan-300 hover:border-cyan-500/30',
+            'shadow-lg hover:shadow-[0_0_20px_rgba(6,182,212,0.2)]'
+        )}
+        title={isCollapsed ? 'Open Grimoire' : 'Close Grimoire'}
         >
-        {isCollapsed ? <ChevronRight size={24}/> : <ChevronLeft size={24}/>}
+        {isCollapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
         </button>
-
-        <div className="flex flex-col items-center">
-        <span className="font-serif text-2xl text-transparent bg-clip-text bg-gradient-to-b from-white to-slate-500 tracking-widest font-bold">
-        ORACLE
-        </span>
-        <div className="flex items-center gap-2">
-        <div className={`w-1.5 h-1.5 rounded-full ${isProcessing ? 'bg-purple-500 animate-pulse' : 'bg-emerald-500'}`} />
-        <span className="text-[9px] font-mono text-slate-500 tracking-[0.3em] uppercase">
-        {isProcessing ? 'COMMUNING...' : 'AWAITING QUERY'}
-        </span>
-        </div>
-        </div>
-
-        <div className="w-8" />
         </div>
 
         {/* Oracle Eye - Positioned absolutely behind content */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
-        <OracleEye isActive={isProcessing || isActiveSession} />
+        <OracleEye isActive={isStreaming || isActiveSession} />
         </div>
 
         {isActiveSession ? (

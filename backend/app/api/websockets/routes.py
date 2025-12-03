@@ -4,8 +4,10 @@ WebSocket Routes - Centralized WebSocket Endpoint Registration
 All WebSocket endpoints are registered here for easy management and discovery.
 """
 
-from fastapi import FastAPI, WebSocket, Query
+from fastapi import FastAPI, WebSocket, Query, Depends
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.deps import get_db
 from .dashboard import dashboard_websocket_endpoint
 from .chat import chat_websocket
 from .activity import activity_websocket_endpoint
@@ -46,7 +48,8 @@ def register_websocket_routes(app: FastAPI):
     async def chat_ws(
         websocket: WebSocket,
         session_id: str,
-        token: str = Query(..., description="JWT authentication token")
+        token: str = Query(..., description="JWT authentication token"),
+        db: AsyncSession = Depends(get_db)
     ):
         """
         Chat WebSocket endpoint with AI streaming.
@@ -59,7 +62,7 @@ def register_websocket_routes(app: FastAPI):
 
         Authentication via query parameter: ws://host/ws/chat/123?token=xxx
         """
-        await chat_websocket(websocket, session_id, token)
+        await chat_websocket(websocket, session_id, token,db)
 
     @app.websocket("/ws/activity")
     async def activity_ws(

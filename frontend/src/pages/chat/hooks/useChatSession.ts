@@ -1,6 +1,8 @@
 /**
  * useChatSession - Session CRUD operations
  * Manages chat session creation, retrieval, and deletion
+ *
+ * Location: frontend/src/pages/chat/hooks/useChatSession.ts
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -23,8 +25,13 @@ import { toast } from 'sonner';
 export const useChatSessions = (params?: { page?: number; pageSize?: number }) => {
   return useQuery<ChatSessionResponse[]>({
     queryKey: ['chat-sessions', params],
-    queryFn: () => listSessionsApiV1ChatSessionsGet(params || {}),
-                                         staleTime: 1000 * 60 * 5, // 5 minutes
+    queryFn: async () => {
+      const response = await listSessionsApiV1ChatSessionsGet(params || {});
+      // Handle both direct array and paginated response
+      return Array.isArray(response) ? response : (response as any).items || [];
+    },
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    refetchOnWindowFocus: true,
   });
 };
 

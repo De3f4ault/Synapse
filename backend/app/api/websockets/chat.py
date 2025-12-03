@@ -6,6 +6,8 @@ Implemented full AI streaming
 Thinking process streaming
 Sources streaming
 Complete message type support
+
+FIXED: Transaction isolation - context building and chat saving use separate transactions
 """
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query, Depends
@@ -20,6 +22,7 @@ from app.api.websockets.manager import manager
 from app.api.websockets.protocol import MessageType
 from app.models.chat_session import ChatSession
 from app.models.chat_message import ChatMessage, MessageRole
+from app.db.session import AsyncSessionLocal
 
 router = APIRouter()
 logger = structlog.get_logger()
@@ -63,11 +66,13 @@ def estimate_tokens(text: str) -> int:
 async def stream_ai_response(
     message: str,
     user_id: int,
-    session_id: int,
-    db: AsyncSession
+    session_id: int
 ) -> AsyncIterator[dict]:
     """
     Stream AI response with real-time tokens.
+
+    FIXED: Uses separate database session for context building
+    to prevent transaction contamination.
 
     Yields messages in this order:
     1. thinking (if model supports it)
@@ -79,21 +84,48 @@ async def stream_ai_response(
         message: User message
         user_id: User ID
         session_id: Session ID
-        db: Database session
 
     Yields:
         dict: WebSocket messages with type and data
     """
+    # Create SEPARATE session for context building
+    # This prevents context errors from contaminating the chat message save
+    context_db: Optional[AsyncSession] = None
+
     try:
         from app.core.ai.agents.factory import create_agent
         from app.core.context.engine import ContextEngine
 
-        # Build user context
-        context_engine = ContextEngine(db)
-        context = await context_engine.get_user_context(
-            user_id=user_id,
-            focus=message
-        )
+        # Create isolated session for context building
+        context_db = AsyncSessionLocal()
+
+        try:
+            # Build user context in isolated transaction
+            context_engine = ContextEngine(context_db)
+            context = await context_engine.get_user_context(
+                user_id=user_id,
+                focus=message
+            )
+
+            # Commit the context session (or rollback if it failed)
+            await context_db.commit()
+
+        except Exception as ctx_error:
+            logger.error(
+                "context_building_failed",
+                user_id=user_id,
+                session_id=session_id,
+                error=str(ctx_error),
+                exc_info=True
+            )
+            # Rollback the failed context transaction
+            await context_db.rollback()
+            # Use empty context on failure
+            context = {}
+        finally:
+            # Close the context session
+            await context_db.close()
+            context_db = None
 
         # Create tutor agent
         agent = await create_agent("tutor")
@@ -181,6 +213,16 @@ async def stream_ai_response(
                 "message": str(e)
             }
         }
+    finally:
+        # Ensure context session is closed
+        if context_db is not None:
+            try:
+                await context_db.close()
+            except Exception as cleanup_error:
+                logger.error(
+                    "context_session_cleanup_failed",
+                    error=str(cleanup_error)
+                )
 
 
 @router.websocket("/chat/{session_id}")
@@ -194,6 +236,8 @@ async def chat_websocket(
     Chat WebSocket endpoint.
 
     Provides real-time streaming chat with AI tutor.
+
+    FIXED: Uses separate transactions for context building vs chat message saving.
 
     Protocol:
     - Client sends: {"type": "message", "content": "Hello"}
@@ -282,23 +326,45 @@ async def chat_websocket(
                     )
                     continue
 
-                # Save user message
-                user_message = ChatMessage(
-                    session_id=session_int_id,
-                    role=MessageRole.USER,
-                    content=content,
-                    tokens=estimate_tokens(content)
-                )
-                db.add(user_message)
-                await db.commit()
+                # Save user message in SEPARATE transaction
+                try:
+                    user_message = ChatMessage(
+                        session_id=session_int_id,
+                        role=MessageRole.USER,
+                        content=content,
+                        tokens=estimate_tokens(content)
+                    )
+                    db.add(user_message)
+                    await db.commit()
+                    await db.refresh(user_message)
 
-                logger.info(
-                    "user_message_saved",
-                    message_id=user_message.id,
-                    session_id=session_id
-                )
+                    logger.info(
+                        "user_message_saved",
+                        message_id=user_message.id,
+                        session_id=session_id
+                    )
+                except Exception as save_error:
+                    logger.error(
+                        "failed_to_save_user_message",
+                        session_id=session_id,
+                        error=str(save_error),
+                        exc_info=True
+                    )
+                    await db.rollback()
+                    await manager.send_message(
+                        session_id,
+                        websocket,
+                        {
+                            "type": "error",
+                            "data": {
+                                "code": "save_error",
+                                "message": "Failed to save message"
+                            }
+                        }
+                    )
+                    continue
 
-                # Stream AI response
+                # Stream AI response (uses its own session for context)
                 full_response = ""
                 total_tokens = 0
                 model_used = None
@@ -308,8 +374,7 @@ async def chat_websocket(
                 async for chunk in stream_ai_response(
                     message=content,
                     user_id=user_id,
-                    session_id=session_int_id,
-                    db=db
+                    session_id=session_int_id
                 ):
                     # Send chunk to client
                     await manager.send_message(session_id, websocket, chunk)
@@ -323,30 +388,39 @@ async def chat_websocket(
                         function_calls = chunk["data"].get("function_calls")
                         grounding_sources = chunk["data"].get("grounding_sources")
 
-                # Save assistant message
+                # Save assistant message in FRESH transaction
                 if full_response:
-                    assistant_message = ChatMessage(
-                        session_id=session_int_id,
-                        role=MessageRole.ASSISTANT,
-                        content=full_response,
-                        tokens=total_tokens or estimate_tokens(full_response),
-                        model_used=model_used,
-                        function_calls=function_calls,
-                        grounding_sources=grounding_sources
-                    )
-                    db.add(assistant_message)
+                    try:
+                        assistant_message = ChatMessage(
+                            session_id=session_int_id,
+                            role=MessageRole.ASSISTANT,
+                            content=full_response,
+                            tokens=total_tokens or estimate_tokens(full_response),
+                            model_used=model_used,
+                            function_calls=function_calls,
+                            grounding_sources=grounding_sources
+                        )
+                        db.add(assistant_message)
 
-                    # Update session token count
-                    chat_session.total_tokens_used += user_message.tokens + assistant_message.tokens
+                        # Update session token count
+                        chat_session.total_tokens_used += user_message.tokens + assistant_message.tokens
 
-                    await db.commit()
+                        await db.commit()
 
-                    logger.info(
-                        "assistant_message_saved",
-                        message_id=assistant_message.id,
-                        session_id=session_id,
-                        tokens=assistant_message.tokens
-                    )
+                        logger.info(
+                            "assistant_message_saved",
+                            message_id=assistant_message.id,
+                            session_id=session_id,
+                            tokens=assistant_message.tokens
+                        )
+                    except Exception as save_error:
+                        logger.error(
+                            "failed_to_save_assistant_message",
+                            session_id=session_id,
+                            error=str(save_error),
+                            exc_info=True
+                        )
+                        await db.rollback()
 
             elif message_type == "ping":
                 # Respond to ping

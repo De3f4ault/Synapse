@@ -1,44 +1,57 @@
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import { AppShell } from '@/components/layout/AppShell';
-// Auth pages
+
+// ==================== AUTH PAGES ====================
 import { LoginPage } from '@/pages/auth/LoginPage';
 import { RegisterPage } from '@/pages/auth/RegisterPage';
-// Dashboard
+
+// ==================== MAIN PAGES ====================
 import { DashboardPage } from '@/pages/dashboard/DashboardPage';
-// Flashcards
+
+// ==================== FLASHCARDS ====================
 import { DecksPage } from '@/pages/flashcards/DecksPage';
 import { DeckDetailPage } from '@/pages/flashcards/DeckDetailPage';
 import { ReviewPage } from '@/pages/flashcards/ReviewPage';
 import { CreateDeckPage } from '@/pages/flashcards/CreateDeckPage';
 import { CreateCardPage } from '@/pages/flashcards/CreateCardPage';
 import { EditCardPage } from '@/pages/flashcards/EditCardPage';
-// Study
-import { StudyPage } from '@/pages/study/StudyPage';
-// Notes
+
+// ==================== NOTES ====================
 import { NotesPage } from '@/pages/notes/NotesPage';
 import { NoteDetailPage } from '@/pages/notes/NoteDetailPage';
-// Documents
+
+// ==================== DOCUMENTS ====================
 import { DocumentsPage } from '@/pages/documents/DocumentsPage';
-// Quizzes
+
+// ==================== QUIZZES ====================
 import { QuizzesPage } from '@/pages/quizzes/QuizzesPage';
 import { QuizTakePage } from '@/pages/quizzes/QuizTakePage';
-// Chat
+
+// ==================== STUDY ====================
+import { StudyPage } from '@/pages/study/StudyPage';
+
+// ==================== CHAT ====================
 import { ChatPage } from '@/pages/chat/ChatPage';
-// Analytics
+
+// ==================== ANALYTICS ====================
 import { AnalyticsPage } from '@/pages/analytics/AnalyticsPage';
-// 404
+
+// ==================== ERROR PAGES ====================
 import { NotFoundPage } from '@/pages/NotFoundPage';
 
-/* -----------------------------------------------------
- * PROTECTED ROUTE (Final)
- * Wraps content with AppShell — no sidebar logic required
- * ---------------------------------------------------- */
+/**
+ * ProtectedRoute Component
+ * Wraps authenticated routes with AppShell layout
+ * Redirects to login if not authenticated
+ */
 function ProtectedRoute() {
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+
     if (!isAuthenticated) {
         return <Navigate to="/auth/login" replace />;
     }
+
     return (
         <AppShell>
         <Outlet />
@@ -46,70 +59,83 @@ function ProtectedRoute() {
     );
 }
 
-/* -----------------------------------------------------
- * AUTH ROUTE
- * Prevents access to login/register when logged in
- * ---------------------------------------------------- */
+/**
+ * AuthRoute Component
+ * Prevents authenticated users from accessing auth pages
+ * Redirects to dashboard if already logged in
+ */
 function AuthRoute() {
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+
     if (isAuthenticated) {
         return <Navigate to="/dashboard" replace />;
     }
+
     return <Outlet />;
 }
 
-/* -----------------------------------------------------
- * MAIN ROUTER (FINAL VERSION WITH FLASHCARD CRUD)
- * ---------------------------------------------------- */
-export function Router() {
-    return (
-        <BrowserRouter>
-        <Routes>
-        {/* Auth routes */}
-        <Route element={<AuthRoute />}>
-        <Route path="/auth/login" element={<LoginPage />} />
-        <Route path="/auth/register" element={<RegisterPage />} />
-        </Route>
+/**
+ * Main Application Router
+ *
+ * Route Structure:
+ * - Public: /auth/*
+ * - Protected: All other routes
+ *
+ * All protected routes are wrapped in AppShell for consistent layout
+ */
+ export function Router() {
+     return (
+         <BrowserRouter>
+         <Routes>
+         {/* ==================== AUTH ROUTES ==================== */}
+         <Route element={<AuthRoute />}>
+         <Route path="/auth/login" element={<LoginPage />} />
+         <Route path="/auth/register" element={<RegisterPage />} />
+         </Route>
 
-        {/* Protected routes (wrapped in AppShell) */}
-        <Route element={<ProtectedRoute />}>
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
-        <Route path="/dashboard" element={<DashboardPage />} />
+         {/* ==================== PROTECTED ROUTES ==================== */}
+         <Route element={<ProtectedRoute />}>
+         {/* Root redirect */}
+         <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
-        {/* Flashcards */}
-        <Route path="/flashcards" element={<DecksPage />} />
-        <Route path="/flashcards/create" element={<CreateDeckPage />} />
-        <Route path="/flashcards/:deckId" element={<DeckDetailPage />} />
-        <Route path="/flashcards/:deckId/review" element={<ReviewPage />} />
-        <Route path="/flashcards/:deckId/cards/new" element={<CreateCardPage />} />
-        <Route path="/flashcards/:deckId/cards/:cardId/edit" element={<EditCardPage />} />
-        <Route path="/flashcards/review" element={<ReviewPage />} />
+         {/* Dashboard */}
+         <Route path="/dashboard" element={<DashboardPage />} />
 
-        {/* Study */}
-        <Route path="/study" element={<StudyPage />} />
+         {/* ========== FLASHCARDS (Mnemosyne Protocol) ========== */}
+         <Route path="/flashcards" element={<DecksPage />} />
+         <Route path="/flashcards/create" element={<CreateDeckPage />} />
+         <Route path="/flashcards/:deckId" element={<DeckDetailPage />} />
+         <Route path="/flashcards/:deckId/review" element={<ReviewPage />} />
+         <Route path="/flashcards/:deckId/cards/new" element={<CreateCardPage />} />
+         <Route path="/flashcards/:deckId/cards/:cardId/edit" element={<EditCardPage />} />
+         {/* Global review (all decks) */}
+         <Route path="/flashcards/review" element={<ReviewPage />} />
 
-        {/* Notes */}
-        <Route path="/notes" element={<NotesPage />} />
-        <Route path="/notes/:noteId" element={<NoteDetailPage />} />
+         {/* ========== NOTES (Neural Codex) ========== */}
+         <Route path="/notes" element={<NotesPage />} />
+         <Route path="/notes/:noteId" element={<NoteDetailPage />} />
 
-        {/* Documents */}
-        <Route path="/documents" element={<DocumentsPage />} />
+         {/* ========== DOCUMENTS (Omni-Kinetic) ========== */}
+         <Route path="/documents" element={<DocumentsPage />} />
 
-        {/* Quizzes */}
-        <Route path="/quizzes" element={<QuizzesPage />} />
-        <Route path="/quizzes/:quizId/take" element={<QuizTakePage />} />
+         {/* ========== QUIZZES (Protocol: Crucible) ========== */}
+         <Route path="/quizzes" element={<QuizzesPage />} />
+         <Route path="/quizzes/:quizId/take" element={<QuizTakePage />} />
 
-        {/* Chat */}
-        <Route path="/chat" element={<ChatPage />} />
-        <Route path="/chat/:sessionId" element={<ChatPage />} />
+         {/* ========== STUDY (Unified Hub) ========== */}
+         <Route path="/study" element={<StudyPage />} />
 
-        {/* Analytics */}
-        <Route path="/analytics" element={<AnalyticsPage />} />
-        </Route>
+         {/* ========== CHAT (Oracle) ========== */}
+         <Route path="/chat" element={<ChatPage />} />
+         <Route path="/chat/:sessionId" element={<ChatPage />} />
 
-        {/* 404 fallback */}
-        <Route path="*" element={<NotFoundPage />} />
-        </Routes>
-        </BrowserRouter>
-    );
-}
+         {/* ========== ANALYTICS ========== */}
+         <Route path="/analytics" element={<AnalyticsPage />} />
+         </Route>
+
+         {/* ==================== 404 FALLBACK ==================== */}
+         <Route path="*" element={<NotFoundPage />} />
+         </Routes>
+         </BrowserRouter>
+     );
+ }

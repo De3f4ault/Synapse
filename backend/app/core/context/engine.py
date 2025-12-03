@@ -3,6 +3,8 @@ Context Engine
 
 Main context aggregator - the SYNAPSE BRAIN.
 Aggregates learning context from all modules and SQL functions.
+
+FIXED: Added transaction isolation and proper error handling
 """
 
 import time
@@ -93,8 +95,8 @@ class ContextEngine:
                 )
                 return cached
 
-        # Build context from scratch
-        context = await self._build_context(user_id, focus)
+        # Build context from scratch with transaction isolation
+        context = await self._build_context_with_isolation(user_id, focus)
 
         # Cache the result
         if self.cache_client:
@@ -118,6 +120,64 @@ class ContextEngine:
         context["generated_at"] = datetime.utcnow().isoformat()
 
         return context
+
+    async def _build_context_with_isolation(
+        self,
+        user_id: int,
+        focus: Optional[str]
+    ) -> Dict[str, Any]:
+        """
+        Build context with transaction isolation to prevent contamination
+
+        Args:
+            user_id: User ID
+            focus: Optional focus topic
+
+        Returns:
+            Context dict
+        """
+        # Check if we're in a failed transaction
+        if self.session.is_active and not self.session.in_transaction():
+            logger.warning(
+                "session_not_in_transaction",
+                user_id=user_id,
+                msg="Session is active but not in transaction, starting new transaction"
+            )
+
+        try:
+            # Build the context
+            context = await self._build_context(user_id, focus)
+            return context
+
+        except Exception as e:
+            logger.error(
+                "context_build_failed_rolling_back",
+                user_id=user_id,
+                error=str(e),
+                exc_info=True
+            )
+
+            # Rollback the transaction to clean up
+            try:
+                await self.session.rollback()
+                logger.info("context_transaction_rolled_back", user_id=user_id)
+            except Exception as rollback_error:
+                logger.error(
+                    "rollback_failed",
+                    user_id=user_id,
+                    error=str(rollback_error)
+                )
+
+            # Return minimal context on error
+            return {
+                "user_id": user_id,
+                "modules": {},
+                "analytics": {
+                    "error": "Failed to build complete context",
+                    "weak_topics": [],
+                    "mastery_scores": []
+                }
+            }
 
     async def _build_context(
         self,
@@ -145,6 +205,11 @@ class ContextEngine:
             sql_context = await self.sql_executor.call_build_user_context(user_id)
             if sql_context:
                 context["analytics"].update(sql_context)
+                logger.debug(
+                    "sql_context_retrieved",
+                    user_id=user_id,
+                    keys=list(sql_context.keys())
+                )
         except Exception as e:
             logger.error(
                 "failed_to_get_sql_context",
@@ -152,19 +217,26 @@ class ContextEngine:
                 error=str(e),
                 exc_info=True
             )
+            # Continue without SQL context
 
         # 2. Get weak areas
         try:
-            weak_areas = await self.sql_executor.call_detect_weak_areas(user_id)
+            weak_areas_raw = await self.sql_executor.call_detect_weak_areas(user_id)
             context["analytics"]["weak_topics"] = [
-                WeakArea(
-                    topic=area.get("topic", ""),
-                    module=area.get("module", "unknown"),
-                    weakness_score=area.get("weakness_score", 0.0),
-                    evidence=area.get("evidence", {})
-                ).dict()
-                for area in weak_areas
-            ] if weak_areas else []
+                {
+                    "topic": area.get("deck_name", ""),
+                    "module": "flashcards",
+                    "weakness_score": float(area.get("weakness_score", 0.0)),
+                    "evidence": area.get("evidence", {})
+                }
+                for area in weak_areas_raw
+            ] if weak_areas_raw else []
+
+            logger.debug(
+                "weak_areas_retrieved",
+                user_id=user_id,
+                count=len(context["analytics"]["weak_topics"])
+            )
         except Exception as e:
             logger.error(
                 "failed_to_get_weak_areas",
@@ -176,15 +248,22 @@ class ContextEngine:
 
         # 3. Get mastery scores
         try:
-            mastery = await self.sql_executor.call_calculate_mastery(user_id)
+            mastery_raw = await self.sql_executor.call_calculate_mastery(user_id)
             context["analytics"]["mastery_scores"] = [
-                MasteryScore(
-                    topic=topic,
-                    score=score,
-                    review_count=0  # Will be populated by SQL function
-                ).dict()
-                for topic, score in mastery.items()
-            ] if mastery else []
+                {
+                    "topic": item.get("deck_name", ""),
+                    "score": float(item.get("mastery_score", 0.0)),
+                    "review_count": int(item.get("review_count", 0)),
+                    "mastery_level": item.get("mastery_level", "novice")
+                }
+                for item in mastery_raw
+            ] if mastery_raw else []
+
+            logger.debug(
+                "mastery_scores_retrieved",
+                user_id=user_id,
+                count=len(context["analytics"]["mastery_scores"])
+            )
         except Exception as e:
             logger.error(
                 "failed_to_get_mastery",

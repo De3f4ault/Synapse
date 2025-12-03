@@ -2,7 +2,7 @@
  * SessionList - Oracle Theme
  * Groups sessions into "Visions" based on time.
  *
- * Location: chat/components/sidebar/SessionList.tsx
+ * Location: frontend/src/pages/chat/components/sidebar/SessionList.tsx
  */
 
 import React from 'react';
@@ -26,29 +26,35 @@ export const SessionList: React.FC<SessionListProps> = ({ sessions, isLoading })
     );
   }
 
-  if (sessions.length === 0) {
+  if (!sessions || sessions.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-32 gap-2 px-4 opacity-50">
       <MessageSquare className="w-8 h-8 text-slate-600" />
       <p className="text-[10px] font-mono text-slate-500 uppercase tracking-widest text-center">
       No visions recorded
       </p>
+      <p className="text-[9px] font-mono text-slate-600 text-center mt-1">
+      Begin your journey with a new invocation
+      </p>
       </div>
     );
   }
 
-  // Use your existing grouping utility
+  // Group sessions by date (Today, Yesterday, This Week, etc.)
   const groupedSessions = groupSessionsByDate(sessions);
 
   return (
-    <div className="pb-4">
-    {Object.entries(groupedSessions).map(([group, groupSessions]) => (
-      <div key={group} className="mb-6 last:mb-0">
+    <div className="space-y-6 pb-4">
+    {Object.entries(groupedSessions).map(([groupLabel, groupSessions]) => (
+      <div key={groupLabel} className="space-y-2">
+      {/* Group Header */}
       <div className="px-3 mb-2">
       <h3 className="text-[9px] font-mono text-slate-600 uppercase tracking-[0.2em] pl-1">
-      {group}
+      {groupLabel}
       </h3>
       </div>
+
+      {/* Sessions in this group */}
       <div className="space-y-1">
       {groupSessions.map((session) => (
         <SessionItem key={session.id} session={session} />

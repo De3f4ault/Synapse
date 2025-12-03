@@ -1,116 +1,99 @@
 /**
- * dateGrouper - Group sessions by time
- * Groups chat sessions into: Today, Yesterday, Last 7 Days, Last 30 Days, Older
+ * Date Grouper Utility
+ * Groups chat sessions by time periods (Today, Yesterday, This Week, etc.)
+ *
+ * Location: frontend/src/pages/chat/utils/dateGrouper.ts
  */
 
 import type { ChatSessionResponse } from '@/api/generated/types.gen';
 
-export type DateGroup = 'Today' | 'Yesterday' | 'Last 7 Days' | 'Last 30 Days' | 'Older';
+/**
+ * Group sessions by date categories
+ */
+export function groupSessionsByDate(
+  sessions: ChatSessionResponse[]
+): Record<string, ChatSessionResponse[]> {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const lastWeek = new Date(today);
+  lastWeek.setDate(lastWeek.getDate() - 7);
+  const lastMonth = new Date(today);
+  lastMonth.setDate(lastMonth.getDate() - 30);
 
-export interface GroupedSessions {
-  [key: string]: ChatSessionResponse[];
+  const groups: Record<string, ChatSessionResponse[]> = {
+    'Today': [],
+    'Yesterday': [],
+    'This Week': [],
+    'This Month': [],
+    'Older': [],
+  };
+
+  sessions.forEach((session) => {
+    const sessionDate = new Date(session.updated_at || session.created_at);
+    const sessionDay = new Date(
+      sessionDate.getFullYear(),
+                                sessionDate.getMonth(),
+                                sessionDate.getDate()
+    );
+
+    if (sessionDay.getTime() === today.getTime()) {
+      groups['Today'].push(session);
+    } else if (sessionDay.getTime() === yesterday.getTime()) {
+      groups['Yesterday'].push(session);
+    } else if (sessionDate >= lastWeek) {
+      groups['This Week'].push(session);
+    } else if (sessionDate >= lastMonth) {
+      groups['This Month'].push(session);
+    } else {
+      groups['Older'].push(session);
+    }
+  });
+
+  // Remove empty groups
+  return Object.fromEntries(
+    Object.entries(groups).filter(([_, sessions]) => sessions.length > 0)
+  );
 }
 
 /**
- * Check if date is today
+ * Format relative time (e.g., "2 hours ago", "3 days ago")
  */
-const isToday = (date: Date): boolean => {
-  const today = new Date();
-  return (
-    date.getDate() === today.getDate() &&
-    date.getMonth() === today.getMonth() &&
-    date.getFullYear() === today.getFullYear()
-  );
-};
-
-/**
- * Check if date is yesterday
- */
-const isYesterday = (date: Date): boolean => {
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  return (
-    date.getDate() === yesterday.getDate() &&
-    date.getMonth() === yesterday.getMonth() &&
-    date.getFullYear() === yesterday.getFullYear()
-  );
-};
-
-/**
- * Check if date is within last N days
- */
-const isWithinDays = (date: Date, days: number): boolean => {
-  const cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - days);
-  cutoff.setHours(0, 0, 0, 0);
-  return date >= cutoff;
-};
-
-/**
- * Determine which group a session belongs to
- */
-const getDateGroup = (updatedAt: string): DateGroup => {
-  const date = new Date(updatedAt);
-
-  if (isToday(date)) return 'Today';
-  if (isYesterday(date)) return 'Yesterday';
-  if (isWithinDays(date, 7)) return 'Last 7 Days';
-  if (isWithinDays(date, 30)) return 'Last 30 Days';
-  return 'Older';
-};
-
-/**
- * Group sessions by date
- */
-export const groupSessionsByDate = (
-  sessions: ChatSessionResponse[]
-): GroupedSessions => {
-  const grouped: GroupedSessions = {
-    Today: [],
-    Yesterday: [],
-    'Last 7 Days': [],
-    'Last 30 Days': [],
-    Older: [],
-  };
-
-  // Sort sessions by updated_at (newest first)
-  const sortedSessions = [...sessions].sort((a, b) => {
-    return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
-  });
-
-  // Group sessions
-  for (const session of sortedSessions) {
-    const group = getDateGroup(session.updated_at);
-    grouped[group].push(session);
-  }
-
-  // Remove empty groups
-  const result: GroupedSessions = {};
-  for (const [group, groupSessions] of Object.entries(grouped)) {
-    if (groupSessions.length > 0) {
-      result[group] = groupSessions;
-    }
-  }
-
-  return result;
-};
-
-/**
- * Get relative time string for a date
- */
-export const getRelativeTimeString = (dateString: string): string => {
-  const date = new Date(dateString);
+export function formatRelativeTime(date: string | Date): string {
   const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffMins = Math.floor(diffMs / (1000 * 60));
-  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  const then = new Date(date);
+  const diffMs = now.getTime() - then.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
 
-  if (diffMins < 1) return 'Just now';
+  if (diffMins < 1) return 'just now';
   if (diffMins < 60) return `${diffMins}m ago`;
   if (diffHours < 24) return `${diffHours}h ago`;
   if (diffDays < 7) return `${diffDays}d ago`;
   if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`;
-  if (diffDays < 365) return `${Math.floor(diffDays / 30)}mo ago`;
-  return `${Math.floor(diffDays / 365)}y ago`;
-};
+  return `${Math.floor(diffDays / 30)}mo ago`;
+}
+
+/**
+ * Format absolute date (e.g., "Nov 6, 2024")
+ */
+export function formatAbsoluteDate(date: string | Date): string {
+  return new Date(date).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
+
+/**
+ * Format time (e.g., "2:34 PM")
+ */
+export function formatTime(date: string | Date): string {
+  return new Date(date).toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  });
+}

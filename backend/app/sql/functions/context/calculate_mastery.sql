@@ -5,6 +5,8 @@
 -- Calculates mastery scores per topic/deck for a user.
 -- Mastery = accuracy * confidence_factor (based on review count)
 -- Normalized to 0.0 - 1.0 scale.
+--
+-- FIXED: All ROUND() calls now cast to NUMERIC
 -- ============================================================================
 
 -- Drop existing function if exists
@@ -101,12 +103,14 @@ BEGIN
             -- accuracy * confidence * (0.7 + 0.3 * completion)
             -- This rewards both accuracy AND progress through the deck
             ROUND(
-                LEAST(
-                    mc.raw_accuracy
-                    * mc.confidence_factor
-                    * (0.7 + 0.3 * mc.completion_factor),
-                    1.0  -- Cap at 1.0
-                ),
+                (
+                    LEAST(
+                        mc.raw_accuracy
+                        * mc.confidence_factor
+                        * (0.7 + 0.3 * mc.completion_factor),
+                        1.0  -- Cap at 1.0
+                    )
+                )::NUMERIC,
                 3
             ) AS mastery_score
         FROM mastery_calc mc
@@ -116,8 +120,8 @@ BEGIN
         fm.deck_id,
         fm.deck_name,
         fm.mastery_score,
-        ROUND(fm.raw_accuracy, 3) AS raw_accuracy,
-        ROUND(fm.confidence_factor, 3) AS confidence_factor,
+        ROUND(fm.raw_accuracy::NUMERIC, 3) AS raw_accuracy,
+        ROUND(fm.confidence_factor::NUMERIC, 3) AS confidence_factor,
         fm.card_count::INT,
         fm.mastered_cards::INT,
         fm.learning_cards::INT,
@@ -142,10 +146,10 @@ BEGIN
             END,
             'points_needed', CASE
                 WHEN fm.mastery_score >= 0.9 THEN 0
-                WHEN fm.mastery_score >= 0.75 THEN ROUND((0.9 - fm.mastery_score) * 100, 1)
-                WHEN fm.mastery_score >= 0.5 THEN ROUND((0.75 - fm.mastery_score) * 100, 1)
-                WHEN fm.mastery_score >= 0.25 THEN ROUND((0.5 - fm.mastery_score) * 100, 1)
-                ELSE ROUND((0.25 - fm.mastery_score) * 100, 1)
+                WHEN fm.mastery_score >= 0.75 THEN ROUND(((0.9 - fm.mastery_score) * 100)::NUMERIC, 1)
+                WHEN fm.mastery_score >= 0.5 THEN ROUND(((0.75 - fm.mastery_score) * 100)::NUMERIC, 1)
+                WHEN fm.mastery_score >= 0.25 THEN ROUND(((0.5 - fm.mastery_score) * 100)::NUMERIC, 1)
+                ELSE ROUND(((0.25 - fm.mastery_score) * 100)::NUMERIC, 1)
             END,
             'cards_to_master', fm.card_count - fm.mastered_cards,
             'suggestion', CASE
@@ -164,6 +168,8 @@ $$;
 -- Add function comment
 COMMENT ON FUNCTION developer_schema.calculate_mastery(INT, INT) IS
 'Calculates mastery scores per deck for a user.
+
+FIXED: All ROUND() calls cast to NUMERIC to prevent double precision errors.
 
 Mastery Score Formula:
   mastery = accuracy * confidence * (0.7 + 0.3 * completion)
