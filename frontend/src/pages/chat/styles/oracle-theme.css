@@ -1,0 +1,65 @@
+/* --- ORACLE THEME & VISUAL FX --- */
+/* Import this file in your main entry point or ChatPage */
+
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Cinzel:wght@400;700&display=swap');
+
+:root {
+    --oracle-bg-base: #020408;
+    --oracle-cyan: #06b6d4;
+    --oracle-cyan-dim: rgba(6, 182, 212, 0.1);
+    --oracle-amber: #f59e0b;
+    --oracle-border: rgba(255, 255, 255, 0.05);
+    --oracle-blur-sm: blur(4px);
+    --oracle-blur-md: blur(12px);
+}
+
+/* Base Font Overrides */
+.font-serif-oracle {
+    font-family: 'Cinzel', serif;
+}
+
+.font-mono-oracle {
+    font-family: 'JetBrains Mono', monospace;
+}
+
+/* Deep Gnosis State */
+.gnosis-active {
+    filter: contrast(1.1) saturate(1.25);
+}
+
+/* Grain & Noise */
+.bg-noise {
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.05'/%3E%3C/svg%3E");
+}
+
+/* Custom Scrollbar for Oracle Contexts */
+.oracle-scrollbar::-webkit-scrollbar {
+    width: 4px;
+}
+.oracle-scrollbar::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.2);
+}
+.oracle-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+}
+.oracle-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(6, 182, 212, 0.3);
+}
+
+/* Selection State */
+::selection {
+    background: rgba(6, 182, 212, 0.3);
+    color: white;
+}
+
+/* Synapse Core (The Eye) Helper Classes */
+.synapse-core-container {
+    pointer-events: none;
+    opacity: 0.6;
+}
+
+.synapse-blur-bg {
+    background: radial-gradient(circle at center, rgba(6, 182, 212, 0.1) 0%, rgba(88, 28, 135, 0.1) 40%, transparent 70%);
+    filter: blur(80px);
+}

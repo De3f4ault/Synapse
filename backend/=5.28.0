@@ -1,0 +1,11 @@
+Looking in indexes: https://pypi.org/simple, https://download.pytorch.org/whl/cpu
+Requirement already satisfied: protobuf in /home/de3f4ault/.pyenv/versions/3.11.14/lib/python3.11/site-packages (4.25.8)
+Collecting protobuf
+  Using cached protobuf-6.33.1-cp39-abi3-manylinux2014_x86_64.whl.metadata (593 bytes)
+Using cached protobuf-6.33.1-cp39-abi3-manylinux2014_x86_64.whl (323 kB)
+Installing collected packages: protobuf
+  Attempting uninstall: protobuf
+    Found existing installation: protobuf 4.25.8
+    Uninstalling protobuf-4.25.8:
+      Successfully uninstalled protobuf-4.25.8
+Successfully installed protobuf-6.33.1

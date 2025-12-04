@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Weekly Report</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .container {
+            background-color: #f9f9f9;
+            border-radius: 8px;
+            padding: 30px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: #4A90E2;
+        }
+        .content {
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .stat-box {
+            display: inline-block;
+            width: 45%;
+            padding: 15px;
+            margin: 10px 2%;
+            background-color: #f5f5f5;
+            border-radius: 5px;
+            text-align: center;
+        }
+        .stat-number {
+            font-size: 32px;
+            font-weight: bold;
+            color: #4A90E2;
+        }
+        .stat-label {
+            font-size: 14px;
+            color: #666;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            font-size: 12px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">RAG App</div>
+            <h2>Your Weekly Activity Report</h2>
+        </div>
+        <div class="content">
+            <p>Hi $user_name,</p>
+            <p>Here's your activity summary for $period:</p>
+
+            <div style="text-align: center; margin: 30px 0;">
+                <div class="stat-box">
+                    <div class="stat-number">${report_data.get('total_queries', 0)}</div>
+                    <div class="stat-label">Total Queries</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number">${report_data.get('active_days', 0)}</div>
+                    <div class="stat-label">Active Days</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number">${report_data.get('documents_accessed', 0)}</div>
+                    <div class="stat-label">Documents Accessed</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number">${report_data.get('avg_response_time', '0.0')}s</div>
+                    <div class="stat-label">Avg Response Time</div>
+                </div>
+            </div>
+
+            <h3>Top Activities</h3>
+            <ul>
+                <li>Most searched topic: ${report_data.get('top_topic', 'N/A')}</li>
+                <li>Most accessed document: ${report_data.get('top_document', 'N/A')}</li>
+                <li>Peak activity time: ${report_data.get('peak_time', 'N/A')}</li>
+            </ul>
+
+            <p>Keep up the great work!</p>
+        </div>
+        <div class="footer">
+            <p>You're receiving this because you've opted in to weekly reports.</p>
+            <p>&copy; 2025 RAG App. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>

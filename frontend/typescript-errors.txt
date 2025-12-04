@@ -1,0 +1,289 @@
+
+> synapse-web@1.0.0 type-check
+> tsc --noEmit
+
+src/api/hooks/useAnalytics.ts(35,49): error TS2554: Expected 0 arguments, but got 1.
+src/api/hooks/useChat.ts(15,5): error TS6196: 'ChatMessageCreate' is declared but never used.
+src/api/hooks/useChat.ts(27,34): error TS2551: Property 'sessionsList' does not exist on type '{ readonly all: readonly ["chat"]; readonly sessions: () => readonly ["chat", "sessions"]; readonly session: (id: number) => readonly ["chat", "sessions", number]; readonly messages: (sessionId: number) => readonly ["chat", "sessions", number, "messages"]; }'. Did you mean 'sessions'?
+src/api/hooks/useChat.ts(48,54): error TS2554: Expected 1 arguments, but got 2.
+src/api/hooks/useDocuments.ts(53,58): error TS2554: Expected 1 arguments, but got 2.
+src/api/hooks/useDocuments.ts(76,63): error TS2339: Property 'status' does not exist on type 'Query<ProcessingStatusResponse, Error, ProcessingStatusResponse, readonly unknown[]>'.
+src/api/hooks/useFlashcards.ts(130,63): error TS2339: Property 'cards' does not exist on type '{ readonly all: readonly ["flashcards"]; readonly lists: () => readonly ["flashcards", "list"]; readonly list: (filters?: Record<string, unknown> | undefined) => readonly ["flashcards", "list", Record<string, unknown> | undefined]; readonly details: () => readonly [...]; readonly detail: (id: number) => readonly [.....'.
+src/api/hooks/useFlashcards.ts(141,40): error TS2339: Property 'cards' does not exist on type '{ readonly all: readonly ["flashcards"]; readonly lists: () => readonly ["flashcards", "list"]; readonly list: (filters?: Record<string, unknown> | undefined) => readonly ["flashcards", "list", Record<string, unknown> | undefined]; readonly details: () => readonly [...]; readonly detail: (id: number) => readonly [.....'.
+src/api/hooks/useFlashcards.ts(151,40): error TS2339: Property 'cards' does not exist on type '{ readonly all: readonly ["flashcards"]; readonly lists: () => readonly ["flashcards", "list"]; readonly list: (filters?: Record<string, unknown> | undefined) => readonly ["flashcards", "list", Record<string, unknown> | undefined]; readonly details: () => readonly [...]; readonly detail: (id: number) => readonly [.....'.
+src/api/hooks/useFlashcards.ts(169,124): error TS2339: Property 'cards' does not exist on type '{ readonly all: readonly ["flashcards"]; readonly lists: () => readonly ["flashcards", "list"]; readonly list: (filters?: Record<string, unknown> | undefined) => readonly ["flashcards", "list", Record<string, unknown> | undefined]; readonly details: () => readonly [...]; readonly detail: (id: number) => readonly [.....'.
+src/api/hooks/useFlashcards.ts(173,124): error TS2339: Property 'cards' does not exist on type '{ readonly all: readonly ["flashcards"]; readonly lists: () => readonly ["flashcards", "list"]; readonly list: (filters?: Record<string, unknown> | undefined) => readonly ["flashcards", "list", Record<string, unknown> | undefined]; readonly details: () => readonly [...]; readonly detail: (id: number) => readonly [.....'.
+src/api/hooks/useFlashcards.ts(192,63): error TS2339: Property 'cards' does not exist on type '{ readonly all: readonly ["flashcards"]; readonly lists: () => readonly ["flashcards", "list"]; readonly list: (filters?: Record<string, unknown> | undefined) => readonly ["flashcards", "list", Record<string, unknown> | undefined]; readonly details: () => readonly [...]; readonly detail: (id: number) => readonly [.....'.
+src/api/hooks/useNotes.ts(43,40): error TS2554: Expected 0 arguments, but got 1.
+src/api/hooks/useNotes.ts(53,49): error TS2554: Expected 1 arguments, but got 2.
+src/api/hooks/useStudy.ts(23,39): error TS2554: Expected 0 arguments, but got 1.
+src/api/hooks/useStudy.ts(33,51): error TS2554: Expected 0 arguments, but got 1.
+src/api/hooks/useStudy.ts(46,35): error TS2551: Property 'sessionsList' does not exist on type '{ readonly all: readonly ["study"]; readonly due: () => readonly ["study", "due"]; readonly recommendations: () => readonly ["study", "recommendations"]; readonly sessions: () => readonly ["study", "sessions"]; readonly session: (id: number) => readonly [...]; }'. Did you mean 'sessions'?
+src/api/websocket/chat.ts(2,10): error TS2305: Module '"../client"' has no exported member 'getAuthToken'.
+src/api/websocket/chat.ts(15,13): error TS6133: 'sessionId' is declared but its value is never read.
+src/api/websocket/chat.ts(48,26): error TS2345: Argument of type '"connecting"' is not assignable to parameter of type 'WebSocketState'.
+src/api/websocket/chat.ts(56,34): error TS2345: Argument of type '"connected"' is not assignable to parameter of type 'WebSocketState'.
+src/api/websocket/chat.ts(71,34): error TS2345: Argument of type '"disconnected"' is not assignable to parameter of type 'WebSocketState'.
+src/api/websocket/chat.ts(89,34): error TS2345: Argument of type '"error"' is not assignable to parameter of type 'WebSocketState'.
+src/api/websocket/chat.ts(93,30): error TS2345: Argument of type '"error"' is not assignable to parameter of type 'WebSocketState'.
+src/api/websocket/chat.ts(159,23): error TS2820: Type '"disconnected"' is not assignable to type 'WebSocketState'. Did you mean 'WebSocketState.CONNECTED'?
+src/api/websocket/chat.ts(163,17): error TS2322: Type '"connecting"' is not assignable to type 'WebSocketState'.
+src/api/websocket/chat.ts(165,17): error TS2820: Type '"connected"' is not assignable to type 'WebSocketState'. Did you mean 'WebSocketState.DISCONNECTED'?
+src/api/websocket/chat.ts(168,17): error TS2820: Type '"disconnected"' is not assignable to type 'WebSocketState'. Did you mean 'WebSocketState.CONNECTED'?
+src/api/websocket/chat.ts(170,17): error TS2322: Type '"error"' is not assignable to type 'WebSocketState'.
+src/api/websocket/study.ts(2,10): error TS2305: Module '"../client"' has no exported member 'getAuthToken'.
+src/api/websocket/study.ts(16,13): error TS6133: 'sessionId' is declared but its value is never read.
+src/api/websocket/study.ts(49,26): error TS2345: Argument of type '"connecting"' is not assignable to parameter of type 'WebSocketState'.
+src/api/websocket/study.ts(57,34): error TS2345: Argument of type '"connected"' is not assignable to parameter of type 'WebSocketState'.
+src/api/websocket/study.ts(72,34): error TS2345: Argument of type '"disconnected"' is not assignable to parameter of type 'WebSocketState'.
+src/api/websocket/study.ts(90,34): error TS2345: Argument of type '"error"' is not assignable to parameter of type 'WebSocketState'.
+src/api/websocket/study.ts(94,30): error TS2345: Argument of type '"error"' is not assignable to parameter of type 'WebSocketState'.
+src/api/websocket/study.ts(192,23): error TS2820: Type '"disconnected"' is not assignable to type 'WebSocketState'. Did you mean 'WebSocketState.CONNECTED'?
+src/api/websocket/study.ts(196,17): error TS2322: Type '"connecting"' is not assignable to type 'WebSocketState'.
+src/api/websocket/study.ts(198,17): error TS2820: Type '"connected"' is not assignable to type 'WebSocketState'. Did you mean 'WebSocketState.DISCONNECTED'?
+src/api/websocket/study.ts(201,17): error TS2820: Type '"disconnected"' is not assignable to type 'WebSocketState'. Did you mean 'WebSocketState.CONNECTED'?
+src/api/websocket/study.ts(203,17): error TS2322: Type '"error"' is not assignable to type 'WebSocketState'.
+src/components/auth/AuthProvider.tsx(3,10): error TS2305: Module '"@/api/hooks/useAuth"' has no exported member 'useAuthHooks'.
+src/components/auth/AuthProvider.tsx(11,13): error TS2339: Property 'initializeFromStorage' does not exist on type 'AuthState'.
+src/components/auth/ProtectedRoute.tsx(4,10): error TS2305: Module '"@/api/hooks/useAuth"' has no exported member 'useAuthHooks'.
+src/components/auth/ProtectedRoute.tsx(13,20): error TS6133: 'isAuthenticated' is declared but its value is never read.
+src/components/common/AnimatedCounter.tsx(66,47): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Type 'number' has no properties in common with type 'ObjectTarget<MotionValue<number>>'.
+src/components/common/ErrorBoundary.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+src/components/common/RetryBoundary.tsx(59,15): error TS7030: Not all code paths return a value.
+src/components/common/SkeletonList.tsx(175,43): error TS2322: Type '{ className: string; style: { width: string; }; }' is not assignable to type 'IntrinsicAttributes & { className?: string | undefined; }'.
+  Property 'style' does not exist on type 'IntrinsicAttributes & { className?: string | undefined; }'.
+src/components/common/SkeletonTable.tsx(62,17): error TS2322: Type '{ className: string; style: { width: string; }; }' is not assignable to type 'IntrinsicAttributes & { className?: string | undefined; }'.
+  Property 'style' does not exist on type 'IntrinsicAttributes & { className?: string | undefined; }'.
+src/components/common/SkeletonTable.tsx(79,17): error TS2322: Type '{ className: string; style: { width: string; }; }' is not assignable to type 'IntrinsicAttributes & { className?: string | undefined; }'.
+  Property 'style' does not exist on type 'IntrinsicAttributes & { className?: string | undefined; }'.
+src/components/common/SkeletonTable.tsx(81,25): error TS2532: Object is possibly 'undefined'.
+src/components/common/StatCard.tsx(56,15): error TS6133: 'numValue' is declared but its value is never read.
+src/components/custom/SimpleDialog.tsx(6,1): error TS6133: 'X' is declared but its value is never read.
+src/components/layout/Breadcrumbs.tsx(39,11): error TS6133: 'visibleItems' is declared but its value is never read.
+src/components/layout/Header.tsx(23,11): error TS6133: 'setSidebarOpen' is declared but its value is never read.
+src/components/layout/NotificationCenter.tsx(10,1): error TS6133: 'Separator' is declared but its value is never read.
+src/components/layout/UserMenu.tsx(4,1): error TS6133: 'Separator' is declared but its value is never read.
+src/components/layout/UserMenu.tsx(50,16): error TS2532: Object is possibly 'undefined'.
+src/components/layout/UserMenu.tsx(59,11): error TS6133: 'getThemeIcon' is declared but its value is never read.
+src/modules/analytics/components/Dashboard.tsx(220,57): error TS6133: 'i' is declared but its value is never read.
+src/modules/analytics/components/HeatMap.tsx(63,35): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/modules/analytics/components/HeatMap.tsx(93,31): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/modules/analytics/components/HeatMap.tsx(178,20): error TS2532: Object is possibly 'undefined'.
+src/modules/analytics/components/MasteryRadar.tsx(42,18): error TS2532: Object is possibly 'undefined'.
+src/modules/analytics/components/WeakAreasChart.tsx(52,18): error TS2532: Object is possibly 'undefined'.
+src/modules/chat/components/ChatInterface.tsx(54,43): error TS2345: Argument of type 'string' is not assignable to parameter of type 'number'.
+src/modules/chat/components/ChatInterface.tsx(64,51): error TS2345: Argument of type 'string' is not assignable to parameter of type 'number'.
+src/modules/chat/components/ChatInterface.tsx(74,41): error TS2345: Argument of type 'string' is not assignable to parameter of type 'number'.
+src/modules/chat/components/ChatInterface.tsx(111,41): error TS2345: Argument of type 'string' is not assignable to parameter of type 'number'.
+src/modules/chat/components/ChatInterface.tsx(121,41): error TS2345: Argument of type 'string' is not assignable to parameter of type 'number'.
+src/modules/chat/components/ChatInterface.tsx(151,45): error TS2345: Argument of type 'string' is not assignable to parameter of type 'number'.
+src/modules/chat/components/MessageList.tsx(9,34): error TS6133: 'RefreshCw' is declared but its value is never read.
+src/modules/documents/components/ChunkExplorer.tsx(140,50): error TS2345: Argument of type 'string' is not assignable to parameter of type 'number'.
+src/modules/documents/components/DocumentUploader.tsx(72,24): error TS2345: Argument of type 'File | undefined' is not assignable to parameter of type 'File'.
+  Type 'undefined' is not assignable to type 'File'.
+src/modules/documents/components/DocumentUploader.tsx(128,42): error TS2339: Property 'status' does not exist on type 'CancelablePromise<ProcessingStatusResponse>'.
+src/modules/documents/components/DocumentUploader.tsx(129,44): error TS2339: Property 'progress_percentage' does not exist on type 'CancelablePromise<ProcessingStatusResponse>'.
+src/modules/documents/components/DocumentUploader.tsx(130,43): error TS2339: Property 'message' does not exist on type 'CancelablePromise<ProcessingStatusResponse>'.
+src/modules/documents/components/DocumentViewer.tsx(7,10): error TS6133: 'cn' is declared but its value is never read.
+src/modules/documents/hooks/useDocumentUpload.ts(77,19): error TS2339: Property 'success' does not exist on type '({ ...props }: Toast) => { id: string; dismiss: () => void; update: (props: ToasterToast) => void; }'.
+src/modules/documents/hooks/useDocumentUpload.ts(83,19): error TS2339: Property 'error' does not exist on type '({ ...props }: Toast) => { id: string; dismiss: () => void; update: (props: ToasterToast) => void; }'.
+src/modules/documents/hooks/useDocumentUpload.ts(101,57): error TS2339: Property 'status' does not exist on type 'CancelablePromise<ProcessingStatusResponse>'.
+src/modules/documents/hooks/useDocumentUpload.ts(101,88): error TS2339: Property 'status' does not exist on type 'CancelablePromise<ProcessingStatusResponse>'.
+src/modules/documents/hooks/useDocumentUpload.ts(102,61): error TS2339: Property 'status' does not exist on type 'CancelablePromise<ProcessingStatusResponse>'.
+src/modules/documents/hooks/useDocumentUpload.ts(103,88): error TS2345: Argument of type 'CancelablePromise<ProcessingStatusResponse>' is not assignable to parameter of type 'ProcessingStatusResponse'.
+  Type 'CancelablePromise<ProcessingStatusResponse>' is missing the following properties from type 'ProcessingStatusResponse': document_id, status, progress_percentage, message
+src/modules/documents/hooks/useDocumentUpload.ts(147,37): error TS2339: Property 'status' does not exist on type 'CancelablePromise<ProcessingStatusResponse>'.
+src/modules/documents/hooks/useDocumentUpload.ts(148,37): error TS2339: Property 'status' does not exist on type 'CancelablePromise<ProcessingStatusResponse>'.
+src/modules/documents/hooks/useDocumentUpload.ts(149,49): error TS2339: Property 'status' does not exist on type 'CancelablePromise<ProcessingStatusResponse>'.
+src/modules/documents/hooks/useDocumentUpload.ts(150,47): error TS2339: Property 'status' does not exist on type 'CancelablePromise<ProcessingStatusResponse>'.
+src/modules/documents/hooks/useDocumentUpload.ts(168,34): error TS2339: Property 'status' does not exist on type 'CancelablePromise<ProcessingStatusResponse>'.
+src/modules/documents/hooks/useDocumentUpload.ts(168,65): error TS2339: Property 'status' does not exist on type 'CancelablePromise<ProcessingStatusResponse>'.
+src/modules/flashcards/components/DeckList.tsx(13,10): error TS2724: '"@/components/common/SkeletonCard"' has no exported member named 'SkeletonCardGrid'. Did you mean 'SkeletonCard'?
+src/modules/flashcards/components/DeckStats.tsx(4,20): error TS2724: '"@/components/common/StatCard"' has no exported member named 'StatCardGrid'. Did you mean 'StatCard'?
+src/modules/flashcards/components/DeckStats.tsx(52,13): error TS2322: Type '{ value: number; label: string; isPositive: true; } | undefined' is not assignable to type 'TrendData | undefined'.
+  Object literal may only specify known properties, and 'isPositive' does not exist in type 'TrendData'.
+src/modules/flashcards/components/DeckStats.tsx(63,9): error TS2322: Type '{ title: string; value: number; icon: ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>; variant: string; loading: boolean | undefined; action: { ...; } | undefined; }' is not assignable to type 'IntrinsicAttributes & StatCardProps'.
+  Property 'variant' does not exist on type 'IntrinsicAttributes & StatCardProps'.
+src/modules/flashcards/components/DeckStats.tsx(96,13): error TS2353: Object literal may only specify known properties, and 'isPositive' does not exist in type 'TrendData'.
+src/modules/flashcards/components/DeckStats.tsx(113,13): error TS2353: Object literal may only specify known properties, and 'isPositive' does not exist in type 'TrendData'.
+src/modules/flashcards/components/DeckStats.tsx(281,54): error TS2322: Type '{ value: number; className: string; indicatorClassName: string; }' is not assignable to type 'IntrinsicAttributes & Omit<ProgressProps & RefAttributes<HTMLDivElement>, "ref"> & RefAttributes<HTMLDivElement>'.
+  Property 'indicatorClassName' does not exist on type 'IntrinsicAttributes & Omit<ProgressProps & RefAttributes<HTMLDivElement>, "ref"> & RefAttributes<HTMLDivElement>'.
+src/modules/flashcards/components/FlashcardEditor.tsx(14,66): error TS2306: File '/home/de3f4ault/Desktop/Synapse Implemenation/Synapse/frontend/src/modules/flashcards/schemas/index.ts' is not a module.
+src/modules/flashcards/components/FlashcardEditor.tsx(19,5): error TS6133: 'EyeOff' is declared but its value is never read.
+src/modules/flashcards/components/FlashcardEditor.tsx(52,5): error TS6133: 'mode' is declared but its value is never read.
+src/modules/flashcards/components/FlashcardEditor.tsx(477,11): error TS6133: 'percentage' is declared but its value is never read.
+src/modules/flashcards/components/ReviewSession/index.tsx(101,15): error TS7030: Not all code paths return a value.
+src/modules/flashcards/hooks/useReviewSession.ts(41,39): error TS2339: Property 'FLASHCARDS' does not exist on type '{ readonly AUTH: { readonly USER: readonly ["auth", "user"]; }; readonly DECKS: { readonly ALL: readonly ["decks"]; readonly DETAIL: (id: number) => (string | number)[]; }; readonly CARDS: { readonly DUE: (deckId?: number | undefined) => (string | ... 1 more ... | undefined)[]; readonly DETAIL: (id: number) => (stri...'.
+src/modules/flashcards/hooks/useReviewSession.ts(44,39): error TS2339: Property 'FLASHCARDS' does not exist on type '{ readonly AUTH: { readonly USER: readonly ["auth", "user"]; }; readonly DECKS: { readonly ALL: readonly ["decks"]; readonly DETAIL: (id: number) => (string | number)[]; }; readonly CARDS: { readonly DUE: (deckId?: number | undefined) => (string | ... 1 more ... | undefined)[]; readonly DETAIL: (id: number) => (stri...'.
+src/modules/notes/components/NoteEditor.tsx(58,54): error TS2339: Property 'tags' does not exist on type 'NoteResponse'.
+src/modules/notes/components/NoteEditor.tsx(69,9): error TS6133: 'reset' is declared but its value is never read.
+src/modules/notes/components/NoteTree.tsx(9,5): error TS6133: 'ChevronDown' is declared but its value is never read.
+src/modules/notes/components/NoteTree.tsx(72,11): error TS6133: 'expandToNode' is declared but its value is never read.
+src/modules/quizzes/components/QuestionCard.tsx(43,5): error TS6133: 'onFlag' is declared but its value is never read.
+src/modules/quizzes/components/QuizBuilder.tsx(10,10): error TS6133: 'motion' is declared but its value is never read.
+src/modules/quizzes/components/QuizBuilder.tsx(11,1): error TS6133: 'cn' is declared but its value is never read.
+src/modules/quizzes/components/QuizBuilder.tsx(328,26): error TS7006: Parameter 'q' implicitly has an 'any' type.
+src/modules/quizzes/components/QuizBuilder.tsx(328,29): error TS7006: Parameter 'i' implicitly has an 'any' type.
+src/modules/quizzes/components/QuizBuilder.tsx(341,27): error TS2322: Type '{}' is not assignable to type 'ReactNode'.
+src/modules/quizzes/components/QuizBuilder.tsx(357,34): error TS6133: 'field' is declared but its value is never read.
+src/modules/quizzes/components/QuizTaker.tsx(248,9): error TS2322: Type 'QuestionResponse | undefined' is not assignable to type 'QuestionResponse'.
+  Type 'undefined' is not assignable to type 'QuestionResponse'.
+src/modules/quizzes/components/QuizTaker.tsx(250,26): error TS18048: 'currentQuestion' is possibly 'undefined'.
+src/modules/quizzes/components/QuizTaker.tsx(251,40): error TS18048: 'currentQuestion' is possibly 'undefined'.
+src/modules/quizzes/components/QuizTaker.tsx(252,41): error TS18048: 'currentQuestion' is possibly 'undefined'.
+src/modules/quizzes/components/QuizTaker.tsx(253,34): error TS18048: 'currentQuestion' is possibly 'undefined'.
+src/modules/quizzes/components/QuizTaker.tsx(276,35): error TS18048: 'currentQuestion' is possibly 'undefined'.
+src/modules/quizzes/components/QuizTaker.tsx(281,34): error TS18048: 'currentQuestion' is possibly 'undefined'.
+src/modules/quizzes/components/QuizTaker.tsx(373,9): error TS2322: Type '{ open: boolean; onOpenChange: Dispatch<SetStateAction<boolean>>; onConfirm: () => void; title: string; description: string; confirmText: string; cancelText: string; }' is not assignable to type 'IntrinsicAttributes & ConfirmationModalProps'.
+  Property 'confirmText' does not exist on type 'IntrinsicAttributes & ConfirmationModalProps'.
+src/modules/quizzes/components/QuizTaker.tsx(387,9): error TS2322: Type '{ open: boolean; onOpenChange: Dispatch<SetStateAction<boolean>>; onConfirm: () => void; title: string; description: string; confirmText: string; cancelText: string; }' is not assignable to type 'IntrinsicAttributes & ConfirmationModalProps'.
+  Property 'confirmText' does not exist on type 'IntrinsicAttributes & ConfirmationModalProps'.
+src/modules/quizzes/schemas/index.ts(29,8): error TS2306: File '/home/de3f4ault/Desktop/Synapse Implemenation/Synapse/frontend/src/modules/quizzes/schemas/quizSchema.ts' is not a module.
+src/modules/study/components/DueItems.tsx(1,29): error TS6133: 'CardHeader' is declared but its value is never read.
+src/modules/study/components/DueItems.tsx(1,41): error TS6133: 'CardTitle' is declared but its value is never read.
+src/modules/study/components/DueItems.tsx(56,18): error TS2322: Type 'ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>' is not assignable to type 'ReactNode'.
+  Type 'ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>' is missing the following properties from type 'ReactPortal': children, type, props, key
+src/modules/study/components/DueItems.tsx(59,13): error TS2739: Type 'ReactElement<any, any>' is missing the following properties from type '{ label: string; onClick: () => void; }': label, onClick
+src/modules/study/components/DueItems.tsx(197,64): error TS2322: Type '{}' is not assignable to type 'ReactNode'.
+src/modules/study/components/DueItems.tsx(208,13): error TS2322: Type '{}' is not assignable to type 'ReactNode'.
+src/modules/study/components/DueItems.tsx(213,9): error TS2322: Type 'unknown' is not assignable to type 'ReactNode'.
+src/modules/study/components/DueItems.tsx(217,47): error TS2769: No overload matches this call.
+  Overload 1 of 4, '(value: string | number | Date): Date', gave the following error.
+    Argument of type '{}' is not assignable to parameter of type 'string | number | Date'.
+  Overload 2 of 4, '(value: string | number): Date', gave the following error.
+    Argument of type '{}' is not assignable to parameter of type 'string | number'.
+src/modules/study/components/DueItems.tsx(227,17): error TS18047: 'accuracy' is possibly 'null'.
+src/modules/study/components/DueItems.tsx(227,17): error TS2365: Operator '>=' cannot be applied to types '{}' and 'number'.
+src/modules/study/components/DueItems.tsx(228,17): error TS18047: 'accuracy' is possibly 'null'.
+src/modules/study/components/DueItems.tsx(228,17): error TS2365: Operator '>=' cannot be applied to types '{}' and 'number'.
+src/modules/study/components/DueItems.tsx(232,15): error TS2362: The left-hand side of an arithmetic operation must be of type 'any', 'number', 'bigint' or an enum type.
+src/modules/study/components/DueItems.tsx(232,15): error TS18047: 'accuracy' is possibly 'null'.
+src/modules/study/components/DueItems.tsx(238,13): error TS2322: Type '{} | null' is not assignable to type 'ReactNode'.
+  Type '{}' is not assignable to type 'ReactNode'.
+src/modules/study/components/Recommendations.tsx(144,50): error TS2322: Type '{}' is not assignable to type 'ReactNode'.
+src/modules/study/components/Recommendations.tsx(153,13): error TS2322: Type '{}' is not assignable to type 'ReactNode'.
+src/modules/study/components/Recommendations.tsx(164,33): error TS2362: The left-hand side of an arithmetic operation must be of type 'any', 'number', 'bigint' or an enum type.
+src/modules/study/components/Recommendations.tsx(164,33): error TS18047: 'accuracy' is possibly 'null'.
+src/modules/study/components/StudySession.tsx(50,56): error TS6133: 'isCompleting' is declared but its value is never read.
+src/modules/study/components/StudySession.tsx(75,21): error TS18048: 'currentItem' is possibly 'undefined'.
+src/modules/study/components/StudySession.tsx(282,10): error TS18048: 'currentItem' is possibly 'undefined'.
+src/modules/study/components/StudySession.tsx(306,10): error TS18048: 'currentItem' is possibly 'undefined'.
+src/modules/study/components/StudySession.tsx(316,17): error TS2322: Type '{}' is not assignable to type 'ReactNode'.
+src/modules/study/components/StudySession.tsx(316,18): error TS18048: 'currentItem' is possibly 'undefined'.
+src/modules/study/components/StudySession.tsx(316,49): error TS18048: 'currentItem' is possibly 'undefined'.
+src/modules/study/components/StudySession.tsx(318,17): error TS2322: Type 'unknown' is not assignable to type 'ReactNode'.
+src/modules/study/components/StudySession.tsx(318,18): error TS18048: 'currentItem' is possibly 'undefined'.
+src/modules/study/components/StudySession.tsx(319,46): error TS2322: Type '{}' is not assignable to type 'ReactNode'.
+src/modules/study/components/StudySession.tsx(319,47): error TS18048: 'currentItem' is possibly 'undefined'.
+src/modules/study/components/StudySession.tsx(333,17): error TS2322: Type '{}' is not assignable to type 'ReactNode'.
+src/modules/study/components/StudySession.tsx(333,18): error TS18048: 'currentItem' is possibly 'undefined'.
+src/modules/study/components/StudySession.tsx(342,13): error TS2322: Type '{}' is not assignable to type 'ReactNode'.
+src/modules/study/components/StudySession.tsx(342,14): error TS18048: 'currentItem' is possibly 'undefined'.
+src/modules/study/components/StudySession.tsx(343,17): error TS18048: 'currentItem' is possibly 'undefined'.
+src/modules/study/components/StudySession.tsx(344,17): error TS18048: 'currentItem' is possibly 'undefined'.
+src/modules/study/components/StudySession.tsx(347,17): error TS2322: Type 'unknown' is not assignable to type 'ReactNode'.
+src/modules/study/components/StudySession.tsx(347,18): error TS18048: 'currentItem' is possibly 'undefined'.
+src/modules/study/components/StudySession.tsx(348,46): error TS2322: Type '{}' is not assignable to type 'ReactNode'.
+src/modules/study/components/StudySession.tsx(348,47): error TS18048: 'currentItem' is possibly 'undefined'.
+src/modules/study/components/StudySession.tsx(356,10): error TS18048: 'currentItem' is possibly 'undefined'.
+src/modules/study/components/StudySession.tsx(422,9): error TS2322: Type '{ open: boolean; onOpenChange: Dispatch<SetStateAction<boolean>>; onConfirm: () => void; title: string; description: string; confirmText: string; cancelText: string; }' is not assignable to type 'IntrinsicAttributes & ConfirmationModalProps'.
+  Property 'confirmText' does not exist on type 'IntrinsicAttributes & ConfirmationModalProps'.
+src/pages/analytics/AnalyticsPage.tsx(6,5): error TS2724: '"@/api/generated/services.gen"' has no exported member named 'getPerformanceTrendsApiV1AnalyticsPerformanceTrendsGet'. Did you mean 'getPerformanceApiV1AnalyticsPerformanceGet'?
+src/pages/analytics/AnalyticsPage.tsx(64,40): error TS6133: 'overviewLoading' is declared but its value is never read.
+src/pages/analytics/AnalyticsPage.tsx(70,19): error TS6133: 'trends' is declared but its value is never read.
+src/pages/analytics/AnalyticsPage.tsx(81,71): error TS2769: No overload matches this call.
+  Overload 1 of 3, '(options: DefinedInitialDataOptions<unknown, Error, unknown, readonly ["analytics", "weak-areas"]>, queryClient?: QueryClient | undefined): DefinedUseQueryResult<...>', gave the following error.
+    Type '(data?: GetWeakAreasApiV1AnalyticsWeakAreasGetData) => CancelablePromise<GetWeakAreasApiV1AnalyticsWeakAreasGetResponse>' is not assignable to type 'QueryFunction<unknown, readonly ["analytics", "weak-areas"]>'.
+      Types of parameters 'data' and 'context' are incompatible.
+        Type '{ client: QueryClient; queryKey: readonly ["analytics", "weak-areas"]; signal: AbortSignal; meta: Record<string, unknown> | undefined; pageParam?: unknown; direction?: unknown; }' has no properties in common with type 'GetWeakAreasApiV1AnalyticsWeakAreasGetData'.
+  Overload 2 of 3, '(options: UndefinedInitialDataOptions<GetWeakAreasApiV1AnalyticsWeakAreasGetResponse, Error, GetWeakAreasApiV1AnalyticsWeakAreasGetResponse, readonly [...]>, queryClient?: QueryClient | undefined): UseQueryResult<...>', gave the following error.
+    Type '(data?: GetWeakAreasApiV1AnalyticsWeakAreasGetData) => CancelablePromise<GetWeakAreasApiV1AnalyticsWeakAreasGetResponse>' is not assignable to type 'unique symbol | QueryFunction<GetWeakAreasApiV1AnalyticsWeakAreasGetResponse, readonly ["analytics", "weak-areas"], never> | undefined'.
+      Type '(data?: GetWeakAreasApiV1AnalyticsWeakAreasGetData) => CancelablePromise<GetWeakAreasApiV1AnalyticsWeakAreasGetResponse>' is not assignable to type 'QueryFunction<GetWeakAreasApiV1AnalyticsWeakAreasGetResponse, readonly ["analytics", "weak-areas"], never>'.
+        Types of parameters 'data' and 'context' are incompatible.
+          Type '{ client: QueryClient; queryKey: readonly ["analytics", "weak-areas"]; signal: AbortSignal; meta: Record<string, unknown> | undefined; pageParam?: unknown; direction?: unknown; }' has no properties in common with type 'GetWeakAreasApiV1AnalyticsWeakAreasGetData'.
+  Overload 3 of 3, '(options: UseQueryOptions<GetWeakAreasApiV1AnalyticsWeakAreasGetResponse, Error, GetWeakAreasApiV1AnalyticsWeakAreasGetResponse, readonly [...]>, queryClient?: QueryClient | undefined): UseQueryResult<...>', gave the following error.
+    Type '(data?: GetWeakAreasApiV1AnalyticsWeakAreasGetData) => CancelablePromise<GetWeakAreasApiV1AnalyticsWeakAreasGetResponse>' is not assignable to type 'unique symbol | QueryFunction<GetWeakAreasApiV1AnalyticsWeakAreasGetResponse, readonly ["analytics", "weak-areas"], never> | undefined'.
+      Type '(data?: GetWeakAreasApiV1AnalyticsWeakAreasGetData) => CancelablePromise<GetWeakAreasApiV1AnalyticsWeakAreasGetResponse>' is not assignable to type 'QueryFunction<GetWeakAreasApiV1AnalyticsWeakAreasGetResponse, readonly ["analytics", "weak-areas"], never>'.
+        Types of parameters 'data' and 'context' are incompatible.
+          Type '{ client: QueryClient; queryKey: readonly ["analytics", "weak-areas"]; signal: AbortSignal; meta: Record<string, unknown> | undefined; pageParam?: unknown; direction?: unknown; }' has no properties in common with type 'GetWeakAreasApiV1AnalyticsWeakAreasGetData'.
+src/pages/analytics/AnalyticsPage.tsx(308,37): error TS2339: Property 'length' does not exist on type '{}'.
+src/pages/analytics/AnalyticsPage.tsx(317,24): error TS2339: Property 'map' does not exist on type '{}'.
+src/pages/analytics/AnalyticsPage.tsx(317,29): error TS7006: Parameter 'area' implicitly has an 'any' type.
+src/pages/analytics/AnalyticsPage.tsx(317,35): error TS7006: Parameter 'index' implicitly has an 'any' type.
+src/pages/chat/ChatPage.tsx(5,16): error TS6133: 'CardContent' is declared but its value is never read.
+src/pages/chat/ChatPage.tsx(144,32): error TS2532: Object is possibly 'undefined'.
+src/pages/dashboard/DashboardPage.tsx(16,5): error TS6133: 'Plus' is declared but its value is never read.
+src/pages/dashboard/DashboardPage.tsx(218,30): error TS6133: 'index' is declared but its value is never read.
+src/pages/documents/DocumentsPage.tsx(6,5): error TS2724: '"@/api/generated/services.gen"' has no exported member named 'getDocumentsApiV1DocumentsGet'. Did you mean 'listDocumentsApiV1DocumentsGet'?
+src/pages/documents/DocumentsPage.tsx(7,5): error TS2724: '"@/api/generated/services.gen"' has no exported member named 'uploadDocumentApiV1DocumentsPost'. Did you mean 'uploadDocumentApiV1DocumentsUploadPost'?
+src/pages/documents/DocumentsPage.tsx(8,5): error TS2724: '"@/api/generated/services.gen"' has no exported member named 'deleteDocumentApiV1DocumentsIdDelete'. Did you mean 'deleteDocumentApiV1DocumentsDocumentIdDelete'?
+src/pages/documents/DocumentsPage.tsx(298,29): error TS7006: Parameter 'doc' implicitly has an 'any' type.
+src/pages/documents/DocumentsPage.tsx(321,29): error TS7006: Parameter 'doc' implicitly has an 'any' type.
+src/pages/documents/DocumentsPage.tsx(423,15): error TS2339: Property 'size_bytes' does not exist on type 'DocumentResponse'.
+src/pages/flashcards/DeckDetailPage.tsx(6,5): error TS2724: '"@/api/generated/services.gen"' has no exported member named 'getDeckApiV1FlashcardsDecksIdGet'. Did you mean 'getDeckApiV1DecksDeckIdGet'?
+src/pages/flashcards/DeckDetailPage.tsx(7,5): error TS2724: '"@/api/generated/services.gen"' has no exported member named 'getCardsApiV1FlashcardsCardsGet'. Did you mean 'getCardApiV1CardsCardIdGet'?
+src/pages/flashcards/DeckDetailPage.tsx(8,5): error TS2724: '"@/api/generated/services.gen"' has no exported member named 'updateDeckApiV1FlashcardsDecksIdPut'. Did you mean 'updateDeckApiV1DecksDeckIdPut'?
+src/pages/flashcards/DeckDetailPage.tsx(9,5): error TS2724: '"@/api/generated/services.gen"' has no exported member named 'deleteCardApiV1FlashcardsCardsIdDelete'. Did you mean 'deleteCardApiV1CardsCardIdDelete'?
+src/pages/flashcards/DeckDetailPage.tsx(118,11): error TS6133: 'newCards' is declared but its value is never read.
+src/pages/flashcards/DeckDetailPage.tsx(368,25): error TS7006: Parameter 'card' implicitly has an 'any' type.
+src/pages/flashcards/DecksPage.tsx(6,5): error TS2305: Module '"@/api/generated/services.gen"' has no exported member 'getDecksApiV1FlashcardsDecksGet'.
+src/pages/flashcards/DecksPage.tsx(7,5): error TS2724: '"@/api/generated/services.gen"' has no exported member named 'deleteDeckApiV1FlashcardsDecksIdDelete'. Did you mean 'deleteDeckApiV1DecksDeckIdDelete'?
+src/pages/flashcards/DecksPage.tsx(13,1): error TS6133: 'Badge' is declared but its value is never read.
+src/pages/flashcards/DecksPage.tsx(75,42): error TS7006: Parameter 'deck' implicitly has an 'any' type.
+src/pages/flashcards/DecksPage.tsx(186,33): error TS7006: Parameter 'deck' implicitly has an 'any' type.
+src/pages/flashcards/DecksPage.tsx(277,48): error TS2339: Property 'total_cards' does not exist on type 'DeckResponse'.
+src/pages/flashcards/ReviewPage.tsx(7,5): error TS2724: '"@/api/generated/services.gen"' has no exported member named 'getDueCardsApiV1FlashcardsReviewGet'. Did you mean 'getDueCardsApiV1CardsDueGet'?
+src/pages/flashcards/ReviewPage.tsx(8,5): error TS2724: '"@/api/generated/services.gen"' has no exported member named 'reviewCardApiV1FlashcardsCardsIdReviewPost'. Did you mean 'reviewCardApiV1CardsCardIdReviewPost'?
+src/pages/flashcards/ReviewPage.tsx(28,1): error TS6133: 'cn' is declared but its value is never read.
+src/pages/flashcards/ReviewPage.tsx(29,15): error TS6196: 'FlashcardResponse' is declared but never used.
+src/pages/flashcards/ReviewPage.tsx(29,34): error TS2305: Module '"@/api/generated/types.gen"' has no exported member 'ReviewQuality'.
+src/pages/flashcards/ReviewPage.tsx(57,12): error TS6133: 'reviewedCards' is declared but its value is never read.
+src/pages/notes/NoteDetailPage.tsx(76,15): error TS2339: Property 'tags' does not exist on type 'NoteResponse'.
+src/pages/notes/NoteDetailPage.tsx(76,28): error TS2339: Property 'tags' does not exist on type 'NoteResponse'.
+src/pages/notes/NoteDetailPage.tsx(81,25): error TS2339: Property 'tags' does not exist on type 'NoteResponse'.
+src/pages/notes/NoteDetailPage.tsx(96,15): error TS2339: Property 'tags' does not exist on type 'NoteResponse'.
+src/pages/notes/NoteDetailPage.tsx(96,28): error TS2339: Property 'tags' does not exist on type 'NoteResponse'.
+src/pages/notes/NoteDetailPage.tsx(103,19): error TS2339: Property 'tags' does not exist on type 'NoteResponse'.
+src/pages/notes/NoteDetailPage.tsx(103,29): error TS7006: Parameter 'tag' implicitly has an 'any' type.
+src/pages/notes/NotesPage.tsx(5,10): error TS2724: '"@/api/generated/services.gen"' has no exported member named 'getNotesApiV1NotesGet'. Did you mean 'listNotesApiV1NotesGet'?
+src/pages/notes/NotesPage.tsx(52,42): error TS7006: Parameter 'note' implicitly has an 'any' type.
+src/pages/notes/NotesPage.tsx(60,38): error TS7006: Parameter 'note' implicitly has an 'any' type.
+src/pages/notes/NotesPage.tsx(62,20): error TS7006: Parameter 'note' implicitly has an 'any' type.
+src/pages/notes/NotesPage.tsx(133,25): error TS7006: Parameter 'note' implicitly has an 'any' type.
+src/pages/notes/NotesPage.tsx(187,33): error TS7006: Parameter 'note' implicitly has an 'any' type.
+src/pages/notes/NotesPage.tsx(249,27): error TS2339: Property 'tags' does not exist on type 'NoteResponse'.
+src/pages/notes/NotesPage.tsx(249,48): error TS2339: Property 'tags' does not exist on type 'NoteResponse'.
+src/pages/notes/NotesPage.tsx(251,31): error TS2339: Property 'tags' does not exist on type 'NoteResponse'.
+src/pages/notes/NotesPage.tsx(251,41): error TS7006: Parameter 'tag' implicitly has an 'any' type.
+src/pages/quizzes/QuizTakePage.tsx(7,5): error TS2305: Module '"@/api/generated/services.gen"' has no exported member 'getQuizApiV1QuizzesIdGet'.
+src/pages/quizzes/QuizTakePage.tsx(8,5): error TS2305: Module '"@/api/generated/services.gen"' has no exported member 'submitQuizApiV1QuizzesIdSubmitPost'.
+src/pages/quizzes/QuizTakePage.tsx(21,5): error TS6133: 'CheckCircle2' is declared but its value is never read.
+src/pages/quizzes/QuizTakePage.tsx(22,5): error TS6133: 'XCircle' is declared but its value is never read.
+src/pages/quizzes/QuizTakePage.tsx(24,5): error TS6133: 'AlertCircle' is declared but its value is never read.
+src/pages/quizzes/QuizTakePage.tsx(179,32): error TS2339: Property 'score' does not exist on type '{}'.
+src/pages/quizzes/QuizTakePage.tsx(179,48): error TS2339: Property 'total_points' does not exist on type '{}'.
+src/pages/quizzes/QuizTakePage.tsx(208,71): error TS2339: Property 'correct_answers' does not exist on type '{}'.
+src/pages/quizzes/QuizTakePage.tsx(213,39): error TS2339: Property 'correct_answers' does not exist on type '{}'.
+src/pages/quizzes/QuizTakePage.tsx(274,30): error TS7006: Parameter 'q' implicitly has an 'any' type.
+src/pages/quizzes/QuizTakePage.tsx(274,33): error TS7006: Parameter 'index' implicitly has an 'any' type.
+src/pages/quizzes/QuizTakePage.tsx(333,39): error TS7006: Parameter 'option' implicitly has an 'any' type.
+src/pages/quizzes/QuizTakePage.tsx(333,47): error TS7006: Parameter 'index' implicitly has an 'any' type.
+src/pages/quizzes/QuizzesPage.tsx(6,5): error TS2724: '"@/api/generated/services.gen"' has no exported member named 'getQuizzesApiV1QuizzesGet'. Did you mean 'listQuizzesApiV1QuizzesGet'?
+src/pages/quizzes/QuizzesPage.tsx(7,5): error TS2305: Module '"@/api/generated/services.gen"' has no exported member 'deleteQuizApiV1QuizzesIdDelete'.
+src/pages/quizzes/QuizzesPage.tsx(30,5): error TS6133: 'Target' is declared but its value is never read.
+src/pages/quizzes/QuizzesPage.tsx(35,1): error TS6133: 'cn' is declared but its value is never read.
+src/pages/quizzes/QuizzesPage.tsx(75,46): error TS7006: Parameter 'quiz' implicitly has an 'any' type.
+src/pages/quizzes/QuizzesPage.tsx(79,11): error TS6133: 'getDifficultyColor' is declared but its value is never read.
+src/pages/quizzes/QuizzesPage.tsx(175,35): error TS7006: Parameter 'quiz' implicitly has an 'any' type.
+src/pages/quizzes/QuizzesPage.tsx(175,41): error TS7006: Parameter 'index' implicitly has an 'any' type.
+src/pages/quizzes/QuizzesPage.tsx(277,15): error TS2551: Property 'questions_count' does not exist on type 'QuizResponse'. Did you mean 'question_count'?
+src/pages/study/StudyPage.tsx(3,29): error TS6133: 'CardHeader' is declared but its value is never read.
+src/pages/study/StudyPage.tsx(3,41): error TS6133: 'CardTitle' is declared but its value is never read.
+src/pages/study/StudyPage.tsx(38,36): error TS6133: 'session' is declared but its value is never read.
+src/router.tsx(17,1): error TS6133: 'StudyPage' is declared but its value is never read.
+src/stores/notificationStore.ts(48,15): error TS6133: 'get' is declared but its value is never read.
+src/stores/uiStore.ts(100,81): error TS2322: Type 'null' is not assignable to type 'string | undefined'.

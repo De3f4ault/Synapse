@@ -1,0 +1,564 @@
+.
+├── chatstructure.sh
+├── components.json
+├── dashboardstructure.sh
+├── frontend_implementation_guide.md
+├── implementation_guide.md
+├── index.html
+├── openapi.json
+├── openapi-ts.config.ts
+├── package.json
+├── package-lock.json
+├── postcss.config.js
+├── public
+│   ├── fonts
+│   └── images
+├── README.md
+├── reorganization.sh
+├── src
+│   ├── api
+│   │   ├── client.ts
+│   │   ├── generated
+│   │   │   ├── core
+│   │   │   │   ├── ApiError.ts
+│   │   │   │   ├── ApiRequestOptions.ts
+│   │   │   │   ├── ApiResult.ts
+│   │   │   │   ├── CancelablePromise.ts
+│   │   │   │   ├── OpenAPI.ts
+│   │   │   │   └── request.ts
+│   │   │   ├── index.ts
+│   │   │   ├── models
+│   │   │   ├── schemas.gen.ts
+│   │   │   ├── services
+│   │   │   ├── services.gen.ts
+│   │   │   └── types.gen.ts
+│   │   ├── hooks
+│   │   │   ├── index.ts
+│   │   │   ├── useAnalytics.ts
+│   │   │   ├── useAuth.ts
+│   │   │   ├── useChat.ts
+│   │   │   ├── useDocuments.ts
+│   │   │   ├── useFlashcards.ts
+│   │   │   ├── useNotes.ts
+│   │   │   ├── useQuizzes.ts
+│   │   │   └── useStudy.ts
+│   │   └── websocket
+│   │       ├── chat.ts
+│   │       ├── context
+│   │       │   └── WebSocketProvider.tsx
+│   │       ├── hooks
+│   │       │   ├── useWebSocketChannel.ts
+│   │       │   ├── useWebSocketEvent.ts
+│   │       │   └── useWebSocket.ts
+│   │       ├── manager.ts
+│   │       ├── study.ts
+│   │       └── types.ts
+│   ├── App.tsx
+│   ├── components
+│   │   ├── auth
+│   │   │   ├── AuthProvider.tsx
+│   │   │   ├── GatekeeperUI.tsx
+│   │   │   └── ProtectedRoute.tsx
+│   │   ├── common
+│   │   │   ├── AnimatedCounter.tsx
+│   │   │   ├── AnimatedList.tsx
+│   │   │   ├── ConfirmDialog.tsx
+│   │   │   ├── EmptyState.tsx
+│   │   │   ├── ErrorBoundary.tsx
+│   │   │   ├── ErrorState.tsx
+│   │   │   ├── GradientCard.tsx
+│   │   │   ├── LoadingSpinner.tsx
+│   │   │   ├── ProgressIndicator.tsx
+│   │   │   ├── RetryBoundary.tsx
+│   │   │   ├── SkeletonCard.tsx
+│   │   │   ├── SkeletonList.tsx
+│   │   │   ├── SkeletonTable.tsx
+│   │   │   ├── StatCard.tsx
+│   │   │   └── StatusBadge.tsx
+│   │   ├── custom
+│   │   │   ├── index.ts
+│   │   │   ├── SimpleDialog.tsx
+│   │   │   └── SimpleDropdownMenu.tsx
+│   │   ├── feedback
+│   │   │   ├── Alert.tsx
+│   │   │   ├── ConfirmationModal.tsx
+│   │   │   ├── FeedbackButton.tsx
+│   │   │   ├── index.ts
+│   │   │   └── Toast.tsx
+│   │   ├── forms
+│   │   │   ├── FormCheckbox.tsx
+│   │   │   ├── FormField.tsx
+│   │   │   ├── FormRadioGroup.tsx
+│   │   │   ├── FormSelect.tsx
+│   │   │   ├── FormTextarea.tsx
+│   │   │   └── index.ts
+│   │   ├── layout
+│   │   │   ├── AppShell.tsx
+│   │   │   ├── Breadcrumbs.tsx
+│   │   │   ├── Header.tsx
+│   │   │   ├── index.ts
+│   │   │   ├── MobileNav.tsx
+│   │   │   ├── NotificationCenter.tsx
+│   │   │   ├── PageTransition.tsx
+│   │   │   ├── SearchCommand.tsx
+│   │   │   └── UserMenu.tsx
+│   │   └── ui
+│   │       ├── alert.tsx
+│   │       ├── avatar.tsx
+│   │       ├── badge.tsx
+│   │       ├── button.tsx
+│   │       ├── card.tsx
+│   │       ├── checkbox.tsx
+│   │       ├── command.tsx
+│   │       ├── dialog.tsx
+│   │       ├── dropdown-menu.tsx
+│   │       ├── input.tsx
+│   │       ├── label.tsx
+│   │       ├── popover.tsx
+│   │       ├── progress.tsx
+│   │       ├── radio-group.tsx
+│   │       ├── scroll-area.tsx
+│   │       ├── select.tsx
+│   │       ├── separator.tsx
+│   │       ├── sheet.tsx
+│   │       ├── skeleton.tsx
+│   │       ├── switch.tsx
+│   │       ├── table.tsx
+│   │       ├── tabs.tsx
+│   │       ├── textarea.tsx
+│   │       ├── toaster.tsx
+│   │       ├── toast.tsx
+│   │       └── tooltip.tsx
+│   ├── hooks
+│   │   ├── index.ts
+│   │   ├── useAnnounce.ts
+│   │   ├── useDebounce.ts
+│   │   ├── useLocalStorage.ts
+│   │   ├── useMediaQuery.ts
+│   │   ├── useNetworkStatus.ts
+│   │   ├── usePrefersReducedMotion.ts
+│   │   ├── useQueryError.ts
+│   │   ├── use-toast.ts
+│   │   └── use-window-size.ts
+│   ├── lib
+│   │   ├── constants.ts
+│   │   ├── queryKeys.ts
+│   │   ├── utils.ts
+│   │   └── validators.ts
+│   ├── main.tsx
+│   ├── modules
+│   │   ├── analytics
+│   │   │   ├── components
+│   │   │   │   ├── ActivityFeed.tsx
+│   │   │   │   ├── Dashboard.tsx
+│   │   │   │   ├── HeatMap.tsx
+│   │   │   │   ├── MasteryRadar.tsx
+│   │   │   │   ├── MiniChart.tsx
+│   │   │   │   ├── PerformanceTrends.tsx
+│   │   │   │   └── WeakAreasChart.tsx
+│   │   │   ├── hooks
+│   │   │   │   └── useAnalytics.ts
+│   │   │   └── index.ts
+│   │   ├── chat
+│   │   │   ├── components
+│   │   │   │   ├── ChatInterface.tsx
+│   │   │   │   ├── ContextPanel.tsx
+│   │   │   │   ├── MessageInput.tsx
+│   │   │   │   ├── MessageList.tsx
+│   │   │   │   └── StreamingMessage.tsx
+│   │   │   ├── hooks
+│   │   │   │   ├── useChatWebSocket.ts
+│   │   │   │   └── useStreamingMessage.ts
+│   │   │   └── index.ts
+│   │   ├── documents
+│   │   │   ├── components
+│   │   │   │   ├── ChunkExplorer.tsx
+│   │   │   │   ├── DocumentUploader.tsx
+│   │   │   │   ├── DocumentViewer.tsx
+│   │   │   │   └── ProcessingStatus.tsx
+│   │   │   ├── hooks
+│   │   │   │   └── useDocumentUpload.ts
+│   │   │   ├── index.ts
+│   │   │   └── schemas
+│   │   │       ├── documentSchema.ts
+│   │   │       └── index.ts
+│   │   ├── flashcards
+│   │   │   ├── components
+│   │   │   │   ├── DeckList.tsx
+│   │   │   │   ├── DeckStats.tsx
+│   │   │   │   ├── FlashcardEditor.tsx
+│   │   │   │   ├── FlashcardEditorUpdate.tsx
+│   │   │   │   └── ReviewSession
+│   │   │   │       ├── CardFlip.tsx
+│   │   │   │       ├── FlashcardEditorUpdate.tsx
+│   │   │   │       ├── index.tsx
+│   │   │   │       ├── ReviewTimer.tsx
+│   │   │   │       └── SwipeGesture.tsx
+│   │   │   ├── hooks
+│   │   │   │   └── useReviewSession.ts
+│   │   │   ├── index.ts
+│   │   │   ├── schemas
+│   │   │   │   ├── deckSchema.ts
+│   │   │   │   └── index.ts
+│   │   │   └── stores
+│   │   │       └── reviewStore.ts
+│   │   ├── notes
+│   │   │   ├── components
+│   │   │   │   ├── NoteEditor.tsx
+│   │   │   │   ├── NoteSearch.tsx
+│   │   │   │   ├── NoteTree.tsx
+│   │   │   │   └── VersionHistory.tsx
+│   │   │   ├── hooks
+│   │   │   │   └── useNoteTree.ts
+│   │   │   ├── index.ts
+│   │   │   └── schemas
+│   │   │       ├── index.ts
+│   │   │       └── noteSchema.ts
+│   │   ├── quizzes
+│   │   │   ├── components
+│   │   │   │   ├── QuestionCard.tsx
+│   │   │   │   ├── QuizBuilder.tsx
+│   │   │   │   ├── QuizTaker.tsx
+│   │   │   │   └── Results.tsx
+│   │   │   ├── hooks
+│   │   │   │   └── useQuizAttempt.ts
+│   │   │   ├── index.ts
+│   │   │   └── schemas
+│   │   │       ├── index.ts
+│   │   │       └── quizSchema.ts
+│   │   └── study
+│   │       ├── components
+│   │       │   ├── DueItems.tsx
+│   │       │   ├── Recommendations.tsx
+│   │       │   └── StudySession.tsx
+│   │       ├── hooks
+│   │       │   └── useStudySession.ts
+│   │       └── index.ts
+│   ├── pages
+│   │   ├── analytics
+│   │   │   └── AnalyticsPage.tsx
+│   │   ├── auth
+│   │   │   ├── LoginPage.tsx
+│   │   │   └── RegisterPage.tsx
+│   │   ├── chat
+│   │   │   ├── ChatPage.tsx
+│   │   │   ├── components
+│   │   │   │   ├── header
+│   │   │   │   │   ├── ModelSelector.tsx
+│   │   │   │   │   ├── SettingsMenu.tsx
+│   │   │   │   │   └── TopBar.tsx
+│   │   │   │   ├── input
+│   │   │   │   │   ├── AttachmentButton.tsx
+│   │   │   │   │   ├── InputActions.tsx
+│   │   │   │   │   ├── MainInput.tsx
+│   │   │   │   │   ├── ModeToggle.tsx
+│   │   │   │   │   ├── SendButton.tsx
+│   │   │   │   │   └── VoiceButton.tsx
+│   │   │   │   ├── main-area
+│   │   │   │   │   ├── ChatContainer.tsx
+│   │   │   │   │   ├── ChatInput.tsx
+│   │   │   │   │   ├── MessageList.tsx
+│   │   │   │   │   └── WelcomeScreen.tsx
+│   │   │   │   ├── messages
+│   │   │   │   │   ├── AssistantMessage.tsx
+│   │   │   │   │   ├── CodeBlock.tsx
+│   │   │   │   │   ├── MessageActions.tsx
+│   │   │   │   │   ├── MessageMarkdown.tsx
+│   │   │   │   │   ├── Message.tsx
+│   │   │   │   │   ├── StreamingText.tsx
+│   │   │   │   │   ├── ThinkingProcess.tsx
+│   │   │   │   │   └── UserMessage.tsx
+│   │   │   │   ├── preview
+│   │   │   │   │   ├── DocumentPreview.tsx
+│   │   │   │   │   ├── FilePreview.tsx
+│   │   │   │   │   ├── ImagePreview.tsx
+│   │   │   │   │   ├── PreviewActions.tsx
+│   │   │   │   │   └── PreviewSidebar.tsx
+│   │   │   │   ├── shared
+│   │   │   │   │   ├── GlassCard.tsx
+│   │   │   │   │   ├── GlassPill.tsx
+│   │   │   │   │   ├── IconButton.tsx
+│   │   │   │   │   ├── ScrollToBottom.tsx
+│   │   │   │   │   └── TypingDots.tsx
+│   │   │   │   └── sidebar
+│   │   │   │       ├── MinimalSidebar.tsx
+│   │   │   │       ├── SessionItem.tsx
+│   │   │   │       ├── SessionList.tsx
+│   │   │   │       ├── SidebarToggle.tsx
+│   │   │   │       └── UserAvatar.tsx
+│   │   │   ├── constants
+│   │   │   │   ├── colors.ts
+│   │   │   │   ├── index.ts
+│   │   │   │   ├── modelOptions.ts
+│   │   │   │   └── shortcuts.ts
+│   │   │   ├── hooks
+│   │   │   │   ├── index.ts
+│   │   │   │   ├── useAutoScroll.ts
+│   │   │   │   ├── useChatMessages.ts
+│   │   │   │   ├── useChatSession.ts
+│   │   │   │   ├── useFileUpload.ts
+│   │   │   │   ├── useKeyboardShortcuts.ts
+│   │   │   │   ├── useMessageActions.ts
+│   │   │   │   ├── usePreviewSidebar.ts
+│   │   │   │   ├── useSidebarCollapse.ts
+│   │   │   │   └── useStreamingResponse.ts
+│   │   │   ├── index.ts
+│   │   │   ├── styles
+│   │   │   │   ├── animations.css
+│   │   │   │   ├── deepseek-theme.css
+│   │   │   │   ├── glass.css
+│   │   │   │   ├── global-overrides.css
+│   │   │   │   ├── markdown.css
+│   │   │   │   ├── oracle-theme.css
+│   │   │   │   └── scrollbar.css
+│   │   │   ├── types
+│   │   │   │   ├── chat.types.ts
+│   │   │   │   ├── file.types.ts
+│   │   │   │   ├── index.ts
+│   │   │   │   ├── message.types.ts
+│   │   │   │   └── streaming.types.ts
+│   │   │   └── utils
+│   │   │       ├── codeHighlight.ts
+│   │   │       ├── dateGrouper.ts
+│   │   │       ├── fileHandler.ts
+│   │   │       ├── index.ts
+│   │   │       ├── markdown.ts
+│   │   │       ├── streamParser.ts
+│   │   │       └── thinkingParser.ts
+│   │   ├── dashboard
+│   │   │   ├── components
+│   │   │   │   ├── activity
+│   │   │   │   │   ├── ActivityFeed.tsx
+│   │   │   │   │   ├── ActivityHeatmap.tsx
+│   │   │   │   │   └── ActivitySparkline.tsx
+│   │   │   │   ├── graph
+│   │   │   │   │   ├── GraphCanvas.tsx
+│   │   │   │   │   ├── GraphControls.tsx
+│   │   │   │   │   ├── GraphNode.tsx
+│   │   │   │   │   └── NodeDetailModal.tsx
+│   │   │   │   ├── header
+│   │   │   │   │   ├── DashboardHeader.tsx
+│   │   │   │   │   └── QuickActions.tsx
+│   │   │   │   ├── intelligence
+│   │   │   │   │   ├── ContextCard.tsx
+│   │   │   │   │   ├── MilestoneCard.tsx
+│   │   │   │   │   ├── NextActionCard.tsx
+│   │   │   │   │   └── WeakAreaCard.tsx
+│   │   │   │   ├── main-area
+│   │   │   │   │   ├── DashboardContainer.tsx
+│   │   │   │   │   ├── FocusQueue.tsx
+│   │   │   │   │   ├── IntelligencePanel.tsx
+│   │   │   │   │   └── KnowledgeGraph.tsx
+│   │   │   │   ├── queue
+│   │   │   │   │   ├── QueueEmpty.tsx
+│   │   │   │   │   ├── QueueItem.tsx
+│   │   │   │   │   └── QueueSection.tsx
+│   │   │   │   └── shared
+│   │   │   │       ├── CustomStats.tsx
+│   │   │   │       ├── GlassCard.tsx
+│   │   │   │       ├── LoadingState.tsx
+│   │   │   │       ├── ModuleBadge.tsx
+│   │   │   │       ├── PriorityBadge.tsx
+│   │   │   │       └── StatCard.tsx
+│   │   │   ├── constants
+│   │   │   │   ├── colors.ts
+│   │   │   │   ├── graphConfig.ts
+│   │   │   │   └── priorityWeights.ts
+│   │   │   ├── DashboardPage.tsx
+│   │   │   ├── hooks
+│   │   │   │   ├── useActivityData.ts
+│   │   │   │   ├── useDashboardData.ts
+│   │   │   │   ├── useDashboardSync.ts
+│   │   │   │   ├── useFocusQueue.ts
+│   │   │   │   ├── useIntelligence.ts
+│   │   │   │   ├── useKnowledgeGraph.ts
+│   │   │   │   └── useSessionTracking.ts
+│   │   │   ├── styles
+│   │   │   │   ├── animations.css
+│   │   │   │   ├── dashboard.css
+│   │   │   │   └── graph.css
+│   │   │   ├── types
+│   │   │   │   ├── dashboard.types.ts
+│   │   │   │   ├── graph.types.ts
+│   │   │   │   ├── intelligence.types.ts
+│   │   │   │   └── queue.types.ts
+│   │   │   └── utils
+│   │   │       ├── dateFormatters.ts
+│   │   │       ├── graphTransformers.ts
+│   │   │       ├── insightGenerator.ts
+│   │   │       ├── priorityCalculator.ts
+│   │   │       └── sessionDetector.ts
+│   │   ├── documents
+│   │   │   ├── components
+│   │   │   │   ├── list
+│   │   │   │   │   ├── DocumentCard.tsx
+│   │   │   │   │   ├── DocumentGrid.tsx
+│   │   │   │   │   └── DocumentTable.tsx
+│   │   │   │   ├── shared
+│   │   │   │   │   ├── DocumentStats.tsx
+│   │   │   │   │   └── FilterBar.tsx
+│   │   │   │   ├── upload
+│   │   │   │   │   ├── FileValidator.tsx
+│   │   │   │   │   ├── UploadArea.tsx
+│   │   │   │   │   └── UploadProgress.tsx
+│   │   │   │   └── viewer
+│   │   │   │       ├── ChunkExplorer.tsx
+│   │   │   │       ├── DocumentViewer.tsx
+│   │   │   │       └── ProcessingStatus.tsx
+│   │   │   ├── DocumentsInteractiveComponents.tsx
+│   │   │   ├── DocumentsPage.tsx
+│   │   │   ├── DocumentsUIComponents.tsx
+│   │   │   ├── hooks
+│   │   │   │   ├── useDocuments.ts
+│   │   │   │   ├── useDocumentUpload.ts
+│   │   │   │   └── useDocumentViewer.ts
+│   │   │   ├── index.ts
+│   │   │   ├── types
+│   │   │   │   └── documents.types.ts
+│   │   │   └── utils
+│   │   │       ├── chunkProcessing.ts
+│   │   │       └── fileValidation.ts
+│   │   ├── flashcards
+│   │   │   ├── components
+│   │   │   │   ├── card
+│   │   │   │   │   ├── CardList.tsx
+│   │   │   │   │   ├── CardPreview.tsx
+│   │   │   │   │   └── FlashcardEditor.tsx
+│   │   │   │   ├── deck
+│   │   │   │   │   ├── DeckCard.tsx
+│   │   │   │   │   ├── DeckList.tsx
+│   │   │   │   │   ├── DeckSettings.tsx
+│   │   │   │   │   └── DeckStats.tsx
+│   │   │   │   ├── review
+│   │   │   │   │   ├── CardFlip.tsx
+│   │   │   │   │   ├── DifficultyButtons.tsx
+│   │   │   │   │   ├── ReviewProgress.tsx
+│   │   │   │   │   ├── ReviewTimer.tsx
+│   │   │   │   │   └── SwipeGesture.tsx
+│   │   │   │   └── shared
+│   │   │   │       ├── ReviewStats.tsx
+│   │   │   │       └── SpacedRepetitionInfo.tsx
+│   │   │   ├── CreateCardPage.tsx
+│   │   │   ├── CreateDeckPage.tsx
+│   │   │   ├── DeckDetailPage.tsx
+│   │   │   ├── DecksPage.tsx
+│   │   │   ├── EditCardPage.tsx
+│   │   │   ├── hooks
+│   │   │   │   ├── useCards.ts
+│   │   │   │   ├── useDecks.ts
+│   │   │   │   └── useReviewSession.ts
+│   │   │   ├── index.ts
+│   │   │   ├── ReviewPage.tsx
+│   │   │   ├── types
+│   │   │   │   └── flashcards.types.ts
+│   │   │   └── utils
+│   │   │       ├── cardScheduler.ts
+│   │   │       └── spacedRepetition.ts
+│   │   ├── notes
+│   │   │   ├── components
+│   │   │   │   ├── detail
+│   │   │   │   │   ├── NoteHeader.tsx
+│   │   │   │   │   ├── NoteTags.tsx
+│   │   │   │   │   └── VersionHistory.tsx
+│   │   │   │   ├── editor
+│   │   │   │   │   ├── EditorToolbar.tsx
+│   │   │   │   │   ├── MarkdownPreview.tsx
+│   │   │   │   │   └── NoteEditor.tsx
+│   │   │   │   ├── list
+│   │   │   │   │   ├── NoteCard.tsx
+│   │   │   │   │   ├── NoteSearch.tsx
+│   │   │   │   │   └── NoteTree.tsx
+│   │   │   │   └── shared
+│   │   │   │       └── NoteStats.tsx
+│   │   │   ├── hooks
+│   │   │   │   ├── useNoteEditor.ts
+│   │   │   │   ├── useNotes.ts
+│   │   │   │   └── useNoteTree.ts
+│   │   │   ├── index.ts
+│   │   │   ├── types
+│   │   │   │   └── notes.types.ts
+│   │   │   └── utils
+│   │   │       ├── markdown.ts
+│   │   │       └── noteOrganizer.ts
+│   │   ├── NotFoundPage.tsx
+│   │   ├── quizzes
+│   │   │   ├── components
+│   │   │   │   ├── builder
+│   │   │   │   │   ├── QuestionEditor.tsx
+│   │   │   │   │   ├── QuestionTypeSelector.tsx
+│   │   │   │   │   └── QuizBuilder.tsx
+│   │   │   │   ├── list
+│   │   │   │   │   ├── QuizCard.tsx
+│   │   │   │   │   ├── QuizFilters.tsx
+│   │   │   │   │   └── QuizGrid.tsx
+│   │   │   │   ├── results
+│   │   │   │   │   ├── PerformanceChart.tsx
+│   │   │   │   │   ├── QuestionReview.tsx
+│   │   │   │   │   └── ResultsSummary.tsx
+│   │   │   │   ├── shared
+│   │   │   │   │   └── QuizStats.tsx
+│   │   │   │   └── taker
+│   │   │   │       ├── AnswerOptions.tsx
+│   │   │   │       ├── QuestionCard.tsx
+│   │   │   │       ├── QuizProgress.tsx
+│   │   │   │       └── QuizTimer.tsx
+│   │   │   ├── hooks
+│   │   │   │   ├── useQuizAttempt.ts
+│   │   │   │   ├── useQuizBuilder.ts
+│   │   │   │   └── useQuizzes.ts
+│   │   │   ├── index.ts
+│   │   │   ├── QuizTakePage.tsx
+│   │   │   ├── QuizzesPage.tsx
+│   │   │   ├── types
+│   │   │   │   └── quizzes.types.ts
+│   │   │   └── utils
+│   │   │       ├── questionValidator.ts
+│   │   │       └── quizScoring.ts
+│   │   └── study
+│   │       ├── components
+│   │       │   ├── queue
+│   │       │   │   ├── DueItems.tsx
+│   │       │   │   ├── ItemCard.tsx
+│   │       │   │   └── PriorityIndicator.tsx
+│   │       │   ├── recommendations
+│   │       │   │   ├── LearningPath.tsx
+│   │       │   │   ├── RecommendationCard.tsx
+│   │       │   │   └── SuggestedTopics.tsx
+│   │       │   ├── session
+│   │       │   │   ├── SessionControls.tsx
+│   │       │   │   ├── SessionTimer.tsx
+│   │       │   │   └── StudySession.tsx
+│   │       │   └── shared
+│   │       │       ├── StreakIndicator.tsx
+│   │       │       └── StudyStats.tsx
+│   │       ├── hooks
+│   │       │   ├── useDueItems.ts
+│   │       │   ├── useRecommendations.ts
+│   │       │   └── useStudySession.ts
+│   │       ├── index.ts
+│   │       ├── StudyPage.tsx
+│   │       ├── types
+│   │       │   └── study.types.ts
+│   │       └── utils
+│   │           ├── priorityEngine.ts
+│   │           └── sessionScheduler.ts
+│   ├── router.tsx
+│   ├── stores
+│   │   ├── authStore.ts
+│   │   ├── notificationStore.ts
+│   │   ├── preferencesStore.ts
+│   │   ├── themeStore.ts
+│   │   └── uiStore.ts
+│   ├── styles
+│   │   └── globals.css
+│   └── types
+│       ├── env.d.ts
+│       └── index.ts
+├── tailwind.config.ts
+├── tree.txt
+├── tsconfig.json
+├── tsconfig.node.json
+├── typescript-errors.txt
+└── vite.config.ts
+
+132 directories, 430 files
