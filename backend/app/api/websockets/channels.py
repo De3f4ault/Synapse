@@ -112,7 +112,11 @@ class ChannelManager:
         logger.debug(
             "channel_broadcast",
             channel=channel,
+<<<<<<< HEAD
             event_type=event,  # ✅ FIXED: Renamed from 'event' to 'event_type'
+=======
+            event=event,
+>>>>>>> 0beb317ceabb56c602374af9c5a336f24e73e32a
             users=len(self.channel_subscriptions[channel])
         )
 
@@ -132,6 +136,7 @@ class ChannelManager:
             event: Event type
             data: Event data
         """
+<<<<<<< HEAD
         # 🔍 DEBUG: Log subscription state BEFORE checks
         logger.info(
             "broadcast_attempt",
@@ -144,6 +149,8 @@ class ChannelManager:
             channel_users=list(self.channel_subscriptions.get(channel, {}).keys()) if channel in self.channel_subscriptions else []
         )
 
+=======
+>>>>>>> 0beb317ceabb56c602374af9c5a336f24e73e32a
         if channel not in self.channel_subscriptions:
             logger.debug(
                 "broadcast_to_nonexistent_channel",
@@ -163,7 +170,10 @@ class ChannelManager:
         message = {
             "type": event,
             "event": event,
+<<<<<<< HEAD
             "channel": channel,  # ✅ ADD: Include channel in message
+=======
+>>>>>>> 0beb317ceabb56c602374af9c5a336f24e73e32a
             "data": data
         }
 
@@ -175,7 +185,11 @@ class ChannelManager:
             "user_channel_broadcast",
             user_id=user_id,
             channel=channel,
+<<<<<<< HEAD
             event_type=event  # ✅ FIXED: Renamed from 'event' to 'event_type'
+=======
+            event=event
+>>>>>>> 0beb317ceabb56c602374af9c5a336f24e73e32a
         )
 
     def get_user_channels(self, user_id: int) -> List[str]:

@@ -1,6 +1,11 @@
 /**
+<<<<<<< HEAD
  * ChatInput - Oracle Theme with Unified WebSocket (UPDATED)
  * Uses centralized WebSocketManager with channel subscriptions
+=======
+ * ChatInput - Oracle Theme with WebSocket Streaming (FIXED)
+ * The "Altar of Query" with comprehensive debugging and synchronized WebSocket states
+>>>>>>> 0beb317ceabb56c602374af9c5a336f24e73e32a
  */
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
@@ -11,7 +16,11 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+<<<<<<< HEAD
 import { useChatStreaming } from '../../hooks/useChatStreaming';
+=======
+import { useStreamingResponse } from '../../hooks/useStreamingResponse';
+>>>>>>> 0beb317ceabb56c602374af9c5a336f24e73e32a
 
 interface ChatInputProps {
   sessionId?: number;
@@ -102,15 +111,27 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+<<<<<<< HEAD
   // WebSocket streaming hook - NOW USES UNIFIED MANAGER
+=======
+  // WebSocket streaming hook with enhanced debugging
+>>>>>>> 0beb317ceabb56c602374af9c5a336f24e73e32a
   const {
     isConnected,
     isStreaming,
     connectionState,
     sendMessage,
+<<<<<<< HEAD
     webSocketReadyState,
     isConnectionConfirmed,
   } = useChatStreaming({
+=======
+    connect,
+    disconnect,
+    webSocketReadyState,
+    isConnectionConfirmed,
+  } = useStreamingResponse({
+>>>>>>> 0beb317ceabb56c602374af9c5a336f24e73e32a
     sessionId,
     autoConnect: true,
     onStateChange: (state) => {
@@ -179,6 +200,13 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     console.log('Is streaming:', isStreaming);
     console.log('Connection state:', connectionState);
     console.log('WebSocket readyState:', webSocketReadyState);
+<<<<<<< HEAD
+=======
+    console.log('WebSocket state name:', webSocketReadyState === 1 ? 'OPEN' :
+    webSocketReadyState === 0 ? 'CONNECTING' :
+    webSocketReadyState === 2 ? 'CLOSING' :
+    webSocketReadyState === 3 ? 'CLOSED' : 'UNKNOWN');
+>>>>>>> 0beb317ceabb56c602374af9c5a336f24e73e32a
     console.log('Is connected:', isConnected);
     console.log('Is connection confirmed:', isConnectionConfirmed);
     console.groupEnd();
@@ -210,6 +238,16 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         webSocketReadyState,
       });
       toast.error('Not connected to Oracle. Please wait...');
+<<<<<<< HEAD
+=======
+
+      // Attempt to reconnect
+      if (connectionState === 'disconnected' || connectionState === 'error') {
+        console.log('[ChatInput] Attempting to reconnect...');
+        toast.info('Attempting to reconnect...');
+        connect();
+      }
+>>>>>>> 0beb317ceabb56c602374af9c5a336f24e73e32a
       return;
     }
 
@@ -257,7 +295,11 @@ export const ChatInput: React.FC<ChatInputProps> = ({
       // Show user-friendly error message
       let errorMessage = error.message || "Failed to send message";
 
+<<<<<<< HEAD
       if (error.message.includes('not connected')) {
+=======
+      if (error.message.includes('WebSocket not ready') || error.message.includes('state')) {
+>>>>>>> 0beb317ceabb56c602374af9c5a336f24e73e32a
         errorMessage = 'Oracle connection not ready yet. Please wait...';
         // Auto-retry after delay if this is first attempt
   if (sendAttempts < 1) {
@@ -267,12 +309,21 @@ export const ChatInput: React.FC<ChatInputProps> = ({
       handleSubmit();
     }, 1000);
   }
+<<<<<<< HEAD
+=======
+      } else if (error.message.includes('not confirmed')) {
+        errorMessage = 'Waiting for Oracle confirmation...';
+>>>>>>> 0beb317ceabb56c602374af9c5a336f24e73e32a
       }
 
       toast.error(errorMessage);
     }
   }, [input, isListening, isStreaming, connectionState, isConnected,
+<<<<<<< HEAD
   sessionId, sendMessage, onMessageSent, webSocketReadyState,
+=======
+  sessionId, sendMessage, onMessageSent, connect, webSocketReadyState,
+>>>>>>> 0beb317ceabb56c602374af9c5a336f24e73e32a
   isConnectionConfirmed, sendAttempts]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {

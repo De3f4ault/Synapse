@@ -1,15 +1,22 @@
 import { OpenAPI } from './generated/core/OpenAPI';
 
+<<<<<<< HEAD
 // Configure the OpenAPI client - Default to port 8000
+=======
+// Configure the OpenAPI client
+>>>>>>> 0beb317ceabb56c602374af9c5a336f24e73e32a
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
 // Set base URL
 OpenAPI.BASE = API_BASE_URL;
 
+<<<<<<< HEAD
 // Enable credentials to send cookies/auth headers
 OpenAPI.WITH_CREDENTIALS = true;
 OpenAPI.CREDENTIALS = 'include';
 
+=======
+>>>>>>> 0beb317ceabb56c602374af9c5a336f24e73e32a
 // Configure token resolver - this function is called before each request
 // to dynamically retrieve the current token from localStorage
 OpenAPI.TOKEN = async () => {
@@ -32,6 +39,10 @@ OpenAPI.TOKEN = async () => {
 export { OpenAPI };
 
 /**
+<<<<<<< HEAD
+=======
+ * FIX 2:
+>>>>>>> 0beb317ceabb56c602374af9c5a336f24e73e32a
  * Add getAuthToken export for compatibility with hooks & services.
  * This must remain a synchronous function.
  */

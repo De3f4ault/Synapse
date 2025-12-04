@@ -1,14 +1,21 @@
 """
 WebSocket Routes - Centralized WebSocket Endpoint Registration
 
+<<<<<<< HEAD
 UPDATED: Added unified endpoint for channel-based routing
+=======
+All WebSocket endpoints are registered here for easy management and discovery.
+>>>>>>> 0beb317ceabb56c602374af9c5a336f24e73e32a
 """
 
 from fastapi import FastAPI, WebSocket, Query, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db
+<<<<<<< HEAD
 from .unified import unified_websocket_endpoint
+=======
+>>>>>>> 0beb317ceabb56c602374af9c5a336f24e73e32a
 from .dashboard import dashboard_websocket_endpoint
 from .chat import chat_websocket
 from .activity import activity_websocket_endpoint
@@ -26,6 +33,7 @@ def register_websocket_routes(app: FastAPI):
         app: FastAPI application instance
     """
 
+<<<<<<< HEAD
     @app.websocket("/ws/unified")
     async def unified_ws(
         websocket: WebSocket,
@@ -49,6 +57,8 @@ def register_websocket_routes(app: FastAPI):
         """
         await unified_websocket_endpoint(websocket, token)
 
+=======
+>>>>>>> 0beb317ceabb56c602374af9c5a336f24e73e32a
     @app.websocket("/ws/dashboard")
     async def dashboard_ws(
         websocket: WebSocket,
@@ -57,8 +67,11 @@ def register_websocket_routes(app: FastAPI):
         """
         Dashboard WebSocket endpoint with real-time updates.
 
+<<<<<<< HEAD
         **LEGACY**: Prefer /ws/unified for new implementations.
 
+=======
+>>>>>>> 0beb317ceabb56c602374af9c5a336f24e73e32a
         Provides live updates for:
         - Card reviews
         - Note updates
@@ -80,8 +93,11 @@ def register_websocket_routes(app: FastAPI):
         """
         Chat WebSocket endpoint with AI streaming.
 
+<<<<<<< HEAD
         **LEGACY**: Prefer /ws/unified with channel subscription for new implementations.
 
+=======
+>>>>>>> 0beb317ceabb56c602374af9c5a336f24e73e32a
         Provides real-time chat with AI tutor including:
         - Streaming responses
         - Thinking process
@@ -90,7 +106,11 @@ def register_websocket_routes(app: FastAPI):
 
         Authentication via query parameter: ws://host/ws/chat/123?token=xxx
         """
+<<<<<<< HEAD
         await chat_websocket(websocket, session_id, token, db)
+=======
+        await chat_websocket(websocket, session_id, token,db)
+>>>>>>> 0beb317ceabb56c602374af9c5a336f24e73e32a
 
     @app.websocket("/ws/activity")
     async def activity_ws(
@@ -100,8 +120,11 @@ def register_websocket_routes(app: FastAPI):
         """
         Activity tracking WebSocket endpoint.
 
+<<<<<<< HEAD
         **LEGACY**: Prefer /ws/unified for new implementations.
 
+=======
+>>>>>>> 0beb317ceabb56c602374af9c5a336f24e73e32a
         Provides real-time activity tracking for:
         - Activity logging
         - Session detection
@@ -121,8 +144,11 @@ def register_websocket_routes(app: FastAPI):
         """
         Study session WebSocket endpoint.
 
+<<<<<<< HEAD
         **LEGACY**: Prefer /ws/unified for new implementations.
 
+=======
+>>>>>>> 0beb317ceabb56c602374af9c5a336f24e73e32a
         Provides real-time study session tracking for:
         - Item completion
         - Progress updates

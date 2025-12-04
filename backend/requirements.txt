@@ -1,7 +1,11 @@
 # Core Framework
 fastapi==0.120.4
 uvicorn[standard]==0.27.0
+<<<<<<< HEAD
 pydantic==2.12.5
+=======
+pydantic==2.11.10
+>>>>>>> 0beb317ceabb56c602374af9c5a336f24e73e32a
 pydantic-settings==2.11.0
 
 # Database
@@ -9,15 +13,22 @@ sqlalchemy[asyncio]==2.0.25
 alembic==1.13.1
 asyncpg==0.29.0
 psycopg2-binary==2.9.9
+<<<<<<< HEAD
 psycopg==3.2.12
 psycopg-binary==3.2.12
+=======
+>>>>>>> 0beb317ceabb56c602374af9c5a336f24e73e32a
 
 # Authentication & Security
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
+<<<<<<< HEAD
 argon2-cffi==23.1.0
 python-multipart==0.0.20
 cryptography==46.0.3
+=======
+python-multipart==0.0.20
+>>>>>>> 0beb317ceabb56c602374af9c5a336f24e73e32a
 
 # Caching & Queueing
 redis==5.0.1
@@ -26,6 +37,7 @@ hiredis==2.3.2
 # Vector Store & Analytics
 lancedb==0.25.2
 duckdb==1.4.1
+<<<<<<< HEAD
 chromadb==1.3.5
 
 # AI & LLM
@@ -67,11 +79,30 @@ tensorflow==2.20.0
 keras==3.12.0
 tensorboard==2.20.0
 protobuf==5.29.5
+=======
+
+# AI & LLM
+google-generativeai==0.3.2
+llama-index==0.14.6
+llama-index-core==0.14.6
+llama-index-llms-openai==0.6.6
+llama-index-embeddings-huggingface==0.6.1
+llama-index-vector-stores-chroma==0.5.3
+langchain==1.0.2
+langchain-core==1.0.1
+langchain-community==0.4.1
+langgraph==1.0.1
+
+# Embeddings
+sentence-transformers==5.1.2
+torch==2.9.0
+>>>>>>> 0beb317ceabb56c602374af9c5a336f24e73e32a
 
 # Document Processing
 pypdf==6.1.3
 python-docx==1.1.0
 python-magic==0.4.27
+<<<<<<< HEAD
 beautifulsoup4==4.14.3
 lxml==6.0.2
 
@@ -143,3 +174,20 @@ filelock==3.20.0
 certifi==2025.11.12
 idna==3.11
 charset-normalizer==3.4.4
+=======
+
+# Utilities
+httpx==0.28.1
+structlog==24.1.0
+python-dotenv==1.2.1
+aiofiles==24.1.0
+
+# Background Tasks
+celery==5.5.3
+
+# Monitoring
+opentelemetry-api==1.27.0
+opentelemetry-sdk==1.27.0
+opentelemetry-instrumentation-fastapi==0.48b0
+llama-index-vector-stores-lancedb
+>>>>>>> 0beb317ceabb56c602374af9c5a336f24e73e32a
