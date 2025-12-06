@@ -112,11 +112,7 @@ class ChannelManager:
         logger.debug(
             "channel_broadcast",
             channel=channel,
-<<<<<<< HEAD
-            event_type=event,  # ✅ FIXED: Renamed from 'event' to 'event_type'
-=======
-            event=event,
->>>>>>> 0beb317ceabb56c602374af9c5a336f24e73e32a
+            event_type=event,
             users=len(self.channel_subscriptions[channel])
         )
 
@@ -136,21 +132,18 @@ class ChannelManager:
             event: Event type
             data: Event data
         """
-<<<<<<< HEAD
-        # 🔍 DEBUG: Log subscription state BEFORE checks
+        # Debug: Log subscription state BEFORE checks
         logger.info(
             "broadcast_attempt",
             channel=channel,
             user_id=user_id,
-            event_type=event,  # ✅ FIXED: Renamed from 'event' to 'event_type'
+            event_type=event,
             channel_exists=channel in self.channel_subscriptions,
             user_subscribed=user_id in self.channel_subscriptions.get(channel, {}),
             all_channels=list(self.channel_subscriptions.keys()),
             channel_users=list(self.channel_subscriptions.get(channel, {}).keys()) if channel in self.channel_subscriptions else []
         )
 
-=======
->>>>>>> 0beb317ceabb56c602374af9c5a336f24e73e32a
         if channel not in self.channel_subscriptions:
             logger.debug(
                 "broadcast_to_nonexistent_channel",
@@ -170,10 +163,7 @@ class ChannelManager:
         message = {
             "type": event,
             "event": event,
-<<<<<<< HEAD
-            "channel": channel,  # ✅ ADD: Include channel in message
-=======
->>>>>>> 0beb317ceabb56c602374af9c5a336f24e73e32a
+            "channel": channel,
             "data": data
         }
 
@@ -185,11 +175,7 @@ class ChannelManager:
             "user_channel_broadcast",
             user_id=user_id,
             channel=channel,
-<<<<<<< HEAD
-            event_type=event  # ✅ FIXED: Renamed from 'event' to 'event_type'
-=======
-            event=event
->>>>>>> 0beb317ceabb56c602374af9c5a336f24e73e32a
+            event_type=event
         )
 
     def get_user_channels(self, user_id: int) -> List[str]:

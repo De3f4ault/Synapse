@@ -16,11 +16,7 @@ export default defineConfig({
                                 port: 3000,
                             host: true, // Listen on all addresses
 
-<<<<<<< HEAD
                             // Proxy API requests to backend on port 8000
-=======
-                            // Proxy API requests to backend
->>>>>>> 0beb317ceabb56c602374af9c5a336f24e73e32a
                             proxy: {
                                 '/api': {
                                     target: 'http://localhost:8000',
@@ -29,11 +25,7 @@ export default defineConfig({
                             rewrite: (path) => path, // Keep /api prefix
                                 },
 
-<<<<<<< HEAD
                             // Proxy WebSocket connections to port 8000
-=======
-                            // Proxy WebSocket connections
->>>>>>> 0beb317ceabb56c602374af9c5a336f24e73e32a
                             '/ws': {
                                 target: 'ws://localhost:8000',
                             ws: true,

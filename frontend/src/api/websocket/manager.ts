@@ -1,8 +1,5 @@
 // WebSocket Manager - Centralized WebSocket connection management
-<<<<<<< HEAD
 // UPDATED: Now connects to /ws/unified endpoint for all features
-=======
->>>>>>> 0beb317ceabb56c602374af9c5a336f24e73e32a
 import { getAuthToken } from '../client';
 import { WS_BASE_URL } from '@/lib/constants';
 import type {
@@ -13,28 +10,17 @@ import type {
 } from './types';
 
 /**
-<<<<<<< HEAD
  * WebSocketManager - Singleton class managing unified WebSocket connection
  *
  * UPDATED: Connects to /ws/unified endpoint
-=======
- * WebSocketManager - Singleton class managing all WebSocket connections
->>>>>>> 0beb317ceabb56c602374af9c5a336f24e73e32a
  *
  * Responsibilities:
  * - Maintain single WebSocket connection per user
  * - Handle authentication and token refresh
-<<<<<<< HEAD
  * - Route incoming messages to channel subscribers
  * - Implement exponential backoff reconnection
  * - Send heartbeat/ping-pong
  * - Manage channel subscription registry
-=======
- * - Route incoming messages to subscribers
- * - Implement exponential backoff reconnection
- * - Send heartbeat/ping-pong
- * - Manage subscription registry
->>>>>>> 0beb317ceabb56c602374af9c5a336f24e73e32a
  */
 export class WebSocketManager {
     private static instance: WebSocketManager | null = null;
@@ -50,12 +36,9 @@ export class WebSocketManager {
     private stateHandlers = new Set<(state: ConnectionState) => void>();
     private nextSubscriptionId = 0;
 
-<<<<<<< HEAD
     // ✅ NEW: Queue for messages sent before connection is fully ready
     private messageQueue: any[] = [];
 
-=======
->>>>>>> 0beb317ceabb56c602374af9c5a336f24e73e32a
     // Configuration
     private readonly maxReconnectAttempts = 5;
     private readonly reconnectBaseDelay = 1000;
@@ -78,10 +61,7 @@ export class WebSocketManager {
 
     /**
      * Connect to WebSocket server
-<<<<<<< HEAD
      * UPDATED: Now connects to /ws/unified
-=======
->>>>>>> 0beb317ceabb56c602374af9c5a336f24e73e32a
      */
     async connect(): Promise<void> {
         if (this.ws?.readyState === WebSocket.OPEN) {
@@ -99,19 +79,13 @@ export class WebSocketManager {
         this.updateState('connecting');
 
         try {
-<<<<<<< HEAD
             // Connect to unified endpoint
             const wsUrl = `${WS_BASE_URL}/ws/unified?token=${token}`;
             console.log('[WS Manager] Connecting to unified endpoint:', wsUrl);
-=======
-            const wsUrl = `${WS_BASE_URL}/ws/dashboard?token=${token}`;
-            console.log('[WS Manager] Connecting to:', wsUrl);
->>>>>>> 0beb317ceabb56c602374af9c5a336f24e73e32a
 
             this.ws = new WebSocket(wsUrl);
 
             this.ws.onopen = () => {
-<<<<<<< HEAD
                 console.log('[WS Manager] Connected to unified endpoint');
                 this.reconnectAttempts = 0;
                 this.updateState('connected');
@@ -119,12 +93,6 @@ export class WebSocketManager {
 
                 // ✅ NEW: Flush message queue
                 this.flushMessageQueue();
-=======
-                console.log('[WS Manager] Connected');
-                this.reconnectAttempts = 0;
-                this.updateState('connected');
-                this.startHeartbeat();
->>>>>>> 0beb317ceabb56c602374af9c5a336f24e73e32a
             };
 
             this.ws.onmessage = (event) => {
@@ -179,12 +147,9 @@ export class WebSocketManager {
             this.ws = null;
         }
 
-<<<<<<< HEAD
         // ✅ NEW: Clear message queue on disconnect
         this.messageQueue = [];
 
-=======
->>>>>>> 0beb317ceabb56c602374af9c5a336f24e73e32a
         this.updateState('disconnected');
     }
 
@@ -255,7 +220,6 @@ export class WebSocketManager {
 
     /**
      * Send a message to the server
-<<<<<<< HEAD
      * ✅ FIXED: Queue messages if connection is in progress
      */
     send(message: any): void {
@@ -273,20 +237,11 @@ export class WebSocketManager {
                 wsReadyState: this.ws?.readyState,
                 message: message
             });
-=======
-     */
-    send(message: any): void {
-        if (!this.isConnected()) {
-            console.warn('[WS Manager] Cannot send - not connected');
->>>>>>> 0beb317ceabb56c602374af9c5a336f24e73e32a
             return;
         }
 
         try {
-<<<<<<< HEAD
             console.log('[WS Manager] 📤 Sending:', message.type, message);
-=======
->>>>>>> 0beb317ceabb56c602374af9c5a336f24e73e32a
             this.ws!.send(JSON.stringify(message));
         } catch (error) {
             console.error('[WS Manager] Failed to send message:', error);
@@ -295,7 +250,6 @@ export class WebSocketManager {
 
     // ==================== PRIVATE METHODS ====================
 
-<<<<<<< HEAD
     /**
      * ✅ NEW: Flush queued messages when connection is ready
      */
@@ -313,8 +267,6 @@ export class WebSocketManager {
         });
     }
 
-=======
->>>>>>> 0beb317ceabb56c602374af9c5a336f24e73e32a
     private handleMessage(message: any): void {
         // Handle system messages
         if (message.type === 'connected') {
@@ -333,7 +285,6 @@ export class WebSocketManager {
             return;
         }
 
-<<<<<<< HEAD
         // ✅ FIXED: Route subscription confirmations to subscribers!
         // Subscribers need to know when they're successfully subscribed
         if (message.type === 'subscribed' || message.type === 'unsubscribed') {
@@ -343,32 +294,19 @@ export class WebSocketManager {
             return;
         }
 
-=======
->>>>>>> 0beb317ceabb56c602374af9c5a336f24e73e32a
         // Route to subscribers
         this.routeToSubscribers(message);
     }
 
     private routeToSubscribers(message: any): void {
-<<<<<<< HEAD
         // Extract channel from message
         // Unified endpoint sends: { type: 'token', channel: 'chat:123', data: {...} }
         const channel = message.channel || 'dashboard'; // Default to dashboard for backward compat
-=======
-        // Determine channel from message
-        // Assuming dashboard events come without explicit channel
-        // If backend sends { type: 'card_reviewed', data: {...} }
-        const channel = 'dashboard'; // Default channel for now
->>>>>>> 0beb317ceabb56c602374af9c5a336f24e73e32a
 
         const handlers = this.subscriptions.get(channel);
 
         if (handlers && handlers.size > 0) {
-<<<<<<< HEAD
             console.log('[WS Manager] Routing message to', handlers.size, 'subscribers on channel:', channel);
-=======
-            console.log('[WS Manager] Routing message to', handlers.size, 'subscribers');
->>>>>>> 0beb317ceabb56c602374af9c5a336f24e73e32a
             handlers.forEach(handler => {
                 try {
                     handler(message);
@@ -377,11 +315,7 @@ export class WebSocketManager {
                 }
             });
         } else {
-<<<<<<< HEAD
             console.log('[WS Manager] No subscribers for channel:', channel, handlers?.size || 0);
-=======
-            console.log('[WS Manager] No subscribers for channel:', channel);
->>>>>>> 0beb317ceabb56c602374af9c5a336f24e73e32a
         }
     }
 

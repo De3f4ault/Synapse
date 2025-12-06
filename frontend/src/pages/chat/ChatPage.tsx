@@ -1,13 +1,8 @@
 /**
-<<<<<<< HEAD
- * ChatPage - Oracle Theme with Unified Streaming (UPDATED)
- * Uses centralized WebSocketManager with channel subscriptions
-=======
  * ChatPage - Oracle Theme with Streaming Integration
  * Complete mystical interface with eye tracking and real-time streaming
  *
  * Location: frontend/src/pages/chat/ChatPage.tsx
->>>>>>> 0beb317ceabb56c602374af9c5a336f24e73e32a
  */
 
 import React, { useState } from 'react';
@@ -26,11 +21,7 @@ import { PreviewSidebar } from './components/preview/PreviewSidebar';
 import { useSidebarCollapse } from './hooks/useSidebarCollapse';
 import { usePreviewSidebar } from './hooks/usePreviewSidebar';
 import { useChatSession } from './hooks/useChatSession';
-<<<<<<< HEAD
 import { useChatStreaming } from './hooks/useChatStreaming';
-=======
-import { useStreamingResponse } from './hooks/useStreamingResponse';
->>>>>>> 0beb317ceabb56c602374af9c5a336f24e73e32a
 import { cn } from '@/lib/utils';
 
 // Styles
@@ -139,17 +130,10 @@ export const ChatPage: React.FC = () => {
     const { data: session } = useChatSession(sessionId ? parseInt(sessionId) : undefined);
     const isActiveSession = !!sessionId;
 
-<<<<<<< HEAD
-    // Get streaming state to activate the eye - NOW USES UNIFIED MANAGER
+    // Get streaming state to activate the eye
     const { isStreaming } = useChatStreaming({
         sessionId: sessionId ? parseInt(sessionId) : undefined,
                                              autoConnect: false, // Managed by ChatInput
-=======
-    // Get streaming state to activate the eye
-    const { isStreaming } = useStreamingResponse({
-        sessionId: sessionId ? parseInt(sessionId) : undefined,
-                                                 autoConnect: false, // Managed by ChatInput
->>>>>>> 0beb317ceabb56c602374af9c5a336f24e73e32a
     });
 
     // Oracle UI State

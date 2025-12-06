@@ -1,21 +1,12 @@
 /**
-<<<<<<< HEAD
- * MessageList - Oracle Theme with Unified Streaming (UPDATED)
- * Uses centralized WebSocketManager with channel subscriptions
-=======
  * MessageList - Oracle Theme with Streaming Support
  * Displays the scroll of knowledge with real-time streaming
->>>>>>> 0beb317ceabb56c602374af9c5a336f24e73e32a
  */
 
 import React, { useRef, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { useChatMessages } from '@/pages/chat/hooks/useChatMessages';
-<<<<<<< HEAD
 import { useChatStreaming } from '@/pages/chat/hooks/useChatStreaming';
-=======
-import { useStreamingResponse } from '@/pages/chat/hooks/useStreamingResponse';
->>>>>>> 0beb317ceabb56c602374af9c5a336f24e73e32a
 import { Message } from '../messages/Message';
 import { StreamingMessage } from '../messages/StreamingMessage';
 import { Loader2 } from 'lucide-react';
@@ -42,22 +33,14 @@ export const MessageList: React.FC<MessageListProps> = ({ className }) => {
   // Data Fetching
   const { data: messages, isLoading } = useChatMessages(numericSessionId);
 
-<<<<<<< HEAD
-  // Streaming state - NOW USES UNIFIED MANAGER
-=======
   // Streaming state
->>>>>>> 0beb317ceabb56c602374af9c5a336f24e73e32a
   const {
     isStreaming,
     streamingContent,
     streamingThinking,
     streamingSources,
     currentModel,
-<<<<<<< HEAD
   } = useChatStreaming({
-=======
-  } = useStreamingResponse({
->>>>>>> 0beb317ceabb56c602374af9c5a336f24e73e32a
     sessionId: numericSessionId,
     autoConnect: false, // Don't auto-connect here, ChatInput handles it
   });

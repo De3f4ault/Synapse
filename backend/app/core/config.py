@@ -64,7 +64,6 @@ class Settings(BaseSettings):
         description="JWT token expiration in minutes"
     )
 
-<<<<<<< HEAD
     # CORS - All common development ports
     CORS_ORIGINS: List[str] = Field(
         default=[
@@ -75,11 +74,6 @@ class Settings(BaseSettings):
             "http://localhost:5173",
             "http://127.0.0.1:5173",
         ],
-=======
-    # CORS
-    CORS_ORIGINS: List[str] = Field(
-        default=["http://localhost:3000", "http://localhost:8000"],
->>>>>>> 0beb317ceabb56c602374af9c5a336f24e73e32a
         description="Allowed CORS origins"
     )
 

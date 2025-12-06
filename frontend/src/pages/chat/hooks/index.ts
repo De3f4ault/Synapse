@@ -1,11 +1,6 @@
 /**
  * Chat hooks exports
  * Central export point for all chat hooks
-<<<<<<< HEAD
- *
- * UPDATED: Replaced useStreamingResponse with useChatStreaming
-=======
->>>>>>> 0beb317ceabb56c602374af9c5a336f24e73e32a
  */
 
 // Session management
@@ -14,13 +9,8 @@ export { useChatSession } from './useChatSession';
 // Message handling
 export { useChatMessages } from './useChatMessages';
 
-<<<<<<< HEAD
-// Streaming - NEW unified hook
+// Streaming - Uses centralized WebSocketManager
 export { useChatStreaming } from './useChatStreaming';
-=======
-// Streaming
-export { useStreamingResponse } from './useStreamingResponse';
->>>>>>> 0beb317ceabb56c602374af9c5a336f24e73e32a
 
 // File handling
 export { useFileUpload } from './useFileUpload';

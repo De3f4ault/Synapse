@@ -34,6 +34,10 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({ isCollapsed }) => {
 
   if (!user) return null;
 
+  // Safe access to user properties with fallbacks
+  const userName = user.full_name || user.email?.split('@')[0] || 'User';
+  const userEmail = user.email || 'No email';
+
   return (
     <DropdownMenu>
     <DropdownMenuTrigger asChild>
@@ -45,7 +49,7 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({ isCollapsed }) => {
     >
     {/* Left Side: Version / Label */}
     <span className="truncate">
-    ID: {user.full_name.toUpperCase()}
+    ID: {userName.toUpperCase()}
     </span>
 
     {/* Right Side: Settings Icon */}
@@ -63,8 +67,8 @@ export const UserAvatar: React.FC<UserAvatarProps> = ({ isCollapsed }) => {
     >
     <div className="px-2 py-2">
     <p className="text-xs font-mono uppercase tracking-wider text-cyan-500/80 mb-1">Current Identity</p>
-    <p className="text-sm font-bold text-white truncate">{user.full_name}</p>
-    <p className="text-xs text-slate-500 truncate">{user.email}</p>
+    <p className="text-sm font-bold text-white truncate">{userName}</p>
+    <p className="text-xs text-slate-500 truncate">{userEmail}</p>
     </div>
 
     <DropdownMenuSeparator className="bg-white/10" />
