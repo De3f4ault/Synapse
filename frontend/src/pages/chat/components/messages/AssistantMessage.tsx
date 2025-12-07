@@ -1,45 +1,24 @@
 /**
- * AssistantMessage - Oracle Theme
- * "The Oracle" - Left aligned, mystical, cyan glow, artifact aware.
+ * AssistantMessage - NotebookLM Style
+ * Simpler avatar with Google colors, cleaner layout
  *
- * Location: chat/components/messages/AssistantMessage.tsx
+ * Location: frontend/src/pages/chat/components/messages/AssistantMessage.tsx
  */
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Eclipse, Terminal, Activity } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Sparkles } from 'lucide-react';
 import { MessageMarkdown } from './MessageMarkdown';
 import { MessageActions } from './MessageActions';
 import { ThinkingProcess } from './ThinkingProcess';
 import type { MessageProps } from './Message';
-
-// Artifact Card Component (Internal for now, or could be extracted)
-const ArtifactCard = ({ title, type, content }: { title: string, type: string, content: string }) => (
-  <div className="my-6 rounded-lg border border-white/10 bg-black/40 overflow-hidden shadow-lg shadow-black/50">
-  <div className="flex items-center justify-between px-4 py-2 bg-white/5 border-b border-white/10">
-  <div className="flex items-center gap-2">
-  {type === 'code' ? <Terminal size={12} className="text-amber-400"/> : <Activity size={12} className="text-emerald-400"/>}
-  <span className="text-[10px] font-mono uppercase tracking-wider text-slate-300">{title}</span>
-  </div>
-  <div className="flex gap-1.5">
-  <div className="w-2 h-2 rounded-full bg-red-500/20" />
-  <div className="w-2 h-2 rounded-full bg-amber-500/20" />
-  <div className="w-2 h-2 rounded-full bg-emerald-500/20" />
-  </div>
-  </div>
-  <div className="p-4 font-mono text-xs text-slate-300 bg-black/60 overflow-x-auto custom-scrollbar">
-  <pre>{content}</pre>
-  </div>
-  </div>
-);
 
 export const AssistantMessage: React.FC<Omit<MessageProps, 'role'>> = ({
   content,
   isStreaming,
   timestamp,
   artifact,
-  isDecryption
+  isDecryption,
 }) => {
   const timeString = timestamp
   ? new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -52,39 +31,38 @@ export const AssistantMessage: React.FC<Omit<MessageProps, 'role'>> = ({
     className="flex w-full justify-start pr-12 mb-8 group"
     >
     <div className="flex gap-6 max-w-3xl w-full">
-    {/* Oracle Avatar */}
-    <div className="w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center border border-cyan-500/30 bg-black text-cyan-200 shadow-[0_0_20px_rgba(6,182,212,0.1)] mt-1">
-    <Eclipse size={18} />
+    {/* Google-style Avatar */}
+    <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#4285F4] to-[#9B72CB] flex-shrink-0 flex items-center justify-center mt-1 shadow-lg shadow-purple-500/20 ring-1 ring-white/10">
+    <Sparkles size={16} className="text-white fill-white/20" />
     </div>
 
     {/* Content Area */}
     <div className="flex flex-col items-start w-full min-w-0">
-    <div className={cn(
-      "text-base font-serif leading-8 rounded-2xl rounded-tl-sm px-6 py-4 w-full shadow-xl backdrop-blur-md",
-      "bg-black/60 border border-cyan-900/30 text-cyan-50 shadow-[0_0_30px_rgba(0,0,0,0.3)]"
-    )}>
-
-    {/* Decryption/Thinking Process */}
+    <div className="text-base font-sans leading-8 w-full">
+    {/* Thinking Process */}
     {isDecryption && <ThinkingProcess isStreaming={isStreaming} />}
 
     {/* Main Text Content */}
-    <div className="min-h-[20px]">
+    <div className="min-h-[20px] text-white/90">
     <MessageMarkdown content={content} />
     </div>
 
-    {/* Artifacts (Visualizations/Code/Stats) */}
+    {/* Artifacts (if any) */}
     {artifact && (
-      <ArtifactCard
-      title={artifact.title}
-      type={artifact.type}
-      content={artifact.content}
-      />
+      <div className="my-6 rounded-lg border border-white/10 bg-black/40 overflow-hidden shadow-lg">
+      <div className="flex items-center justify-between px-4 py-2 bg-white/5 border-b border-white/10">
+      <span className="text-xs font-mono uppercase tracking-wider text-slate-300">
+      {artifact.title}
+      </span>
+      </div>
+      <div className="p-4 font-mono text-xs text-slate-300 bg-black/60 overflow-x-auto custom-scrollbar">
+      <pre>{artifact.content}</pre>
+      </div>
+      </div>
     )}
 
     {/* Footer Actions */}
-    {!isStreaming && (
-      <MessageActions content={content} />
-    )}
+    {!isStreaming && <MessageActions content={content} />}
     </div>
 
     {/* Timestamp */}
