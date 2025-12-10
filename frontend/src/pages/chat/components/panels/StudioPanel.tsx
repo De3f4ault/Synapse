@@ -1,6 +1,6 @@
 /**
- * StudioPanel - Exact NotebookLM Replica
- * Pixel-perfect match to Google's NotebookLM studio panel
+ * StudioPanel - Synapse Style
+ * Pixel-perfect match to Synapse design system
  *
  * Location: frontend/src/pages/chat/components/panels/StudioPanel.tsx
  */
@@ -37,13 +37,13 @@ const StudioItem = ({
     onClick?: () => void;
 }) => (
     <button
-    className="studio-item group"
+    className="synapse-studio-item group"
     onClick={onClick}
     >
-    <div className="studio-icon transition-transform group-hover:scale-110">
+    <div className="synapse-studio-icon transition-transform group-hover:scale-110">
     <Icon size={24} strokeWidth={1.5} />
     </div>
-    <span className="studio-label">{label}</span>
+    <span className="synapse-studio-label">{label}</span>
     </button>
 );
 
@@ -61,24 +61,24 @@ export const StudioPanel: React.FC<StudioPanelProps> = ({
 
     return (
         <div
-        className="flex-shrink-0 notebook-panel transition-all duration-300 ease-in-out overflow-hidden h-full w-[360px]"
+        className="flex-shrink-0 synapse-panel transition-all duration-300 ease-in-out overflow-hidden h-full w-[360px]"
         >
         {/* Panel Header - At the very top */}
-        <div className="panel-header flex-shrink-0">
+        <div className="synapse-panel-header flex-shrink-0">
         <div className="flex items-center gap-2">
-        <Presentation size={18} className="text-secondary" />
-        <span className="panel-header-title">Studio</span>
+        <Presentation size={18} className="text-[var(--synapse-cyan)]" />
+        <span className="synapse-panel-title">Studio</span>
         </div>
         <div className="flex items-center gap-1">
         <button
-        className="icon-button"
+        className="synapse-icon-button"
         aria-label="Settings"
         >
         <Settings size={20} />
         </button>
         <button
         onClick={onClose}
-        className="icon-button"
+        className="synapse-icon-button"
         aria-label="Close studio panel"
         >
         <X size={20} />
@@ -87,11 +87,11 @@ export const StudioPanel: React.FC<StudioPanelProps> = ({
         </div>
 
         {/* Scrollable Content Area */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar">
+        <div className="flex-1 overflow-y-auto synapse-scrollbar">
         <div className="p-4">
         {/* Create Section */}
         <div className="mb-6">
-        <div className="studio-grid">
+        <div className="synapse-studio-grid">
         <StudioItem
         icon={Mic}
         label="Audio Overview"
@@ -136,31 +136,31 @@ export const StudioPanel: React.FC<StudioPanelProps> = ({
         </div>
 
         {/* Divider */}
-        <div className="notebook-divider" />
+        <div className="h-px bg-[var(--synapse-border-subtle)] my-6" />
 
         {/* Saved Notes Section */}
         <div className="min-h-[200px]">
         {!hasMessages ? (
-            <div className="empty-state py-12">
-            <div className="empty-state-icon">
+            <div className="synapse-empty-state py-12">
+            <div className="synapse-empty-icon">
             <Pencil size={28} />
             </div>
-            <p className="text-sm text-[var(--text-secondary)] text-center px-4">
+            <p className="text-sm text-[var(--synapse-text-secondary)] text-center px-4">
             Studio output will be saved here.
             </p>
-            <p className="text-xs text-[var(--text-tertiary)] mt-2 text-center px-4">
+            <p className="text-xs text-[var(--synapse-text-dim)] mt-2 text-center px-4">
             After adding sources, click to add Audio Overview, Study Guide, Mind Map, and more!
             </p>
             </div>
         ) : (
             <div className="space-y-2">
-            <div className="source-item">
-            <div className="source-icon source-icon-doc">
+            <div className="synapse-source-item">
+            <div className="synapse-source-icon synapse-source-icon-doc">
             <FileText size={18} />
             </div>
             <div className="flex-1 min-w-0">
-            <div className="source-title">Kernel Concurrency Notes</div>
-            <div className="source-type text-[10px]">Just now</div>
+            <div className="text-sm font-medium text-[var(--synapse-text-primary)]">Kernel Concurrency Notes</div>
+            <div className="text-[10px] text-[var(--synapse-text-dim)] uppercase tracking-wider">Just now</div>
             </div>
             </div>
             </div>
@@ -168,10 +168,10 @@ export const StudioPanel: React.FC<StudioPanelProps> = ({
         </div>
 
         {/* Add Note Button */}
-        <div className="pt-4 border-t border-[var(--border-subtle)] mt-6">
-        <button className="notebook-button notebook-button-primary w-full flex items-center justify-center gap-2">
+        <div className="pt-4 border-t border-[var(--synapse-border-subtle)] mt-6">
+        <button className="synapse-button synapse-button-primary w-full flex items-center justify-center gap-2">
         <Plus size={18} />
-        <span>Add note</span>
+        <span>Add Note</span>
         </button>
         </div>
         </div>

@@ -1,59 +1,60 @@
+/**
+ * PriorityBadge - Visual indicator for priority level
+ * Consistent badge styling for priority queue items
+ */
+
 import { Badge } from '@/components/ui/badge';
-import { AlertCircle, AlertTriangle, Info, Circle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { PriorityLevel } from '../../types/dashboard.types';
 
 interface PriorityBadgeProps {
-    priority: PriorityLevel;
-    className?: string;
-    showIcon?: boolean;
-    size?: 'sm' | 'default';
+    priority: number; // 0-1 score
+    size?: 'sm' | 'md' | 'lg';
+    showLabel?: boolean;
 }
 
-const PRIORITY_ICONS = {
-    urgent: AlertCircle,
-    high: AlertTriangle,
-    medium: Info,
-    low: Circle,
-};
+export function PriorityBadge({ priority, size = 'sm', showLabel = true }: PriorityBadgeProps) {
+    const level = getPriorityLevel(priority);
+    const color = getPriorityColor(level);
 
-/**
- * PriorityBadge - Neon Style
- */
-export function PriorityBadge({ priority, className, showIcon = true, size = 'default' }: PriorityBadgeProps) {
-    const Icon = PRIORITY_ICONS[priority];
-    const colors = getPriorityColors(priority);
+    const sizeClasses = {
+        sm: 'text-[9px] h-4 px-1.5',
+        md: 'text-xs h-5 px-2',
+        lg: 'text-sm h-6 px-3',
+    };
 
     return (
         <Badge
         variant="outline"
         className={cn(
-            'flex items-center gap-1 border font-mono font-bold uppercase tracking-tight',
-            colors.bg,
-            colors.text,
-            colors.border,
-            size === 'sm' ? 'text-[9px] px-1 h-4' : 'text-[10px] px-2 h-5',
-            className
+            "uppercase font-bold tracking-wider",
+            color,
+            sizeClasses[size]
         )}
         >
-        {showIcon && <Icon className={cn(size === 'sm' ? 'w-2 h-2' : 'w-3 h-3')} />}
-        <span>{priority}</span>
+        {showLabel ? level : `${Math.round(priority * 100)}%`}
         </Badge>
     );
 }
 
-function getPriorityColors(priority: PriorityLevel) {
-    switch (priority) {
-        case 'urgent': return { bg: 'bg-red-500/10', text: 'text-red-500', border: 'border-red-500/30' };
-        case 'high': return { bg: 'bg-orange-500/10', text: 'text-orange-500', border: 'border-orange-500/30' };
-        case 'medium': return { bg: 'bg-yellow-500/10', text: 'text-yellow-500', border: 'border-yellow-500/30' };
-        case 'low': return { bg: 'bg-slate-500/10', text: 'text-slate-500', border: 'border-slate-500/30' };
-    }
+function getPriorityLevel(score: number): PriorityLevel {
+    if (score >= 0.8) return 'urgent';
+    if (score >= 0.6) return 'high';
+    if (score >= 0.4) return 'medium';
+    return 'low';
 }
 
-export function PriorityDot({ priority, className }: { priority: PriorityLevel; className?: string }) {
-    const colors = getPriorityColors(priority);
-    return (
-        <div className={cn('h-1.5 w-1.5 rounded-full', colors.bg.replace('/10', ''), colors.text.replace('text-', 'bg-'), className)} />
-    );
+function getPriorityColor(level: PriorityLevel): string {
+    switch (level) {
+        case 'urgent':
+            return 'bg-red-500/20 text-red-400 border-red-500/30';
+        case 'high':
+            return 'bg-orange-500/20 text-orange-400 border-orange-500/30';
+        case 'medium':
+            return 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30';
+        case 'low':
+            return 'bg-slate-500/20 text-slate-400 border-slate-500/30';
+        default:
+            return 'bg-slate-500/20 text-slate-400 border-slate-500/30';
+    }
 }

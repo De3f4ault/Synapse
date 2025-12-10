@@ -1,6 +1,6 @@
 import { useMemo, useCallback } from 'react';
 import type { DashboardData } from '../types/dashboard.types';
-import type { PriorityItem, PrioritySection } from '../types/priority.types';
+import type { QueueItem, PrioritySection } from '../types/priority.types';
 import { calculatePriority } from '../utils/priorityCalculator';
 import { formatDueDate } from '../utils/dateFormatters';
 
@@ -17,10 +17,10 @@ import { formatDueDate } from '../utils/dateFormatters';
  */
 export function useFocusQueue(data: DashboardData | undefined) {
     // Build complete queue from all sources
-    const allPriorityItems = useMemo((): PriorityItem[] => {
+    const allQueueItems = useMemo((): QueueItem[] => {
         if (!data) return [];
 
-        const items: PriorityItem[] = [];
+        const items: QueueItem[] = [];
 
         // 1. Due flashcards (highest urgency)
         // FIXED: Check if dueCards is an array before using forEach
@@ -153,20 +153,20 @@ export function useFocusQueue(data: DashboardData | undefined) {
         todayEnd.setHours(23, 59, 59, 999);
 
         // Due Today section (items due within today)
-        const dueToday = allPriorityItems.filter(item => {
+        const dueToday = allQueueItems.filter(item => {
             if (!item.dueDate) return false;
             const dueDate = new Date(item.dueDate);
             return dueDate <= todayEnd;
         });
 
         // High Priority section (priority > 0.7, not due today)
-        const highPriority = allPriorityItems.filter(item =>
+        const highPriority = allQueueItems.filter(item =>
         item.priority > 0.7 &&
         !dueToday.some(d => d.id === item.id)
         );
 
         // Recommended section (priority 0.4-0.7)
-        const recommended = allPriorityItems.filter(item =>
+        const recommended = allQueueItems.filter(item =>
         item.priority >= 0.4 &&
         item.priority <= 0.7 &&
         !dueToday.some(d => d.id === item.id) &&
@@ -174,7 +174,7 @@ export function useFocusQueue(data: DashboardData | undefined) {
         );
 
         // Later section (priority < 0.4)
-        const later = allPriorityItems.filter(item =>
+        const later = allQueueItems.filter(item =>
         item.priority < 0.4 &&
         !dueToday.some(d => d.id === item.id) &&
         !highPriority.some(h => h.id === item.id) &&
@@ -211,25 +211,25 @@ export function useFocusQueue(data: DashboardData | undefined) {
                 priority: 1,
             },
         ].filter(section => section.items.length > 0); // Only show non-empty sections
-    }, [allPriorityItems]);
+    }, [allQueueItems]);
 
     // Queue statistics
     const stats = useMemo(() => {
         return {
-            totalItems: allPriorityItems.length,
+            totalItems: allQueueItems.length,
             dueToday: sections.find(s => s.id === 'due-today')?.items.length || 0,
                           highPriority: sections.find(s => s.id === 'high-priority')?.items.length || 0,
-                          estimatedTotalMinutes: allPriorityItems.reduce((sum, item) =>
+                          estimatedTotalMinutes: allQueueItems.reduce((sum, item) =>
                           sum + (item.estimatedMinutes || 0), 0
                           ),
                           byModule: {
-                              flashcards: allPriorityItems.filter(i => i.moduleType === 'flashcards').length,
-                          notes: allPriorityItems.filter(i => i.moduleType === 'notes').length,
-                          documents: allPriorityItems.filter(i => i.moduleType === 'documents').length,
-                          quizzes: allPriorityItems.filter(i => i.moduleType === 'quizzes').length,
+                              flashcards: allQueueItems.filter(i => i.moduleType === 'flashcards').length,
+                          notes: allQueueItems.filter(i => i.moduleType === 'notes').length,
+                          documents: allQueueItems.filter(i => i.moduleType === 'documents').length,
+                          quizzes: allQueueItems.filter(i => i.moduleType === 'quizzes').length,
                           },
         };
-    }, [allPriorityItems, sections]);
+    }, [allQueueItems, sections]);
 
     // Actions
     const dismissItem = useCallback((itemId: string) => {
@@ -244,11 +244,11 @@ export function useFocusQueue(data: DashboardData | undefined) {
 
     return {
         sections,
-        allItems: allPriorityItems,
+        allItems: allQueueItems,
         stats,
         dismissItem,
         snoozeItem,
         isLoading: !data,
-        isEmpty: allPriorityItems.length === 0,
+        isEmpty: allQueueItems.length === 0,
     };
 }

@@ -1,13 +1,13 @@
 /**
- * Enhanced Editor Toolbar with Working Formatting
+ * Enhanced Editor Toolbar - Synapse Style
  * File: frontend/src/pages/notes/components/editor/EditorToolbar.tsx
  */
 
-import React, { useRef, useEffect } from 'react';
+import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Edit3, Eye, Bold, Italic, List, Code, Bot, Tag,
-    Save, Check, Loader2, Heading2, Link
+    Save, Check, Loader2, Heading2, Link, Sparkles
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { markdownFormatters } from '../../utils/textSelection';
@@ -19,7 +19,7 @@ interface EditorToolbarProps {
     isProcessing: boolean;
     hasUnsavedChanges: boolean;
     isSaving?: boolean;
-    textareaRef?: React.RefObject<HTMLTextAreaElement>; // NEW: ref to textarea
+    textareaRef?: React.RefObject<HTMLTextAreaElement>;
 }
 
 export const EditorToolbar: React.FC<EditorToolbarProps> = ({
@@ -32,7 +32,7 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
 }) => {
     const isEditing = mode === 'edit';
 
-    // Formatting handlers - NOW ACTUALLY WORK!
+    // Formatting handlers
     const handleFormat = (type: string) => {
         if (!textareaRef?.current || !isEditing) return;
 
@@ -65,26 +65,26 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
         <motion.div
         initial={{ y: 50, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        className="flex items-center gap-1 p-1.5 bg-[#080a0e]/95 backdrop-blur-xl border border-white/10 rounded-full shadow-2xl shadow-black/50"
+        className="flex items-center gap-1 p-1.5 bg-[var(--synapse-bg-secondary)]/95 backdrop-blur-xl border border-[var(--synapse-border-subtle)] rounded-full shadow-2xl shadow-black/50"
         >
         {/* Edit/View Toggle */}
-        <div className="flex items-center gap-1 px-2 border-r border-white/10">
+        <div className="flex items-center gap-1 px-2 border-r border-[var(--synapse-border-subtle)]">
         <button
         onClick={() => onAction('toggle_edit')}
         className={cn(
             'p-3 rounded-full transition-all relative group',
             isEditing
-            ? 'bg-cyan-500/20 text-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.3)]'
-            : 'text-slate-500 hover:text-white hover:bg-white/5'
+            ? 'bg-[var(--synapse-cyan)]/20 text-[var(--synapse-cyan)] shadow-[0_0_15px_rgba(34,211,238,0.3)]'
+            : 'text-[var(--synapse-text-tertiary)] hover:text-white hover:bg-[var(--synapse-panel-hover)]'
         )}
         title={isEditing ? 'View Mode (⌘E)' : 'Edit Mode (⌘E)'}
         >
         {isEditing ? <Edit3 size={18} /> : <Eye size={18} />}
-        <div className="absolute inset-0 bg-cyan-500/20 rounded-full blur-md opacity-0 group-hover:opacity-100 transition-opacity" />
+        <div className="absolute inset-0 bg-[var(--synapse-cyan)]/20 rounded-full blur-md opacity-0 group-hover:opacity-100 transition-opacity" />
         </button>
         </div>
 
-        {/* Formatting Tools - NOW FUNCTIONAL */}
+        {/* Formatting Tools */}
         <AnimatePresence>
         {isEditing && (
             <motion.div
@@ -96,42 +96,42 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
             >
             <button
             onClick={() => handleFormat('bold')}
-            className="p-2.5 text-slate-500 hover:text-white hover:bg-white/5 rounded-full transition-colors"
+            className="p-2.5 text-[var(--synapse-text-tertiary)] hover:text-white hover:bg-[var(--synapse-panel-hover)] rounded-full transition-colors"
             title="Bold (⌘B)"
             >
             <Bold size={16} />
             </button>
             <button
             onClick={() => handleFormat('italic')}
-            className="p-2.5 text-slate-500 hover:text-white hover:bg-white/5 rounded-full transition-colors"
+            className="p-2.5 text-[var(--synapse-text-tertiary)] hover:text-white hover:bg-[var(--synapse-panel-hover)] rounded-full transition-colors"
             title="Italic (⌘I)"
             >
             <Italic size={16} />
             </button>
             <button
             onClick={() => handleFormat('heading')}
-            className="p-2.5 text-slate-500 hover:text-white hover:bg-white/5 rounded-full transition-colors"
+            className="p-2.5 text-[var(--synapse-text-tertiary)] hover:text-white hover:bg-[var(--synapse-panel-hover)] rounded-full transition-colors"
             title="Heading"
             >
             <Heading2 size={16} />
             </button>
             <button
             onClick={() => handleFormat('list')}
-            className="p-2.5 text-slate-500 hover:text-white hover:bg-white/5 rounded-full transition-colors"
+            className="p-2.5 text-[var(--synapse-text-tertiary)] hover:text-white hover:bg-[var(--synapse-panel-hover)] rounded-full transition-colors"
             title="List"
             >
             <List size={16} />
             </button>
             <button
             onClick={() => handleFormat('code')}
-            className="p-2.5 text-slate-500 hover:text-white hover:bg-white/5 rounded-full transition-colors"
+            className="p-2.5 text-[var(--synapse-text-tertiary)] hover:text-white hover:bg-[var(--synapse-panel-hover)] rounded-full transition-colors"
             title="Code"
             >
             <Code size={16} />
             </button>
             <button
             onClick={() => handleFormat('link')}
-            className="p-2.5 text-slate-500 hover:text-white hover:bg-white/5 rounded-full transition-colors"
+            className="p-2.5 text-[var(--synapse-text-tertiary)] hover:text-white hover:bg-[var(--synapse-panel-hover)] rounded-full transition-colors"
             title="Link"
             >
             <Link size={16} />
@@ -141,28 +141,28 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
         </AnimatePresence>
 
         {/* AI Actions */}
-        <div className="flex items-center gap-1 px-2 border-l border-white/10">
+        <div className="flex items-center gap-1 px-2 border-l border-[var(--synapse-border-subtle)]">
         <button
         onClick={() => onAction('ai_summarize')}
         disabled={isProcessing}
-        className="p-2.5 text-slate-500 hover:text-purple-400 hover:bg-purple-500/10 rounded-full transition-colors group relative disabled:opacity-50"
+        className="p-2.5 text-[var(--synapse-text-tertiary)] hover:text-[var(--synapse-purple)] hover:bg-[var(--synapse-purple)]/10 rounded-full transition-colors group relative disabled:opacity-50"
         title="Neural Synthesis"
         >
         {isProcessing ? (
-            <Loader2 size={18} className="animate-spin text-purple-500" />
+            <Loader2 size={18} className="animate-spin text-[var(--synapse-purple)]" />
         ) : (
-            <Bot size={18} />
+            <Sparkles size={18} />
         )}
-        <div className="absolute inset-0 bg-purple-500/20 rounded-full blur-md opacity-0 group-hover:opacity-100 transition-opacity" />
+        <div className="absolute inset-0 bg-[var(--synapse-purple)]/20 rounded-full blur-md opacity-0 group-hover:opacity-100 transition-opacity" />
         </button>
         <button
         onClick={() => onAction('ai_tags')}
         disabled={isProcessing}
-        className="p-2.5 text-slate-500 hover:text-emerald-400 hover:bg-emerald-500/10 rounded-full transition-colors group relative disabled:opacity-50"
+        className="p-2.5 text-[var(--synapse-text-tertiary)] hover:text-[var(--synapse-emerald)] hover:bg-[var(--synapse-emerald)]/10 rounded-full transition-colors group relative disabled:opacity-50"
         title="Auto-Tag"
         >
         <Tag size={18} />
-        <div className="absolute inset-0 bg-emerald-500/20 rounded-full blur-md opacity-0 group-hover:opacity-100 transition-opacity" />
+        <div className="absolute inset-0 bg-[var(--synapse-emerald)]/20 rounded-full blur-md opacity-0 group-hover:opacity-100 transition-opacity" />
         </button>
         </div>
 
@@ -173,10 +173,10 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
         className={cn(
             'ml-2 w-10 h-10 rounded-full flex items-center justify-center text-white shadow-lg transition-all disabled:opacity-50',
             hasUnsavedChanges
-            ? 'bg-cyan-600 hover:bg-cyan-500 shadow-cyan-900/50 hover:scale-105 active:scale-95'
-            : 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-900/50'
+            ? 'bg-gradient-to-r from-[var(--synapse-cyan)] to-[var(--synapse-blue)] hover:shadow-[0_0_20px_rgba(34,211,238,0.5)] hover:scale-105 active:scale-95'
+            : 'bg-gradient-to-r from-[var(--synapse-emerald)] to-green-600 shadow-emerald-900/50'
         )}
-        animate={hasUnsavedChanges && !isSaving ? { scale: [1, 1.1, 1] } : {}}
+        animate={hasUnsavedChanges && !isSaving ? { scale: [1, 1.05, 1] } : {}}
         transition={{ duration: 2, repeat: Infinity }}
         title={hasUnsavedChanges ? 'Save Changes (⌘S)' : 'All Changes Saved'}
         >

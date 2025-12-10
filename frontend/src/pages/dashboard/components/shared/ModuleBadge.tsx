@@ -1,22 +1,35 @@
-import { Badge } from '@/components/ui/badge';
-import { FileText, BookOpen, Zap, MessageSquare, ClipboardList, LucideIcon } from 'lucide-react';
-import { cn } from '@/lib/utils';
-
 /**
- * ModuleBadge - Neon Style
- * FIXED: Changed to match ModuleType definition ('flashcards' not 'flashcard')
+ * ModuleBadge
  */
 
-type ModuleType = 'documents' | 'notes' | 'flashcards' | 'chat' | 'quizzes';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
+import {
+    FileText,
+    BookOpen,
+    Zap,
+    MessageSquare,
+    ClipboardList,
+    LucideIcon
+} from 'lucide-react';
+
+// ---------- Types ----------
+export type ModuleType =
+| 'documents'
+| 'notes'
+| 'flashcards'
+| 'chat'
+| 'quizzes';
 
 interface ModuleBadgeProps {
     type?: ModuleType;
-    moduleType?: ModuleType; // Alternative prop name for compatibility
+    moduleType?: ModuleType;      // Backwards compatibility
     className?: string;
     showIcon?: boolean;
-    size?: 'sm' | 'default';
+    size?: 'sm' | 'md' | 'lg';
 }
 
+// ---------- Icons ----------
 const MODULE_ICONS: Record<ModuleType, LucideIcon> = {
     documents: FileText,
     notes: BookOpen,
@@ -25,35 +38,7 @@ const MODULE_ICONS: Record<ModuleType, LucideIcon> = {
     quizzes: ClipboardList,
 };
 
-export function ModuleBadge({ type, moduleType, className, showIcon = true, size = 'default' }: ModuleBadgeProps) {
-    // Support both 'type' and 'moduleType' props
-    const actualType = type || moduleType || 'flashcards';
-
-    // Ensure we have a valid type
-    const safeType = actualType in MODULE_ICONS ? actualType : 'flashcards';
-
-    const Icon = MODULE_ICONS[safeType];
-    const colors = getNeonColors(safeType);
-
-    return (
-        <Badge
-        variant="outline"
-        className={cn(
-            'flex items-center gap-1 border font-mono font-bold tracking-tight uppercase',
-            colors.bg,
-            colors.text,
-            colors.border,
-            size === 'sm' ? 'text-[9px] px-1 h-4' : 'text-[10px] px-2 h-5',
-            className
-        )}
-        >
-        {showIcon && <Icon className={cn(size === 'sm' ? 'w-2 h-2' : 'w-3 h-3')} />}
-        <span>{safeType}</span>
-        </Badge>
-    );
-}
-
-// Updated Neon Color Palette
+// ---------- Neon Colors ----------
 function getNeonColors(type: ModuleType) {
     switch (type) {
         case 'flashcards':
@@ -71,17 +56,73 @@ function getNeonColors(type: ModuleType) {
     }
 }
 
-export function ModuleDot({ type, moduleType, className }: { type?: ModuleType; moduleType?: ModuleType; className?: string }) {
+// ---------- Size Classes ----------
+const SIZE_CLASSES = {
+    sm: { text: 'text-[9px]', height: 'h-4', padding: 'px-1.5', icon: 'w-2 h-2' },
+    md: { text: 'text-xs', height: 'h-5', padding: 'px-2', icon: 'w-3 h-3' },
+    lg: { text: 'text-sm', height: 'h-6', padding: 'px-3', icon: 'w-4 h-4' },
+};
+
+// ---------- Main Component ----------
+export function ModuleBadge({
+    type,
+    moduleType,
+    className,
+    showIcon = true,
+    size = 'sm',
+}: ModuleBadgeProps) {
+    // Accept either prop
     const actualType = type || moduleType || 'flashcards';
-    const safeType = actualType in MODULE_ICONS ? actualType : 'flashcards';
+    const safeType: ModuleType =
+    actualType in MODULE_ICONS ? actualType : 'flashcards';
+
+    const Icon = MODULE_ICONS[safeType];
+    const colors = getNeonColors(safeType);
+    const sizeCfg = SIZE_CLASSES[size];
+
+    return (
+        <Badge
+        variant="outline"
+        className={cn(
+            'flex items-center gap-1 rounded-md border font-mono font-bold uppercase tracking-wider',
+            colors.bg,
+            colors.text,
+            colors.border,
+            sizeCfg.text,
+            sizeCfg.height,
+            sizeCfg.padding,
+            className
+        )}
+        >
+        {showIcon && <Icon className={sizeCfg.icon} />}
+        <span>{safeType}</span>
+        </Badge>
+    );
+}
+
+// ---------- ModuleDot ----------
+export function ModuleDot({
+    type,
+    moduleType,
+    className,
+}: {
+    type?: ModuleType;
+    moduleType?: ModuleType;
+    className?: string;
+}) {
+    const actualType = type || moduleType || 'flashcards';
+    const safeType: ModuleType =
+    actualType in MODULE_ICONS ? actualType : 'flashcards';
+
     const colors = getNeonColors(safeType);
 
     return (
-        <div className={cn(
-            'h-1.5 w-1.5 rounded-full shadow-[0_0_5px]',
-            colors.bg.replace('/10', ''),
-                           colors.text.replace('text-', 'bg-'),
-                           className
-        )} />
+        <div
+        className={cn(
+            'h-1.5 w-1.5 rounded-full shadow-[0_0_6px]',
+            colors.text.replace('text-', 'bg-'),
+                      className
+        )}
+        />
     );
 }

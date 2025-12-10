@@ -4,8 +4,8 @@ import { ListTodo } from 'lucide-react';
 import { formatStudyTime } from '@/lib/utils';
 import type { DashboardData } from '../../types/dashboard.types';
 import { useFocusQueue } from '../../hooks/useFocusQueue';
-import { QueueSection } from '../queue/QueueSection';
-import { QueueEmpty } from '../queue/QueueEmpty';
+import { QueueSection } from '../priority/QueueSection';
+import { QueueEmpty } from '../priority/QueueEmpty';
 
 interface FocusQueueProps {
     data: DashboardData | undefined;

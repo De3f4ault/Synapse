@@ -51,6 +51,29 @@ export function formatRelativeTime(date: string | Date): string {
 }
 
 /**
+ * Format due date with urgency context
+ */
+export function formatDueDate(date: string | Date): string {
+    const d = typeof date === 'string' ? new Date(date) : date;
+    const now = new Date();
+    const diffMs = d.getTime() - now.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffDays < 0) {
+        const overdueDays = Math.abs(diffDays);
+        return `Overdue by ${overdueDays} day${overdueDays > 1 ? 's' : ''}`;
+    }
+    if (diffDays === 0) return 'Due today';
+    if (diffDays === 1) return 'Due tomorrow';
+    if (diffDays < 7) return `Due in ${diffDays} days`;
+
+    const weeks = Math.floor(diffDays / 7);
+    if (weeks < 4) return `Due in ${weeks} week${weeks > 1 ? 's' : ''}`;
+
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+/**
  * Format file size to human-readable string.
  */
 export function formatFileSize(bytes: number): string {

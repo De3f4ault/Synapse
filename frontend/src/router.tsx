@@ -34,9 +34,6 @@ import { StudyPage } from '@/pages/study/StudyPage';
 // ==================== CHAT ====================
 import { ChatPage } from '@/pages/chat/ChatPage';
 
-// ==================== ANALYTICS ====================
-import { AnalyticsPage } from '@/pages/analytics/AnalyticsPage';
-
 // ==================== ERROR PAGES ====================
 import { NotFoundPage } from '@/pages/NotFoundPage';
 
@@ -82,6 +79,9 @@ function AuthRoute() {
  * - Protected: All other routes
  *
  * All protected routes are wrapped in AppShell for consistent layout
+ *
+ * NOTE: Analytics is now integrated into Dashboard via tabs.
+ * The /analytics route redirects to /dashboard for backward compatibility.
  */
  export function Router() {
      return (
@@ -98,7 +98,7 @@ function AuthRoute() {
          {/* Root redirect */}
          <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
-         {/* Dashboard */}
+         {/* Dashboard (includes analytics tabs) */}
          <Route path="/dashboard" element={<DashboardPage />} />
 
          {/* ========== FLASHCARDS (Mnemosyne Protocol) ========== */}
@@ -129,8 +129,9 @@ function AuthRoute() {
          <Route path="/chat" element={<ChatPage />} />
          <Route path="/chat/:sessionId" element={<ChatPage />} />
 
-         {/* ========== ANALYTICS ========== */}
-         <Route path="/analytics" element={<AnalyticsPage />} />
+         {/* ========== ANALYTICS (Redirects to Dashboard) ========== */}
+         {/* Analytics is now integrated into the dashboard as tabs */}
+         <Route path="/analytics" element={<Navigate to="/dashboard" replace />} />
          </Route>
 
          {/* ==================== 404 FALLBACK ==================== */}

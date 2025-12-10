@@ -1,12 +1,14 @@
 .
 ├── backend
+│   ├── =5.28.0
 │   ├── alembic
 │   │   ├── env.py
 │   │   ├── script.py.mako
 │   │   └── versions
 │   │       ├── 052d2385be9e_initial_schema.py
 │   │       ├── add_activity_log_table.py
-│   │       └── c368ad399481_add_content_text_to_documents.py
+│   │       ├── c368ad399481_add_content_text_to_documents.py
+│   │       └── update_json_to_jsonb.py
 │   ├── alembic.ini
 │   ├── API_REST_AUDIT_REPORT.md
 │   ├── app
@@ -50,7 +52,8 @@
 │   │   │       ├── protocol.py
 │   │   │       ├── routes.py
 │   │   │       ├── study.py
-│   │   │       └── types.py
+│   │   │       ├── types.py
+│   │   │       └── unified.py
 │   │   ├── core
 │   │   │   ├── ai
 │   │   │   │   ├── agents
@@ -343,26 +346,9 @@
 │   │   ├── duckdb
 │   │   │   └── analytics.duckdb
 │   │   ├── lancedb
-│   │   ├── llama_index
-│   │   │   ├── docstore
-│   │   │   └── indices
 │   │   └── uploads
-│   │       └── user_1
-│   │           └── documents
-│   │               ├── 011d0301-77ce-44af-a9cc-28557720f85f.txt
-│   │               ├── 07e2e5ba-6237-435a-8527-0e996c795f13.pdf
-│   │               ├── 0b3f42e9-2222-4ddb-bfef-e764e427717b.txt
-│   │               ├── 12d96243-e737-4417-af28-b5b3e9453f8a.txt
-│   │               ├── 3a0f2c0b-5bfe-45c8-b9a3-b9cc80c1227f.pdf
-│   │               ├── 7b1740f0-f922-41e1-a26c-7930ea54271f.pdf
-│   │               ├── d1ac553d-b8e6-48a0-b35a-63bd87998c09.pdf
-│   │               ├── e84e87e8-4d7f-489b-b035-d36f7360101d.pdf
-│   │               └── f260c19d-e1ee-4194-b1e3-7d529a34f6ed.pdf
+│   ├── env.txt
 │   ├── Files_implementation.md
-│   ├── logs
-│   │   ├── app.log
-│   │   ├── error.log
-│   │   └── nginx
 │   ├── Makefile
 │   ├── pyproject.toml
 │   ├── README.md
@@ -375,6 +361,69 @@
 │   │   └── seed_data.py
 │   ├── test_document.txt
 │   └── TODO_IMPLEMENTATION_PLAN.md
+├── dashboard_backup_20251207_213703
+│   ├── components
+│   │   ├── activity
+│   │   │   ├── ActivityFeed.tsx
+│   │   │   ├── ActivityHeatmap.tsx
+│   │   │   └── ActivitySparkline.tsx
+│   │   ├── graph
+│   │   │   ├── GraphCanvas.tsx
+│   │   │   ├── GraphControls.tsx
+│   │   │   ├── GraphNode.tsx
+│   │   │   └── NodeDetailModal.tsx
+│   │   ├── header
+│   │   │   ├── DashboardHeader.tsx
+│   │   │   └── QuickActions.tsx
+│   │   ├── intelligence
+│   │   │   ├── ContextCard.tsx
+│   │   │   ├── MilestoneCard.tsx
+│   │   │   ├── NextActionCard.tsx
+│   │   │   └── WeakAreaCard.tsx
+│   │   ├── main-area
+│   │   │   ├── DashboardContainer.tsx
+│   │   │   ├── FocusQueue.tsx
+│   │   │   ├── IntelligencePanel.tsx
+│   │   │   └── KnowledgeGraph.tsx
+│   │   ├── queue
+│   │   │   ├── QueueEmpty.tsx
+│   │   │   ├── QueueItem.tsx
+│   │   │   └── QueueSection.tsx
+│   │   └── shared
+│   │       ├── CustomStats.tsx
+│   │       ├── GlassCard.tsx
+│   │       ├── LoadingState.tsx
+│   │       ├── ModuleBadge.tsx
+│   │       ├── PriorityBadge.tsx
+│   │       └── StatCard.tsx
+│   ├── constants
+│   │   ├── colors.ts
+│   │   ├── graphConfig.ts
+│   │   └── priorityWeights.ts
+│   ├── DashboardPage.tsx
+│   ├── hooks
+│   │   ├── useActivityData.ts
+│   │   ├── useDashboardData.ts
+│   │   ├── useDashboardSync.ts
+│   │   ├── useFocusQueue.ts
+│   │   ├── useIntelligence.ts
+│   │   ├── useKnowledgeGraph.ts
+│   │   └── useSessionTracking.ts
+│   ├── styles
+│   │   ├── animations.css
+│   │   ├── dashboard.css
+│   │   └── graph.css
+│   ├── types
+│   │   ├── dashboard.types.ts
+│   │   ├── graph.types.ts
+│   │   ├── intelligence.types.ts
+│   │   └── queue.types.ts
+│   └── utils
+│       ├── dateFormatters.ts
+│       ├── graphTransformers.ts
+│       ├── insightGenerator.ts
+│       ├── priorityCalculator.ts
+│       └── sessionDetector.ts
 ├── frontend
 │   ├── chatstructure.sh
 │   ├── components.json
@@ -387,9 +436,6 @@
 │   ├── package.json
 │   ├── package-lock.json
 │   ├── postcss.config.js
-│   ├── public
-│   │   ├── fonts
-│   │   └── images
 │   ├── README.md
 │   ├── reorganization.sh
 │   ├── src
@@ -404,9 +450,7 @@
 │   │   │   │   │   ├── OpenAPI.ts
 │   │   │   │   │   └── request.ts
 │   │   │   │   ├── index.ts
-│   │   │   │   ├── models
 │   │   │   │   ├── schemas.gen.ts
-│   │   │   │   ├── services
 │   │   │   │   ├── services.gen.ts
 │   │   │   │   └── types.gen.ts
 │   │   │   ├── hooks
@@ -524,18 +568,6 @@
 │   │   │   └── validators.ts
 │   │   ├── main.tsx
 │   │   ├── modules
-│   │   │   ├── analytics
-│   │   │   │   ├── components
-│   │   │   │   │   ├── ActivityFeed.tsx
-│   │   │   │   │   ├── Dashboard.tsx
-│   │   │   │   │   ├── HeatMap.tsx
-│   │   │   │   │   ├── MasteryRadar.tsx
-│   │   │   │   │   ├── MiniChart.tsx
-│   │   │   │   │   ├── PerformanceTrends.tsx
-│   │   │   │   │   └── WeakAreasChart.tsx
-│   │   │   │   ├── hooks
-│   │   │   │   │   └── useAnalytics.ts
-│   │   │   │   └── index.ts
 │   │   │   ├── chat
 │   │   │   │   ├── components
 │   │   │   │   │   ├── ChatInterface.tsx
@@ -612,23 +644,15 @@
 │   │   │       │   └── useStudySession.ts
 │   │   │       └── index.ts
 │   │   ├── pages
-│   │   │   ├── analytics
-│   │   │   │   └── AnalyticsPage.tsx
 │   │   │   ├── auth
 │   │   │   │   ├── LoginPage.tsx
 │   │   │   │   └── RegisterPage.tsx
 │   │   │   ├── chat
 │   │   │   │   ├── ChatPage.tsx
 │   │   │   │   ├── components
-│   │   │   │   │   ├── header
-│   │   │   │   │   │   ├── ModelSelector.tsx
-│   │   │   │   │   │   ├── SettingsMenu.tsx
-│   │   │   │   │   │   └── TopBar.tsx
 │   │   │   │   │   ├── input
 │   │   │   │   │   │   ├── AttachmentButton.tsx
-│   │   │   │   │   │   ├── InputActions.tsx
 │   │   │   │   │   │   ├── MainInput.tsx
-│   │   │   │   │   │   ├── ModeToggle.tsx
 │   │   │   │   │   │   ├── SendButton.tsx
 │   │   │   │   │   │   └── VoiceButton.tsx
 │   │   │   │   │   ├── main-area
@@ -642,27 +666,31 @@
 │   │   │   │   │   │   ├── MessageActions.tsx
 │   │   │   │   │   │   ├── MessageMarkdown.tsx
 │   │   │   │   │   │   ├── Message.tsx
+│   │   │   │   │   │   ├── StreamingMessage.tsx
 │   │   │   │   │   │   ├── StreamingText.tsx
 │   │   │   │   │   │   ├── ThinkingProcess.tsx
 │   │   │   │   │   │   └── UserMessage.tsx
+│   │   │   │   │   ├── modals
+│   │   │   │   │   │   └── AddSourceModal.tsx
+│   │   │   │   │   ├── notebook
+│   │   │   │   │   │   ├── NotebookHeader.tsx
+│   │   │   │   │   │   └── NotebookView.tsx
+│   │   │   │   │   ├── panels
+│   │   │   │   │   │   ├── PanelHeader.tsx
+│   │   │   │   │   │   ├── SourcesPanel.tsx
+│   │   │   │   │   │   └── StudioPanel.tsx
 │   │   │   │   │   ├── preview
 │   │   │   │   │   │   ├── DocumentPreview.tsx
 │   │   │   │   │   │   ├── FilePreview.tsx
 │   │   │   │   │   │   ├── ImagePreview.tsx
 │   │   │   │   │   │   ├── PreviewActions.tsx
 │   │   │   │   │   │   └── PreviewSidebar.tsx
-│   │   │   │   │   ├── shared
-│   │   │   │   │   │   ├── GlassCard.tsx
-│   │   │   │   │   │   ├── GlassPill.tsx
-│   │   │   │   │   │   ├── IconButton.tsx
-│   │   │   │   │   │   ├── ScrollToBottom.tsx
-│   │   │   │   │   │   └── TypingDots.tsx
-│   │   │   │   │   └── sidebar
-│   │   │   │   │       ├── MinimalSidebar.tsx
-│   │   │   │   │       ├── SessionItem.tsx
-│   │   │   │   │       ├── SessionList.tsx
-│   │   │   │   │       ├── SidebarToggle.tsx
-│   │   │   │   │       └── UserAvatar.tsx
+│   │   │   │   │   └── shared
+│   │   │   │   │       ├── GlassCard.tsx
+│   │   │   │   │       ├── GlassPill.tsx
+│   │   │   │   │       ├── IconButton.tsx
+│   │   │   │   │       ├── ScrollToBottom.tsx
+│   │   │   │   │       └── TypingDots.tsx
 │   │   │   │   ├── constants
 │   │   │   │   │   ├── colors.ts
 │   │   │   │   │   ├── index.ts
@@ -673,21 +701,21 @@
 │   │   │   │   │   ├── useAutoScroll.ts
 │   │   │   │   │   ├── useChatMessages.ts
 │   │   │   │   │   ├── useChatSession.ts
+│   │   │   │   │   ├── useChatStreaming.ts
 │   │   │   │   │   ├── useFileUpload.ts
 │   │   │   │   │   ├── useKeyboardShortcuts.ts
 │   │   │   │   │   ├── useMessageActions.ts
 │   │   │   │   │   ├── usePreviewSidebar.ts
-│   │   │   │   │   ├── useSidebarCollapse.ts
-│   │   │   │   │   └── useStreamingResponse.ts
+│   │   │   │   │   └── useSidebarCollapse.ts
 │   │   │   │   ├── index.ts
 │   │   │   │   ├── styles
 │   │   │   │   │   ├── animations.css
-│   │   │   │   │   ├── deepseek-theme.css
 │   │   │   │   │   ├── glass.css
 │   │   │   │   │   ├── global-overrides.css
 │   │   │   │   │   ├── markdown.css
-│   │   │   │   │   ├── oracle-theme.css
-│   │   │   │   │   └── scrollbar.css
+│   │   │   │   │   ├── notebooklm-theme.css
+│   │   │   │   │   ├── scrollbar.css
+│   │   │   │   │   └── synapse-theme.css
 │   │   │   │   ├── types
 │   │   │   │   │   ├── chat.types.ts
 │   │   │   │   │   ├── file.types.ts
@@ -707,15 +735,22 @@
 │   │   │   │   │   ├── activity
 │   │   │   │   │   │   ├── ActivityFeed.tsx
 │   │   │   │   │   │   ├── ActivityHeatmap.tsx
-│   │   │   │   │   │   └── ActivitySparkline.tsx
-│   │   │   │   │   ├── graph
-│   │   │   │   │   │   ├── GraphCanvas.tsx
-│   │   │   │   │   │   ├── GraphControls.tsx
-│   │   │   │   │   │   ├── GraphNode.tsx
-│   │   │   │   │   │   └── NodeDetailModal.tsx
+│   │   │   │   │   │   ├── ActivityItem.tsx
+│   │   │   │   │   │   ├── ActivitySparkline.tsx
+│   │   │   │   │   │   └── index.ts
+│   │   │   │   │   ├── analytics
+│   │   │   │   │   │   ├── index.ts
+│   │   │   │   │   │   ├── MasteryOverview.tsx
+│   │   │   │   │   │   ├── PerformanceChart.tsx
+│   │   │   │   │   │   └── StudyHeatmap.tsx
 │   │   │   │   │   ├── header
 │   │   │   │   │   │   ├── DashboardHeader.tsx
 │   │   │   │   │   │   └── QuickActions.tsx
+│   │   │   │   │   ├── hero
+│   │   │   │   │   │   ├── index.ts
+│   │   │   │   │   │   ├── NextAction.tsx
+│   │   │   │   │   │   ├── QuickStats.tsx
+│   │   │   │   │   │   └── WelcomeCard.tsx
 │   │   │   │   │   ├── intelligence
 │   │   │   │   │   │   ├── ContextCard.tsx
 │   │   │   │   │   │   ├── MilestoneCard.tsx
@@ -726,7 +761,19 @@
 │   │   │   │   │   │   ├── FocusQueue.tsx
 │   │   │   │   │   │   ├── IntelligencePanel.tsx
 │   │   │   │   │   │   └── KnowledgeGraph.tsx
-│   │   │   │   │   ├── queue
+│   │   │   │   │   ├── overview
+│   │   │   │   │   │   ├── index.ts
+│   │   │   │   │   │   ├── MetricsGrid.tsx
+│   │   │   │   │   │   └── StreakCard.tsx
+│   │   │   │   │   ├── pathways
+│   │   │   │   │   │   ├── index.ts
+│   │   │   │   │   │   ├── LearningPath.tsx
+│   │   │   │   │   │   ├── PathwayCard.tsx
+│   │   │   │   │   │   └── ProgressBar.tsx
+│   │   │   │   │   ├── priority
+│   │   │   │   │   │   ├── FocusQueue.tsx
+│   │   │   │   │   │   ├── index.ts
+│   │   │   │   │   │   ├── PriorityItem.tsx
 │   │   │   │   │   │   ├── QueueEmpty.tsx
 │   │   │   │   │   │   ├── QueueItem.tsx
 │   │   │   │   │   │   └── QueueSection.tsx
@@ -747,9 +794,12 @@
 │   │   │   │   │   ├── useDashboardData.ts
 │   │   │   │   │   ├── useDashboardSync.ts
 │   │   │   │   │   ├── useFocusQueue.ts
+│   │   │   │   │   ├── useFocusQueue.ts.bak
 │   │   │   │   │   ├── useIntelligence.ts
 │   │   │   │   │   ├── useKnowledgeGraph.ts
+│   │   │   │   │   ├── useLearningPath.ts
 │   │   │   │   │   └── useSessionTracking.ts
+│   │   │   │   ├── README.md
 │   │   │   │   ├── styles
 │   │   │   │   │   ├── animations.css
 │   │   │   │   │   ├── dashboard.css
@@ -758,11 +808,13 @@
 │   │   │   │   │   ├── dashboard.types.ts
 │   │   │   │   │   ├── graph.types.ts
 │   │   │   │   │   ├── intelligence.types.ts
-│   │   │   │   │   └── queue.types.ts
+│   │   │   │   │   ├── pathway.types.ts
+│   │   │   │   │   └── priority.types.ts
 │   │   │   │   └── utils
 │   │   │   │       ├── dateFormatters.ts
 │   │   │   │       ├── graphTransformers.ts
 │   │   │   │       ├── insightGenerator.ts
+│   │   │   │       ├── pathwayGenerator.ts
 │   │   │   │       ├── priorityCalculator.ts
 │   │   │   │       └── sessionDetector.ts
 │   │   │   ├── documents
@@ -943,6 +995,7 @@
 │   ├── tsconfig.node.json
 │   ├── typescript-errors.txt
 │   └── vite.config.ts
+├── restructure_dashboard.sh
 └── tree.txt
 
-209 directories, 737 files
+211 directories, 788 files

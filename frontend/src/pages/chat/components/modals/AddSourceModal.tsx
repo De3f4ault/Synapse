@@ -1,12 +1,12 @@
 /**
- * AddSourceModal - NotebookLM Exact Replica
- * Modal for adding sources (upload, Drive, link, paste)
+ * AddSourceModal - Synapse Style
+ * Modal for adding sources with Synapse branding
  *
  * Location: frontend/src/pages/chat/components/modals/AddSourceModal.tsx
  */
 
 import React, { useRef, useState } from 'react';
-import { X, Upload, Sparkles } from 'lucide-react';
+import { X, Upload, Sparkles, Atom } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface AddSourceModalProps {
@@ -15,19 +15,12 @@ interface AddSourceModalProps {
     onUpload: (files: File[]) => void;
 }
 
-const NotebookLMLogo = () => (
-    <svg viewBox="0 0 24 24" fill="none" className="w-6 h-6">
-    <path
-    d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5z"
-    fill="url(#notebookGradient)"
-    />
-    <defs>
-    <linearGradient id="notebookGradient" x1="2" y1="2" x2="20" y2="20">
-    <stop offset="0%" stopColor="#4285f4" />
-    <stop offset="100%" stopColor="#34a853" />
-    </linearGradient>
-    </defs>
-    </svg>
+const SynapseLogo = () => (
+    <div className="relative w-8 h-8 flex items-center justify-center">
+    <div className="absolute inset-0 rounded-full border-2 border-[var(--synapse-cyan)]/30 border-t-[var(--synapse-cyan)] animate-spin" style={{ animationDuration: '3s' }} />
+    <div className="absolute inset-0 bg-[var(--synapse-cyan)]/10 rounded-full blur-md" />
+    <Atom className="w-5 h-5 text-[var(--synapse-cyan)] drop-shadow-[0_0_8px_rgba(34,211,238,0.8)] relative z-10" />
+    </div>
 );
 
 const GoogleWorkspaceIcon = () => (
@@ -87,13 +80,13 @@ export const AddSourceModal: React.FC<AddSourceModalProps> = ({
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
-        <div className="bg-[#202124] rounded-3xl w-full max-w-5xl shadow-2xl border border-white/10 overflow-hidden">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
+        <div className="bg-[var(--synapse-bg-secondary)] rounded-3xl w-full max-w-5xl shadow-2xl border border-[var(--synapse-border-subtle)] overflow-hidden">
         {/* Header */}
-        <div className="flex justify-between items-center px-8 py-6 border-b border-white/10">
+        <div className="flex justify-between items-center px-8 py-6 border-b border-[var(--synapse-border-subtle)]">
         <div className="flex items-center gap-3">
-        <NotebookLMLogo />
-        <h2 className="text-xl text-white font-normal">NotebookLM</h2>
+        <SynapseLogo />
+        <h2 className="text-xl text-white font-bold tracking-wide uppercase">Synapse</h2>
         </div>
         <button
         onClick={onClose}
@@ -107,42 +100,42 @@ export const AddSourceModal: React.FC<AddSourceModalProps> = ({
         <div className="px-8 py-6">
         {/* Title and Discover Button */}
         <div className="flex justify-between items-center mb-4">
-        <h3 className="text-2xl text-white font-normal">Add sources</h3>
+        <h3 className="text-2xl text-white font-bold uppercase tracking-wide">Add Sources</h3>
         <button
         onClick={handleDiscoverSources}
-        className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/15 rounded-full text-white text-sm transition-colors"
+        className="flex items-center gap-2 px-4 py-2 bg-[var(--synapse-cyan)]/10 hover:bg-[var(--synapse-cyan)]/20 border border-[var(--synapse-cyan)]/30 rounded-full text-[var(--synapse-cyan)] text-sm font-bold transition-all uppercase tracking-wide"
         >
         <Sparkles size={16} />
-        Discover sources
+        Discover Sources
         </button>
         </div>
 
         {/* Description */}
-        <p className="text-white/70 text-sm mb-6 leading-relaxed">
-        Sources let NotebookLM base its responses on the information that matters most to you.<br />
+        <p className="text-[var(--synapse-text-secondary)] text-sm mb-6 leading-relaxed">
+        Sources let Synapse base its responses on the information that matters most to you.<br />
         (Examples: marketing plans, course reading, research notes, meeting transcripts, sales documents, etc.)
         </p>
 
         {/* Upload Area */}
         <div
-        className="border-2 border-dashed border-white/20 rounded-2xl min-h-[280px] flex flex-col items-center justify-center mb-6 hover:border-[#8ab4f8] hover:bg-white/5 transition-all cursor-pointer group relative"
+        className="border-2 border-dashed border-[var(--synapse-border-subtle)] rounded-2xl min-h-[280px] flex flex-col items-center justify-center mb-6 hover:border-[var(--synapse-cyan)] hover:bg-[var(--synapse-panel-bg)] transition-all cursor-pointer group relative"
         onClick={() => fileInputRef.current?.click()}
         onDrop={handleDrop}
         onDragOver={handleDragOver}
         >
-        <div className="w-16 h-16 rounded-full bg-[#8ab4f8]/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-        <Upload size={28} className="text-[#8ab4f8]" />
+        <div className="w-16 h-16 rounded-full bg-[var(--synapse-cyan)]/10 border border-[var(--synapse-cyan)]/30 flex items-center justify-center mb-4 group-hover:scale-110 group-hover:shadow-[0_0_20px_rgba(34,211,238,0.3)] transition-all">
+        <Upload size={28} className="text-[var(--synapse-cyan)]" />
         </div>
-        <span className="text-white font-medium text-lg mb-2">Upload sources</span>
-        <span className="text-white/50 text-sm">
+        <span className="text-white font-bold text-lg uppercase tracking-wide mb-2">Upload Sources</span>
+        <span className="text-[var(--synapse-text-tertiary)] text-sm">
         Drag & drop or{' '}
-        <span className="text-[#8ab4f8] hover:underline">choose file</span> to upload
+        <span className="text-[var(--synapse-cyan)] hover:underline font-semibold">choose file</span> to upload
         </span>
 
         {/* Supported file types at bottom */}
         <div className="absolute bottom-6 left-0 right-0 text-center">
-        <p className="text-white/40 text-xs">
-        Supported file types: PDF, txt, Markdown, Audio (e.g. mp3), .docx, .avif, .bmp, .gif, .ico, .jp2, .png, .webp, .tif, .tiff, .heic, .heif, .jpeg, .jpg, .jpe
+        <p className="text-[var(--synapse-text-dim)] text-xs font-mono">
+        Supported: PDF, txt, Markdown, Audio (mp3), .docx, images (jpg, png, gif, webp, etc.)
         </p>
         </div>
         </div>
@@ -159,19 +152,19 @@ export const AddSourceModal: React.FC<AddSourceModalProps> = ({
         {/* Source Type Options - 3 Columns */}
         <div className="grid grid-cols-3 gap-4 mb-6">
         {/* Google Workspace */}
-        <div className="bg-[#292a2d] rounded-2xl p-5 border border-white/10 hover:border-white/20 transition-colors">
+        <div className="bg-[var(--synapse-panel-bg)] rounded-2xl p-5 border border-[var(--synapse-border-subtle)] hover:border-[var(--synapse-border-medium)] hover:bg-[var(--synapse-panel-hover)] transition-all">
         <button className="flex items-center gap-3 w-full text-left mb-4">
         <GoogleWorkspaceIcon />
-        <span className="text-white text-sm font-medium">Google Workspace</span>
+        <span className="text-white text-sm font-bold uppercase tracking-wide">Google Workspace</span>
         </button>
         <button className="flex items-center gap-3 w-full text-left hover:bg-white/5 rounded-lg p-2 transition-colors">
         <DriveIcon />
-        <span className="text-white/70 text-sm">Google Drive</span>
+        <span className="text-[var(--synapse-text-secondary)] text-sm font-medium">Google Drive</span>
         </button>
         </div>
 
         {/* Link */}
-        <div className="bg-[#292a2d] rounded-2xl p-5 border border-white/10 hover:border-white/20 transition-colors">
+        <div className="bg-[var(--synapse-panel-bg)] rounded-2xl p-5 border border-[var(--synapse-border-subtle)] hover:border-[var(--synapse-border-medium)] hover:bg-[var(--synapse-panel-hover)] transition-all">
         <button className="flex items-center gap-3 w-full text-left mb-4">
         <div className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center">
         <svg className="w-3 h-3 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -179,29 +172,29 @@ export const AddSourceModal: React.FC<AddSourceModalProps> = ({
         <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" strokeWidth="2" strokeLinecap="round"/>
         </svg>
         </div>
-        <span className="text-white text-sm font-medium">Link</span>
+        <span className="text-white text-sm font-bold uppercase tracking-wide">Link</span>
         </button>
         <button className="flex items-center gap-3 w-full text-left hover:bg-white/5 rounded-lg p-2 transition-colors mb-2">
         <div className="w-5 h-5 flex items-center justify-center ml-0.5">
-        <svg className="w-4 h-4 text-white/70" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+        <svg className="w-4 h-4 text-[var(--synapse-text-secondary)]" viewBox="0 0 24 24" fill="none" stroke="currentColor">
         <rect x="2" y="3" width="20" height="14" rx="2" strokeWidth="2"/>
         <path d="M8 21h8M12 17v4" strokeWidth="2"/>
         </svg>
         </div>
-        <span className="text-white/70 text-sm">Website</span>
+        <span className="text-[var(--synapse-text-secondary)] text-sm font-medium">Website</span>
         </button>
         <button className="flex items-center gap-3 w-full text-left hover:bg-white/5 rounded-lg p-2 transition-colors">
         <div className="w-5 h-5 flex items-center justify-center ml-0.5">
-        <svg className="w-4 h-4 text-white/70" viewBox="0 0 24 24" fill="currentColor">
+        <svg className="w-4 h-4 text-[var(--synapse-text-secondary)]" viewBox="0 0 24 24" fill="currentColor">
         <path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/>
         </svg>
         </div>
-        <span className="text-white/70 text-sm">YouTube</span>
+        <span className="text-[var(--synapse-text-secondary)] text-sm font-medium">YouTube</span>
         </button>
         </div>
 
         {/* Paste Text */}
-        <div className="bg-[#292a2d] rounded-2xl p-5 border border-white/10 hover:border-white/20 transition-colors">
+        <div className="bg-[var(--synapse-panel-bg)] rounded-2xl p-5 border border-[var(--synapse-border-subtle)] hover:border-[var(--synapse-border-medium)] hover:bg-[var(--synapse-panel-hover)] transition-all">
         <button className="flex items-center gap-3 w-full text-left mb-4">
         <div className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center">
         <svg className="w-3 h-3 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -209,34 +202,34 @@ export const AddSourceModal: React.FC<AddSourceModalProps> = ({
         <rect x="9" y="3" width="6" height="4" rx="1" strokeWidth="2"/>
         </svg>
         </div>
-        <span className="text-white text-sm font-medium">Paste text</span>
+        <span className="text-white text-sm font-bold uppercase tracking-wide">Paste Text</span>
         </button>
         <button className="flex items-center gap-3 w-full text-left hover:bg-white/5 rounded-lg p-2 transition-colors">
         <div className="w-5 h-5 flex items-center justify-center ml-0.5">
-        <svg className="w-4 h-4 text-white/70" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+        <svg className="w-4 h-4 text-[var(--synapse-text-secondary)]" viewBox="0 0 24 24" fill="none" stroke="currentColor">
         <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" strokeWidth="2"/>
         <rect x="8" y="2" width="8" height="4" rx="1" ry="1" strokeWidth="2"/>
         </svg>
         </div>
-        <span className="text-white/70 text-sm">Copied text</span>
+        <span className="text-[var(--synapse-text-secondary)] text-sm font-medium">Copied text</span>
         </button>
         </div>
         </div>
 
         {/* Source Limit Progress */}
         <div className="flex items-center gap-3 text-sm">
-        <svg className="w-4 h-4 text-white/50" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+        <svg className="w-4 h-4 text-[var(--synapse-text-tertiary)]" viewBox="0 0 24 24" fill="none" stroke="currentColor">
         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" strokeWidth="2"/>
         <polyline points="14 2 14 8 20 8" strokeWidth="2"/>
         </svg>
-        <span className="text-white/50">Source limit</span>
-        <div className="flex-1 h-1.5 bg-white/10 rounded-full overflow-hidden">
+        <span className="text-[var(--synapse-text-tertiary)] font-mono uppercase text-xs tracking-wider">Source Limit</span>
+        <div className="flex-1 h-1.5 bg-[var(--synapse-panel-bg)] rounded-full overflow-hidden border border-[var(--synapse-border-subtle)]">
         <div
-        className="h-full bg-[#8ab4f8] rounded-full transition-all"
+        className="h-full bg-gradient-to-r from-[var(--synapse-cyan)] to-[var(--synapse-blue)] rounded-full transition-all"
         style={{ width: `${(sourceCount / maxSources) * 100}%` }}
         />
         </div>
-        <span className="text-white/50 tabular-nums">
+        <span className="text-[var(--synapse-text-tertiary)] tabular-nums font-mono font-bold">
         {sourceCount} / {maxSources}
         </span>
         </div>

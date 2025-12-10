@@ -11,7 +11,7 @@ interface NoteTagsProps {
 }
 
 /**
- * Display and manage note tags with metadata
+ * Display and manage note tags with metadata - Synapse Style
  */
 export const NoteTags: React.FC<NoteTagsProps> = ({
     tags,
@@ -23,7 +23,7 @@ export const NoteTags: React.FC<NoteTagsProps> = ({
         <div className="flex flex-wrap items-center gap-3 mt-4">
         {/* Timestamp */}
         {updatedAt && (
-            <span className="flex items-center gap-1.5 text-xs font-mono text-cyan-500/60 bg-cyan-950/20 px-2 py-1 rounded border border-cyan-900/30">
+            <span className="flex items-center gap-1.5 text-xs font-mono text-[var(--synapse-cyan)]/60 bg-[var(--synapse-cyan)]/10 px-3 py-1.5 rounded-full border border-[var(--synapse-cyan)]/20 uppercase tracking-wider">
             <Clock size={10} />
             {format(new Date(updatedAt), 'MMM d, HH:mm')}
             </span>
@@ -35,14 +35,14 @@ export const NoteTags: React.FC<NoteTagsProps> = ({
             key={tag}
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            className="group flex items-center gap-1.5 bg-white/5 px-2 py-1 rounded hover:text-cyan-300 hover:bg-white/10 transition-all cursor-pointer text-xs font-mono text-slate-400"
+            className="group flex items-center gap-1.5 bg-[var(--synapse-panel-bg)] px-3 py-1.5 rounded-full hover:bg-[var(--synapse-panel-hover)] border border-[var(--synapse-border-subtle)] hover:border-[var(--synapse-cyan)]/30 transition-all cursor-pointer text-xs font-mono text-[var(--synapse-text-secondary)] hover:text-[var(--synapse-cyan)] uppercase tracking-wider"
             >
             <Hash size={10} />
             {tag}
             {isEditing && (
                 <button
                 onClick={() => onRemoveTag(tag)}
-                className="opacity-0 group-hover:opacity-100 hover:text-red-400 transition-opacity ml-1"
+                className="opacity-0 group-hover:opacity-100 hover:text-[var(--synapse-red)] transition-all ml-1"
                 >
                 <X size={10} />
                 </button>
