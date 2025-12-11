@@ -10,7 +10,7 @@
 
 export type StudyItemType = 'flashcard' | 'quiz' | 'note' | 'document';
 export type StudyPriority = 'high' | 'new' | 'normal' | 'low';
-export type StudySessionType = 'flashcard_review' | 'quiz' | 'mixed';
+export type StudySessionType = 'flashcard_review' | 'quiz' | 'mixed' | 'due' | 'recommended';
 
 /**
  * Base study item interface

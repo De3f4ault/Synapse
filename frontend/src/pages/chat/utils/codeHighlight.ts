@@ -65,37 +65,37 @@ export const detectLanguage = (code: string): SupportedLanguage => {
     } catch {
       // Not JSON
     }
-    }
+  }
 
-    // HTML detection
-    if (trimmed.startsWith('<!DOCTYPE') || trimmed.startsWith('<html')) {
-      return 'html';
-    }
+  // HTML detection
+  if (trimmed.startsWith('<!DOCTYPE') || trimmed.startsWith('<html')) {
+    return 'html';
+  }
 
-    // Python detection
-    if (/^(import|from|def|class|if __name__)/m.test(trimmed)) {
-      return 'python';
-    }
+  // Python detection
+  if (/^(import|from|def|class|if __name__)/m.test(trimmed)) {
+    return 'python';
+  }
 
-    // JavaScript/TypeScript detection
-    if (/^(import|export|const|let|var|function|class)/m.test(trimmed)) {
-      if (/:\s*\w+/.test(trimmed)) {
-        return 'typescript';
-      }
-      return 'javascript';
+  // JavaScript/TypeScript detection
+  if (/^(import|export|const|let|var|function|class)/m.test(trimmed)) {
+    if (/:\s*\w+/.test(trimmed)) {
+      return 'typescript';
     }
+    return 'javascript';
+  }
 
-    // SQL detection
-    if (/^(SELECT|INSERT|UPDATE|DELETE|CREATE|DROP|ALTER)/im.test(trimmed)) {
-      return 'sql';
-    }
+  // SQL detection
+  if (/^(SELECT|INSERT|UPDATE|DELETE|CREATE|DROP|ALTER)/im.test(trimmed)) {
+    return 'sql';
+  }
 
-    // Shell detection
-    if (/^(#!/bin/bash|#!/bin/sh|echo|cd|ls|pwd)/m.test(trimmed)) {
-      return 'bash';
-    }
+  // Shell detection
+  if (/^(\#!\/bin\/bash|\#!\/bin\/sh|echo|cd|ls|pwd)/m.test(trimmed)) {
+    return 'bash';
+  }
 
-    return 'plaintext';
+  return 'plaintext';
 };
 
 /**
@@ -282,10 +282,10 @@ export const getSyntaxHighlighterConfig = () => ({
  */
 export const formatCode = (code: string): string => {
   return code
-  .trim()
-  .split('\n')
-  .map(line => line.trimEnd())
-  .join('\n');
+    .trim()
+    .split('\n')
+    .map(line => line.trimEnd())
+    .join('\n');
 };
 
 /**

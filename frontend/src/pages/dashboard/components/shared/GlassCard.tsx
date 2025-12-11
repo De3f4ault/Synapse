@@ -21,38 +21,31 @@ const GlassCard = React.forwardRef<HTMLDivElement, GlassCardProps>(
     ({ children, className, hover = false, onClick, ...motionProps }, ref) => {
         return (
             <motion.div
-            ref={ref}
-            className={cn(
-                // Base Structure
-                'relative overflow-hidden rounded-xl',
-                // Glass Background & Border
-                'bg-[#0A0A0A]/60 backdrop-blur-xl border border-white/5',
-                // Shadow
-                'shadow-2xl shadow-black/50',
+                ref={ref}
+                className={cn(
+                    'synapse-panel', // Base Synapse Panel style
+                    'relative overflow-hidden', // Ensure content/overlays are contained
 
-                // Interaction
-                hover && [
-                    'transition-all duration-300',
-                    'hover:bg-[#0A0A0A]/80 hover:border-white/10',
-                    'hover:shadow-[0_0_30px_rgba(0,0,0,0.5)]'
-                ],
-                onClick && 'cursor-pointer',
+                    // Interaction
+                    hover && [
+                        'transition-all duration-300',
+                        'hover:bg-white/5 hover:border-white/20',
+                        'hover:shadow-xl hover:-translate-y-1'
+                    ],
+                    onClick && 'cursor-pointer',
 
-                className
-            )}
-            onClick={onClick}
-            {...motionProps}
+                    className
+                )}
+                onClick={onClick}
+                {...motionProps}
             >
-            {/* Noise Texture Overlay */}
-            <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03] pointer-events-none z-0" />
+                {/* Noise Texture Overlay (Optional, adds grit) */}
+                <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.02] pointer-events-none z-0 mix-blend-overlay" />
 
-            {/* Gradient Reflection */}
-            <div className="absolute inset-0 bg-gradient-to-br from-white/[0.02] to-transparent pointer-events-none z-0" />
-
-            {/* Content */}
-            <div className="relative z-10 h-full">
-            {children}
-            </div>
+                {/* Content */}
+                <div className="relative z-10 h-full">
+                    {children}
+                </div>
             </motion.div>
         );
     }

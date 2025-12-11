@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import {
     CommandDialog,
     CommandEmpty,
@@ -19,15 +20,33 @@ import {
     Home,
     Settings,
     Search,
+    StickyNote,
+    Files,
+    Sparkles,
+    Target,
 } from 'lucide-react';
 
+// API imports
+import {
+    listDocumentsApiV1DocumentsGet,
+    listNotesApiV1NotesGet,
+    listDecksApiV1FlashcardsDecksGet,
+    listQuizzesApiV1QuizzesGet,
+} from '@/api/generated/services.gen';
+import type {
+    DocumentResponse,
+    NoteResponse,
+    DeckResponse,
+    QuizResponse,
+} from '@/api/generated/types.gen';
+
 /**
- * Search Command Palette
+ * ENHANCED Search Command Palette
  *
  * Features:
  * - Global search (⌘K / Ctrl+K)
- * - Quick navigation
- * - Recent searches
+ * - Real-time resource search (documents, notes, decks, quizzes)
+ * - Cross-module quick actions
  * - Fuzzy search
  * - Keyboard navigation
  */
@@ -39,12 +58,42 @@ interface SearchResult {
     icon: React.ReactNode;
     href: string;
     category: 'navigation' | 'content' | 'actions';
+    resourceType?: 'document' | 'note' | 'deck' | 'quiz';
 }
 
 export function SearchCommand() {
     const navigate = useNavigate();
     const { commandPaletteOpen, setCommandPaletteOpen } = useUIStore();
     const [search, setSearch] = useState('');
+
+    // Fetch resources (only when command palette is open)
+    const { data: documents } = useQuery({
+        queryKey: ['documents'],
+        queryFn: () => listDocumentsApiV1DocumentsGet({ pageSize: 100 }),
+        enabled: commandPaletteOpen,
+        staleTime: 1000 * 60 * 5,
+    });
+
+    const { data: notes } = useQuery({
+        queryKey: ['notes'],
+        queryFn: () => listNotesApiV1NotesGet({ pageSize: 100 }),
+        enabled: commandPaletteOpen,
+        staleTime: 1000 * 60 * 5,
+    });
+
+    const { data: decks } = useQuery({
+        queryKey: ['decks'],
+        queryFn: () => listDecksApiV1FlashcardsDecksGet({ pageSize: 100 }),
+        enabled: commandPaletteOpen,
+        staleTime: 1000 * 60 * 5,
+    });
+
+    const { data: quizzes } = useQuery({
+        queryKey: ['quizzes'],
+        queryFn: () => listQuizzesApiV1QuizzesGet({ pageSize: 100 }),
+        enabled: commandPaletteOpen,
+        staleTime: 1000 * 60 * 5,
+    });
 
     // Navigation items
     const navigationItems: SearchResult[] = [
@@ -68,7 +117,7 @@ export function SearchCommand() {
             id: 'notes',
             title: 'Notes',
             description: 'Browse your notes',
-            icon: <FileText className="h-4 w-4" />,
+            icon: <StickyNote className="h-4 w-4" />,
             href: '/notes',
             category: 'navigation',
         },
@@ -76,7 +125,7 @@ export function SearchCommand() {
             id: 'documents',
             title: 'Documents',
             description: 'View uploaded documents',
-            icon: <FileText className="h-4 w-4" />,
+            icon: <Files className="h-4 w-4" />,
             href: '/documents',
             category: 'navigation',
         },
@@ -97,6 +146,14 @@ export function SearchCommand() {
             category: 'navigation',
         },
         {
+            id: 'study',
+            title: 'Study',
+            description: 'Review and learn',
+            icon: <Target className="h-4 w-4" />,
+            href: '/study',
+            category: 'navigation',
+        },
+        {
             id: 'analytics',
             title: 'Analytics',
             description: 'View your progress',
@@ -114,11 +171,12 @@ export function SearchCommand() {
         },
     ];
 
-    // Quick actions
+    // Quick actions (CREATE operations)
     const quickActions: SearchResult[] = [
         {
             id: 'new-deck',
             title: 'Create New Deck',
+            description: 'Start a new flashcard deck',
             icon: <BookOpen className="h-4 w-4" />,
             href: '/flashcards/create',
             category: 'actions',
@@ -126,41 +184,154 @@ export function SearchCommand() {
         {
             id: 'new-note',
             title: 'Create New Note',
-            icon: <FileText className="h-4 w-4" />,
+            description: 'Start taking notes',
+            icon: <StickyNote className="h-4 w-4" />,
             href: '/notes/new',
             category: 'actions',
         },
         {
             id: 'upload-document',
             title: 'Upload Document',
-            icon: <FileText className="h-4 w-4" />,
+            description: 'Add a new document',
+            icon: <Files className="h-4 w-4" />,
             href: '/documents',
             category: 'actions',
         },
         {
-            id: 'start-review',
-            title: 'Start Review Session',
-            icon: <BookOpen className="h-4 w-4" />,
-            href: '/flashcards/review',
+            id: 'start-study',
+            title: 'Start Study Session',
+            description: 'Review due items',
+            icon: <Target className="h-4 w-4" />,
+            href: '/study',
+            category: 'actions',
+        },
+        {
+            id: 'new-chat',
+            title: 'New Chat Session',
+            description: 'Start AI conversation',
+            icon: <MessageSquare className="h-4 w-4" />,
+            href: '/chat/new',
             category: 'actions',
         },
     ];
 
-    const allItems = [...navigationItems, ...quickActions];
+    // Cross-module actions (AI-powered)
+    const aiActions: SearchResult[] = [
+        {
+            id: 'ai-flashcards-from-doc',
+            title: 'Generate Flashcards from Document',
+            description: 'AI-powered card generation',
+            icon: <Sparkles className="h-4 w-4" />,
+            href: '/flashcards/create?from=document',
+            category: 'actions',
+        },
+        {
+            id: 'ai-quiz-from-note',
+            title: 'Generate Quiz from Note',
+            description: 'Turn notes into quizzes',
+            icon: <Sparkles className="h-4 w-4" />,
+            href: '/quizzes/create?from=note',
+            category: 'actions',
+        },
+        {
+            id: 'chat-with-doc',
+            title: 'Chat with a Document',
+            description: 'Open study mode chat',
+            icon: <Sparkles className="h-4 w-4" />,
+            href: '/chat?mode=study',
+            category: 'actions',
+        },
+    ];
+
+    // Transform resources into searchable items
+    const contentItems: SearchResult[] = useMemo(() => {
+        const items: SearchResult[] = [];
+
+        // Documents
+        if (Array.isArray(documents)) {
+            items.push(
+                ...documents.slice(0, 10).map((doc: DocumentResponse) => ({
+                    id: `doc-${doc.id}`,
+                    title: doc.filename,
+                    description: `Document • ${doc.file_type} • ${new Date(doc.created_at).toLocaleDateString()}`,
+                    icon: <Files className="h-4 w-4" />,
+                    href: `/documents/${doc.id}`,
+                    category: 'content' as const,
+                    resourceType: 'document' as const,
+                }))
+            );
+        }
+
+        // Notes
+        if (Array.isArray(notes)) {
+            items.push(
+                ...notes.slice(0, 10).map((note: NoteResponse) => ({
+                    id: `note-${note.id}`,
+                    title: note.title,
+                    description: `Note • ${new Date(note.created_at).toLocaleDateString()}`,
+                    icon: <StickyNote className="h-4 w-4" />,
+                    href: `/notes/${note.id}`,
+                    category: 'content' as const,
+                    resourceType: 'note' as const,
+                }))
+            );
+        }
+
+        // Flashcard Decks
+        if (Array.isArray(decks)) {
+            items.push(
+                ...decks.slice(0, 10).map((deck: DeckResponse) => ({
+                    id: `deck-${deck.id}`,
+                    title: deck.name,
+                    description: `Deck • ${deck.card_count || 0} cards`,
+                    icon: <BookOpen className="h-4 w-4" />,
+                    href: `/flashcards/${deck.id}`,
+                    category: 'content' as const,
+                    resourceType: 'deck' as const,
+                }))
+            );
+        }
+
+        // Quizzes
+        if (Array.isArray(quizzes)) {
+            items.push(
+                ...quizzes.slice(0, 10).map((quiz: QuizResponse) => ({
+                    id: `quiz-${quiz.id}`,
+                    title: quiz.title,
+                    description: `Quiz • ${quiz.question_count || 0} questions`,
+                    icon: <FileQuestion className="h-4 w-4" />,
+                    href: `/quizzes/${quiz.id}`,
+                    category: 'content' as const,
+                    resourceType: 'quiz' as const,
+                }))
+            );
+        }
+
+        return items;
+    }, [documents, notes, decks, quizzes]);
+
+    // Combine all items
+    const allItems = [...navigationItems, ...quickActions, ...aiActions, ...contentItems];
 
     // Filter results based on search
-    const filteredResults = allItems.filter((item) => {
-        if (!search) return true;
+    const filteredResults = useMemo(() => {
+        if (!search) {
+            // Show nav + quick actions when no search
+            return [...navigationItems, ...quickActions];
+        }
+
         const searchLower = search.toLowerCase();
-        return (
-            item.title.toLowerCase().includes(searchLower) ||
-            item.description?.toLowerCase().includes(searchLower)
+        return allItems.filter(
+            (item) =>
+                item.title.toLowerCase().includes(searchLower) ||
+                item.description?.toLowerCase().includes(searchLower)
         );
-    });
+    }, [search, allItems, navigationItems, quickActions]);
 
     // Group by category
     const navigationResults = filteredResults.filter((r) => r.category === 'navigation');
     const actionResults = filteredResults.filter((r) => r.category === 'actions');
+    const contentResults = filteredResults.filter((r) => r.category === 'content');
 
     // Keyboard shortcut listener
     useEffect(() => {
@@ -183,64 +354,102 @@ export function SearchCommand() {
 
     return (
         <CommandDialog open={commandPaletteOpen} onOpenChange={setCommandPaletteOpen}>
-        <CommandInput
-        placeholder="Search or jump to..."
-        value={search}
-        onValueChange={setSearch}
-        />
-        <CommandList>
-        <CommandEmpty>
-        <div className="flex flex-col items-center justify-center py-6 text-center">
-        <Search className="h-8 w-8 text-muted-foreground mb-2" />
-        <p className="text-sm text-muted-foreground">No results found</p>
-        <p className="text-xs text-muted-foreground mt-1">
-        Try searching for pages, actions, or content
-        </p>
-        </div>
-        </CommandEmpty>
-
-        {navigationResults.length > 0 && (
-            <>
-            <CommandGroup heading="Navigation">
-            {navigationResults.map((item) => (
-                <CommandItem
-                key={item.id}
-                value={item.title}
-                onSelect={() => handleSelect(item.href)}
-                className="flex items-center gap-2 cursor-pointer"
-                >
-                {item.icon}
-                <div className="flex-1">
-                <div className="font-medium">{item.title}</div>
-                {item.description && (
-                    <div className="text-xs text-muted-foreground">
-                    {item.description}
+            <CommandInput
+                placeholder="Search pages, resources, or actions..."
+                value={search}
+                onValueChange={setSearch}
+            />
+            <CommandList>
+                <CommandEmpty>
+                    <div className="flex flex-col items-center justify-center py-6 text-center">
+                        <Search className="h-8 w-8 text-muted-foreground mb-2" />
+                        <p className="text-sm text-muted-foreground">No results found</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                            Try searching for pages, documents, notes, or actions
+                        </p>
                     </div>
-                )}
-                </div>
-                </CommandItem>
-            ))}
-            </CommandGroup>
-            {actionResults.length > 0 && <CommandSeparator />}
-            </>
-        )}
+                </CommandEmpty>
 
-        {actionResults.length > 0 && (
-            <CommandGroup heading="Quick Actions">
-            {actionResults.map((item) => (
-                <CommandItem
-                key={item.id}
-                value={item.title}
-                onSelect={() => handleSelect(item.href)}
-                className="flex items-center gap-2 cursor-pointer"
-                >
-                {item.icon}
-                <span className="font-medium">{item.title}</span>
-                </CommandItem>
-            ))}
-            </CommandGroup>
-        )}
-        </CommandList>
+                {/* Navigation */}
+                {navigationResults.length > 0 && (
+                    <>
+                        <CommandGroup heading="Navigation">
+                            {navigationResults.map((item) => (
+                                <CommandItem
+                                    key={item.id}
+                                    value={item.title}
+                                    onSelect={() => handleSelect(item.href)}
+                                    className="flex items-center gap-2 cursor-pointer"
+                                >
+                                    {item.icon}
+                                    <div className="flex-1">
+                                        <div className="font-medium">{item.title}</div>
+                                        {item.description && (
+                                            <div className="text-xs text-muted-foreground">
+                                                {item.description}
+                                            </div>
+                                        )}
+                                    </div>
+                                </CommandItem>
+                            ))}
+                        </CommandGroup>
+                        {(actionResults.length > 0 || contentResults.length > 0) && (
+                            <CommandSeparator />
+                        )}
+                    </>
+                )}
+
+                {/* Content (Documents, Notes, Decks, Quizzes) */}
+                {contentResults.length > 0 && (
+                    <>
+                        <CommandGroup heading="Your Content">
+                            {contentResults.map((item) => (
+                                <CommandItem
+                                    key={item.id}
+                                    value={item.title}
+                                    onSelect={() => handleSelect(item.href)}
+                                    className="flex items-center gap-2 cursor-pointer"
+                                >
+                                    {item.icon}
+                                    <div className="flex-1">
+                                        <div className="font-medium">{item.title}</div>
+                                        {item.description && (
+                                            <div className="text-xs text-muted-foreground">
+                                                {item.description}
+                                            </div>
+                                        )}
+                                    </div>
+                                </CommandItem>
+                            ))}
+                        </CommandGroup>
+                        {actionResults.length > 0 && <CommandSeparator />}
+                    </>
+                )}
+
+                {/* Actions */}
+                {actionResults.length > 0 && (
+                    <CommandGroup heading="Quick Actions">
+                        {actionResults.map((item) => (
+                            <CommandItem
+                                key={item.id}
+                                value={item.title}
+                                onSelect={() => handleSelect(item.href)}
+                                className="flex items-center gap-2 cursor-pointer"
+                            >
+                                {item.icon}
+                                <div className="flex-1">
+                                    <span className="font-medium">{item.title}</span>
+                                    {item.description && (
+                                        <div className="text-xs text-muted-foreground">
+                                            {item.description}
+                                        </div>
+                                    )}
+                                </div>
+                            </CommandItem>
+                        ))}
+                    </CommandGroup>
+                )}
+            </CommandList>
         </CommandDialog>
     );
 }

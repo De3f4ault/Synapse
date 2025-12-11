@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { Mail, Key, ChevronRight, AlertTriangle } from 'lucide-react';
+import { Mail, Key, AlertTriangle } from 'lucide-react';
 
 import { loginApiV1AuthLoginPost } from '@/api/generated/services.gen';
 import { useAuthStore } from '@/stores/authStore';
@@ -31,11 +31,11 @@ export function LoginPage() {
             setTimeout(() => {
                 setAuth(data.access_token, null);
                 toast({
-                    title: 'Access Granted',
-                    description: 'Welcome back, Operative.',
+                    title: 'Welcome back',
+                    description: 'Successfully logged in to Synapse.',
                 });
                 navigate('/dashboard');
-            }, 1500);
+            }, 1000);
         },
         onError: (error: any) => {
             console.error('Login error:', error);
@@ -44,7 +44,7 @@ export function LoginPage() {
             setErrorMsg(message);
             toast({
                 variant: 'destructive',
-                title: 'Access Denied',
+                title: 'Login Failed',
                 description: message,
             });
         },
@@ -65,58 +65,57 @@ export function LoginPage() {
         loginMutation.mutate({
             requestBody: {
                 email: email.trim(),
-                             password: password,
+                password: password,
             },
         });
     };
 
     return (
         <GatekeeperLayout status={status}>
-        <SecurityBadge status={status} />
+            <SecurityBadge status={status} />
 
-        <form onSubmit={handleSubmit}>
-        <QuantumInput
-        label="NEURAL LINK (EMAIL)"
-        icon={Mail}
-        type="email"
-        value={email}
-        onChange={(e: any) => setEmail(e.target.value)}
-        disabled={status === 'loading' || status === 'success'}
-        error={errorMsg && !email ? 'REQUIRED' : undefined}
-        />
+            <form onSubmit={handleSubmit}>
+                <QuantumInput
+                    label="Email Address"
+                    icon={Mail}
+                    type="email"
+                    value={email}
+                    onChange={(e: any) => setEmail(e.target.value)}
+                    disabled={status === 'loading' || status === 'success'}
+                    error={errorMsg && !email ? 'REQUIRED' : undefined}
+                />
 
-        <QuantumInput
-        label="ACCESS CODE (PASSWORD)"
-        icon={Key}
-        type="password"
-        value={password}
-        onChange={(e: any) => setPassword(e.target.value)}
-        disabled={status === 'loading' || status === 'success'}
-        error={errorMsg && !password ? 'REQUIRED' : undefined}
-        />
+                <QuantumInput
+                    label="Password"
+                    icon={Key}
+                    type="password"
+                    value={password}
+                    onChange={(e: any) => setPassword(e.target.value)}
+                    disabled={status === 'loading' || status === 'success'}
+                    error={errorMsg && !password ? 'REQUIRED' : undefined}
+                />
 
-        <BiometricScanner
-        onClick={handleSubmit}
-        loading={status === 'loading'}
-        label="AUTHENTICATE"
-        disabled={status === 'success'}
-        />
-        </form>
+                <BiometricScanner
+                    onClick={handleSubmit}
+                    loading={status === 'loading'}
+                    label="Sign In"
+                    disabled={status === 'success'}
+                />
+            </form>
 
-        <div className="mt-8 text-center">
-        <Link
-        to="/auth/register"
-        className={`
-            inline-flex items-center gap-2 text-[10px] font-mono tracking-widest text-slate-500
-            hover:text-cyan-400 transition-colors uppercase
-            ${status === 'loading' ? 'pointer-events-none opacity-50' : ''}
-            `}
-            >
-            <span>NO CLEARANCE?</span>
-            <span className="border-b border-cyan-500/30 pb-0.5">REQUEST ACCESS</span>
-            <ChevronRight size={10} />
-            </Link>
+            <div className="mt-6 text-center">
+                <Link
+                    to="/auth/register"
+                    className={`
+                    inline-flex items-center gap-2 text-sm text-slate-500
+                    hover:text-cyan-400 transition-colors
+                    ${status === 'loading' ? 'pointer-events-none opacity-50' : ''}
+                `}
+                >
+                    <span>Don't have an account?</span>
+                    <span className="font-medium text-cyan-500 hover:underline">Sign up</span>
+                </Link>
             </div>
-            </GatekeeperLayout>
+        </GatekeeperLayout>
     );
 }

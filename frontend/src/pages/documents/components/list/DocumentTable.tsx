@@ -15,22 +15,22 @@ interface DocumentTableProps {
 /**
  * FileIcon Component
  */
-const FileIcon: React.FC<{ type: string; className?: string }> = ({ type, className }) => {
+const FileIcon: React.FC<{ type: string; className?: string }> = ({ type: _type, className }) => {
     return (
         <svg
-        className={className}
-        xmlns="http://www.w3.org/2000/svg"
-        width="24"
-        height="24"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
+            className={className}
+            xmlns="http://www.w3.org/2000/svg"
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
         >
-        <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
-        <polyline points="14 2 14 8 20 8" />
+            <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+            <polyline points="14 2 14 8 20 8" />
         </svg>
     );
 };
@@ -44,7 +44,7 @@ const DataStreamRow = React.forwardRef<HTMLDivElement, {
     onSelect: (doc: EnhancedDocument) => void;
     onDelete: () => void;
     logAction: (msg: string) => void;
-}>(({ doc, index, onSelect, onDelete, logAction }, ref) => {
+}>(({ doc, index, onSelect, logAction }, ref) => {
     const getStatusIcon = (status: string) => {
         switch (status) {
             case 'completed':
@@ -60,48 +60,48 @@ const DataStreamRow = React.forwardRef<HTMLDivElement, {
 
     return (
         <motion.div
-        ref={ref}
-        layoutId={`monolith-${doc.id}`}
-        initial={{ opacity: 0, x: -20 }}
-        animate={{ opacity: 1, x: 0 }}
-        exit={{ opacity: 0, x: -20 }}
-        transition={{ delay: index * 0.05 }}
-        onClick={() => {
-            onSelect(doc);
-            logAction(`STREAM ACCESS: ${doc.filename}`);
-        }}
-        className="group relative flex items-center gap-6 p-4 rounded-xl border border-white/5 bg-white/[0.02] hover:bg-white/[0.05] hover:border-cyan-500/30 transition-all cursor-pointer overflow-hidden mb-2"
+            ref={ref}
+            layoutId={`monolith-${doc.id}`}
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ delay: index * 0.05 }}
+            onClick={() => {
+                onSelect(doc);
+                logAction(`STREAM ACCESS: ${doc.filename}`);
+            }}
+            className="synapse-panel group relative flex items-center gap-6 p-4 rounded-xl hover:border-cyan-500/30 transition-all cursor-pointer overflow-hidden mb-2"
         >
-        {/* Icon */}
-        <div
-        className={cn(
-            'p-2 rounded-lg transition-colors',
-            doc.processing_status === 'processing'
-            ? 'text-amber-400 bg-amber-500/10'
-            : 'text-cyan-400 bg-cyan-950/30 group-hover:text-white'
-        )}
-        >
-        <FileIcon type={doc.type} className="w-5 h-5" />
-        </div>
+            {/* Icon */}
+            <div
+                className={cn(
+                    'p-2 rounded-lg transition-colors',
+                    doc.processing_status === 'processing'
+                        ? 'text-amber-400 bg-amber-500/10'
+                        : 'text-cyan-400 bg-cyan-950/30 group-hover:text-white'
+                )}
+            >
+                <FileIcon type={doc.type} className="w-5 h-5" />
+            </div>
 
-        {/* Filename */}
-        <div className="flex-1 min-w-0">
-        <div className="text-sm font-bold text-slate-300 group-hover:text-white truncate font-mono tracking-wide">
-        {doc.filename}
-        </div>
-        </div>
+            {/* Filename */}
+            <div className="flex-1 min-w-0">
+                <div className="text-sm font-bold text-slate-300 group-hover:text-white truncate font-mono tracking-wide">
+                    {doc.filename}
+                </div>
+            </div>
 
-        {/* Metadata */}
-        <div className="flex items-center gap-8 text-xs font-mono text-slate-500">
-        <div className="w-20 text-right group-hover:text-cyan-400 transition-colors">{doc.size}</div>
-        <div className="w-24 text-center px-2 py-1 rounded bg-black/20 border border-white/5 uppercase tracking-widest text-[9px]">
-        {doc.sector}
-        </div>
-        <div className="w-8 flex justify-end">{getStatusIcon(doc.processing_status)}</div>
-        </div>
+            {/* Metadata */}
+            <div className="flex items-center gap-8 text-xs font-mono text-slate-500">
+                <div className="w-20 text-right group-hover:text-cyan-400 transition-colors">{doc.size}</div>
+                <div className="w-24 text-center px-2 py-1 rounded bg-black/20 border border-white/5 uppercase tracking-widest text-[9px]">
+                    {doc.sector}
+                </div>
+                <div className="w-8 flex justify-end">{getStatusIcon(doc.processing_status)}</div>
+            </div>
 
-        {/* Shine Effect */}
-        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 pointer-events-none" />
+            {/* Shine Effect */}
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 pointer-events-none" />
         </motion.div>
     );
 });
@@ -120,32 +120,32 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
 }) => {
     return (
         <div className="relative w-[90%] max-w-7xl h-full">
-        <div className="w-full h-full p-8 flex flex-col gap-2 overflow-y-auto custom-scrollbar">
-        <AnimatePresence mode="popLayout">
-        {documents.map((doc, i) => (
-            <DataStreamRow
-            key={doc.id}
-            doc={doc}
-            index={i}
-            onSelect={onSelect}
-            onDelete={() => onDelete(doc.id)}
-            logAction={logAction}
-            />
-        ))}
-        </AnimatePresence>
-        </div>
+            <div className="w-full h-full p-8 flex flex-col gap-2 overflow-y-auto custom-scrollbar">
+                <AnimatePresence mode="popLayout">
+                    {documents.map((doc, i) => (
+                        <DataStreamRow
+                            key={doc.id}
+                            doc={doc}
+                            index={i}
+                            onSelect={onSelect}
+                            onDelete={() => onDelete(doc.id)}
+                            logAction={logAction}
+                        />
+                    ))}
+                </AnimatePresence>
+            </div>
 
-        {/* Empty State */}
-        {documents.length === 0 && !isLoading && (
-            <div className="absolute inset-0 flex items-center justify-center">
-            <div className="text-center opacity-30">
-            <ScanLine size={48} className="mx-auto mb-4 text-cyan-400" />
-            <h2 className="text-xl font-mono text-cyan-400 tracking-[0.5em]">
-            SECTOR EMPTY
-            </h2>
-            </div>
-            </div>
-        )}
+            {/* Empty State */}
+            {documents.length === 0 && !isLoading && (
+                <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="text-center opacity-30">
+                        <ScanLine size={48} className="mx-auto mb-4 text-cyan-400" />
+                        <h2 className="text-xl font-mono text-cyan-400 tracking-[0.5em]">
+                            SECTOR EMPTY
+                        </h2>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

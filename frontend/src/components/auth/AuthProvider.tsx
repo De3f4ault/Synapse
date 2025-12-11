@@ -1,7 +1,6 @@
 import { useEffect } from 'react';
 import { useAuthStore } from '@/stores/authStore';
 import { useAuthHooks } from '@/api/hooks/useAuth';
-import { OpenAPI } from '@/api/generated/core/OpenAPI';
 
 interface AuthProviderProps {
     children: React.ReactNode;
@@ -16,21 +15,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         // Initialize auth state from localStorage on mount
         initializeFromStorage();
 
-        // Set OpenAPI configuration with token from localStorage
-        const storedToken = localStorage.getItem('auth_token');
-        if (storedToken) {
-            OpenAPI.TOKEN = storedToken;
-        }
-    }, []);
-
-    useEffect(() => {
-        // Update OpenAPI token when token changes
-        if (token) {
-            OpenAPI.TOKEN = token;
-        } else {
-            OpenAPI.TOKEN = '';
-        }
-    }, [token]);
+        // Note: OpenAPI.TOKEN is already configured as a function in api/client.ts
+        // It automatically reads from localStorage('synapse-auth')
+        // No need to set it here - the function handles token retrieval dynamically
+    }, [initializeFromStorage]);
 
     useEffect(() => {
         // Set user in store when fetched

@@ -1,41 +1,45 @@
+import React, { Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
 import { AppShell } from '@/components/layout/AppShell';
+import { LoadingScreen } from '@/components/layout/LoadingScreen';
 
-// ==================== AUTH PAGES ====================
-import { LoginPage } from '@/pages/auth/LoginPage';
-import { RegisterPage } from '@/pages/auth/RegisterPage';
+// ==================== LAZY LOADED PAGES ====================
 
-// ==================== MAIN PAGES ====================
-import { DashboardPage } from '@/pages/dashboard/DashboardPage';
+// Auth
+const LoginPage = React.lazy(() => import('@/pages/auth/LoginPage').then(module => ({ default: module.LoginPage })));
+const RegisterPage = React.lazy(() => import('@/pages/auth/RegisterPage').then(module => ({ default: module.RegisterPage })));
 
-// ==================== FLASHCARDS ====================
-import { DecksPage } from '@/pages/flashcards/DecksPage';
-import { DeckDetailPage } from '@/pages/flashcards/DeckDetailPage';
-import { ReviewPage } from '@/pages/flashcards/ReviewPage';
-import { CreateDeckPage } from '@/pages/flashcards/CreateDeckPage';
-import { CreateCardPage } from '@/pages/flashcards/CreateCardPage';
-import { EditCardPage } from '@/pages/flashcards/EditCardPage';
+// Main
+const DashboardPage = React.lazy(() => import('@/pages/dashboard/DashboardPage').then(module => ({ default: module.DashboardPage })));
 
-// ==================== NOTES ====================
-import { NotesPage } from '@/pages/notes/NotesPage';
-import { NoteDetailPage } from '@/pages/notes/NoteDetailPage';
+// Flashcards
+const DecksPage = React.lazy(() => import('@/pages/flashcards/DecksPage').then(module => ({ default: module.DecksPage })));
+const DeckDetailPage = React.lazy(() => import('@/pages/flashcards/DeckDetailPage').then(module => ({ default: module.DeckDetailPage })));
+const ReviewPage = React.lazy(() => import('@/pages/flashcards/ReviewPage').then(module => ({ default: module.ReviewPage })));
+const CreateDeckPage = React.lazy(() => import('@/pages/flashcards/CreateDeckPage').then(module => ({ default: module.CreateDeckPage })));
+const CreateCardPage = React.lazy(() => import('@/pages/flashcards/CreateCardPage').then(module => ({ default: module.CreateCardPage })));
+const EditCardPage = React.lazy(() => import('@/pages/flashcards/EditCardPage').then(module => ({ default: module.EditCardPage })));
 
-// ==================== DOCUMENTS ====================
-import { DocumentsPage } from '@/pages/documents/DocumentsPage';
+// Notes
+const NotesPage = React.lazy(() => import('@/pages/notes/NotesPage').then(module => ({ default: module.NotesPage })));
+const NoteDetailPage = React.lazy(() => import('@/pages/notes/NoteDetailPage').then(module => ({ default: module.NoteDetailPage })));
 
-// ==================== QUIZZES ====================
-import { QuizzesPage } from '@/pages/quizzes/QuizzesPage';
-import { QuizTakePage } from '@/pages/quizzes/QuizTakePage';
+// Documents
+const DocumentsPage = React.lazy(() => import('@/pages/documents/DocumentsPage').then(module => ({ default: module.DocumentsPage })));
 
-// ==================== STUDY ====================
-import { StudyPage } from '@/pages/study/StudyPage';
+// Quizzes
+const QuizzesPage = React.lazy(() => import('@/pages/quizzes/QuizzesPage').then(module => ({ default: module.QuizzesPage })));
+const QuizTakePage = React.lazy(() => import('@/pages/quizzes/QuizTakePage').then(module => ({ default: module.QuizTakePage })));
 
-// ==================== CHAT ====================
-import { ChatPage } from '@/pages/chat/ChatPage';
+// Study
+const StudyPage = React.lazy(() => import('@/pages/study/StudyPage').then(module => ({ default: module.StudyPage })));
 
-// ==================== ERROR PAGES ====================
-import { NotFoundPage } from '@/pages/NotFoundPage';
+// Chat
+const ChatPage = React.lazy(() => import('@/pages/chat/ChatPage').then(module => ({ default: module.ChatPage })));
+
+// Error
+const NotFoundPage = React.lazy(() => import('@/pages/NotFoundPage').then(module => ({ default: module.NotFoundPage })));
 
 /**
  * ProtectedRoute Component
@@ -51,7 +55,7 @@ function ProtectedRoute() {
 
     return (
         <AppShell>
-        <Outlet />
+            <Outlet />
         </AppShell>
     );
 }
@@ -83,60 +87,62 @@ function AuthRoute() {
  * NOTE: Analytics is now integrated into Dashboard via tabs.
  * The /analytics route redirects to /dashboard for backward compatibility.
  */
- export function Router() {
-     return (
-         <BrowserRouter>
-         <Routes>
-         {/* ==================== AUTH ROUTES ==================== */}
-         <Route element={<AuthRoute />}>
-         <Route path="/auth/login" element={<LoginPage />} />
-         <Route path="/auth/register" element={<RegisterPage />} />
-         </Route>
+export function Router() {
+    return (
+        <BrowserRouter>
+            <Suspense fallback={<LoadingScreen />}>
+                <Routes>
+                    {/* ==================== AUTH ROUTES ==================== */}
+                    <Route element={<AuthRoute />}>
+                        <Route path="/auth/login" element={<LoginPage />} />
+                        <Route path="/auth/register" element={<RegisterPage />} />
+                    </Route>
 
-         {/* ==================== PROTECTED ROUTES ==================== */}
-         <Route element={<ProtectedRoute />}>
-         {/* Root redirect */}
-         <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                    {/* ==================== PROTECTED ROUTES ==================== */}
+                    <Route element={<ProtectedRoute />}>
+                        {/* Root redirect */}
+                        <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
-         {/* Dashboard (includes analytics tabs) */}
-         <Route path="/dashboard" element={<DashboardPage />} />
+                        {/* Dashboard (includes analytics tabs) */}
+                        <Route path="/dashboard" element={<DashboardPage />} />
 
-         {/* ========== FLASHCARDS (Mnemosyne Protocol) ========== */}
-         <Route path="/flashcards" element={<DecksPage />} />
-         <Route path="/flashcards/create" element={<CreateDeckPage />} />
-         <Route path="/flashcards/:deckId" element={<DeckDetailPage />} />
-         <Route path="/flashcards/:deckId/review" element={<ReviewPage />} />
-         <Route path="/flashcards/:deckId/cards/new" element={<CreateCardPage />} />
-         <Route path="/flashcards/:deckId/cards/:cardId/edit" element={<EditCardPage />} />
-         {/* Global review (all decks) */}
-         <Route path="/flashcards/review" element={<ReviewPage />} />
+                        {/* ========== FLASHCARDS (Mnemosyne Protocol) ========== */}
+                        <Route path="/flashcards" element={<DecksPage />} />
+                        <Route path="/flashcards/create" element={<CreateDeckPage />} />
+                        <Route path="/flashcards/:deckId" element={<DeckDetailPage />} />
+                        <Route path="/flashcards/:deckId/review" element={<ReviewPage />} />
+                        <Route path="/flashcards/:deckId/cards/new" element={<CreateCardPage />} />
+                        <Route path="/flashcards/:deckId/cards/:cardId/edit" element={<EditCardPage />} />
+                        {/* Global review (all decks) */}
+                        <Route path="/flashcards/review" element={<ReviewPage />} />
 
-         {/* ========== NOTES (Neural Codex) ========== */}
-         <Route path="/notes" element={<NotesPage />} />
-         <Route path="/notes/:noteId" element={<NoteDetailPage />} />
+                        {/* ========== NOTES (Neural Codex) ========== */}
+                        <Route path="/notes" element={<NotesPage />} />
+                        <Route path="/notes/:noteId" element={<NoteDetailPage />} />
 
-         {/* ========== DOCUMENTS (Omni-Kinetic) ========== */}
-         <Route path="/documents" element={<DocumentsPage />} />
+                        {/* ========== DOCUMENTS (Omni-Kinetic) ========== */}
+                        <Route path="/documents" element={<DocumentsPage />} />
 
-         {/* ========== QUIZZES (Protocol: Crucible) ========== */}
-         <Route path="/quizzes" element={<QuizzesPage />} />
-         <Route path="/quizzes/:quizId/take" element={<QuizTakePage />} />
+                        {/* ========== QUIZZES (Protocol: Crucible) ========== */}
+                        <Route path="/quizzes" element={<QuizzesPage />} />
+                        <Route path="/quizzes/:quizId/take" element={<QuizTakePage />} />
 
-         {/* ========== STUDY (Unified Hub) ========== */}
-         <Route path="/study" element={<StudyPage />} />
+                        {/* ========== STUDY (Unified Hub) ========== */}
+                        <Route path="/study" element={<StudyPage />} />
 
-         {/* ========== CHAT (Oracle) ========== */}
-         <Route path="/chat" element={<ChatPage />} />
-         <Route path="/chat/:sessionId" element={<ChatPage />} />
+                        {/* ========== CHAT (Oracle) ========== */}
+                        <Route path="/chat" element={<ChatPage />} />
+                        <Route path="/chat/:sessionId" element={<ChatPage />} />
 
-         {/* ========== ANALYTICS (Redirects to Dashboard) ========== */}
-         {/* Analytics is now integrated into the dashboard as tabs */}
-         <Route path="/analytics" element={<Navigate to="/dashboard" replace />} />
-         </Route>
+                        {/* ========== ANALYTICS (Redirects to Dashboard) ========== */}
+                        {/* Analytics is now integrated into the dashboard as tabs */}
+                        <Route path="/analytics" element={<Navigate to="/dashboard" replace />} />
+                    </Route>
 
-         {/* ==================== 404 FALLBACK ==================== */}
-         <Route path="*" element={<NotFoundPage />} />
-         </Routes>
-         </BrowserRouter>
-     );
- }
+                    {/* ==================== 404 FALLBACK ==================== */}
+                    <Route path="*" element={<NotFoundPage />} />
+                </Routes>
+            </Suspense>
+        </BrowserRouter>
+    );
+}

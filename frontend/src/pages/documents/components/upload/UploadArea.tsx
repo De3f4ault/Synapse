@@ -20,29 +20,29 @@ export const UploadArea: React.FC<UploadAreaProps> = ({
 }) => {
     return (
         <div
-        {...getRootProps()}
-        className={cn(
-            'flex items-center gap-3 bg-black/40 rounded-xl px-4 py-3 border transition-colors cursor-pointer',
-            isDragActive
-            ? 'border-cyan-500/50 bg-cyan-500/10'
-            : 'border-white/10 hover:border-cyan-500/30'
-        )}
+            {...getRootProps()}
+            className={cn(
+                'flex items-center gap-3 synapse-surface hover:border-cyan-500/50 hover:bg-cyan-500/5 transition-all cursor-pointer border-dashed',
+                isDragActive
+                    ? 'border-cyan-500 bg-cyan-500/10'
+                    : 'border-white/10'
+            )}
         >
-        <input {...getInputProps()} />
-        <Upload className="text-cyan-400 w-4 h-4 flex-shrink-0" />
-        <span className="flex-1 text-sm text-slate-300 font-mono uppercase">
-        {isDragActive ? 'Drop files here...' : 'Click or drag files to upload'}
-        </span>
-        <button
-        type="button"
-        onClick={(e) => {
-            e.stopPropagation();
-            onCancel();
-        }}
-        className="text-[10px] text-slate-400 hover:text-white px-2"
-        >
-        CANCEL
-        </button>
+            <input {...getInputProps()} />
+            <Upload className="text-cyan-400 w-4 h-4 flex-shrink-0" />
+            <span className="flex-1 text-sm text-slate-300 font-mono uppercase">
+                {isDragActive ? 'Drop files here...' : 'Click or drag files to upload'}
+            </span>
+            <button
+                type="button"
+                onClick={(e) => {
+                    e.stopPropagation();
+                    onCancel();
+                }}
+                className="text-[10px] text-slate-400 hover:text-white px-2"
+            >
+                CANCEL
+            </button>
         </div>
     );
 };

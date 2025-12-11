@@ -1,5 +1,5 @@
-import { useState, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useCallback, forwardRef, useImperativeHandle } from 'react';
+import { motion } from 'framer-motion';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
     getMessagesApiV1ChatSessionsSessionIdMessagesGet,
@@ -7,79 +7,73 @@ import {
 } from '@/api/generated';
 import { MessageList } from './MessageList';
 import { MessageInput } from './MessageInput';
-import { ContextPanel } from './ContextPanel';
 import { useChatWebSocket } from '../hooks/useChatWebSocket';
 import { useStreamingMessage } from '../hooks/useStreamingMessage';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
 import { queryKeys } from '@/lib/queryKeys';
 import { cn } from '@/lib/utils';
-import { PanelRightOpen, PanelRightClose, Wifi, WifiOff, Sparkles } from 'lucide-react';
-import type { ChatMessageResponse, ChatSessionResponse, DocumentResponse } from '@/api/generated';
+import type { ChatMessageResponse, ChatSessionResponse } from '@/api/generated';
 
 /**
- * Enhanced ChatInterface Component
- *
- * Improvements per documentation:
- * - Enhanced streaming UI with better indicators
- * - Smooth animations for panel transitions
- * - Better connection status display
- * - Improved message handling with optimistic updates
- * - Enhanced context panel integration
- * - Better error handling and user feedback
+ * Enhanced ChatInterface
+ * 
+ * A unified chat component that fits into the NotebookLM-style layout.
+ * Focuses on message display and input, delegating layout control to the parent pages.
  */
 
 interface ChatInterfaceProps {
-    session: ChatSessionResponse;
-    document?: DocumentResponse | null;
-    userName?: string;
-    useWebSocket?: boolean;
+    sessionId: number;
+    initialMessages?: ChatMessageResponse[];
     className?: string;
+    onMessageSent?: () => void;
+    emptyStateComponent?: React.ReactNode;
 }
 
-export function ChatInterface({
-    session,
-    document,
-    userName,
-    useWebSocket = true,
+export interface ChatInterfaceHandle {
+    sendMessage: (content: string) => void;
+}
+
+export const ChatInterface = forwardRef<ChatInterfaceHandle, ChatInterfaceProps>(({
+    sessionId,
+    initialMessages = [],
     className,
-}: ChatInterfaceProps) {
+    onMessageSent,
+    emptyStateComponent,
+}, ref) => {
     const queryClient = useQueryClient();
-    const [showContext, setShowContext] = useState(!!document);
     const [isTyping, setIsTyping] = useState(false);
 
-    // Fetch existing messages
-    const { data: messages = [], isLoading: messagesLoading } = useQuery({
-        queryKey: queryKeys.chat.messages(session.id.toString()),
-                                                                         queryFn: () =>
-                                                                         getMessagesApiV1ChatSessionsSessionIdMessagesGet({ sessionId: session.id }),
+    // Fetch messages if not provided or to keep fresh
+    const { data: messages = initialMessages, isLoading: messagesLoading } = useQuery({
+        queryKey: queryKeys.chat.messages(sessionId),
+        queryFn: () => getMessagesApiV1ChatSessionsSessionIdMessagesGet({ sessionId }),
+        enabled: !!sessionId,
+        initialData: initialMessages.length > 0 ? initialMessages : undefined,
     });
 
-    // Streaming message state
+    // Streaming state
     const streaming = useStreamingMessage({
         onComplete: () => {
-            // Refetch messages when streaming completes to get the persisted message
             queryClient.invalidateQueries({
-                queryKey: queryKeys.chat.messages(session.id.toString()),
+                queryKey: queryKeys.chat.messages(sessionId),
             });
         },
     });
 
-    // WebSocket connection (for streaming)
+    // WebSocket
     const ws = useChatWebSocket({
-        sessionId: session.id,
+        sessionId,
         onMessage: (message) => {
             queryClient.setQueryData<ChatMessageResponse[]>(
-                queryKeys.chat.messages(session.id.toString()),
-                                                            (old = []) => [...old, message]
+                queryKeys.chat.messages(sessionId),
+                (old = []) => [...old, message]
             );
             setIsTyping(false);
         },
         onChunk: streaming.handleChunk,
         onError: (error) => {
             toast({
-                title: 'Chat Error',
+                title: 'Connection Error',
                 description: error,
                 variant: 'destructive',
             });
@@ -88,46 +82,46 @@ export function ChatInterface({
         },
     });
 
-    // Non-streaming mutation (fallback)
+    // Fallback REST Mutation
     const sendMutation = useMutation({
         mutationFn: (content: string) =>
-        sendMessageApiV1ChatSessionsSessionIdMessagesPost({
-            sessionId: session.id,
-            requestBody: { content },
-        }),
+            sendMessageApiV1ChatSessionsSessionIdMessagesPost({
+                sessionId,
+                requestBody: { content },
+            }),
         onMutate: async (content) => {
-            // Optimistically add user message
             const userMessage: ChatMessageResponse = {
                 id: Date.now(),
-                                     session_id: session.id,
-                                     role: 'user',
-                                     content,
-                                     tokens: 0,
-                                     model_used: null,
-                                     created_at: new Date().toISOString(),
+                session_id: sessionId,
+                role: 'user',
+                content,
+                tokens: 0,
+                model_used: null,
+                created_at: new Date().toISOString(),
             };
 
+            // Optimistic update
             queryClient.setQueryData<ChatMessageResponse[]>(
-                queryKeys.chat.messages(session.id.toString()),
-                                                            (old = []) => [...old, userMessage]
+                queryKeys.chat.messages(sessionId),
+                (old = []) => [...old, userMessage]
             );
 
             setIsTyping(true);
             return { userMessage };
         },
         onSuccess: (response) => {
-            // Add AI response
             queryClient.setQueryData<ChatMessageResponse[]>(
-                queryKeys.chat.messages(session.id.toString()),
-                                                            (old = []) => [...old, response]
+                queryKeys.chat.messages(sessionId),
+                (old = []) => [...old, response]
             );
             setIsTyping(false);
+            onMessageSent?.();
         },
         onError: (error) => {
             toast({
-                title: 'Failed to send message',
+                title: 'Failed to send',
                 description: String(error),
-                  variant: 'destructive',
+                variant: 'destructive',
             });
             setIsTyping(false);
         },
@@ -135,167 +129,126 @@ export function ChatInterface({
 
     const handleSendMessage = useCallback(
         (content: string) => {
-            if (useWebSocket && ws.isConnected) {
-                // Add user message optimistically
+            if (ws.isConnected) {
+                // Optimistic UI for WS
                 const userMessage: ChatMessageResponse = {
                     id: Date.now(),
-                                          session_id: session.id,
-                                          role: 'user',
-                                          content,
-                                          tokens: 0,
-                                          model_used: null,
-                                          created_at: new Date().toISOString(),
+                    session_id: sessionId,
+                    role: 'user',
+                    content,
+                    tokens: 0,
+                    model_used: null,
+                    created_at: new Date().toISOString(),
                 };
 
                 queryClient.setQueryData<ChatMessageResponse[]>(
-                    queryKeys.chat.messages(session.id.toString()),
-                                                                (old = []) => [...old, userMessage]
+                    queryKeys.chat.messages(sessionId),
+                    (old = []) => [...old, userMessage]
                 );
 
                 ws.sendMessage(content);
                 streaming.startStreaming();
             } else {
-                // Use REST API
                 sendMutation.mutate(content);
             }
         },
-        [useWebSocket, ws, session.id, queryClient, streaming, sendMutation]
+        [ws, sessionId, queryClient, streaming, sendMutation]
     );
+
+    useImperativeHandle(ref, () => ({
+        sendMessage: handleSendMessage
+    }));
 
     const isLoading = sendMutation.isPending || isTyping;
 
+    const [variant, setVariant] = useState<'default' | 'centered'>('default');
+
+    // Determine if we should show the centered layout
+    const showCenteredInput = messages.length === 0 && !isTyping && !messagesLoading;
+
     return (
-        <div className={cn('flex h-full', className)}>
-        {/* Main chat area */}
-        <motion.div
-        className="flex flex-1 flex-col"
-        layout
-        transition={{ duration: 0.3, ease: 'easeInOut' }}
-        >
-        {/* Header with animations */}
-        <motion.div
-        className="flex items-center justify-between border-b px-4 py-3 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60"
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-        >
-        <div>
-        <h2 className="font-semibold flex items-center gap-2">
-        {session.title}
-        {document && (
-            <Badge variant="secondary" className="text-xs">
-            <Sparkles className="h-3 w-3 mr-1" />
-            Context-Aware
-            </Badge>
-        )}
-        </h2>
-        <p className="text-xs text-muted-foreground">
-        {session.message_count} messages
-        </p>
-        </div>
-        <div className="flex items-center gap-2">
-        {/* Enhanced connection status */}
-        {useWebSocket && (
-            <motion.div
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 0.2 }}
-            >
-            <Badge
-            variant={ws.isConnected ? 'default' : 'secondary'}
-            className={cn(
-                'gap-1 transition-colors',
-                ws.isConnected && 'bg-green-600 hover:bg-green-700'
+        <div className={cn('flex flex-col h-full overflow-hidden relative', className)}>
+            {/* Messages Area OR Centered Input Container */}
+            <div className="flex-1 overflow-hidden relative flex flex-col">
+                <MessageList
+                    messages={messages}
+                    streamingContent={streaming.content}
+                    isStreaming={streaming.isStreaming}
+                    isLoading={messagesLoading}
+                    isTyping={isTyping && !streaming.isStreaming}
+                    className="flex-1 px-4 md:px-8 py-6"
+                    // Hide empty state if we are doing the centered input trick, as the input ITSELF is the empty state
+                    emptyState={showCenteredInput ? <div /> : emptyStateComponent}
+                />
+
+                {/* CENTERED INPUT MODE (DeepSeek Style) */}
+                {showCenteredInput && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center p-4 z-20 pointer-events-none">
+                        <div className="w-full max-w-2xl pointer-events-auto space-y-8">
+                            {/* Brand / Greeting */}
+                            <motion.div
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                className="text-center space-y-6"
+                            >
+                                <div className="relative w-16 h-16 mx-auto">
+                                    <div className="absolute inset-0 rounded-full bg-[var(--synapse-cyan)]/20 blur-xl animate-pulse" />
+                                    <div className="relative bg-black/40 border border-white/10 p-3.5 rounded-2xl shadow-2xl backdrop-blur-sm">
+                                        {/* Minimal Brand Icon */}
+                                        <svg viewBox="0 0 24 24" fill="none" className="w-full h-full text-[var(--synapse-cyan)]" stroke="currentColor" strokeWidth="2">
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                        </svg>
+                                    </div>
+                                </div>
+                                <h2 className="text-2xl font-semibold text-white tracking-tight">
+                                    How can I help you learn?
+                                </h2>
+                            </motion.div>
+
+                            {/* The Main Input */}
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.95 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                transition={{ delay: 0.1 }}
+                            >
+                                <MessageInput
+                                    onSend={handleSendMessage}
+                                    disabled={!ws.isConnected && false}
+                                    isLoading={isLoading || streaming.isStreaming}
+                                    className="shadow-2xl border-white/10"
+                                    placeholder="Ask anything about your documents..."
+                                />
+                            </motion.div>
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {/* BOTTOM INPUT AREA (Standard Mode) */}
+            {/* Only show if NOT in centered mode */}
+            {/* BOTTOM INPUT AREA (Standard Mode) */}
+            {/* Only show if NOT in centered mode */}
+            {!showCenteredInput && (
+                <div className="flex-none p-4 md:p-6 pb-8 border-t border-white/5 bg-[#020202]/80 backdrop-blur-xl z-20 relative">
+                    <div className="max-w-4xl mx-auto w-full relative">
+                        <MessageInput
+                            onSend={handleSendMessage}
+                            disabled={!ws.isConnected && false}
+                            isLoading={isLoading || streaming.isStreaming}
+                            className="shadow-[var(--synapse-shadow-lg)]"
+                            placeholder="Ask anything about your documents..."
+                        />
+
+                        {/* Connection Status Indicator */}
+                        <div className="absolute -bottom-6 right-2 flex items-center gap-1.5 opacity-40 text-[10px] uppercase tracking-widest text-[var(--synapse-text-tertiary)] hover:opacity-100 transition-opacity">
+                            <div className={cn("w-1.5 h-1.5 rounded-full transition-colors", ws.isConnected ? "bg-[var(--synapse-cyan)] shadow-[0_0_5px_var(--synapse-cyan)]" : "bg-red-500 shadow-[0_0_5px_red]")} />
+                            {ws.isConnected ? "Synced to Neural Core" : "Reconnecting Neural Link..."}
+                        </div>
+                    </div>
+                </div>
             )}
-            >
-            {ws.isConnected ? (
-                <>
-                <motion.div
-                animate={{ scale: [1, 1.2, 1] }}
-                transition={{
-                    duration: 2,
-                    repeat: Infinity,
-                    ease: 'easeInOut',
-                }}
-                >
-                <Wifi className="h-3 w-3" />
-                </motion.div>
-                Live
-                </>
-            ) : (
-                <>
-                <WifiOff className="h-3 w-3" />
-                Offline
-                </>
-            )}
-            </Badge>
-            </motion.div>
-        )}
-        {/* Toggle context panel with animation */}
-        <motion.div
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-        >
-        <Button
-        variant="ghost"
-        size="icon"
-        onClick={() => setShowContext(!showContext)}
-        >
-        <motion.div
-        animate={{ rotate: showContext ? 180 : 0 }}
-        transition={{ duration: 0.3 }}
-        >
-        {showContext ? (
-            <PanelRightClose className="h-5 w-5" />
-        ) : (
-            <PanelRightOpen className="h-5 w-5" />
-        )}
-        </motion.div>
-        </Button>
-        </motion.div>
-        </div>
-        </motion.div>
-
-        {/* Messages with fade-in animation */}
-        <MessageList
-        messages={messages}
-        streamingContent={streaming.content}
-        isStreaming={streaming.isStreaming}
-        isLoading={messagesLoading}
-        isTyping={isTyping && !streaming.isStreaming}
-        userName={userName}
-        className="flex-1"
-        />
-
-        {/* Input */}
-        <MessageInput
-        onSend={handleSendMessage}
-        disabled={!ws.isConnected && useWebSocket}
-        isLoading={isLoading || streaming.isStreaming}
-        />
-        </motion.div>
-
-        {/* Context panel with slide animation */}
-        <AnimatePresence mode="wait">
-        {showContext && (
-            <motion.div
-            initial={{ width: 0, opacity: 0 }}
-            animate={{ width: 320, opacity: 1 }}
-            exit={{ width: 0, opacity: 0 }}
-            transition={{ duration: 0.3, ease: 'easeInOut' }}
-            className="overflow-hidden"
-            >
-            <ContextPanel
-            document={document}
-            isOpen={showContext}
-            onClose={() => setShowContext(false)}
-            className="border-l h-full"
-            />
-            </motion.div>
-        )}
-        </AnimatePresence>
         </div>
     );
-}
+});
 
 export default ChatInterface;

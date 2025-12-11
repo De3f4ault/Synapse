@@ -1,19 +1,13 @@
 /**
  * StudySession - Main study session component
- *
- * Fixed version with proper hook integration
  */
 
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
-import { Badge } from '@/components/ui/badge';
-import { X, Brain, FileQuestion, BookOpen } from 'lucide-react';
+import { X, Brain, FileQuestion, BookOpen, Clock, Play } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useStudySession } from '../../hooks/useStudySession';
 import { SessionTimer } from './SessionTimer';
-import { SessionControls } from './SessionControls';
-import type { StudyItem, StudySessionResponse } from '../../types/study.types';
+import type { StudyItem, StudySessionResponse, StudySessionType } from '../../types/study.types';
+import { cn } from '@/lib/utils';
 
 interface StudySessionProps {
     items: StudyItem[];
@@ -57,190 +51,216 @@ export function StudySession({
 
         return (
             <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="flex flex-col items-center justify-center p-8 h-full min-h-[400px]"
             >
-            <Card>
-            <CardHeader>
-            <div className="text-center">
-            <h2 className="text-2xl font-bold mb-2">Session Complete! 🎉</h2>
-            <p className="text-muted-foreground">
-            Great work! Here's how you did:
-            </p>
-            </div>
-            </CardHeader>
-            <CardContent className="space-y-6">
-            {/* Stats Display */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="text-center p-4 bg-secondary rounded-lg">
-            <p className="text-2xl font-bold">{session.stats.completedItems}</p>
-            <p className="text-sm text-muted-foreground">Items Completed</p>
-            </div>
-            <div className="text-center p-4 bg-secondary rounded-lg">
-            <p className="text-2xl font-bold">{session.stats.correctItems}</p>
-            <p className="text-sm text-muted-foreground">Correct</p>
-            </div>
-            <div className="text-center p-4 bg-secondary rounded-lg">
-            <p className="text-2xl font-bold">{Math.round(session.stats.accuracy)}%</p>
-            <p className="text-sm text-muted-foreground">Accuracy</p>
-            </div>
-            <div className="text-center p-4 bg-secondary rounded-lg">
-            <p className="text-2xl font-bold">{Math.floor(session.stats.timeSpent / 60)}m</p>
-            <p className="text-sm text-muted-foreground">Time Spent</p>
-            </div>
-            </div>
+                <div className="text-center mb-8">
+                    <div className="w-16 h-16 mx-auto bg-green-500/10 rounded-full flex items-center justify-center border border-green-500/20 mb-4">
+                        <Trophy size={32} className="text-green-400" />
+                    </div>
+                    <h2 className="text-3xl font-bold text-white mb-2">Session Complete!</h2>
+                    <p className="text-slate-400">Great work maintaining your momentum.</p>
+                </div>
 
-            <div className="flex gap-3 justify-center">
-            <Button
-            variant="outline"
-            onClick={() => onComplete(sessionResponse)}
-            >
-            Back to Study
-            </Button>
-            <Button onClick={() => onComplete(sessionResponse)}>
-            View Analytics
-            </Button>
-            </div>
-            </CardContent>
-            </Card>
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 w-full max-w-2xl mb-8">
+                    <StatCard label="Completed" value={session.stats.completedItems} color="blue" />
+                    <StatCard label="Correct" value={session.stats.correctItems} color="green" />
+                    <StatCard label="Accuracy" value={Math.round(session.stats.accuracy) + '%'} color="purple" />
+                    <StatCard label="Time" value={Math.floor(session.stats.timeSpent / 60) + 'm'} color="cyan" />
+                </div>
+
+                <div className="flex gap-4">
+                    <button
+                        onClick={() => onComplete(sessionResponse)}
+                        className="synapse-button"
+                    >
+                        Back to Hub
+                    </button>
+                    <button
+                        onClick={() => onComplete(sessionResponse)}
+                        className="synapse-button-primary synapse-button"
+                    >
+                        View Analytics
+                    </button>
+                </div>
             </motion.div>
         );
     }
 
     if (!currentItem) {
-        return <div className="text-center">Loading session...</div>;
+        return (
+            <div className="flex items-center justify-center h-full min-h-[400px]">
+                <div className="flex flex-col items-center gap-4">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-500" />
+                    <p className="text-slate-400 uppercase tracking-widest text-xs">Initializing Session...</p>
+                </div>
+            </div>
+        );
     }
 
     const Icon = getItemIcon(currentItem.type);
 
     return (
-        <div className="space-y-6">
-        {/* Header with timer and cancel */}
-        <div className="flex items-center justify-between">
-        <SessionTimer
-        elapsedTime={elapsedTime}
-        isPaused={session.status === 'paused'}
-        onPause={pauseSession}
-        onResume={resumeSession}
-        />
-        <Button
-        variant="ghost"
-        size="sm"
-        onClick={() => {
-            if (confirm('Cancel this session? Progress will be lost.')) {
-                cancelSession();
-                onCancel();
-            }
-        }}
-        >
-        <X className="h-4 w-4 mr-2" />
-        Cancel
-        </Button>
-        </div>
+        <div className="relative h-full flex flex-col p-6">
+            {/* Header with timer and cancel */}
+            <div className="flex items-center justify-between mb-8">
+                <SessionTimer
+                    elapsedTime={elapsedTime}
+                    isPaused={session.status === 'paused'}
+                    onPause={pauseSession}
+                    onResume={resumeSession}
+                />
+                <button
+                    onClick={() => {
+                        if (confirm('Cancel this session? Progress will be lost.')) {
+                            cancelSession();
+                            onCancel();
+                        }
+                    }}
+                    className="text-slate-500 hover:text-red-400 transition-colors"
+                >
+                    <X className="h-5 w-5" />
+                </button>
+            </div>
 
-        {/* Progress */}
-        <div className="space-y-2">
-        <div className="flex justify-between text-sm">
-        <span className="text-muted-foreground">
-        Item {session.currentIndex + 1} of {items.length}
-        </span>
-        <span className="font-medium">{Math.round(progress)}%</span>
-        </div>
-        <Progress value={progress} className="h-2" />
-        </div>
+            {/* Content Area */}
+            <AnimatePresence mode="wait">
+                <motion.div
+                    key={currentItem.id}
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    transition={{ duration: 0.3 }}
+                    className="flex-1 flex flex-col max-w-3xl mx-auto w-full"
+                >
+                    {/* Progress Bar */}
+                    <div className="mb-6">
+                        <div className="flex justify-between text-xs text-slate-500 mb-2 font-mono uppercase tracking-wider">
+                            <span>Item {session.currentIndex + 1} / {items.length}</span>
+                            <span>{Math.round(progress)}%</span>
+                        </div>
+                        <div className="h-1 bg-white/5 rounded-full overflow-hidden">
+                            <motion.div
+                                className="h-full bg-cyan-500"
+                                initial={{ width: 0 }}
+                                animate={{ width: `${progress}%` }}
+                                transition={{ duration: 0.5 }}
+                            />
+                        </div>
+                    </div>
 
-        {/* Current Item Card */}
-        <AnimatePresence mode="wait">
-        <motion.div
-        key={currentItem.id}
-        initial={{ opacity: 0, x: 50 }}
-        animate={{ opacity: 1, x: 0 }}
-        exit={{ opacity: 0, x: -50 }}
-        transition={{ duration: 0.3 }}
-        >
-        <Card className="border-2">
-        <CardContent className="pt-8 pb-8 space-y-6">
-        {/* Item Header */}
-        <div className="flex items-start gap-4">
-        <div className="p-3 rounded-lg bg-primary/10">
-        <Icon className="h-6 w-6 text-primary" />
-        </div>
-        <div className="flex-1">
-        <div className="flex items-center gap-2 mb-2">
-        <Badge variant="outline" className="capitalize">
-        {currentItem.type}
-        </Badge>
-        {currentItem.difficulty && (
-            <Badge variant="secondary">
-            Level {currentItem.difficulty}/5
-            </Badge>
-        )}
-        </div>
-        <h3 className="text-2xl font-bold">{currentItem.title}</h3>
-        </div>
-        </div>
+                    {/* Card Container */}
+                    <div className="bg-[#0A0A0A] border border-white/10 rounded-2xl p-8 shadow-2xl relative overflow-hidden flex-1 min-h-[300px] flex flex-col">
+                        {/* Type Indicator */}
+                        <div className="flex items-start justify-between mb-6">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2.5 bg-white/5 rounded-lg border border-white/5 text-cyan-400">
+                                    <Icon size={20} />
+                                </div>
+                                <div>
+                                    <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                                        {currentItem.type}
+                                    </div>
+                                    <div className="text-lg font-bold text-white line-clamp-1">
+                                        {currentItem.title}
+                                    </div>
+                                </div>
+                            </div>
+                            {currentItem.difficulty && (
+                                <div className={cn(
+                                    "px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider border",
+                                    "bg-white/5 border-white/10 text-slate-400"
+                                )}>
+                                    Level {currentItem.difficulty}
+                                </div>
+                            )}
+                        </div>
 
-        {/* Item Content - Placeholder for actual implementation */}
-        <div className="p-6 bg-secondary/30 rounded-lg min-h-[200px] flex items-center justify-center">
-        <p className="text-muted-foreground text-center">
-        [Item content would appear here]
-        <br />
-        <span className="text-xs mt-2 block">
-        Render flashcard front/back or quiz question based on type
-        </span>
-        </p>
-        </div>
+                        {/* Content Placeholder */}
+                        <div className="flex-1 flex flex-col items-center justify-center p-8 border border-dashed border-white/10 rounded-xl bg-white/[0.02] mb-6">
+                            <BookOpen className="w-12 h-12 text-slate-700 mb-4 opacity-50" />
+                            <p className="text-slate-500 text-center text-sm max-w-md">
+                                Content for this item would be rendered here.
+                                <br />
+                                <span className="text-xs opacity-50 mt-1 block">
+                                    (Flashcard Front/Back, Quiz Question, etc.)
+                                </span>
+                            </p>
+                        </div>
 
-        {/* Stats */}
-        <div className="flex justify-between text-sm text-muted-foreground border-t pt-4">
-        <div>
-        Streak: <span className="font-bold text-foreground">{session.stats.streak}</span>
-        </div>
-        <div>
-        Accuracy: <span className="font-bold text-foreground">{Math.round(session.stats.accuracy)}%</span>
-        </div>
-        <div>
-        Completed: <span className="font-bold text-foreground">
-        {session.stats.completedItems}/{session.stats.totalItems}
-        </span>
-        </div>
-        </div>
-        </CardContent>
-        </Card>
-        </motion.div>
-        </AnimatePresence>
+                        {/* Session Controls */}
+                        <div className="grid grid-cols-2 gap-4">
+                            <button
+                                onClick={() => handleSkip()}
+                                className="synapse-button justify-center py-4"
+                                disabled={session.status === 'paused'}
+                            >
+                                Skip Item
+                            </button>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => handleAnswer(false)}
+                                    className="flex-1 synapse-button hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/30 justify-center py-4 text-xs"
+                                    disabled={session.status === 'paused'}
+                                >
+                                    Incorrect
+                                </button>
+                                <button
+                                    onClick={() => handleAnswer(true)}
+                                    className="flex-1 synapse-button-primary justify-center py-4 flex items-center gap-2"
+                                    disabled={session.status === 'paused'}
+                                >
+                                    Correct
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </motion.div>
+            </AnimatePresence>
 
-        {/* Controls */}
-        <SessionControls
-        onCorrect={() => handleAnswer(true)}
-        onIncorrect={() => handleAnswer(false)}
-        onSkip={handleSkip}
-        disabled={session.status === 'paused'}
-        />
+            {/* Pause Overlay */}
+            <AnimatePresence>
+                {session.status === 'paused' && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="absolute inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center rounded-2xl"
+                    >
+                        <div className="text-center p-8">
+                            <div className="w-16 h-16 mx-auto bg-white/5 rounded-full flex items-center justify-center border border-white/10 mb-4 animate-pulse">
+                                <Clock size={32} className="text-white" />
+                            </div>
+                            <h3 className="text-2xl font-bold text-white mb-2">Session Paused</h3>
+                            <p className="text-slate-400 text-sm mb-6">Timer stopped. Ready when you are.</p>
+                            <button
+                                onClick={resumeSession}
+                                className="synapse-button-primary synapse-button px-8"
+                            >
+                                <Play size={16} fill="currentColor" className="mr-2" />
+                                Resume
+                            </button>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </div>
+    );
+}
 
-        {/* Pause overlay */}
-        <AnimatePresence>
-        {session.status === 'paused' && (
-            <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50"
-            >
-            <Card className="max-w-md">
-            <CardContent className="pt-6 text-center space-y-4">
-            <h3 className="text-xl font-bold">Session Paused</h3>
-            <p className="text-muted-foreground">
-            Take a break. Resume when you're ready.
-            </p>
-            <Button onClick={resumeSession} size="lg">
-            Resume Session
-            </Button>
-            </CardContent>
-            </Card>
-            </motion.div>
-        )}
-        </AnimatePresence>
+function StatCard({ label, value, color }: { label: string, value: string | number, color: string }) {
+    const colors = {
+        blue: 'text-blue-400 shadow-blue-500/20',
+        green: 'text-emerald-400 shadow-emerald-500/20',
+        purple: 'text-purple-400 shadow-purple-500/20',
+        cyan: 'text-cyan-400 shadow-cyan-500/20',
+    } as any;
+
+    return (
+        <div className="p-4 rounded-xl bg-white/5 border border-white/5 text-center">
+            <div className={cn("text-2xl font-bold mb-1", colors[color])}>{value}</div>
+            <div className="text-[10px] text-slate-500 uppercase tracking-wider">{label}</div>
         </div>
     );
 }
@@ -253,3 +273,6 @@ function getItemIcon(type: string) {
     };
     return icons[type as keyof typeof icons] || BookOpen;
 }
+
+// Import Trophy separately or add to imports
+import { Trophy } from 'lucide-react';

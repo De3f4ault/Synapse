@@ -33,61 +33,61 @@ export function WelcomeCard({ overview, userName = 'there' }: WelcomeCardProps) 
 
   return (
     <motion.div
-    initial={{ opacity: 0, y: -10 }}
-    animate={{ opacity: 1, y: 0 }}
-    className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-purple-500/10 via-cyan-500/5 to-transparent border border-white/10 p-6"
+      initial={{ opacity: 0, y: -10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="synapse-panel p-6 relative overflow-hidden"
     >
-    {/* Background decoration */}
-    <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/5 rounded-full blur-3xl" />
+      {/* Background decoration */}
+      <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/5 rounded-full blur-3xl" />
 
-    <div className="relative z-10 space-y-4">
-    {/* Greeting */}
-    <div>
-    <h2 className="text-2xl font-bold text-white mb-1">
-    {getGreeting()}, {userName}
-    </h2>
-    <p className="text-sm text-slate-400">{getMotivation()}</p>
-    </div>
+      <div className="relative z-10 space-y-4">
+        {/* Greeting */}
+        <div>
+          <h2 className="text-2xl font-bold text-white mb-1">
+            {getGreeting()}, {userName}
+          </h2>
+          <p className="text-sm text-slate-400">{getMotivation()}</p>
+        </div>
 
-    {/* Stats Grid */}
-    <div className="grid grid-cols-3 gap-3">
-    {/* Streak */}
-    <div className="flex items-center gap-2 p-3 rounded-lg bg-white/5 border border-white/5">
-    <div className={cn(
-      "w-8 h-8 rounded-full flex items-center justify-center",
-      streak > 0 ? "bg-orange-500/20 border border-orange-500/30" : "bg-slate-500/20 border border-slate-500/30"
-    )}>
-    <Flame className={cn("w-4 h-4", streak > 0 ? "text-orange-400" : "text-slate-500")} />
-    </div>
-    <div>
-    <p className="text-xs text-slate-500 uppercase tracking-wide">Streak</p>
-    <p className="text-lg font-bold text-white">{streak}d</p>
-    </div>
-    </div>
+        {/* Stats Grid */}
+        <div className="grid grid-cols-3 gap-3">
+          {/* Streak */}
+          <div className="flex items-center gap-2 p-3 rounded-lg bg-white/5 border border-white/5">
+            <div className={cn(
+              "w-8 h-8 rounded-full flex items-center justify-center",
+              streak > 0 ? "bg-orange-500/20 text-orange-400 shadow-[0_0_15px_rgba(249,115,22,0.2)]" : "bg-slate-800 text-slate-500"
+            )}>
+              <Flame className="w-4 h-4" />
+            </div>
+            <div>
+              <p className="text-xs text-slate-500 uppercase tracking-wide">Streak</p>
+              <p className="text-lg font-bold text-white">{streak}d</p>
+            </div>
+          </div>
 
-    {/* Today's Reviews */}
-    <div className="flex items-center gap-2 p-3 rounded-lg bg-white/5 border border-white/5">
-    <div className="w-8 h-8 rounded-full bg-cyan-500/20 border border-cyan-500/30 flex items-center justify-center">
-    <TrendingUp className="w-4 h-4 text-cyan-400" />
-    </div>
-    <div>
-    <p className="text-xs text-slate-500 uppercase tracking-wide">Today</p>
-    <p className="text-lg font-bold text-white">{reviewsToday}</p>
-    </div>
-    </div>
+          {/* Today's Reviews */}
+          <div className="flex items-center gap-2 p-3 rounded-lg bg-white/5 border border-white/5 hover:bg-white/10 transition-colors">
+            <div className="w-8 h-8 rounded-full bg-cyan-500/20 text-cyan-400 flex items-center justify-center">
+              <TrendingUp className="w-4 h-4" />
+            </div>
+            <div>
+              <p className="text-xs text-slate-500 uppercase tracking-wide">Today</p>
+              <p className="text-lg font-bold text-white">{reviewsToday}</p>
+            </div>
+          </div>
 
-    {/* Total Cards */}
-    <div className="flex items-center gap-2 p-3 rounded-lg bg-white/5 border border-white/5">
-    <div className="w-8 h-8 rounded-full bg-purple-500/20 border border-purple-500/30 flex items-center justify-center">
-    <Calendar className="w-4 h-4 text-purple-400" />
-    </div>
-    <div>
-    <p className="text-xs text-slate-500 uppercase tracking-wide">Cards</p>
-    <p className="text-lg font-bold text-white">{overview?.total_cards || 0}</p>
-    </div>
-    </div>
-    </div>
-    </div>
+          {/* Total Cards */}
+          <div className="flex items-center gap-2 p-3 rounded-lg bg-white/5 border border-white/5 hover:bg-white/10 transition-colors">
+            <div className="w-8 h-8 rounded-full bg-purple-500/20 text-purple-400 flex items-center justify-center">
+              <Calendar className="w-4 h-4" />
+            </div>
+            <div>
+              <p className="text-xs text-slate-500 uppercase tracking-wide">Cards</p>
+              <p className="text-lg font-bold text-white">{overview?.total_cards || 0}</p>
+            </div>
+          </div>
+        </div>
+      </div>
     </motion.div>
   );
 }

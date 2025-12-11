@@ -152,13 +152,11 @@ export function NoteDetailPage() {
     // Loading state
     if (isLoading) {
         return (
-            <div className="h-screen w-screen bg-[#020408] flex items-center justify-center">
-            <div className="flex flex-col items-center">
-            <Loader2 className="h-12 w-12 animate-spin text-cyan-400 mb-4" />
-            <p className="text-xs font-mono text-cyan-500 tracking-widest uppercase">
-            Loading Fragment...
-            </p>
-            </div>
+            <div className="h-full flex flex-col items-center justify-center">
+                <Loader2 className="h-12 w-12 animate-spin text-cyan-400 mb-4" />
+                <p className="text-xs font-mono text-cyan-500 tracking-widest uppercase">
+                    Loading Note...
+                </p>
             </div>
         );
     }
@@ -166,121 +164,122 @@ export function NoteDetailPage() {
     // Error state
     if (error || !note) {
         return (
-            <div className="h-screen w-screen bg-[#020408] flex items-center justify-center">
-            <div className="flex flex-col items-center text-center max-w-md">
-            <AlertCircle className="h-16 w-16 text-red-400 mb-4" />
-            <h2 className="text-xl font-bold text-white mb-2">Fragment Not Found</h2>
-            <p className="text-slate-400 mb-6">
-            The requested neural fragment does not exist or has been archived.
-            </p>
-            <button
-            onClick={() => navigate('/notes')}
-            className="flex items-center gap-2 px-6 py-3 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 rounded-lg text-cyan-300 text-sm font-bold uppercase tracking-widest transition-all"
-            >
-            <ArrowLeft size={16} />
-            Return to Codex
-            </button>
-            </div>
+            <div className="h-full flex flex-col items-center justify-center text-center max-w-md mx-auto">
+                <AlertCircle className="h-16 w-16 text-red-400 mb-4" />
+                <h2 className="text-xl font-bold text-white mb-2">Note Not Found</h2>
+                <p className="text-slate-400 mb-6">
+                    The requested note does not exist or has been archived.
+                </p>
+                <button
+                    onClick={() => navigate('/notes')}
+                    className="synapse-button flex items-center gap-2"
+                >
+                    <ArrowLeft size={16} />
+                    Return to List
+                </button>
             </div>
         );
     }
 
     return (
-        <div className="relative w-full min-h-screen bg-[#020408] text-slate-200 font-sans overflow-hidden flex flex-col">
-        {/* Background Effects */}
-        <div className="absolute inset-0 z-0 opacity-10 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-overlay pointer-events-none" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900/30 via-[#020408] to-black opacity-70" />
-
-        {/* Header */}
-        <NoteHeader
-        title={localNote?.title || 'Untitled'}
-        hasUnsavedChanges={hasUnsavedChanges}
-        isSaving={isUpdating}
-        onAction={handleAction}
-        />
-
-        {/* Main Content Area */}
-        <div className="flex-1 relative z-10 overflow-y-auto custom-scrollbar">
-        <div className="max-w-4xl mx-auto px-8 py-12">
-        {/* Back Button */}
-        <button
-        onClick={() => navigate('/notes')}
-        className="mb-8 flex items-center gap-2 text-sm text-slate-500 hover:text-cyan-400 transition-colors group"
-        >
-        <ArrowLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
-        <span className="font-mono uppercase tracking-wider">Back to Codex</span>
-        </button>
-
-        {/* Editor / Preview */}
-        <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="mb-8"
-        >
-        {mode === 'edit' && localNote ? (
-            <NoteEditor
-            title={localNote.title}
-            content={localNote.content}
-            onTitleChange={updateTitle}
-            onContentChange={updateContent}
-            mode={mode}
-            textareaRef={textareaRef}
-            />
-        ) : (
-            <div className="space-y-6">
-            <h1 className="text-4xl md:text-5xl font-serif text-white font-bold tracking-tight">
-            {note.title || 'Untitled'}
-            </h1>
-            <div className="prose prose-invert prose-cyan max-w-none">
-            <MarkdownPreview content={note.content || ''} />
+        <div className="h-[calc(100vh-64px)] overflow-hidden flex flex-col relative">
+            {/* Header */}
+            <div className="shrink-0 bg-white/5 border-b border-white/5 p-4 flex items-center justify-between z-10">
+                <button
+                    onClick={() => navigate('/notes')}
+                    className="synapse-button flex items-center gap-2"
+                >
+                    <ArrowLeft size={16} />
+                    Back
+                </button>
+                <NoteHeader
+                    title={localNote?.title || 'Untitled'}
+                    hasUnsavedChanges={hasUnsavedChanges}
+                    isSaving={isUpdating}
+                    onAction={handleAction}
+                    simpleMode={true} // Assuming NoteHeader supports a simpler mode or we just rely on its props. I'll check NoteHeader later if needed, but for now passing existing props + maybe cleaning up its internal style via global CSS if it uses classes.
+                />
             </div>
+
+
+            {/* Main Content Area */}
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-8">
+                <div className="max-w-4xl mx-auto space-y-8">
+
+                    {/* Editor / Preview */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="synapse-panel p-8 min-h-[500px]"
+                    >
+                        {mode === 'edit' && localNote ? (
+                            <NoteEditor
+                                title={localNote.title}
+                                content={localNote.content}
+                                onTitleChange={updateTitle}
+                                onContentChange={updateContent}
+                                mode={mode}
+                                textareaRef={textareaRef}
+                            />
+                        ) : (
+                            <div className="space-y-6">
+                                <h1 className="text-4xl md:text-5xl font-bold text-white tracking-tight border-b border-white/10 pb-4">
+                                    {note.title || 'Untitled'}
+                                </h1>
+                                <div className="prose prose-invert prose-cyan max-w-none">
+                                    <MarkdownPreview content={note.content || ''} />
+                                </div>
+                            </div>
+                        )}
+                    </motion.div>
+
+                    {/* Tags & Metadata */}
+                    {localNote && (
+                        <div className="synapse-panel p-6">
+                            <NoteTags
+                                tags={localNote.tags || []}
+                                updatedAt={note.updated_at}
+                                isEditing={mode === 'edit'}
+                                onRemoveTag={removeTag}
+                            />
+                        </div>
+                    )}
+                </div>
             </div>
-        )}
-        </motion.div>
 
-        {/* Tags & Metadata */}
-        {localNote && (
-            <NoteTags
-            tags={localNote.tags || []}
-            updatedAt={note.updated_at}
-            isEditing={mode === 'edit'}
-            onRemoveTag={removeTag}
-            />
-        )}
-
-        {/* Spacer for toolbar */}
-        <div className="h-32" />
-        </div>
-        </div>
-
-        {/* Floating Toolbar */}
-        <EditorToolbar
-        mode={mode}
-        onAction={handleAction}
-        isProcessing={aiStatus.isProcessing}
-        hasUnsavedChanges={hasUnsavedChanges}
-        isSaving={isUpdating}
-        textareaRef={textareaRef}
-        />
-
-        {/* AI Processing Overlay */}
-        {aiStatus.isProcessing && (
-            <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm flex items-center justify-center"
-            >
-            <div className="bg-[#0a0c12] border border-cyan-500/30 rounded-xl p-8 flex flex-col items-center gap-4">
-            <Loader2 className="h-12 w-12 animate-spin text-cyan-400" />
-            <p className="text-sm font-mono text-cyan-400 uppercase tracking-widest">
-            {aiStatus.action === 'summarize' && 'Neural Synthesis In Progress...'}
-            {aiStatus.action === 'tags' && 'Analyzing Semantic Vectors...'}
-            {aiStatus.action === 'expand' && 'Expanding Thought Sequence...'}
-            {aiStatus.action === 'correct' && 'Optimizing Structure...'}
-            </p>
+            {/* Floating Toolbar (Botton) */}
+            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20">
+                <EditorToolbar
+                    mode={mode}
+                    onAction={handleAction}
+                    isProcessing={aiStatus.isProcessing}
+                    hasUnsavedChanges={hasUnsavedChanges}
+                    isSaving={isUpdating}
+                    textareaRef={textareaRef}
+                />
             </div>
-            </motion.div>
-        )}
+
+            {/* AI Processing Overlay */}
+            <AnimatePresence>
+                {aiStatus.isProcessing && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="absolute inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center"
+                    >
+                        <div className="synapse-panel p-8 flex flex-col items-center gap-4">
+                            <Loader2 className="h-10 w-10 animate-spin text-cyan-400" />
+                            <p className="text-sm font-mono text-cyan-400 uppercase tracking-widest">
+                                {aiStatus.action === 'summarize' && 'Synthesizing...'}
+                                {aiStatus.action === 'tags' && 'Generating Tags...'}
+                                {aiStatus.action === 'expand' && 'Expanding Content...'}
+                                {aiStatus.action === 'correct' && 'Correcting...'}
+                            </p>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }

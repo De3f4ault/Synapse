@@ -77,217 +77,210 @@ export function NotesPage() {
     };
 
     return (
-        <div className="relative w-full min-h-screen bg-[#020408] text-slate-200 font-sans overflow-hidden">
-        {/* Background Effects */}
-        <div className="absolute inset-0 z-0 opacity-10 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-overlay pointer-events-none" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900/30 via-[#020408] to-black opacity-70" />
-
-        {/* Main Content */}
-        <div className="relative z-10 p-8 overflow-y-auto custom-scrollbar h-screen">
-        {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-6">
-        <div>
-        <h1 className="text-4xl font-serif font-bold text-white mb-2 tracking-tight">
-        Neural Codex
-        </h1>
-        <p className="text-slate-500 font-mono text-xs tracking-[0.25em] uppercase">
-        Knowledge Fragment Archive
-        </p>
-        </div>
-
-        <div className="flex items-center gap-4 w-full md:w-auto">
-        {/* Search */}
-        <NoteSearch
-        value={searchQuery}
-        onChange={setSearchQuery}
-        placeholder="SEARCH FRAGMENTS..."
-        />
-
-        {/* View Mode Toggle */}
-        <div className="flex bg-black/40 border border-white/10 rounded-lg p-1">
-        <button
-        onClick={() => setViewMode('tree')}
-        className={cn(
-            'p-2 rounded transition-all',
-            viewMode === 'tree'
-            ? 'bg-cyan-500 text-black'
-            : 'text-slate-500 hover:text-white'
-        )}
-        title="Tree View"
-        >
-        <Network size={18} />
-        </button>
-        <button
-        onClick={() => setViewMode('grid')}
-        className={cn(
-            'p-2 rounded transition-all',
-            viewMode === 'grid'
-            ? 'bg-cyan-500 text-black'
-            : 'text-slate-500 hover:text-white'
-        )}
-        title="Grid View"
-        >
-        <Grid size={18} />
-        </button>
-        <button
-        onClick={() => setViewMode('list')}
-        className={cn(
-            'p-2 rounded transition-all',
-            viewMode === 'list'
-            ? 'bg-cyan-500 text-black'
-            : 'text-slate-500 hover:text-white'
-        )}
-        title="List View"
-        >
-        <ListIcon size={18} />
-        </button>
-        </div>
-
-        {/* Create Button */}
-        <button
-        onClick={handleCreateNote}
-        disabled={isCreating}
-        className="flex items-center gap-2 px-6 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-xs font-bold text-white transition-all uppercase tracking-[0.15em] group whitespace-nowrap disabled:opacity-50"
-        >
-        {isCreating ? (
-            <Loader2 size={14} className="animate-spin" />
-        ) : (
-            <Plus size={14} className="group-hover:rotate-90 transition-transform duration-300 text-cyan-500" />
-        )}
-        New Fragment
-        </button>
-        </div>
-        </div>
-
-        {/* Stats */}
-        {notes && notes.length > 0 && (
-            <div className="mb-8">
-            <NoteStats notes={notes} />
-            </div>
-        )}
-
-        {/* Loading State */}
-        {isLoading && (
-            <div className="flex flex-col items-center justify-center py-32">
-            <div className="relative">
-            <div className="w-16 h-16 rounded-full border-t-4 border-cyan-500 animate-spin" />
-            <div className="absolute inset-0 flex items-center justify-center">
-            <FileText size={24} className="text-cyan-500 animate-pulse" />
-            </div>
-            </div>
-            <p className="mt-6 text-cyan-500 font-mono text-xs tracking-[0.3em] animate-pulse uppercase">
-            Loading Fragments...
-            </p>
-            </div>
-        )}
-
-        {/* Empty State */}
-        {!isLoading && (!notes || notes.length === 0) && (
-            <div className="flex flex-col items-center justify-center py-32 border border-white/5 border-dashed rounded-2xl bg-white/[0.02]">
-            <FileText className="w-16 h-16 text-slate-600 mb-6 opacity-50" />
-            <h3 className="text-xl font-serif font-bold text-white mb-2">
-            No Fragments Detected
-            </h3>
-            <p className="text-slate-500 font-mono text-xs tracking-[0.2em] uppercase mb-6">
-            Initialize Your First Neural Fragment
-            </p>
-            <button
-            onClick={handleCreateNote}
-            disabled={isCreating}
-            className="px-6 py-3 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 rounded-lg text-cyan-300 text-xs font-bold uppercase tracking-widest transition-all flex items-center gap-2 disabled:opacity-50"
-            >
-            {isCreating ? (
-                <Loader2 size={14} className="animate-spin" />
-            ) : (
-                <Plus size={14} />
-            )}
-            Create Fragment
-            </button>
-            </div>
-        )}
-
-        {/* Content Views */}
-        {!isLoading && notes && notes.length > 0 && (
-            <AnimatePresence mode="wait">
-            {viewMode === 'tree' && (
-                <motion.div
-                key="tree"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className="bg-white/5 border border-white/10 rounded-xl p-6"
-                >
-                <div className="flex justify-between items-center mb-4">
-                <h2 className="text-sm font-mono text-cyan-400 uppercase tracking-wider">
-                Fragment Hierarchy
-                </h2>
-                <div className="flex gap-2">
-                <button
-                onClick={expandAll}
-                className="text-xs text-slate-500 hover:text-cyan-400 transition-colors"
-                >
-                Expand All
-                </button>
-                <span className="text-slate-700">|</span>
-                <button
-                onClick={collapseAll}
-                className="text-xs text-slate-500 hover:text-cyan-400 transition-colors"
-                >
-                Collapse All
-                </button>
+        <div className="h-[calc(100vh-64px)] overflow-hidden flex flex-col p-6 space-y-6">
+            {/* Header */}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 shrink-0">
+                <div>
+                    <h1 className="text-3xl font-bold text-white mb-2 tracking-tight">
+                        Notes
+                    </h1>
+                    <p className="text-slate-400 font-mono text-xs tracking-wider uppercase">
+                        Manage your knowledge fragments
+                    </p>
                 </div>
+
+                <div className="flex items-center gap-4 w-full md:w-auto">
+                    {/* Search */}
+                    <div className="w-full md:w-64">
+                        <NoteSearch
+                            value={searchQuery}
+                            onChange={setSearchQuery}
+                            placeholder="Search notes..."
+                        />
+                    </div>
+
+                    {/* View Mode Toggle */}
+                    <div className="flex bg-white/5 border border-white/5 rounded-lg p-1">
+                        <button
+                            onClick={() => setViewMode('tree')}
+                            className={cn(
+                                'p-2 rounded transition-all',
+                                viewMode === 'tree'
+                                    ? 'bg-cyan-500/20 text-cyan-400'
+                                    : 'text-slate-500 hover:text-white'
+                            )}
+                            title="Tree View"
+                        >
+                            <Network size={18} />
+                        </button>
+                        <button
+                            onClick={() => setViewMode('grid')}
+                            className={cn(
+                                'p-2 rounded transition-all',
+                                viewMode === 'grid'
+                                    ? 'bg-cyan-500/20 text-cyan-400'
+                                    : 'text-slate-500 hover:text-white'
+                            )}
+                            title="Grid View"
+                        >
+                            <Grid size={18} />
+                        </button>
+                        <button
+                            onClick={() => setViewMode('list')}
+                            className={cn(
+                                'p-2 rounded transition-all',
+                                viewMode === 'list'
+                                    ? 'bg-cyan-500/20 text-cyan-400'
+                                    : 'text-slate-500 hover:text-white'
+                            )}
+                            title="List View"
+                        >
+                            <ListIcon size={18} />
+                        </button>
+                    </div>
+
+                    {/* Create Button */}
+                    <button
+                        onClick={handleCreateNote}
+                        disabled={isCreating}
+                        className="synapse-button whitespace-nowrap"
+                    >
+                        {isCreating ? (
+                            <Loader2 size={14} className="animate-spin mr-2" />
+                        ) : (
+                            <Plus size={14} className="mr-2" />
+                        )}
+                        New Note
+                    </button>
                 </div>
-                <NoteTree
-                items={filteredTree}
-                selectedId={selectedId}
-                expandedIds={expandedFolders}
-                toggleExpand={toggleFolder}
-                onSelect={handleSelectNote}
-                onDelete={handleDeleteNote}
-                />
-                </motion.div>
+            </div>
+
+            {/* Stats */}
+            {notes && notes.length > 0 && (
+                <div className="shrink-0">
+                    <NoteStats notes={notes} />
+                </div>
             )}
 
-            {viewMode === 'grid' && (
-                <motion.div
-                key="grid"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
-                >
-                {notes.map((note, index) => (
-                    <NoteCard
-                    key={note.id}
-                    note={note}
-                    onClick={() => handleSelectNote(note.id)}
-                    index={index}
-                    />
-                ))}
-                </motion.div>
-            )}
+            {/* Main Content Area */}
+            <div className="flex-1 min-h-0 overflow-y-auto pr-2 custom-scrollbar">
+                {/* Loading State */}
+                {isLoading && (
+                    <div className="flex flex-col items-center justify-center h-full">
+                        <Loader2 className="w-12 h-12 text-cyan-500 animate-spin mb-4" />
+                        <p className="text-slate-400 font-mono text-sm uppercase tracking-wider">
+                            Loading Notes...
+                        </p>
+                    </div>
+                )}
 
-            {viewMode === 'list' && (
-                <motion.div
-                key="list"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className="space-y-2"
-                >
-                {notes.map((note, index) => (
-                    <NoteCard
-                    key={note.id}
-                    note={note}
-                    onClick={() => handleSelectNote(note.id)}
-                    index={index}
-                    />
-                ))}
-                </motion.div>
-            )}
-            </AnimatePresence>
-        )}
-        </div>
+                {/* Empty State */}
+                {!isLoading && (!notes || notes.length === 0) && (
+                    <div className="flex flex-col items-center justify-center h-full border border-white/5 border-dashed rounded-xl bg-white/[0.02]">
+                        <FileText className="w-16 h-16 text-slate-700 mb-6" />
+                        <h3 className="text-xl font-bold text-white mb-2">
+                            No Notes Found
+                        </h3>
+                        <p className="text-slate-500 font-mono text-xs tracking-wider uppercase mb-6">
+                            Create your first note to get started
+                        </p>
+                        <button
+                            onClick={handleCreateNote}
+                            disabled={isCreating}
+                            className="synapse-button"
+                        >
+                            {isCreating ? (
+                                <Loader2 size={14} className="animate-spin mr-2" />
+                            ) : (
+                                <Plus size={14} className="mr-2" />
+                            )}
+                            Create Note
+                        </button>
+                    </div>
+                )}
+
+                {/* Content Views */}
+                {!isLoading && notes && notes.length > 0 && (
+                    <AnimatePresence mode="wait">
+                        {viewMode === 'tree' && (
+                            <motion.div
+                                key="tree"
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -10 }}
+                                className="synapse-panel p-6"
+                            >
+                                <div className="flex justify-between items-center mb-4 border-b border-white/5 pb-4">
+                                    <h2 className="text-sm font-bold text-slate-300 uppercase tracking-wider">
+                                        Directory Structure
+                                    </h2>
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={expandAll}
+                                            className="text-xs text-slate-500 hover:text-cyan-400 transition-colors"
+                                        >
+                                            Expand All
+                                        </button>
+                                        <span className="text-slate-700">|</span>
+                                        <button
+                                            onClick={collapseAll}
+                                            className="text-xs text-slate-500 hover:text-cyan-400 transition-colors"
+                                        >
+                                            Collapse All
+                                        </button>
+                                    </div>
+                                </div>
+                                <NoteTree
+                                    items={filteredTree}
+                                    selectedId={selectedId}
+                                    expandedIds={expandedFolders}
+                                    toggleExpand={toggleFolder}
+                                    onSelect={handleSelectNote}
+                                    onDelete={handleDeleteNote}
+                                />
+                            </motion.div>
+                        )}
+
+                        {viewMode === 'grid' && (
+                            <motion.div
+                                key="grid"
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -10 }}
+                                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
+                            >
+                                {notes.map((note, index) => (
+                                    <NoteCard
+                                        key={note.id}
+                                        note={note}
+                                        onClick={() => handleSelectNote(note.id)}
+                                        index={index}
+                                    />
+                                ))}
+                            </motion.div>
+                        )}
+
+                        {viewMode === 'list' && (
+                            <motion.div
+                                key="list"
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -10 }}
+                                className="space-y-2"
+                            >
+                                {notes.map((note, index) => (
+                                    <NoteCard
+                                        key={note.id}
+                                        note={note}
+                                        onClick={() => handleSelectNote(note.id)}
+                                        index={index}
+                                    />
+                                ))}
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                )}
+            </div>
         </div>
     );
 }

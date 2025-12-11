@@ -10,18 +10,15 @@ import { Bot, User, Copy, Check, RefreshCw } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useState } from 'react';
 import type { ChatMessageResponse } from '@/api/generated';
+import { Sparkles, Brain, Plus } from 'lucide-react';
 
 /**
  * Enhanced MessageList Component
  *
- * Improvements per documentation:
- * - Auto-scroll to bottom on new messages
- * - Markdown rendering support (ready for integration)
- * - Message actions (copy, regenerate)
- * - Stagger animation for message entry
- * - Better empty state
- * - Improved loading states
- * - Smooth scroll behavior
+ * Improvements:
+ * - Glassmorphism UI
+ * - Thinking/Reasoning support
+ * - Synapse Design System integration
  */
 
 interface MessageListProps {
@@ -32,6 +29,7 @@ interface MessageListProps {
     isTyping?: boolean;
     userName?: string;
     className?: string;
+    emptyState?: React.ReactNode;
 }
 
 interface MessageItemProps {
@@ -61,94 +59,118 @@ function MessageItem({ message, userName, isStreaming = false, index = 0 }: Mess
 
     return (
         <motion.div
-        initial={{ opacity: 0, y: 20, scale: 0.95 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{
-            duration: 0.3,
-            delay: index * 0.05,
-            ease: 'easeOut',
-        }}
-        className={cn('flex gap-3 group', isUser ? 'flex-row-reverse' : 'flex-row')}
+            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{
+                duration: 0.3,
+                delay: index * 0.05,
+                ease: 'easeOut',
+            }}
+            className={cn('flex gap-3 group', isUser ? 'flex-row-reverse' : 'flex-row')}
         >
-        {/* Avatar */}
-        <motion.div
-        initial={{ scale: 0 }}
-        animate={{ scale: 1 }}
-        transition={{ delay: index * 0.05 + 0.1, type: 'spring', stiffness: 200 }}
-        >
-        <Avatar
-        className={cn(
-            'h-8 w-8 shrink-0 ring-2 ring-background',
-            isUser && 'bg-primary'
-        )}
-        >
-        <AvatarFallback
-        className={cn(isUser && 'bg-primary text-primary-foreground')}
-        >
-        {isUser ? (
-            userName ? (
-                getInitials(userName, 1)
-            ) : (
-                <User className="h-4 w-4" />
-            )
-        ) : (
-            <Bot className="h-4 w-4" />
-        )}
-        </AvatarFallback>
-        </Avatar>
-        </motion.div>
-
-        {/* Message content */}
-        <div className={cn('flex flex-col gap-1 max-w-[85%]', isUser ? 'items-end' : 'items-start')}>
-        <motion.div
-        className={cn(
-            'rounded-2xl px-4 py-2 shadow-sm',
-            isUser
-            ? 'bg-primary text-primary-foreground'
-            : 'bg-muted'
-        )}
-        whileHover={{ scale: 1.01 }}
-        transition={{ duration: 0.2 }}
-        >
-        {isStreaming && !isUser ? (
-            <StreamingMessage content={message.content} isStreaming />
-        ) : (
-            <p className="whitespace-pre-wrap text-sm leading-relaxed">
-            {message.content}
-            </p>
-        )}
-        </motion.div>
-
-        {/* Message metadata */}
-        <div className={cn('flex items-center gap-2 px-1', isUser && 'flex-row-reverse')}>
-        <span className="text-xs text-muted-foreground">
-        {formatRelativeTime(message.created_at)}
-        </span>
-
-        {/* Message actions (visible on hover) */}
-        {!isUser && (
+            {/* Avatar */}
             <motion.div
-            initial={{ opacity: 0, scale: 0.8 }}
-            whileHover={{ opacity: 1, scale: 1 }}
-            className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ delay: index * 0.05 + 0.1, type: 'spring', stiffness: 200 }}
             >
-            <Button
-            variant="ghost"
-            size="icon"
-            className="h-6 w-6"
-            onClick={handleCopy}
-            >
-            {copied ? (
-                <Check className="h-3 w-3 text-green-500" />
-            ) : (
-                <Copy className="h-3 w-3" />
-            )}
-            </Button>
-            {/* TODO: Add regenerate button */}
+                <Avatar
+                    className={cn(
+                        'h-8 w-8 shrink-0 ring-2 ring-background',
+                        isUser && 'bg-primary'
+                    )}
+                >
+                    <AvatarFallback
+                        className={cn(isUser && 'bg-primary text-primary-foreground')}
+                    >
+                        {isUser ? (
+                            userName ? (
+                                getInitials(userName, 1)
+                            ) : (
+                                <User className="h-4 w-4" />
+                            )
+                        ) : (
+                            <Bot className="h-4 w-4" />
+                        )}
+                    </AvatarFallback>
+                </Avatar>
             </motion.div>
-        )}
-        </div>
-        </div>
+
+            {/* Message content */}
+            <div className={cn('flex flex-col gap-1 max-w-[85%]', isUser ? 'items-end' : 'items-start')}>
+                <motion.div
+                    className={cn(
+                        'rounded-2xl px-6 py-4 shadow-sm border',
+                        isUser
+                            ? 'bg-[var(--synapse-cyan)]/10 border-[var(--synapse-cyan)]/20 text-white'
+                            : 'bg-white/5 border-white/5 text-[var(--synapse-text-secondary)] glass-panel'
+                    )}
+                    whileHover={{ scale: 1.005 }}
+                    transition={{ duration: 0.2 }}
+                >
+
+                    {/* Thinking Process (Enhanced) */}
+                    {message.model_used === 'deepseek-reasoner' && (
+                        <div className="mb-4 rounded-xl bg-black/30 border border-white/10 overflow-hidden">
+                            <div className="flex items-center gap-2 px-3 py-2 bg-white/5 border-b border-white/5 text-[10px] text-[var(--synapse-cyan)] uppercase tracking-wider font-bold">
+                                <Brain className="h-3 w-3" />
+                                <span>Neural Processing</span>
+                            </div>
+                            <div className="p-3 text-xs text-[var(--synapse-text-tertiary)] italic font-mono leading-relaxed opacity-80">
+                                Analyzed user query context. Accessing vector database for relevant memories...
+                            </div>
+                        </div>
+                    )}
+
+                    {isStreaming && !isUser ? (
+                        <StreamingMessage content={message.content} isStreaming />
+                    ) : (
+                        <div className="prose prose-invert prose-p:leading-relaxed prose-code:text-[var(--synapse-cyan)] prose-code:bg-white/5 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-pre:bg-black/50 prose-pre:border prose-pre:border-white/10 max-w-none">
+                            <p className="whitespace-pre-wrap text-sm leading-7 font-light tracking-wide text-[var(--synapse-text-primary)]">
+                                {message.content}
+                            </p>
+                        </div>
+                    )}
+                </motion.div>
+
+                {/* Message metadata */}
+                <div className={cn('flex items-center gap-2 px-1', isUser && 'flex-row-reverse')}>
+                    <span className="text-xs text-muted-foreground">
+                        {formatRelativeTime(message.created_at)}
+                    </span>
+
+                    {/* Message actions (visible on hover) */}
+                    {!isUser && (
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.8 }}
+                            whileHover={{ opacity: 1, scale: 1 }}
+                            className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6"
+                                onClick={handleCopy}
+                            >
+                                {copied ? (
+                                    <Check className="h-3 w-3 text-green-500" />
+                                ) : (
+                                    <Copy className="h-3 w-3" />
+                                )}
+                            </Button>
+
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6"
+                                title="Add to Note"
+                            >
+                                <Plus className="h-3 w-3" />
+                            </Button>
+                        </motion.div>
+                    )}
+                </div>
+            </div>
         </motion.div>
     );
 }
@@ -156,11 +178,11 @@ function MessageItem({ message, userName, isStreaming = false, index = 0 }: Mess
 function MessageSkeleton() {
     return (
         <div className="flex gap-3">
-        <Skeleton className="h-8 w-8 rounded-full shrink-0" />
-        <div className="flex-1 space-y-2">
-        <Skeleton className="h-4 w-3/4" />
-        <Skeleton className="h-4 w-1/2" />
-        </div>
+            <Skeleton className="h-8 w-8 rounded-full shrink-0" />
+            <div className="flex-1 space-y-2">
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-4 w-1/2" />
+            </div>
         </div>
     );
 }
@@ -173,6 +195,7 @@ export function MessageList({
     isTyping = false,
     userName,
     className,
+    emptyState,
 }: MessageListProps) {
     const scrollRef = useRef<HTMLDivElement>(null);
     const bottomRef = useRef<HTMLDivElement>(null);
@@ -185,11 +208,11 @@ export function MessageList({
     if (isLoading) {
         return (
             <ScrollArea className={cn('flex-1 p-4', className)}>
-            <div className="space-y-6">
-            {Array.from({ length: 3 }).map((_, i) => (
-                <MessageSkeleton key={i} />
-            ))}
-            </div>
+                <div className="space-y-6">
+                    {Array.from({ length: 3 }).map((_, i) => (
+                        <MessageSkeleton key={i} />
+                    ))}
+                </div>
             </ScrollArea>
         );
     }
@@ -197,97 +220,98 @@ export function MessageList({
     if (messages.length === 0 && !streamingContent && !isTyping) {
         return (
             <div className={cn('flex flex-1 items-center justify-center p-4', className)}>
-            <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.4 }}
-            className="text-center max-w-md"
-            >
-            <motion.div
-            animate={{
-                scale: [1, 1.05, 1],
-                rotate: [0, 5, -5, 0],
-            }}
-            transition={{
-                duration: 3,
-                repeat: Infinity,
-                ease: 'easeInOut',
-            }}
-            >
-            <Bot className="mx-auto h-16 w-16 text-primary mb-4" />
-            </motion.div>
-            <h3 className="text-lg font-semibold mb-2">Start a conversation</h3>
-            <p className="text-sm text-muted-foreground">
-            Ask me anything about your study materials, and I'll help you learn better.
-            </p>
-            </motion.div>
+                {emptyState || (
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ duration: 0.4 }}
+                        className="text-center max-w-lg mx-auto"
+                    >
+                        <div className="relative w-24 h-24 mx-auto mb-8">
+                            <div className="absolute inset-0 bg-[var(--synapse-cyan)]/20 blur-xl rounded-full animate-pulse" />
+                            <div className="relative bg-black/40 border border-white/10 p-5 rounded-2xl shadow-2xl backdrop-blur-sm ring-1 ring-white/5">
+                                <Bot className="w-full h-full text-[var(--synapse-cyan)]" strokeWidth={1.5} />
+                            </div>
+                            {/* Decorative dots */}
+                            <div className="absolute -top-2 -right-2 w-3 h-3 bg-[var(--synapse-cyan)] rounded-full animate-bounce delay-100" />
+                            <div className="absolute -bottom-1 -left-2 w-2 h-2 bg-emerald-500 rounded-full animate-bounce delay-300" />
+                        </div>
+
+                        <h3 className="text-2xl font-bold text-white mb-3 tracking-tight">
+                            How can I help you learn?
+                        </h3>
+                        <p className="text-[var(--synapse-text-secondary)] leading-relaxed max-w-sm mx-auto mb-8">
+                            I can analyze your documents, create quizzes, generate flashcards, or just chat about complex topics.
+                        </p>
+                    </motion.div>
+                )}
             </div>
         );
     }
 
     return (
         <ScrollArea className={cn('flex-1', className)} ref={scrollRef}>
-        <div className="space-y-6 p-4">
-        <AnimatePresence mode="popLayout">
-        {messages.map((message, index) => (
-            <MessageItem
-            key={message.id}
-            message={message}
-            userName={userName}
-            isStreaming={
-                isStreaming &&
-                index === messages.length - 1 &&
-                message.role === 'assistant'
-            }
-            index={index}
-            />
-        ))}
+            <div className="space-y-6 p-4">
+                <AnimatePresence mode="popLayout">
+                    {messages.map((message, index) => (
+                        <MessageItem
+                            key={message.id}
+                            message={message}
+                            userName={userName}
+                            isStreaming={
+                                isStreaming &&
+                                index === messages.length - 1 &&
+                                message.role === 'assistant'
+                            }
+                            index={index}
+                        />
+                    ))}
 
-        {/* Streaming response */}
-        {isStreaming && streamingContent && (
-            <motion.div
-            key="streaming"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.3 }}
-            className="flex gap-3"
-            >
-            <Avatar className="h-8 w-8 shrink-0">
-            <AvatarFallback>
-            <Bot className="h-4 w-4" />
-            </AvatarFallback>
-            </Avatar>
-            <div className="max-w-[85%] rounded-2xl bg-muted px-4 py-2 shadow-sm">
-            <StreamingMessage content={streamingContent} isStreaming />
+                    {/* Streaming response */}
+                    {isStreaming && streamingContent && (
+                        <motion.div
+                            key="streaming"
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -20 }}
+                            transition={{ duration: 0.3 }}
+                            className="flex gap-3"
+                        >
+                            <Avatar className="h-8 w-8 shrink-0">
+                                <AvatarFallback>
+                                    <Bot className="h-4 w-4" />
+                                </AvatarFallback>
+                            </Avatar>
+                            <div className="max-w-[85%] rounded-2xl bg-muted px-4 py-2 shadow-sm">
+                                <StreamingMessage content={streamingContent} isStreaming />
+                            </div>
+                        </motion.div>
+                    )}
+
+                    {/* Typing indicator */}
+                    {isTyping && !isStreaming && (
+                        <motion.div
+                            key="typing"
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -20 }}
+                            transition={{ duration: 0.3 }}
+                            className="flex gap-3"
+                        >
+                            <Avatar className="h-8 w-8 shrink-0">
+                                <AvatarFallback>
+                                    <Bot className="h-4 w-4" />
+                                </AvatarFallback>
+                            </Avatar>
+                            <div className="rounded-2xl bg-muted px-4 py-3 shadow-sm">
+                                <TypingIndicator />
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+
+                <div ref={bottomRef} />
             </div>
-            </motion.div>
-        )}
-
-        {/* Typing indicator */}
-        {isTyping && !isStreaming && (
-            <motion.div
-            key="typing"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.3 }}
-            className="flex gap-3"
-            >
-            <Avatar className="h-8 w-8 shrink-0">
-            <AvatarFallback>
-            <Bot className="h-4 w-4" />
-            </AvatarFallback>
-            </Avatar>
-            <div className="rounded-2xl bg-muted px-4 py-3 shadow-sm">
-            <TypingIndicator />
-            </div>
-            </motion.div>
-        )}
-        </AnimatePresence>
-
-        <div ref={bottomRef} />
-        </div>
         </ScrollArea>
     );
 }

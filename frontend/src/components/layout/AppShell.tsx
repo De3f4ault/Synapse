@@ -25,40 +25,40 @@ interface AppShellProps {
 
 export function AppShell({ children }: AppShellProps) {
     return (
-        <div className="relative min-h-screen bg-[#020408] text-slate-200">
-        {/* Header - Fixed at top */}
-        <Header />
+        <div className="relative h-screen flex flex-col bg-[var(--synapse-bg-primary)] text-[var(--synapse-text-primary)] overflow-hidden">
+            {/* Header - Flex Item (No Overlap) */}
+            <Header className="flex-none z-50" />
 
-        {/* Main Content Area - Below header */}
-        <main className="pt-16 h-screen overflow-hidden">
-        {/* Render child routes or passed children */}
-        {children || <Outlet />}
-        </main>
+            {/* Main Content Area - Fills remaining space */}
+            <main className="flex-1 relative overflow-hidden flex flex-col">
+                {/* Render child routes or passed children */}
+                {children || <Outlet />}
+            </main>
 
-        {/* Background Effects - Oracle Theme */}
-        <div className="fixed inset-0 -z-10 pointer-events-none">
-        {/* Gradient background */}
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900 via-[#020408] to-black" />
+            {/* Background Effects - Oracle Theme */}
+            <div className="fixed inset-0 -z-10 pointer-events-none">
+                {/* Gradient background */}
+                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900/20 via-[#020408] to-black" />
 
-        {/* Noise texture */}
-        <div className="absolute inset-0 opacity-20 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-overlay" />
+                {/* Noise texture */}
+                <div className="absolute inset-0 opacity-20 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-overlay" />
 
-        {/* Mystical particles */}
-        <div className="absolute inset-0 overflow-hidden">
-        {[...Array(20)].map((_, i) => (
-            <div
-            key={i}
-            className="absolute w-1 h-1 bg-cyan-500/10 rounded-full animate-float"
-            style={{
-                left: `${Math.random() * 100}%`,
-                                       top: `${Math.random() * 100}%`,
-                                       animationDelay: `${Math.random() * 5}s`,
-                                       animationDuration: `${5 + Math.random() * 5}s`,
-            }}
-            />
-        ))}
-        </div>
-        </div>
+                {/* Mystical particles */}
+                <div className="absolute inset-0 overflow-hidden">
+                    {[...Array(20)].map((_, i) => (
+                        <div
+                            key={i}
+                            className="absolute w-1 h-1 bg-cyan-500/10 rounded-full animate-float"
+                            style={{
+                                left: `${Math.random() * 100}%`,
+                                top: `${Math.random() * 100}%`,
+                                animationDelay: `${Math.random() * 5}s`,
+                                animationDuration: `${5 + Math.random() * 5}s`,
+                            }}
+                        />
+                    ))}
+                </div>
+            </div>
         </div>
     );
 }
