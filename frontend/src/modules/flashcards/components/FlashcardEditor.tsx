@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { createCardApiV1CardsPost } from '@/api/generated/services.gen';
+import {  createCardApiV1CardsPost , FlashcardsService } from '@/api/generated';
 import { flashcardCreateSchema, type FlashcardCreateInput } from '../schemas';
 import { QUERY_KEYS } from '@/lib/constants';
 import { motion, AnimatePresence } from 'framer-motion';

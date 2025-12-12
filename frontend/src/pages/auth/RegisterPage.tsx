@@ -4,7 +4,7 @@ import { useMutation } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mail, Key, User, Shield } from 'lucide-react';
 
-import { registerApiV1AuthRegisterPost } from '@/api/generated/services.gen';
+import {  registerApiV1AuthRegisterPost , AuthenticationService } from '@/api/generated';
 import { useAuthStore } from '@/stores/authStore';
 import { useToast } from '@/hooks/use-toast';
 import {

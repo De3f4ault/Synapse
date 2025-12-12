@@ -4,14 +4,11 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import {
-  getMessagesApiV1ChatSessionsSessionIdMessagesGet,
-  sendMessageApiV1ChatSessionsSessionIdMessagesPost,
-} from '@/api/generated/services.gen';
+import {  ChatService  } from '@/api/generated';
 import type {
   ChatMessageResponse,
   ChatMessageCreate,
-} from '@/api/generated/types.gen';
+} from '@/api/generated';
 import { toast } from 'sonner';
 
 /**
@@ -21,10 +18,7 @@ export const useChatMessages = (sessionId: number | undefined, limit?: number) =
   return useQuery<ChatMessageResponse[]>({
     queryKey: ['chat-messages', sessionId, limit],
     queryFn: () =>
-    getMessagesApiV1ChatSessionsSessionIdMessagesGet({
-      sessionId: sessionId!,
-      limit,
-    }),
+      ChatService.getMessagesApiV1ChatSessionsSessionIdMessagesGet(sessionId!, limit),
     enabled: !!sessionId,
     staleTime: 1000 * 30, // 30 seconds
     refetchOnWindowFocus: false,
@@ -40,10 +34,9 @@ export const useSendMessage = (sessionId: number | undefined) => {
 
   return useMutation({
     mutationFn: (content: string) =>
-    sendMessageApiV1ChatSessionsSessionIdMessagesPost({
-      sessionId: sessionId!,
-      requestBody: { content },
-    }),
+      ChatService.sendMessageApiV1ChatSessionsSessionIdMessagesPost(sessionId!, {
+        content,
+      }),
     onMutate: async (content) => {
       // Cancel outgoing refetches
       await queryClient.cancelQueries({ queryKey: ['chat-messages', sessionId] });
@@ -62,12 +55,12 @@ export const useSendMessage = (sessionId: number | undefined) => {
             ...previousMessages,
             {
               id: Date.now(),
-                                                        session_id: sessionId!,
-                                                        role: 'user',
-                                                        content,
-                                                        tokens: 0,
-                                                        model_used: null,
-                                                        created_at: new Date().toISOString(),
+              session_id: sessionId!,
+              role: 'user',
+              content,
+              tokens: 0,
+              model_used: null,
+              created_at: new Date().toISOString(),
             } as ChatMessageResponse,
           ]
         );
@@ -118,9 +111,9 @@ export const useUpdateMessage = (sessionId: number | undefined) => {
     queryClient.setQueryData<ChatMessageResponse[]>(
       ['chat-messages', sessionId],
       (old) =>
-      old?.map((msg) =>
-      msg.id === messageId ? { ...msg, ...updates } : msg
-      ) || []
+        old?.map((msg) =>
+          msg.id === messageId ? { ...msg, ...updates } : msg
+        ) || []
     );
   };
 };

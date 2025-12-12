@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils';
 import { AnimatedCounter } from '@/components/common/AnimatedCounter';
 import { ConfirmationModal } from '@/components/feedback/ConfirmationModal';
 import { useStudySession } from '../hooks/useStudySession';
-import type { StudyItemResponse, StudySessionResponse } from '@/api/generated/types.gen';
+import type { StudyItemResponse, StudySessionResponse } from '@/api/generated';
 
 /**
  * Study Session Component - ENHANCED

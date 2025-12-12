@@ -6,7 +6,7 @@
 import { useState } from 'react';
 import { copyToClipboard } from '@/lib/utils';
 import { toast } from 'sonner';
-import type { ChatMessageResponse } from '@/api/generated/types.gen';
+import type { ChatMessageResponse } from '@/api/generated';
 
 export const useMessageActions = () => {
   const [copiedId, setCopiedId] = useState<number | null>(null);

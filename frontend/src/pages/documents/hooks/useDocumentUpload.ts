@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useDropzone } from 'react-dropzone';
 import { toast } from 'sonner';
-import { uploadDocumentApiV1DocumentsUploadPost } from '@/api/generated/services.gen';
+import { DocumentsService } from '@/api/generated';
 import { queryKeys } from '@/lib/queryKeys';
 import type { UploadProgress } from '../types/documents.types';
 
@@ -41,7 +41,7 @@ export function useDocumentUpload(options: UseDocumentUploadOptions = {}) {
             }, 200);
 
             const formData = { file };
-            const result = await uploadDocumentApiV1DocumentsUploadPost({ formData });
+            const result = await DocumentsService.uploadDocumentApiV1DocumentsUploadPost(formData);
 
             clearInterval(interval);
             setUploadProgress((prev) => ({ ...prev, [fileId]: 100 }));

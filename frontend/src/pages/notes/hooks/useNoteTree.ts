@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
-import type { NoteResponse } from '@/api/generated/types.gen';
+import type { NoteResponse } from '@/api/generated';
 import type { NoteTreeItem } from '../types/notes.types';
 
 /**

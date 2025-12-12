@@ -13,7 +13,7 @@ import {
     createCardApiV1CardsPost,
     updateCardApiV1CardsCardIdPut,
     deleteCardApiV1CardsCardIdDelete,
-} from '@/api/generated/services.gen';
+} from '@/api/generated';
 import { queryKeys } from '@/lib/queryKeys';
 import { toast } from 'sonner';
 import type { FlashcardCreateInput, FlashcardUpdateInput } from '../types/flashcards.types';

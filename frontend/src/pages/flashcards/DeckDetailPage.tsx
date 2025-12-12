@@ -12,7 +12,7 @@ import { useDeck, useDeckStats, useUpdateDeck } from './hooks/useDecks';
 import { useDeleteCard } from './hooks/useCards';
 import { useQuery } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/queryKeys';
-import { getDueCardsApiV1CardsDueGet } from '@/api/generated/services.gen';
+import {  getDueCardsApiV1CardsDueGet , FlashcardsService } from '@/api/generated';
 import { DeckSettings } from './components/deck/DeckSettings';
 import { DeckStats } from './components/deck/DeckStats';
 import { CardList } from './components/card/CardList';

@@ -1,4 +1,4 @@
-import type { NoteResponse } from '@/api/generated/types.gen';
+import type { NoteResponse } from '@/api/generated';
 
 /**
  * Extended note type with hierarchical children

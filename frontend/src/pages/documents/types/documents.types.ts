@@ -1,4 +1,4 @@
-import type { DocumentResponse } from '@/api/generated/types.gen';
+import type { DocumentResponse } from '@/api/generated';
 
 /**
  * Extended document type with UI-specific fields

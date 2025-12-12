@@ -21,7 +21,7 @@ import {
     Edit,
     Sparkles,
 } from 'lucide-react';
-import { createNoteApiV1NotesPost, updateNoteApiV1NotesNoteIdPut } from '@/api/generated/services.gen';
+import {  createNoteApiV1NotesPost, updateNoteApiV1NotesNoteIdPut , NotesService } from '@/api/generated';
 import { noteCreateSchema, type NoteCreateInput } from '../schemas';
 import { QUERY_KEYS } from '@/lib/constants';
 import { useToast } from '@/hooks/use-toast';
@@ -29,7 +29,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 import { cn } from '@/lib/utils';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import type { NoteResponse } from '@/api/generated/types.gen';
+import type { NoteResponse } from '@/api/generated';
 
 /**
  * Enhanced Note Editor Component

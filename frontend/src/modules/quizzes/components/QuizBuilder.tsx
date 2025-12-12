@@ -14,7 +14,7 @@ import { FormTextarea } from '@/components/forms/FormTextarea';
 import { FormSelect } from '@/components/forms/FormSelect';
 import { useCreateQuiz } from '@/api/hooks/useQuizzes';
 import { quizCreateSchema, type QuizCreateInput, getDefaultOptions, calculateTotalPoints } from '../schemas';
-import type { QuizResponse } from '@/api/generated/types.gen';
+import type { QuizResponse } from '@/api/generated';
 import { toast } from 'sonner';
 
 /**

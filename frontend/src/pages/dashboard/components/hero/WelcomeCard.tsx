@@ -6,7 +6,7 @@
 import { motion } from 'framer-motion';
 import { Flame, Calendar, TrendingUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { DashboardOverview } from '@/api/generated/types.gen';
+import type { DashboardOverview } from '@/api/generated';
 
 interface WelcomeCardProps {
   overview: DashboardOverview | null;

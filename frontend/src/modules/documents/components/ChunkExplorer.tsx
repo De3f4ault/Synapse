@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
-import { getDocumentChunksApiV1DocumentsDocumentIdChunksGet } from '@/api/generated';
+import {  getDocumentChunksApiV1DocumentsDocumentIdChunksGet , DocumentsService } from '@/api/generated';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';

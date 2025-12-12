@@ -3,7 +3,7 @@
  * Extended types for chat functionality beyond backend API types
  */
 
-import type { ChatSessionResponse, ChatMessageResponse } from '@/api/generated/types.gen';
+import type { ChatSessionResponse, ChatMessageResponse } from '@/api/generated';
 
 /**
  * Chat mode options

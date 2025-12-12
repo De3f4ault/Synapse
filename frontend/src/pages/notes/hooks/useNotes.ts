@@ -1,14 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import {
-    listNotesApiV1NotesGet,
-    getNoteApiV1NotesNoteIdGet,
-    createNoteApiV1NotesPost,
-    updateNoteApiV1NotesNoteIdPut,
-    deleteNoteApiV1NotesNoteIdDelete,
-} from '@/api/generated/services.gen';
+import { NotesService } from '@/api/generated';
 import { queryKeys } from '@/lib/queryKeys';
-import type { NoteResponse } from '@/api/generated/types.gen';
+import type { NoteResponse } from '@/api/generated';
 
 /**
  * Custom hook for managing notes CRUD operations
@@ -27,18 +21,13 @@ export function useNotes() {
         refetch,
     } = useQuery({
         queryKey: queryKeys.notes.list(),
-        queryFn: async () => {
-            const response = await listNotesApiV1NotesGet();
-            return (response as any).data ?? response;
-        },
+        queryFn: () => NotesService.listNotesApiV1NotesGet(),
     });
 
     // Create note mutation
     const createNoteMutation = useMutation({
-        mutationFn: async (data: { title: string; content?: string; tags?: string[] }) => {
-            const response = await createNoteApiV1NotesPost({ body: data });
-            return (response as any).data ?? response;
-        },
+        mutationFn: (data: { title: string; content?: string; tags?: string[] }) =>
+            NotesService.createNoteApiV1NotesPost({ ...data, content: data.content || '' }),
         onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: queryKeys.notes.all });
             toast.success('NEURAL NODE INITIALIZED');
@@ -53,19 +42,13 @@ export function useNotes() {
 
     // Update note mutation
     const updateNoteMutation = useMutation({
-        mutationFn: async ({
+        mutationFn: ({
             noteId,
             data,
         }: {
             noteId: number;
             data: { title: string; content: string; tags?: string[] };
-        }) => {
-            const response = await updateNoteApiV1NotesNoteIdPut({
-                path: { note_id: noteId },
-                body: data,
-            });
-            return (response as any).data ?? response;
-        },
+        }) => NotesService.updateNoteApiV1NotesNoteIdPut(noteId, data),
         onSuccess: (_, variables) => {
             queryClient.invalidateQueries({ queryKey: queryKeys.notes.detail(variables.noteId) });
             queryClient.invalidateQueries({ queryKey: queryKeys.notes.list() });
@@ -80,10 +63,7 @@ export function useNotes() {
 
     // Delete note mutation
     const deleteNoteMutation = useMutation({
-        mutationFn: async (noteId: number) => {
-            const response = await deleteNoteApiV1NotesNoteIdDelete({ path: { note_id: noteId } });
-            return (response as any).data ?? response;
-        },
+        mutationFn: (noteId: number) => NotesService.deleteNoteApiV1NotesNoteIdDelete(noteId),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.notes.all });
             toast.success('NODE ARCHIVED');
@@ -117,10 +97,7 @@ export function useNote(noteId: number) {
 
     const { data: note, isLoading, error } = useQuery({
         queryKey: queryKeys.notes.detail(noteId),
-        queryFn: async () => {
-            const response = await getNoteApiV1NotesNoteIdGet({ path: { note_id: noteId } });
-            return (response as any).data ?? response;
-        },
+        queryFn: () => NotesService.getNoteApiV1NotesNoteIdGet(noteId),
         enabled: !!noteId,
     });
 

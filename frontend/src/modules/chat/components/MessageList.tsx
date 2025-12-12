@@ -6,11 +6,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { StreamingMessage, TypingIndicator } from './StreamingMessage';
 import { cn, formatRelativeTime, getInitials } from '@/lib/utils';
-import { Bot, User, Copy, Check, RefreshCw } from 'lucide-react';
+import { Bot, User, Copy, Check } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useState } from 'react';
 import type { ChatMessageResponse } from '@/api/generated';
-import { Sparkles, Brain, Plus } from 'lucide-react';
+import { Brain, Plus } from 'lucide-react';
 
 /**
  * Enhanced MessageList Component
@@ -59,14 +59,13 @@ function MessageItem({ message, userName, isStreaming = false, index = 0 }: Mess
 
     return (
         <motion.div
-            initial={{ opacity: 0, y: 20, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
             transition={{
-                duration: 0.3,
-                delay: index * 0.05,
+                duration: 0.2,
                 ease: 'easeOut',
             }}
-            className={cn('flex gap-3 group', isUser ? 'flex-row-reverse' : 'flex-row')}
+            className={cn('flex gap-4 group', isUser ? 'flex-row-reverse' : 'flex-row')}
         >
             {/* Avatar */}
             <motion.div
@@ -97,16 +96,14 @@ function MessageItem({ message, userName, isStreaming = false, index = 0 }: Mess
             </motion.div>
 
             {/* Message content */}
-            <div className={cn('flex flex-col gap-1 max-w-[85%]', isUser ? 'items-end' : 'items-start')}>
-                <motion.div
+            <div className={cn('flex flex-col gap-1.5 max-w-[80%]', isUser ? 'items-end' : 'items-start')}>
+                <div
                     className={cn(
-                        'rounded-2xl px-6 py-4 shadow-sm border',
+                        'rounded-xl px-5 py-3.5',
                         isUser
-                            ? 'bg-[var(--synapse-cyan)]/10 border-[var(--synapse-cyan)]/20 text-white'
-                            : 'bg-white/5 border-white/5 text-[var(--synapse-text-secondary)] glass-panel'
+                            ? 'bg-white/8 text-white'
+                            : 'text-[var(--synapse-text-primary)]'
                     )}
-                    whileHover={{ scale: 1.005 }}
-                    transition={{ duration: 0.2 }}
                 >
 
                     {/* Thinking Process (Enhanced) */}
@@ -125,13 +122,11 @@ function MessageItem({ message, userName, isStreaming = false, index = 0 }: Mess
                     {isStreaming && !isUser ? (
                         <StreamingMessage content={message.content} isStreaming />
                     ) : (
-                        <div className="prose prose-invert prose-p:leading-relaxed prose-code:text-[var(--synapse-cyan)] prose-code:bg-white/5 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-pre:bg-black/50 prose-pre:border prose-pre:border-white/10 max-w-none">
-                            <p className="whitespace-pre-wrap text-sm leading-7 font-light tracking-wide text-[var(--synapse-text-primary)]">
-                                {message.content}
-                            </p>
-                        </div>
+                        <p className="whitespace-pre-wrap text-[15px] leading-7 font-normal text-[var(--synapse-text-primary)]">
+                            {message.content}
+                        </p>
                     )}
-                </motion.div>
+                </div>
 
                 {/* Message metadata */}
                 <div className={cn('flex items-center gap-2 px-1', isUser && 'flex-row-reverse')}>
@@ -251,7 +246,7 @@ export function MessageList({
 
     return (
         <ScrollArea className={cn('flex-1', className)} ref={scrollRef}>
-            <div className="space-y-6 p-4">
+            <div className="space-y-8 p-6">
                 <AnimatePresence mode="popLayout">
                     {messages.map((message, index) => (
                         <MessageItem

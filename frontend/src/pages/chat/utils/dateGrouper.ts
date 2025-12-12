@@ -5,7 +5,7 @@
  * Location: frontend/src/pages/chat/utils/dateGrouper.ts
  */
 
-import type { ChatSessionResponse } from '@/api/generated/types.gen';
+import type { ChatSessionResponse } from '@/api/generated';
 
 /**
  * Group sessions by date categories

@@ -32,8 +32,8 @@ dist-ssr
 *.sw?
 
 # Generated API client
-src/api/generated/*
-!src/api/generated/.gitkeep
+#src/api/generated/*
+#!src/api/generated/.gitkeep
 
 # Build artifacts
 *.tsbuildinfo

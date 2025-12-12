@@ -3,10 +3,10 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
     startQuizAttemptApiV1QuizzesQuizIdStartPost,
     submitQuizAttemptApiV1QuizzesAttemptsAttemptIdSubmitPost,
-} from '@/api/generated/services.gen';
+} from '@/api/generated';
 import { QUERY_KEYS } from '@/lib/constants';
 import { useToast } from '@/hooks/use-toast';
-import type { AnswerSubmit, QuizAttemptStart, QuizResultResponse } from '@/api/generated/types.gen';
+import type { AnswerSubmit, QuizAttemptStart, QuizResultResponse } from '@/api/generated';
 
 /**
  * Hook for managing quiz attempts

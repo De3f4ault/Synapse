@@ -4,9 +4,9 @@ import { toast } from 'sonner';
 import {
     startQuizAttemptApiV1QuizzesQuizIdStartPost,
     submitQuizAttemptApiV1QuizzesAttemptsAttemptIdSubmitPost,
-} from '@/api/generated/services.gen';
+} from '@/api/generated';
 import { queryKeys } from '@/lib/queryKeys';
-import type { AnswerSubmit } from '@/api/generated/types.gen';
+import type { AnswerSubmit } from '@/api/generated';
 import type { GameState, QuizAttemptState } from '../types/quizzes.types';
 
 /**

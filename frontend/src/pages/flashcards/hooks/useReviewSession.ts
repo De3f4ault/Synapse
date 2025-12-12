@@ -5,7 +5,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { reviewCardApiV1CardsCardIdReviewPost } from '@/api/generated/services.gen';
+import {  reviewCardApiV1CardsCardIdReviewPost , FlashcardsService } from '@/api/generated';
 import { queryKeys } from '@/lib/queryKeys';
 import { toast } from 'sonner';
 import type {

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tantml:react-query';
 import { toast } from 'sonner';
-import { createQuizApiV1QuizzesPost } from '@/api/generated/services.gen';
+import {  createQuizApiV1QuizzesPost , QuizzesService } from '@/api/generated';
 import { queryKeys } from '@/lib/queryKeys';
 
 // TODO: Move to src/api/services/gemini.ts

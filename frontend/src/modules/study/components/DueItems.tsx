@@ -8,7 +8,7 @@ import { useDueItems } from '@/api/hooks/useStudy';
 import { SkeletonCard } from '@/components/common/SkeletonCard';
 import { EmptyState } from '@/components/common/EmptyState';
 import { formatDistanceToNow } from 'date-fns';
-import type { StudyItemResponse } from '@/api/generated/types.gen';
+import type { StudyItemResponse } from '@/api/generated';
 
 /**
  * Due Items Component - ENHANCED

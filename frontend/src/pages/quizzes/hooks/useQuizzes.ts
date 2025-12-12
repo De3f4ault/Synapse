@@ -4,7 +4,7 @@ import {
     listQuizzesApiV1QuizzesGet,
     createQuizApiV1QuizzesPost,
     deleteQuizApiV1QuizzesQuizIdDelete,
-} from '@/api/generated/services.gen';
+} from '@/api/generated';
 import { queryKeys } from '@/lib/queryKeys';
 
 /**

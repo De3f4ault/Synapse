@@ -21,7 +21,7 @@ import { ReviewTimer } from './ReviewTimer';
 import { useReviewSession } from '../../hooks/useReviewSession';
 import { useReviewStore } from '../../stores/reviewStore';
 import { cn } from '@/lib/utils';
-import type { FlashcardResponse } from '@/api/generated/types.gen';
+import type { FlashcardResponse } from '@/api/generated';
 
 /**
  * Enhanced Review Session Component

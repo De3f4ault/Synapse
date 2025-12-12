@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { FileText, Clock, Hash, TrendingUp, Zap } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
-import type { NoteResponse } from '@/api/generated/types.gen';
+import type { NoteResponse } from '@/api/generated';
 
 interface NoteCardProps {
     note: NoteResponse;

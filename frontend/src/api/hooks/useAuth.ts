@@ -4,8 +4,8 @@ import {
     registerApiV1AuthRegisterPost,
     logoutApiV1AuthLogoutPost,
     getCurrentUserProfileApiV1AuthMeGet
-} from '@/api/generated/services.gen';
-import type { UserLogin, UserRegister } from '@/api/generated/types.gen';
+} from '@/api/generated';
+import type { UserLogin, UserRegister } from '@/api/generated';
 import { useAuthStore } from '@/stores/authStore';
 import { queryKeys } from '@/lib/queryKeys';
 

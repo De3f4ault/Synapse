@@ -9,7 +9,7 @@ import { StudyStats } from './components/shared/StudyStats';
 import { StreakIndicator } from './components/shared/StreakIndicator';
 import { useDueItemsStats } from './hooks/useDueItems';
 import { useRecommendations } from './hooks/useRecommendations';
-import { getStatisticsApiV1UsersMeStatisticsGet } from '@/api/generated/services.gen';
+import {  getStatisticsApiV1UsersMeStatisticsGet , AuthenticationService, UsersService } from '@/api/generated';
 import { cn } from '@/lib/utils';
 import type { StudyItem, StudySessionResponse, StudyStreak } from './types/study.types';
 

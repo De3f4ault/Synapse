@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { Mail, Key } from 'lucide-react';
 
-import { loginApiV1AuthLoginPost, getCurrentUserProfileApiV1AuthMeGet } from '@/api/generated/services.gen';
+import { AuthenticationService } from '@/api/generated';
 import { useAuthStore } from '@/stores/authStore';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -25,8 +25,7 @@ export function LoginPage() {
 
     const loginMutation = useMutation({
         mutationFn: async (credentials: { email: string; password: string }) => {
-            const response = await loginApiV1AuthLoginPost({ body: credentials });
-            return (response as any).data ?? response;
+            return AuthenticationService.loginApiV1AuthLoginPost(credentials);
         },
         onSuccess: async (response: any) => {
             setStatus('success');
@@ -50,11 +49,7 @@ export function LoginPage() {
 
             try {
                 // Fetch user profile
-                const userResponse = await getCurrentUserProfileApiV1AuthMeGet({
-                    headers: {
-                        Authorization: `Bearer ${accessToken}`,
-                    },
-                });
+                const userResponse = await AuthenticationService.getCurrentUserProfileApiV1AuthMeGet();
 
                 // Handle potential wrapped response for the profile as well
                 const user = (userResponse as any).data || userResponse;

@@ -2,10 +2,10 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
     startSessionApiV1StudySessionsPost,
     completeSessionApiV1StudySessionsSessionIdCompletePost,
-} from '@/api/generated/services.gen';
+} from '@/api/generated';
 import { QUERY_KEYS } from '@/lib/constants';
 import { useToast } from '@/hooks/use-toast';
-import type { StudySessionCreate, StudySessionResponse } from '@/api/generated/types.gen';
+import type { StudySessionCreate, StudySessionResponse } from '@/api/generated';
 
 /**
  * Hook for managing study sessions

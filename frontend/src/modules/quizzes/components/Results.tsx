@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { CheckCircle2, XCircle, Clock, Trophy, RotateCw, X } from 'lucide-react';
-import type { QuizResultResponse } from '@/api/generated/types.gen';
+import type { QuizResultResponse } from '@/api/generated';
 
 /**
  * Results Component

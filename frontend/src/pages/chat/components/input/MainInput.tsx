@@ -12,7 +12,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   sendMessageApiV1ChatSessionsSessionIdMessagesPost,
   createSessionApiV1ChatSessionsPost,
-} from '@/api/generated/services.gen';
+} from '@/api/generated';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import type { NoteResponse } from '@/api/generated/types.gen';
+import type { NoteResponse } from '@/api/generated';
 import type { LocalNoteState, EditorMode, AIProcessingStatus } from '../types/notes.types';
 
 interface UseNoteEditorOptions {

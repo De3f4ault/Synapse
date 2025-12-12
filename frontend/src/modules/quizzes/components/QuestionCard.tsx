@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
-import type { QuestionResponse, AnswerResult } from '@/api/generated/types.gen';
+import type { QuestionResponse, AnswerResult } from '@/api/generated';
 
 /**
  * Question Card Component - ENHANCED

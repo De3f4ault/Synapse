@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { getDueItemsApiV1StudyDueGet } from '@/api/generated/services.gen';
-import type { StudyItemResponse } from '@/api/generated/types.gen';
+import {  getDueItemsApiV1StudyDueGet , StudyService } from '@/api/generated';
+import type { StudyItemResponse } from '@/api/generated';
 import { QUERY_KEYS } from '@/lib/constants';
 import type { StudyItem, StudyItemType, StudyPriority } from '../types/study.types';
 

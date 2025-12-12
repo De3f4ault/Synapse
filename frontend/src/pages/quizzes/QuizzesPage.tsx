@@ -2,14 +2,14 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { listQuizzesApiV1QuizzesGet, createQuizApiV1QuizzesPost } from '@/api/generated/services.gen';
+import { QuizzesService } from '@/api/generated';
 import { queryKeys } from '@/lib/queryKeys';
 import {
     Plus, Search, Wand2, FileQuestion, Play,
     Loader2, Sparkles, Brain, Trophy
 } from 'lucide-react';
 import { toast } from 'sonner';
-import type { QuizResponse } from '@/api/generated/types.gen';
+import type { QuizResponse } from '@/api/generated';
 
 // TODO: Implement AI Quiz Generation
 // File: src/api/services/gemini.ts
@@ -44,10 +44,7 @@ export function QuizzesPage() {
     // Fetch quizzes
     const { data: quizzes, isLoading } = useQuery({
         queryKey: queryKeys.quizzes.list(),
-        queryFn: async () => {
-            const response = await listQuizzesApiV1QuizzesGet();
-            return (response as any).data ?? response;
-        },
+        queryFn: () => QuizzesService.listQuizzesApiV1QuizzesGet(),
     });
 
     // Ensure quizzes is an array before filtering
@@ -288,10 +285,7 @@ function TheArchitect({ onCancel, onSuccess }: TheArchitectProps) {
 
     // Create quiz mutation
     const createMutation = useMutation({
-        mutationFn: async (data: any) => {
-            const response = await createQuizApiV1QuizzesPost({ body: data });
-            return (response as any).data ?? response;
-        },
+        mutationFn: (data: any) => QuizzesService.createQuizApiV1QuizzesPost(data),
         onSuccess: () => {
             toast.success('Quiz Generated Successfully');
             onSuccess();

@@ -16,7 +16,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { getWebSocketManager } from '@/api/websocket/manager';
-import type { ChatMessageResponse } from '@/api/generated/types.gen';
+import type { ChatMessageResponse } from '@/api/generated';
 
 // ==================== TYPES ====================
 

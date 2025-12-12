@@ -8,7 +8,7 @@ import type {
     DocumentResponse,
     ChatSessionResponse,
     QuizResponse,
-} from '@/api/generated/types.gen';
+} from '@/api/generated';
 
 /**
  * Aggregated dashboard data from all sources

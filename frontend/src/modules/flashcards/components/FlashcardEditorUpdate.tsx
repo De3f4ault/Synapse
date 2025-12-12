@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { updateCardApiV1CardsCardIdPut } from '@/api/generated/services.gen';
+import {  updateCardApiV1CardsCardIdPut , FlashcardsService } from '@/api/generated';
 import { flashcardUpdateSchema, type FlashcardUpdateInput } from '../schemas';
 import { queryKeys } from '@/lib/queryKeys';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -23,7 +23,7 @@ import {
     CheckCircle2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { FlashcardResponse } from '@/api/generated/types.gen';
+import type { FlashcardResponse } from '@/api/generated';
 
 /**
  * Enhanced Flashcard Editor Component (UPDATE MODE)

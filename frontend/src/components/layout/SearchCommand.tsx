@@ -32,13 +32,13 @@ import {
     listNotesApiV1NotesGet,
     listDecksApiV1FlashcardsDecksGet,
     listQuizzesApiV1QuizzesGet,
-} from '@/api/generated/services.gen';
+} from '@/api/generated';
 import type {
     DocumentResponse,
     NoteResponse,
     DeckResponse,
     QuizResponse,
-} from '@/api/generated/types.gen';
+} from '@/api/generated';
 
 /**
  * ENHANCED Search Command Palette

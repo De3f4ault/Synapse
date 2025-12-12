@@ -8,7 +8,7 @@
 import {
     createSessionApiV1ChatSessionsPost,
     sendMessageApiV1ChatSessionsSessionIdMessagesPost
-} from '@/api/generated/services.gen';
+} from '@/api/generated';
 
 /**
  * AI Note Operations using Chat API

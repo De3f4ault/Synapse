@@ -6,11 +6,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/common/EmptyState';
 import { motion } from 'framer-motion';
 import { Clock, User, FileText, RotateCcw, CheckCircle2, Calendar } from 'lucide-react';
-import { getNoteVersionsApiV1NotesNoteIdVersionsGet } from '@/api/generated/services.gen';
+import {  getNoteVersionsApiV1NotesNoteIdVersionsGet , NotesService } from '@/api/generated';
 import { QUERY_KEYS } from '@/lib/constants';
 import { formatDistanceToNow, format } from 'date-fns';
 import { cn } from '@/lib/utils';
-import type { NoteVersionResponse } from '@/api/generated/types.gen';
+import type { NoteVersionResponse } from '@/api/generated';
 
 /**
  * Enhanced Version History Component

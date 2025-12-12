@@ -5,7 +5,7 @@ import type {
     FlashcardResponse,
     ChatSessionResponse,
     QuizResponse
-} from '@/api/generated/types.gen';
+} from '@/api/generated';
 import type { DashboardData } from '../types/dashboard.types';
 
 /**

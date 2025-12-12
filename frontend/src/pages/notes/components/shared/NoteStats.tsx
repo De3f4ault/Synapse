@@ -2,7 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { FileText, Tag, Clock, TrendingUp, Zap, Activity } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
-import type { NoteResponse } from '@/api/generated/types.gen';
+import type { NoteResponse } from '@/api/generated';
 
 interface NoteStatsProps {
     notes: NoteResponse[];

@@ -1,9 +1,9 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { reviewCardApiV1CardsCardIdReviewPost } from '@/api/generated/services.gen';
+import {  reviewCardApiV1CardsCardIdReviewPost , FlashcardsService } from '@/api/generated';
 import { QUERY_KEYS } from '@/lib/constants';
 import { useReviewStore } from '../stores/reviewStore';
 import { useToast } from '@/hooks/use-toast';
-import type { ReviewSubmit } from '@/api/generated/types.gen';
+import type { ReviewSubmit } from '@/api/generated';
 
 /**
  * Hook for managing flashcard review session

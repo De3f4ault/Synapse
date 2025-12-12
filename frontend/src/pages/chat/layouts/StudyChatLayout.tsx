@@ -7,8 +7,8 @@ import { SourcesPanel, Source } from '../components/panels/SourcesPanel';
 import { StudioPanel } from '../components/panels/StudioPanel';
 import { WelcomeScreen } from '../components/main-area/WelcomeScreen';
 import { AddSourceModal } from '../components/modals/AddSourceModal';
-import { listDocumentsApiV1DocumentsGet } from '@/api/generated/services.gen';
-import type { DocumentResponse } from '@/api/generated/types.gen';
+import { DocumentsService } from '@/api/generated';
+import type { DocumentResponse } from '@/api/generated';
 import { useFileUpload } from '../hooks/useFileUpload';
 import { useChatSession } from '../hooks/useChatSession';
 import { ModeSwitcher } from '../components/ModeSwitcher';
@@ -50,10 +50,7 @@ export const StudyChatLayout = forwardRef<HTMLDivElement, StudyChatLayoutProps>(
         // Documents Query
         const { data: documents, isLoading: documentsLoading } = useQuery<DocumentResponse[]>({
             queryKey: ['documents'],
-            queryFn: async () => {
-                const response = await listDocumentsApiV1DocumentsGet({});
-                return Array.isArray(response) ? response : (response as any).items || [];
-            },
+            queryFn: () => DocumentsService.listDocumentsApiV1DocumentsGet(),
             staleTime: 1000 * 60 * 5,
         });
 

@@ -1,4 +1,4 @@
-import type { WeakArea } from '@/api/generated/types.gen';
+import type { WeakArea } from '@/api/generated';
 import type { ModuleType } from './dashboard.types';
 
 /**

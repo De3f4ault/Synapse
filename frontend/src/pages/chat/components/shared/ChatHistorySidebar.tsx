@@ -1,13 +1,13 @@
 /**
- * ChatHistorySidebar - Synapse/DeepSeek Style
- * Minimal history navigation for Normal Mode
+ * ChatHistorySidebar - DeepSeek Style
+ * Minimal history sidebar for Normal Mode
  */
 
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MessageSquare, Plus, Trash2, MoreHorizontal, Clock } from 'lucide-react';
+import { Plus, Trash2, MoreHorizontal } from 'lucide-react';
 import { useChatSessions, useDeleteSession } from '../../hooks/useChatSession';
-import { cn, formatRelativeTime } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
@@ -16,7 +16,6 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { motion, AnimatePresence } from 'framer-motion';
 
 interface ChatHistorySidebarProps {
     currentSessionId?: number;
@@ -30,11 +29,11 @@ export function ChatHistorySidebar({ currentSessionId, className }: ChatHistoryS
 
     // Group sessions by date
     const groupedSessions = React.useMemo(() => {
-        const groups: Record<string, typeof sessions> = {
-            'Today': [],
-            'Yesterday': [],
-            'Previous 7 Days': [],
-            'Older': []
+        const groups = {
+            'Today': [] as typeof sessions,
+            'Yesterday': [] as typeof sessions,
+            'Previous 7 Days': [] as typeof sessions,
+            'Older': [] as typeof sessions
         };
 
         const now = new Date();
@@ -70,21 +69,21 @@ export function ChatHistorySidebar({ currentSessionId, className }: ChatHistoryS
     const hasSessions = sessions.length > 0;
 
     return (
-        <div className={cn("w-[260px] h-full flex flex-col bg-black/20 border-r border-white/5 backdrop-blur-sm", className)}>
+        <div className={cn("w-[260px] h-full flex flex-col bg-black/30 border-r border-white/5", className)}>
             {/* Header / New Chat */}
-            <div className="p-4 border-b border-white/5 shrink-0">
+            <div className="p-3 border-b border-white/5 shrink-0">
                 <Button
                     onClick={() => navigate('/chat/new')}
-                    className="w-full justify-start gap-2 bg-[var(--synapse-cyan)]/10 hover:bg-[var(--synapse-cyan)]/20 border border-[var(--synapse-cyan)]/20 text-[var(--synapse-text-primary)] hover:text-white transition-all shadow-[0_0_10px_rgba(0,0,0,0.2)]"
+                    className="w-full justify-start gap-2 bg-white/5 hover:bg-white/10 border border-white/10 text-[var(--synapse-text-primary)] hover:text-white transition-all"
                 >
-                    <Plus className="h-4 w-4 text-[var(--synapse-cyan)]" />
-                    <span>New Chat</span>
+                    <Plus className="h-4 w-4" />
+                    <span className="font-medium">New Chat</span>
                 </Button>
             </div>
 
             {/* Session List */}
             <ScrollArea className="flex-1">
-                <div className="px-2 py-4 space-y-6">
+                <div className="px-2 py-3 space-y-4">
                     {isLoading ? (
                         Array.from({ length: 5 }).map((_, i) => (
                             <div key={i} className="h-9 m-1 rounded bg-white/5 animate-pulse" />
@@ -97,7 +96,7 @@ export function ChatHistorySidebar({ currentSessionId, className }: ChatHistoryS
                         Object.entries(groupedSessions).map(([groupName, groupSessions]) => (
                             groupSessions.length > 0 && (
                                 <div key={groupName} className="space-y-1">
-                                    <div className="px-3 text-[10px] font-bold uppercase tracking-wider text-[var(--synapse-text-tertiary)] opacity-60 mb-2">
+                                    <div className="px-3 text-[10px] font-semibold uppercase tracking-wider text-[var(--synapse-text-tertiary)] opacity-50 mb-1.5">
                                         {groupName}
                                     </div>
                                     {groupSessions.map((session) => (
@@ -105,18 +104,18 @@ export function ChatHistorySidebar({ currentSessionId, className }: ChatHistoryS
                                             key={session.id}
                                             onClick={() => navigate(`/chat/${session.id}?mode=normal`)}
                                             className={cn(
-                                                "group flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-all text-sm relative overflow-hidden",
+                                                "group flex items-center gap-2 px-3 py-2 rounded-md cursor-pointer transition-all text-sm relative",
                                                 session.id === currentSessionId
-                                                    ? "bg-white/10 text-white shadow-sm"
+                                                    ? "bg-white/10 text-white"
                                                     : "text-[var(--synapse-text-secondary)] hover:bg-white/5 hover:text-white"
                                             )}
                                         >
                                             {/* Active Indicator */}
                                             {session.id === currentSessionId && (
-                                                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 bg-[var(--synapse-cyan)] rounded-r-full" />
+                                                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-3 bg-white rounded-r-sm" />
                                             )}
 
-                                            <span className="flex-1 truncate text-xs font-medium">{session.title || 'Untitled Chat'}</span>
+                                            <span className="flex-1 truncate text-xs font-medium pl-1">{session.title || 'Untitled Chat'}</span>
 
                                             {/* Options Menu (Visible on Hover) */}
                                             <div className="opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>

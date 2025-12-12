@@ -2,7 +2,7 @@
  * QuickStats - 4 key metrics display
  */
 import { CreditCard, Brain, Activity, Clock } from 'lucide-react';
-import type { DashboardOverview } from '@/api/generated/types.gen';
+import type { DashboardOverview } from '@/api/generated';
 
 interface QuickStatsProps {
   overview: DashboardOverview | null;

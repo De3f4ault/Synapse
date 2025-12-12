@@ -6,9 +6,9 @@ import Confetti from 'react-confetti';
 import {
     startQuizAttemptApiV1QuizzesQuizIdStartPost,
     submitQuizAttemptApiV1QuizzesAttemptsAttemptIdSubmitPost,
-} from '@/api/generated/services.gen';
+} from '@/api/generated';
 import { queryKeys } from '@/lib/queryKeys';
-import type { QuizAttemptStart, AnswerSubmit } from '@/api/generated/types.gen';
+import type { QuizAttemptStart, AnswerSubmit } from '@/api/generated';
 import {
     Brain, Zap, CheckCircle, XCircle, Trophy,
     XCircle as XIcon, Loader2, HelpCircle, Bot,

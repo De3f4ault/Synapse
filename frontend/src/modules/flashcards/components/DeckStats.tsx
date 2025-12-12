@@ -5,7 +5,7 @@ import { StatCard, StatCardGrid } from '@/components/common/StatCard';
 import { motion } from 'framer-motion';
 import { BookOpen, TrendingUp, Clock, Target, Brain, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { DeckResponse, FlashcardResponse } from '@/api/generated/types.gen';
+import type { DeckResponse, FlashcardResponse } from '@/api/generated';
 
 /**
  * Enhanced Deck Statistics Component

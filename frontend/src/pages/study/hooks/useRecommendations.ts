@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { getRecommendationsApiV1StudyRecommendationsGet } from '@/api/generated/services.gen';
-import type { StudyItemResponse } from '@/api/generated/types.gen';
+import {  getRecommendationsApiV1StudyRecommendationsGet , StudyService } from '@/api/generated';
+import type { StudyItemResponse } from '@/api/generated';
 import { QUERY_KEYS } from '@/lib/constants';
 import type {
     RecommendedItem,
