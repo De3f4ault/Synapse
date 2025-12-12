@@ -1,39 +1,57 @@
-import { OpenAPI } from './generated/core/OpenAPI';
+import { client } from './generated/services.gen';
 
-// Configure the OpenAPI client - Default to port 8000
+// Configure the API client base URL
+// When using Vite proxy, we can use relative URLs or the full backend URL
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
-// Set base URL
-OpenAPI.BASE = API_BASE_URL;
+// Set base URL for the generated client
+client.setConfig({
+    baseUrl: API_BASE_URL,
+});
 
-// Enable credentials to send cookies/auth headers
-OpenAPI.WITH_CREDENTIALS = true;
-OpenAPI.CREDENTIALS = 'include';
-
-// Configure token resolver - this function is called before each request
-// to dynamically retrieve the current token from localStorage
-OpenAPI.TOKEN = async () => {
+// Add request interceptor to include auth token
+client.interceptors.request.use((request) => {
     try {
         const authData = localStorage.getItem('synapse-auth');
-        if (!authData) return undefined;
+        if (authData) {
+            const parsed = JSON.parse(authData);
+            const token = parsed?.state?.token;
 
-        const parsed = JSON.parse(authData);
-        return parsed?.state?.token || undefined;
+            if (token) {
+                // Use Headers API set() method - request.headers is a Headers object
+                if (request.headers instanceof Headers) {
+                    request.headers.set('Authorization', `Bearer ${token}`);
+                } else if (typeof request.headers === 'object') {
+                    // Fallback for plain object headers
+                    (request.headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;
+                }
+            }
+        }
     } catch (error) {
-        console.error('Failed to retrieve auth token:', error);
-        return undefined;
+        console.error('Failed to add auth token to request:', error);
     }
-};
 
-// DO NOT set OpenAPI.HEADERS - it conflicts with the TOKEN resolver
-// The request.ts file will automatically add the Authorization header
-// using the token returned by OpenAPI.TOKEN
+    return request;
+});
 
-export { OpenAPI };
+// Add response interceptor for error handling
+client.interceptors.response.use((response) => {
+    // Handle 401 Unauthorized errors
+    if (response.status === 401) {
+        // Clear auth state
+        localStorage.removeItem('synapse-auth');
+        // Redirect to login
+        window.location.href = '/login';
+    }
+
+    return response;
+});
+
+export { client };
 
 /**
- * Add getAuthToken export for compatibility with hooks & services.
- * This must remain a synchronous function.
+ * Helper function to get auth token synchronously
+ * Used by stores and hooks
  */
 export function getAuthToken(): string | undefined {
     try {

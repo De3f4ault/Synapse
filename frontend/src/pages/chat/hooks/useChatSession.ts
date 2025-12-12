@@ -26,9 +26,13 @@ export const useChatSessions = (params?: { page?: number; pageSize?: number }) =
   return useQuery<ChatSessionResponse[]>({
     queryKey: ['chat-sessions', params],
     queryFn: async () => {
-      const response = await listSessionsApiV1ChatSessionsGet(params || {});
+      const response = await listSessionsApiV1ChatSessionsGet({
+        query: params ? { page: params.page, page_size: params.pageSize } : undefined
+      });
+      // Extract data from @hey-api/client-fetch wrapper
+      const data = (response as any).data ?? response;
       // Handle both direct array and paginated response
-      return Array.isArray(response) ? response : (response as any).items || [];
+      return Array.isArray(data) ? data : (data as any).items || [];
     },
     staleTime: 1000 * 60 * 5, // 5 minutes
     refetchOnWindowFocus: true,
@@ -41,9 +45,12 @@ export const useChatSessions = (params?: { page?: number; pageSize?: number }) =
 export const useChatSession = (sessionId: number | undefined) => {
   return useQuery<ChatSessionResponse>({
     queryKey: ['chat-session', sessionId],
-    queryFn: () => getSessionApiV1ChatSessionsSessionIdGet({ sessionId: sessionId! }),
-                                       enabled: !!sessionId,
-                                       staleTime: 1000 * 60 * 5, // 5 minutes
+    queryFn: async () => {
+      const response = await getSessionApiV1ChatSessionsSessionIdGet({ path: { session_id: sessionId! } });
+      return (response as any).data ?? response;
+    },
+    enabled: !!sessionId,
+    staleTime: 1000 * 60 * 5, // 5 minutes
   });
 };
 
@@ -55,16 +62,18 @@ export const useCreateSession = () => {
   const navigate = useNavigate();
 
   return useMutation({
-    mutationFn: (data: ChatSessionCreate) =>
-    createSessionApiV1ChatSessionsPost({ requestBody: data }),
-                     onSuccess: (session) => {
-                       queryClient.invalidateQueries({ queryKey: ['chat-sessions'] });
-                       toast.success('New conversation started');
-                       navigate(`/chat/${session.id}`);
-                     },
-                     onError: (error: any) => {
-                       toast.error(error.message || 'Failed to create session');
-                     },
+    mutationFn: async (data: ChatSessionCreate) => {
+      const response = await createSessionApiV1ChatSessionsPost({ body: data });
+      return (response as any).data ?? response;
+    },
+    onSuccess: (session) => {
+      queryClient.invalidateQueries({ queryKey: ['chat-sessions'] });
+      toast.success('New conversation started');
+      navigate(`/chat/${session.id}`);
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to create session');
+    },
   });
 };
 
@@ -77,16 +86,16 @@ export const useDeleteSession = () => {
 
   return useMutation({
     mutationFn: (sessionId: number) =>
-    deleteSessionApiV1ChatSessionsSessionIdDelete({ sessionId }),
-                     onSuccess: (_, sessionId) => {
-                       queryClient.invalidateQueries({ queryKey: ['chat-sessions'] });
-                       queryClient.removeQueries({ queryKey: ['chat-session', sessionId] });
-                       queryClient.removeQueries({ queryKey: ['chat-messages', sessionId] });
-                       toast.success('Conversation deleted');
-                       navigate('/chat');
-                     },
-                     onError: (error: any) => {
-                       toast.error(error.message || 'Failed to delete session');
-                     },
+      deleteSessionApiV1ChatSessionsSessionIdDelete({ path: { session_id: sessionId } }),
+    onSuccess: (_, sessionId) => {
+      queryClient.invalidateQueries({ queryKey: ['chat-sessions'] });
+      queryClient.removeQueries({ queryKey: ['chat-session', sessionId] });
+      queryClient.removeQueries({ queryKey: ['chat-messages', sessionId] });
+      toast.success('Conversation deleted');
+      navigate('/chat');
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to delete session');
+    },
   });
 };

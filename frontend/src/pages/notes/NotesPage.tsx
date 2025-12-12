@@ -50,14 +50,12 @@ export function NotesPage() {
     const handleCreateNote = () => {
         createNote(
             {
-                requestBody: {
-                    title: 'New Fragment',
-                    content: '',
-                    tags: [],
-                },
+                title: 'New Fragment',
+                content: '',
+                tags: [],
             },
             {
-                onSuccess: (data) => {
+                onSuccess: (data: any) => {
                     navigate(`/notes/${data.id}`);
                 },
             }

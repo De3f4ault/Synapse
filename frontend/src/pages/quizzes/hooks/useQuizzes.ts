@@ -9,6 +9,9 @@ import { queryKeys } from '@/lib/queryKeys';
 
 /**
  * Custom hook for managing quizzes
+ * 
+ * NOTE: @hey-api/client-fetch returns { data, request, response }
+ * We need to extract .data from each response
  */
 export function useQuizzes() {
     const queryClient = useQueryClient();
@@ -21,12 +24,18 @@ export function useQuizzes() {
         refetch,
     } = useQuery({
         queryKey: queryKeys.quizzes.list(),
-                 queryFn: () => listQuizzesApiV1QuizzesGet(),
+        queryFn: async () => {
+            const response = await listQuizzesApiV1QuizzesGet();
+            return (response as any).data ?? response;
+        },
     });
 
     // Create quiz mutation
     const createQuizMutation = useMutation({
-        mutationFn: createQuizApiV1QuizzesPost,
+        mutationFn: async (data: any) => {
+            const response = await createQuizApiV1QuizzesPost({ body: data });
+            return (response as any).data ?? response;
+        },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.quizzes.all });
             toast.success('SIMULATION CONSTRUCTED SUCCESSFULLY');
@@ -40,16 +49,19 @@ export function useQuizzes() {
 
     // Delete quiz mutation
     const deleteQuizMutation = useMutation({
-        mutationFn: (quizId: number) => deleteQuizApiV1QuizzesQuizIdDelete({ quizId }),
-                                           onSuccess: () => {
-                                               queryClient.invalidateQueries({ queryKey: queryKeys.quizzes.all });
-                                               toast.success('SIMULATION ARCHIVED');
-                                           },
-                                           onError: (error) => {
-                                               toast.error('ARCHIVE FAILED', {
-                                                   description: error instanceof Error ? error.message : 'Unknown error',
-                                               });
-                                           },
+        mutationFn: async (quizId: number) => {
+            const response = await deleteQuizApiV1QuizzesQuizIdDelete({ path: { quiz_id: quizId } });
+            return (response as any).data ?? response;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.quizzes.all });
+            toast.success('SIMULATION ARCHIVED');
+        },
+        onError: (error) => {
+            toast.error('ARCHIVE FAILED', {
+                description: error instanceof Error ? error.message : 'Unknown error',
+            });
+        },
     });
 
     return {
@@ -63,3 +75,4 @@ export function useQuizzes() {
         isDeleting: deleteQuizMutation.isPending,
     };
 }
+

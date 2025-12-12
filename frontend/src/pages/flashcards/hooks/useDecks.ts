@@ -1,6 +1,9 @@
 /**
  * useDecks Hook
  * Manages deck data fetching, mutations, and state
+ * 
+ * NOTE: @hey-api/client-fetch returns { data, request, response }
+ * We need to extract .data from each response
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -10,6 +13,7 @@ import {
     createDeckApiV1DecksPost,
     updateDeckApiV1DecksDeckIdPut,
     deleteDeckApiV1DecksDeckIdDelete,
+    getDueCardsApiV1CardsDueGet,
 } from '@/api/generated/services.gen';
 import { queryKeys } from '@/lib/queryKeys';
 import { toast } from 'sonner';
@@ -21,8 +25,11 @@ import type { DeckCreateInput, DeckUpdateInput } from '../types/flashcards.types
 export function useDecks() {
     return useQuery({
         queryKey: queryKeys.decks.list(),
-                    queryFn: () => listDecksApiV1DecksGet(),
-                    staleTime: 5 * 60 * 1000, // 5 minutes
+        queryFn: async () => {
+            const response = await listDecksApiV1DecksGet();
+            return (response as any).data ?? response;
+        },
+        staleTime: 5 * 60 * 1000, // 5 minutes
     });
 }
 
@@ -32,8 +39,11 @@ export function useDecks() {
 export function useDeck(deckId: number) {
     return useQuery({
         queryKey: queryKeys.decks.detail(deckId),
-                    queryFn: () => getDeckApiV1DecksDeckIdGet({ deckId }),
-                    enabled: !!deckId,
+        queryFn: async () => {
+            const response = await getDeckApiV1DecksDeckIdGet({ path: { deck_id: deckId } });
+            return (response as any).data ?? response;
+        },
+        enabled: !!deckId,
     });
 }
 
@@ -44,17 +54,19 @@ export function useCreateDeck() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: (data: DeckCreateInput) =>
-        createDeckApiV1DecksPost({ requestBody: data }),
-                       onSuccess: () => {
-                           queryClient.invalidateQueries({ queryKey: queryKeys.decks.all });
-                           toast.success('Memory core constructed successfully');
-                       },
-                       onError: (error) => {
-                           toast.error('Failed to construct core', {
-                               description: error instanceof Error ? error.message : 'Unknown error',
-                           });
-                       },
+        mutationFn: async (data: DeckCreateInput) => {
+            const response = await createDeckApiV1DecksPost({ body: data });
+            return (response as any).data ?? response;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.decks.all });
+            toast.success('Memory core constructed successfully');
+        },
+        onError: (error) => {
+            toast.error('Failed to construct core', {
+                description: error instanceof Error ? error.message : 'Unknown error',
+            });
+        },
     });
 }
 
@@ -65,11 +77,13 @@ export function useUpdateDeck() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: ({ deckId, data }: { deckId: number; data: DeckUpdateInput }) =>
-        updateDeckApiV1DecksDeckIdPut({
-            deckId,
-            requestBody: data,
-        }),
+        mutationFn: async ({ deckId, data }: { deckId: number; data: DeckUpdateInput }) => {
+            const response = await updateDeckApiV1DecksDeckIdPut({
+                path: { deck_id: deckId },
+                body: data,
+            });
+            return (response as any).data ?? response;
+        },
         onSuccess: (_, variables) => {
             queryClient.invalidateQueries({ queryKey: queryKeys.decks.detail(variables.deckId) });
             queryClient.invalidateQueries({ queryKey: queryKeys.decks.list() });
@@ -90,17 +104,19 @@ export function useDeleteDeck() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: (deckId: number) =>
-        deleteDeckApiV1DecksDeckIdDelete({ deckId }),
-                       onSuccess: () => {
-                           queryClient.invalidateQueries({ queryKey: queryKeys.decks.all });
-                           toast.success('Memory core purged successfully');
-                       },
-                       onError: (error) => {
-                           toast.error('Failed to delete deck', {
-                               description: error instanceof Error ? error.message : 'Unknown error',
-                           });
-                       },
+        mutationFn: async (deckId: number) => {
+            const response = await deleteDeckApiV1DecksDeckIdDelete({ path: { deck_id: deckId } });
+            return (response as any).data ?? response;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.decks.all });
+            toast.success('Memory core purged successfully');
+        },
+        onError: (error) => {
+            toast.error('Failed to delete deck', {
+                description: error instanceof Error ? error.message : 'Unknown error',
+            });
+        },
     });
 }
 
@@ -111,8 +127,11 @@ export function useDeckStats(deckId: number) {
     const { data: deck } = useDeck(deckId);
     const { data: cards } = useQuery({
         queryKey: queryKeys.decks.cards(deckId),
-                                     queryFn: () => getDueCardsApiV1CardsDueGet({ deckId }),
-                                     enabled: !!deckId,
+        queryFn: async () => {
+            const response = await getDueCardsApiV1CardsDueGet({ query: { deck_id: deckId } });
+            return (response as any).data ?? response;
+        },
+        enabled: !!deckId,
     });
 
     if (!deck) {
@@ -140,7 +159,7 @@ export function useDeckStats(deckId: number) {
         const averageAccuracy = cards.length > 0 ? totalAccuracy / cards.length : 0;
 
         const masteryPercent =
-        totalCards > 0 ? Math.round((stateGroups.mastered / totalCards) * 100) : 0;
+            totalCards > 0 ? Math.round((stateGroups.mastered / totalCards) * 100) : 0;
 
         return {
             totalCards,

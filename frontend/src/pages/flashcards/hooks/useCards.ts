@@ -1,6 +1,9 @@
 /**
  * useCards Hook
  * Manages flashcard data fetching, mutations, and operations
+ * 
+ * NOTE: @hey-api/client-fetch returns { data, request, response }
+ * We need to extract .data from each response
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -21,8 +24,11 @@ import type { FlashcardCreateInput, FlashcardUpdateInput } from '../types/flashc
 export function useDeckCards(deckId: number) {
     return useQuery({
         queryKey: queryKeys.decks.cards(deckId),
-                    queryFn: () => getDueCardsApiV1CardsDueGet({ deckId }),
-                    enabled: !!deckId,
+        queryFn: async () => {
+            const response = await getDueCardsApiV1CardsDueGet({ query: { deck_id: deckId } });
+            return (response as any).data ?? response;
+        },
+        enabled: !!deckId,
     });
 }
 
@@ -32,10 +38,12 @@ export function useDeckCards(deckId: number) {
 export function useDueCards(deckId?: number) {
     return useQuery({
         queryKey: deckId ? queryKeys.decks.cards(deckId) : queryKeys.flashcards.due(),
-                    queryFn: () =>
-                    getDueCardsApiV1CardsDueGet({
-                        deckId: deckId || undefined,
-                    }),
+        queryFn: async () => {
+            const response = await getDueCardsApiV1CardsDueGet({
+                query: { deck_id: deckId || undefined },
+            });
+            return (response as any).data ?? response;
+        },
     });
 }
 
@@ -45,8 +53,11 @@ export function useDueCards(deckId?: number) {
 export function useCard(cardId: number) {
     return useQuery({
         queryKey: queryKeys.flashcards.detail(cardId),
-                    queryFn: () => getCardApiV1CardsCardIdGet({ cardId }),
-                    enabled: !!cardId,
+        queryFn: async () => {
+            const response = await getCardApiV1CardsCardIdGet({ path: { card_id: cardId } });
+            return (response as any).data ?? response;
+        },
+        enabled: !!cardId,
     });
 }
 
@@ -57,18 +68,20 @@ export function useCreateCard() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: (data: FlashcardCreateInput) =>
-        createCardApiV1CardsPost({ requestBody: data }),
-                       onSuccess: (_, variables) => {
-                           queryClient.invalidateQueries({ queryKey: queryKeys.decks.cards(variables.deck_id) });
-                           queryClient.invalidateQueries({ queryKey: queryKeys.decks.detail(variables.deck_id) });
-                           toast.success('Memory fragment constructed');
-                       },
-                       onError: (error) => {
-                           toast.error('Failed to construct fragment', {
-                               description: error instanceof Error ? error.message : 'Unknown error',
-                           });
-                       },
+        mutationFn: async (data: FlashcardCreateInput) => {
+            const response = await createCardApiV1CardsPost({ body: data });
+            return (response as any).data ?? response;
+        },
+        onSuccess: (_, variables) => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.decks.cards(variables.deck_id) });
+            queryClient.invalidateQueries({ queryKey: queryKeys.decks.detail(variables.deck_id) });
+            toast.success('Memory fragment constructed');
+        },
+        onError: (error) => {
+            toast.error('Failed to construct fragment', {
+                description: error instanceof Error ? error.message : 'Unknown error',
+            });
+        },
     });
 }
 
@@ -79,12 +92,14 @@ export function useUpdateCard() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: ({ cardId, data }: { cardId: number; data: FlashcardUpdateInput }) =>
-        updateCardApiV1CardsCardIdPut({
-            cardId,
-            requestBody: data,
-        }),
-        onSuccess: (card) => {
+        mutationFn: async ({ cardId, data }: { cardId: number; data: FlashcardUpdateInput }) => {
+            const response = await updateCardApiV1CardsCardIdPut({
+                path: { card_id: cardId },
+                body: data,
+            });
+            return (response as any).data ?? response;
+        },
+        onSuccess: (card: any, variables) => {
             queryClient.invalidateQueries({ queryKey: queryKeys.flashcards.detail(card.id) });
             queryClient.invalidateQueries({ queryKey: queryKeys.decks.cards(card.deck_id) });
             toast.success('Memory fragment updated');
@@ -104,18 +119,20 @@ export function useDeleteCard() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: (cardId: number) =>
-        deleteCardApiV1CardsCardIdDelete({ cardId }),
-                       onSuccess: () => {
-                           queryClient.invalidateQueries({ queryKey: queryKeys.flashcards.all });
-                           queryClient.invalidateQueries({ queryKey: queryKeys.decks.all });
-                           toast.success('Memory fragment deleted');
-                       },
-                       onError: (error) => {
-                           toast.error('Failed to delete fragment', {
-                               description: error instanceof Error ? error.message : 'Unknown error',
-                           });
-                       },
+        mutationFn: async (cardId: number) => {
+            const response = await deleteCardApiV1CardsCardIdDelete({ path: { card_id: cardId } });
+            return (response as any).data ?? response;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.flashcards.all });
+            queryClient.invalidateQueries({ queryKey: queryKeys.decks.all });
+            toast.success('Memory fragment deleted');
+        },
+        onError: (error) => {
+            toast.error('Failed to delete fragment', {
+                description: error instanceof Error ? error.message : 'Unknown error',
+            });
+        },
     });
 }
 
@@ -128,7 +145,7 @@ export function useBatchCreateCards() {
     return useMutation({
         mutationFn: async (cards: FlashcardCreateInput[]) => {
             const results = await Promise.allSettled(
-                cards.map((card) => createCardApiV1CardsPost({ requestBody: card }))
+                cards.map((card) => createCardApiV1CardsPost({ body: card }))
             );
 
             const successful = results.filter((r) => r.status === 'fulfilled').length;

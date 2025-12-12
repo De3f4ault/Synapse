@@ -22,7 +22,6 @@ export default defineConfig({
                                     target: 'http://localhost:8000',
                             changeOrigin: true,
                             secure: false,
-                            rewrite: (path) => path, // Keep /api prefix
                                 },
 
                             // Proxy WebSocket connections to port 8000

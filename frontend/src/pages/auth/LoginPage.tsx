@@ -1,10 +1,9 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
-import { motion } from 'framer-motion';
-import { Mail, Key, AlertTriangle } from 'lucide-react';
+import { Mail, Key } from 'lucide-react';
 
-import { loginApiV1AuthLoginPost } from '@/api/generated/services.gen';
+import { loginApiV1AuthLoginPost, getCurrentUserProfileApiV1AuthMeGet } from '@/api/generated/services.gen';
 import { useAuthStore } from '@/stores/authStore';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -25,17 +24,56 @@ export function LoginPage() {
     const [errorMsg, setErrorMsg] = useState('');
 
     const loginMutation = useMutation({
-        mutationFn: loginApiV1AuthLoginPost,
-        onSuccess: (data) => {
+        mutationFn: async (credentials: { email: string; password: string }) => {
+            const response = await loginApiV1AuthLoginPost({ body: credentials });
+            return (response as any).data ?? response;
+        },
+        onSuccess: async (response: any) => {
             setStatus('success');
-            setTimeout(() => {
-                setAuth(data.access_token, null);
+
+            // The client returns { data: TokenResponse, ... }
+            const accessToken = response.data?.access_token || response.access_token;
+
+            if (!accessToken) {
+                console.error('Login successful but no access token found in response:', response);
+                setStatus('idle');
+                toast({
+                    variant: "destructive",
+                    title: "Login Error",
+                    description: "Server returned an invalid response.",
+                });
+                return;
+            }
+
+            // Set token first to authenticate subsequent requests
+            setAuth(accessToken, null);
+
+            try {
+                // Fetch user profile
+                const userResponse = await getCurrentUserProfileApiV1AuthMeGet({
+                    headers: {
+                        Authorization: `Bearer ${accessToken}`,
+                    },
+                });
+
+                // Handle potential wrapped response for the profile as well
+                const user = (userResponse as any).data || userResponse;
+
+                setAuth(accessToken, user);
+
                 toast({
                     title: 'Welcome back',
-                    description: 'Successfully logged in to Synapse.',
+                    description: `Successfully logged in to Synapse.`,
                 });
+
+                setTimeout(() => {
+                    navigate('/dashboard');
+                }, 500);
+            } catch (error) {
+                console.error('Failed to fetch user profile:', error);
+                // Fallback: navigate anyway (token is valid)
                 navigate('/dashboard');
-            }, 1000);
+            }
         },
         onError: (error: any) => {
             console.error('Login error:', error);
@@ -63,10 +101,8 @@ export function LoginPage() {
         setStatus('loading');
 
         loginMutation.mutate({
-            requestBody: {
-                email: email.trim(),
-                password: password,
-            },
+            email: email.trim(),
+            password: password,
         });
     };
 
