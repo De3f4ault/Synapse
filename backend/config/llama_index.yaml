@@ -1,0 +1,75 @@
+# Llama Index RAG Configuration
+
+embedding:
+  # all-MiniLM-L6-v2: Fast, 384-dimensional embeddings
+  # Trade-off: Speed vs precision (but good enough for most cases)
+  model: "sentence-transformers/all-MiniLM-L6-v2"
+  dimensions: 384
+  batch_size: 32  # Process embeddings in batches
+  cache_ttl_hours: 24  # Cache embeddings for 24 hours
+
+chunking:
+  # Sentence-based chunking for most content
+  # Good balance between speed and quality
+  strategy: "sentence"  # Options: semantic, sentence, fixed
+
+  # Fixed strategy parameters
+  chunk_size: 512  # Tokens (approximate)
+  chunk_overlap: 50  # Tokens for context continuity
+
+  # Semantic strategy parameters (if used)
+  semantic_similarity_threshold: 0.5  # Topic change threshold
+  semantic_min_chunk_size: 50  # Min characters
+  semantic_max_chunk_size: 1000  # Max characters
+
+retrieval:
+  # Vector search parameters
+  top_k_default: 5  # Default results per query
+  top_k_max: 20  # Maximum results allowed
+  similarity_threshold: 0.7  # Minimum relevance score
+
+  # Reranking
+  use_cross_encoder: true  # More accurate but slower
+  cross_encoder_model: "cross-encoder/ms-marco-MiniLM-L-6-v2"
+
+  # Weak area boosting
+  enable_synapse_reranking: true
+  weak_area_boost_factor: 1.5  # 50% score boost for weak areas
+
+vector_store:
+  # LanceDB as vector store
+  type: "lancedb"
+
+  # Indexing strategy
+  index_type: "IVF_PQ"  # Scalable approximate indexing
+  n_clusters: 256  # IVF clusters
+  n_bits: 8  # PQ quantization bits
+
+  # Batch operations
+  batch_insert_size: 100
+  batch_search_size: 32
+
+llm:
+  # Gemini Flash for efficiency
+  # Could upgrade to Pro for better quality if budget allows
+  model: "models/gemini-1.5-flash"
+  temperature: 0.7
+  max_tokens: 2048
+
+  # Context window management
+  reserve_tokens: 500  # Reserve for response
+
+performance:
+  # Caching strategies
+  enable_embedding_cache: true  # Redis cache for embeddings
+  enable_query_cache: true  # Cache query results
+  query_cache_ttl_minutes: 30
+
+  # Batch processing
+  parallel_embedding_generation: 4  # Max concurrent embedding tasks
+  document_processing_batch_size: 10
+
+logging:
+  level: "INFO"
+  include_reranking_factors: true  # Log scoring breakdown
+  include_timing: true  # Log query duration

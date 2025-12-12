@@ -1,0 +1,508 @@
+/**
+ * Synapse Design System - Chat Interface Theme
+ * Extracted from Synapse Header Component
+ *
+ * Location: frontend/src/pages/chat/styles/synapse-theme.css
+ */
+
+:root {
+    /* Synapse Brand Colors - Creative Mix */
+    --synapse-cyan: #22d3ee;
+    --synapse-cyan-dark: #0e7490;
+    --synapse-cyan-glow: rgba(34, 211, 238, 0.4);
+    /* Slightly stronger glow */
+    --synapse-blue: #3b82f6;
+    --synapse-purple: #a855f7;
+    --synapse-purple-glow: rgba(168, 85, 247, 0.3);
+    --synapse-emerald: #10b981;
+    --synapse-amber: #f59e0b;
+    --synapse-red: #ef4444;
+
+    /* Creative Gradients */
+    --synapse-gradient-primary: linear-gradient(135deg, rgba(34, 211, 238, 0.1), rgba(168, 85, 247, 0.05));
+    --synapse-gradient-border: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+    --synapse-gradient-glass: linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%);
+
+    /* Canvas & Surfaces - Richer Darks */
+    --synapse-bg-primary: #020408;
+    /* Deep dark blue-black instead of flat black */
+    --synapse-bg-secondary: #080b12;
+    /* Slightly lighter */
+    --synapse-bg-tertiary: #11141d;
+    --synapse-panel-bg: rgba(10, 10, 16, 0.6);
+    /* More transparent for glass */
+    --synapse-panel-hover: rgba(255, 255, 255, 0.08);
+
+    /* Text Colors */
+    --synapse-text-primary: #f8fafc;
+    /* Crisp white-blue */
+    --synapse-text-secondary: #94a3b8;
+    /* Cool gray */
+    --synapse-text-tertiary: #64748b;
+    --synapse-text-dim: #475569;
+
+    /* Borders */
+    --synapse-border-subtle: rgba(255, 255, 255, 0.06);
+    --synapse-border-medium: rgba(255, 255, 255, 0.12);
+    --synapse-border-accent: rgba(34, 211, 238, 0.25);
+
+    /* Shadows */
+    --synapse-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.4);
+    --synapse-shadow-md: 0 4px 20px rgba(0, 0, 0, 0.6);
+    --synapse-shadow-lg: 0 8px 40px rgba(0, 0, 0, 0.8);
+    --synapse-shadow-glow: 0 0 20px rgba(34, 211, 238, 0.25);
+
+    /* Border Radius - Synapse style (more rounded) */
+    --synapse-radius-sm: 8px;
+    --synapse-radius-md: 12px;
+    --synapse-radius-lg: 16px;
+    --synapse-radius-xl: 20px;
+    --synapse-radius-2xl: 24px;
+    --synapse-radius-full: 9999px;
+
+    /* Transitions */
+    --synapse-transition-fast: 150ms;
+    --synapse-transition-base: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+    --synapse-transition-slow: 500ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Global Synapse Styles */
+body.synapse-mode {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+    background: var(--synapse-bg-primary);
+    color: var(--synapse-text-primary);
+    -webkit-font-smoothing: antialiased;
+}
+
+/* Panel Base - Synapse Style */
+.synapse-panel {
+    background: var(--synapse-bg-secondary);
+    background-image: var(--synapse-gradient-glass);
+    /* Subtle creative texture */
+    border: 1px solid var(--synapse-border-subtle);
+    border-radius: var(--synapse-radius-xl);
+    box-shadow: var(--synapse-shadow-md);
+    backdrop-filter: blur(24px);
+    /* Stronger blur for premium glass */
+    position: relative;
+    overflow: hidden;
+}
+
+/* Subtle glow border effect */
+.synapse-panel::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: var(--synapse-radius-xl);
+    padding: 1px;
+    background: var(--synapse-gradient-border);
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+/* Panel Header */
+.synapse-panel-header {
+    height: 56px;
+    min-height: 56px;
+    padding: 0 20px;
+    border-bottom: 1px solid var(--synapse-border-subtle);
+    background: var(--synapse-panel-bg);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+    border-radius: var(--synapse-radius-xl) var(--synapse-radius-xl) 0 0;
+}
+
+.synapse-panel-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--synapse-text-primary);
+    letter-spacing: 0.025em;
+    text-transform: uppercase;
+}
+
+/* Buttons - Synapse Style */
+.synapse-button {
+    padding: 10px 20px;
+    background: var(--synapse-panel-bg);
+    border: 1px solid var(--synapse-border-subtle);
+    border-radius: var(--synapse-radius-md);
+    color: var(--synapse-text-primary);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--synapse-transition-base) ease;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.synapse-button:hover {
+    background: var(--synapse-panel-hover);
+    border-color: var(--synapse-border-medium);
+    transform: translateY(-1px);
+    box-shadow: var(--synapse-shadow-sm);
+}
+
+.synapse-button-primary {
+    background: linear-gradient(135deg, var(--synapse-cyan), var(--synapse-blue));
+    color: #000;
+    border: none;
+    font-weight: 700;
+    box-shadow: var(--synapse-shadow-glow);
+}
+
+.synapse-button-primary:hover {
+    box-shadow: 0 0 30px rgba(34, 211, 238, 0.5);
+    transform: translateY(-2px);
+}
+
+/* Icon Button */
+.synapse-icon-button {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    border-radius: var(--synapse-radius-md);
+    color: var(--synapse-text-tertiary);
+    cursor: pointer;
+    transition: all var(--synapse-transition-base) ease;
+}
+
+.synapse-icon-button:hover {
+    background: var(--synapse-panel-hover);
+    color: var(--synapse-text-primary);
+}
+
+/* Search Box - Synapse Style */
+.synapse-search-box {
+    background: var(--synapse-panel-bg);
+    border: 1px solid var(--synapse-border-subtle);
+    border-radius: var(--synapse-radius-full);
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all var(--synapse-transition-base) ease;
+}
+
+.synapse-search-box:hover {
+    background: var(--synapse-panel-hover);
+    border-color: var(--synapse-border-accent);
+}
+
+.synapse-search-box:focus-within {
+    border-color: var(--synapse-cyan);
+    box-shadow: 0 0 0 3px var(--synapse-cyan-glow);
+}
+
+.synapse-search-box input {
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--synapse-text-primary);
+    font-size: 13px;
+    flex: 1;
+}
+
+.synapse-search-box input::placeholder {
+    color: var(--synapse-text-dim);
+}
+
+/* Source Item - Synapse Style */
+.synapse-source-item {
+    padding: 12px;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: var(--synapse-radius-md);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    transition: all var(--synapse-transition-base) ease;
+}
+
+.synapse-source-item:hover {
+    background: var(--synapse-panel-hover);
+    border-color: var(--synapse-border-subtle);
+    transform: translateX(4px);
+}
+
+.synapse-source-icon {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--synapse-radius-sm);
+    flex-shrink: 0;
+}
+
+.synapse-source-icon-pdf {
+    background: rgba(239, 68, 68, 0.15);
+    color: var(--synapse-red);
+}
+
+.synapse-source-icon-doc {
+    background: rgba(59, 130, 246, 0.15);
+    color: var(--synapse-blue);
+}
+
+.synapse-source-icon-txt {
+    background: rgba(16, 185, 129, 0.15);
+    color: var(--synapse-emerald);
+}
+
+/* Studio Grid - Synapse Style */
+.synapse-studio-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+}
+
+.synapse-studio-item {
+    padding: 12px 8px;
+    background: var(--synapse-bg-tertiary);
+    border: 1px solid var(--synapse-border-subtle);
+    border-radius: var(--synapse-radius-lg);
+    display: flex;
+    flex-direction: row;
+    /* Horizontal layout like reference */
+    align-items: center;
+    /* Center vertically */
+    justify-content: flex-start;
+    /* Align left */
+    gap: 12px;
+    cursor: pointer;
+    transition: all var(--synapse-transition-base) cubic-bezier(0.4, 0, 0.2, 1);
+    text-align: left;
+    position: relative;
+    overflow: hidden;
+    min-height: 48px;
+    /* Fixed height relative to ref */
+}
+
+.synapse-studio-item::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, var(--synapse-cyan-glow), transparent);
+    opacity: 0;
+    transition: opacity var(--synapse-transition-base);
+}
+
+.synapse-studio-item:hover::before {
+    opacity: 1;
+}
+
+.synapse-studio-item:hover {
+    background: var(--synapse-panel-hover);
+    border-color: var(--synapse-border-accent);
+    transform: translateY(-4px);
+    box-shadow: var(--synapse-shadow-glow);
+}
+
+.synapse-studio-icon {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--synapse-text-tertiary);
+    transition: all var(--synapse-transition-base);
+    flex-shrink: 0;
+}
+
+.synapse-studio-item:hover .synapse-studio-icon {
+    color: var(--synapse-cyan);
+    transform: none;
+    /* Remove scale transform for cleaner look */
+}
+
+.synapse-studio-label {
+    font-size: 11px;
+    line-height: 1.2;
+    color: var(--synapse-text-secondary);
+    /* Lighter than tertiary for visibility */
+    font-weight: 500;
+    text-transform: none;
+    /* Reference is title case */
+    letter-spacing: 0.01em;
+    transition: color var(--synapse-transition-base);
+}
+
+.synapse-studio-item:hover .synapse-studio-label {
+    color: var(--synapse-text-primary);
+}
+
+/* Deep Research Banner - Synapse Style */
+.synapse-research-banner {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(6, 78, 59, 0.15));
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    border-radius: var(--synapse-radius-lg);
+    padding: 16px;
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+    transition: all var(--synapse-transition-base);
+}
+
+.synapse-research-banner:hover {
+    border-color: var(--synapse-emerald);
+    box-shadow: 0 0 20px rgba(16, 185, 129, 0.3);
+}
+
+.synapse-research-title {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--synapse-emerald);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 4px;
+}
+
+.synapse-research-text {
+    font-size: 13px;
+    color: var(--synapse-text-secondary);
+    line-height: 1.5;
+}
+
+/* Empty State */
+.synapse-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 48px 24px;
+}
+
+.synapse-empty-icon {
+    width: 64px;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--synapse-panel-bg);
+    border-radius: var(--synapse-radius-lg);
+    margin-bottom: 16px;
+    color: var(--synapse-text-dim);
+}
+
+/* Custom Scrollbar - Synapse Style */
+.synapse-scrollbar::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.synapse-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.synapse-scrollbar::-webkit-scrollbar-thumb {
+    background: var(--synapse-border-subtle);
+    border-radius: 4px;
+    transition: background var(--synapse-transition-fast);
+}
+
+.synapse-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: var(--synapse-border-medium);
+}
+
+/* Glow Effects */
+.synapse-glow-cyan {
+    box-shadow: 0 0 20px var(--synapse-cyan-glow);
+}
+
+.synapse-glow-text {
+    text-shadow: 0 0 10px var(--synapse-cyan-glow);
+}
+
+/* Animation Utilities */
+@keyframes synapse-pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}
+
+.synapse-pulse {
+    animation: synapse-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes synapse-glow {
+    0%, 100% {
+        box-shadow: 0 0 20px var(--synapse-cyan-glow);
+    }
+    50% {
+        box-shadow: 0 0 40px var(--synapse-cyan-glow);
+    }
+}
+
+.synapse-animate-glow {
+    animation: synapse-glow 2s ease-in-out infinite;
+}
+
+/* Input Container */
+.synapse-input-container {
+    background: var(--synapse-panel-bg);
+    border: 1px solid var(--synapse-border-subtle);
+    border-radius: var(--synapse-radius-full);
+    padding: 6px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all var(--synapse-transition-base) ease;
+}
+
+.synapse-input-container:focus-within {
+    border-color: var(--synapse-cyan);
+    box-shadow: 0 0 0 3px var(--synapse-cyan-glow);
+}
+
+/* Badge/Chip */
+.synapse-chip {
+    padding: 6px 12px;
+    background: var(--synapse-panel-bg);
+    border: 1px solid var(--synapse-border-subtle);
+    border-radius: var(--synapse-radius-full);
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--synapse-text-tertiary);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* Panel Toggle */
+.synapse-panel-toggle {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--synapse-bg-secondary);
+    border: 1px solid var(--synapse-border-subtle);
+    border-radius: var(--synapse-radius-md);
+    color: var(--synapse-text-tertiary);
+    cursor: pointer;
+    transition: all var(--synapse-transition-base) ease;
+    box-shadow: var(--synapse-shadow-md);
+}
+
+.synapse-panel-toggle:hover {
+    background: var(--synapse-panel-hover);
+    color: var(--synapse-cyan);
+    border-color: var(--synapse-border-accent);
+    box-shadow: var(--synapse-shadow-glow);
+}

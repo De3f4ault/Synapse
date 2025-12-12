@@ -1,0 +1,278 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/**
+ * Global Styles (ENHANCED)
+ *
+ * Additions:
+ * - Semantic status colors (success, warning, info)
+ * - Learning-specific colors (mastery, learning, new, review)
+ * - Difficulty colors (easy, medium, hard)
+ * - Gradient definitions
+ * - Animation keyframes
+ */
+
+@layer base {
+    :root {
+        /* Original theme colors */
+        --background: 0 0% 100%;
+        --foreground: 222.2 84% 4.9%;
+        --card: 0 0% 100%;
+        --card-foreground: 222.2 84% 4.9%;
+        --popover: 0 0% 100%;
+        --popover-foreground: 222.2 84% 4.9%;
+        --primary: 221.2 83.2% 53.3%;
+        --primary-foreground: 210 40% 98%;
+        --secondary: 210 40% 96.1%;
+        --secondary-foreground: 222.2 47.4% 11.2%;
+        --muted: 210 40% 96.1%;
+        --muted-foreground: 215.4 16.3% 46.9%;
+        --accent: 210 40% 96.1%;
+        --accent-foreground: 222.2 47.4% 11.2%;
+        --destructive: 0 84.2% 60.2%;
+        --destructive-foreground: 210 40% 98%;
+        --border: 214.3 31.8% 91.4%;
+        --input: 214.3 31.8% 91.4%;
+        --ring: 221.2 83.2% 53.3%;
+        --radius: 0.5rem;
+
+        /* NEW: Semantic status colors */
+        --success: 142 76% 36%;
+        --success-foreground: 138 76% 97%;
+        --warning: 38 92% 50%;
+        --warning-foreground: 48 96% 89%;
+        --info: 199 89% 48%;
+        --info-foreground: 204 94% 94%;
+
+        /* NEW: Learning state colors */
+        --mastery: 142 71% 45%;
+        --mastery-foreground: 138 76% 97%;
+        --learning: 217 91% 60%;
+        --learning-foreground: 222 47% 11%;
+        --new: 262 83% 58%;
+        --new-foreground: 210 40% 98%;
+        --review: 38 92% 50%;
+        --review-foreground: 48 96% 89%;
+
+        /* NEW: Difficulty colors */
+        --difficulty-easy: 142 76% 36%;
+        --difficulty-medium: 38 92% 50%;
+        --difficulty-hard: 0 84% 60%;
+    }
+
+    .dark {
+        /* Original dark theme colors */
+        --background: 222.2 84% 4.9%;
+        --foreground: 210 40% 98%;
+        --card: 222.2 84% 4.9%;
+        --card-foreground: 210 40% 98%;
+        --popover: 222.2 84% 4.9%;
+        --popover-foreground: 210 40% 98%;
+        --primary: 217.2 91.2% 59.8%;
+        --primary-foreground: 222.2 47.4% 11.2%;
+        --secondary: 217.2 32.6% 17.5%;
+        --secondary-foreground: 210 40% 98%;
+        --muted: 217.2 32.6% 17.5%;
+        --muted-foreground: 215 20.2% 65.1%;
+        --accent: 217.2 32.6% 17.5%;
+        --accent-foreground: 210 40% 98%;
+        --destructive: 0 62.8% 30.6%;
+        --destructive-foreground: 210 40% 98%;
+        --border: 217.2 32.6% 17.5%;
+        --input: 217.2 32.6% 17.5%;
+        --ring: 224.3 76.3% 48%;
+
+        /* NEW: Semantic status colors (dark) */
+        --success: 142 71% 45%;
+        --success-foreground: 138 76% 97%;
+        --warning: 38 92% 50%;
+        --warning-foreground: 48 96% 89%;
+        --info: 199 89% 48%;
+        --info-foreground: 204 94% 94%;
+
+        /* NEW: Learning state colors (dark) */
+        --mastery: 142 71% 45%;
+        --mastery-foreground: 138 76% 97%;
+        --learning: 217 91% 60%;
+        --learning-foreground: 222 47% 11%;
+        --new: 262 83% 58%;
+        --new-foreground: 210 40% 98%;
+        --review: 38 92% 50%;
+        --review-foreground: 48 96% 89%;
+
+        /* NEW: Difficulty colors (dark) */
+        --difficulty-easy: 142 71% 45%;
+        --difficulty-medium: 38 92% 50%;
+        --difficulty-hard: 0 72% 51%;
+    }
+}
+
+@layer base {
+    * {
+        @apply border-border;
+    }
+
+    body {
+        @apply bg-background text-foreground;
+        font-feature-settings: "rlig" 1, "calt" 1;
+    }
+}
+
+/**
+ * Custom scrollbar
+ */
+::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+::-webkit-scrollbar-track {
+    @apply bg-secondary;
+}
+
+::-webkit-scrollbar-thumb {
+    @apply bg-muted-foreground/50 rounded-md;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    @apply bg-muted-foreground/70;
+}
+
+/**
+ * NEW: Enhanced animations
+ */
+@keyframes slide-in {
+    from {
+        transform: translateX(-100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes fade-in {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes shimmer {
+    0% {
+        background-position: -200% 0;
+    }
+    100% {
+        background-position: 200% 0;
+    }
+}
+
+@keyframes bounce-subtle {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-4px);
+    }
+}
+
+@keyframes scale-in {
+    from {
+        transform: scale(0.9);
+        opacity: 0;
+    }
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+@keyframes pulse-ring {
+    0% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    100% {
+        transform: scale(1.5);
+        opacity: 0;
+    }
+}
+
+.animate-slide-in {
+    animation: slide-in 0.3s ease-out;
+}
+
+.animate-fade-in {
+    animation: fade-in 0.2s ease-out;
+}
+
+.animate-shimmer {
+    animation: shimmer 2s infinite linear;
+}
+
+.animate-bounce-subtle {
+    animation: bounce-subtle 1s ease-in-out infinite;
+}
+
+.animate-scale-in {
+    animation: scale-in 0.2s ease-out;
+}
+
+.animate-pulse-ring {
+    animation: pulse-ring 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/**
+ * NEW: Gradient utilities
+ */
+.gradient-success {
+    background: linear-gradient(135deg, hsl(var(--success)) 0%, hsl(var(--success) / 0.7) 100%);
+}
+
+.gradient-warning {
+    background: linear-gradient(135deg, hsl(var(--warning)) 0%, hsl(var(--warning) / 0.7) 100%);
+}
+
+.gradient-info {
+    background: linear-gradient(135deg, hsl(var(--info)) 0%, hsl(var(--info) / 0.7) 100%);
+}
+
+.gradient-primary {
+    background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary) / 0.7) 100%);
+}
+
+/**
+ * NEW: Shimmer effect for skeleton loaders
+ */
+.skeleton-shimmer {
+    background: linear-gradient(
+        90deg,
+        hsl(var(--muted)) 0%,
+                                hsl(var(--muted-foreground) / 0.1) 50%,
+                                hsl(var(--muted)) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 2s infinite linear;
+}
+
+/**
+ * NEW: Text balance utilities
+ */
+.text-balance {
+    text-wrap: balance;
+}
+
+.text-pretty {
+    text-wrap: pretty;
+}
+
+/**
+ * NEW: Focus ring enhancement
+ */
+*:focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+}
