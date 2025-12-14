@@ -1,19 +1,6 @@
 // Flashcards hooks using TanStack Query
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import {
-    listDecksApiV1DecksGet,
-    createDeckApiV1DecksPost,
-    getDeckApiV1DecksDeckIdGet,
-    updateDeckApiV1DecksDeckIdPut,
-    deleteDeckApiV1DecksDeckIdDelete,
-    generateFlashcardsApiV1DecksGeneratePost,
-    createCardApiV1CardsPost,
-    getDueCardsApiV1CardsDueGet,
-    reviewCardApiV1CardsCardIdReviewPost,
-    getCardApiV1CardsCardIdGet,
-    updateCardApiV1CardsCardIdPut,
-    deleteCardApiV1CardsCardIdDelete,
-} from '../generated';
+import { FlashcardsService } from '../generated';
 import type {
     DeckResponse,
     DeckCreate,
@@ -33,7 +20,7 @@ import { queryKeys } from '@/lib/queryKeys';
 export const useDecks = (params?: { tags?: string; isPublic?: boolean; page?: number; pageSize?: number }) => {
     return useQuery<DeckResponse[]>({
         queryKey: queryKeys.flashcards.list(params),
-                                    queryFn: () => listDecksApiV1DecksGet(params || {}),
+        queryFn: () => FlashcardsService.listDecksApiV1DecksGet(params?.tags, params?.isPublic, params?.page, params?.pageSize),
     });
 };
 
@@ -43,8 +30,8 @@ export const useDecks = (params?: { tags?: string; isPublic?: boolean; page?: nu
 export const useDeck = (deckId: number) => {
     return useQuery<DeckResponse>({
         queryKey: queryKeys.flashcards.detail(deckId),
-                                  queryFn: () => getDeckApiV1DecksDeckIdGet({ deckId }),
-                                  enabled: !!deckId,
+        queryFn: () => FlashcardsService.getDeckApiV1DecksDeckIdGet(deckId),
+        enabled: !!deckId,
     });
 };
 
@@ -54,10 +41,10 @@ export const useDeck = (deckId: number) => {
 export const useCreateDeck = () => {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: (data: DeckCreate) => createDeckApiV1DecksPost({ requestBody: data }),
-                       onSuccess: () => {
-                           queryClient.invalidateQueries({ queryKey: queryKeys.flashcards.lists() });
-                       },
+        mutationFn: (data: DeckCreate) => FlashcardsService.createDeckApiV1DecksPost(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.flashcards.lists() });
+        },
     });
 };
 
@@ -68,11 +55,11 @@ export const useUpdateDeck = () => {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: ({ deckId, data }: { deckId: number; data: DeckUpdate }) =>
-        updateDeckApiV1DecksDeckIdPut({ deckId, requestBody: data }),
-                       onSuccess: (_, variables) => {
-                           queryClient.invalidateQueries({ queryKey: queryKeys.flashcards.lists() });
-                           queryClient.invalidateQueries({ queryKey: queryKeys.flashcards.detail(variables.deckId) });
-                       },
+            FlashcardsService.updateDeckApiV1DecksDeckIdPut(deckId, data),
+        onSuccess: (_, variables) => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.flashcards.lists() });
+            queryClient.invalidateQueries({ queryKey: queryKeys.flashcards.detail(variables.deckId) });
+        },
     });
 };
 
@@ -82,10 +69,10 @@ export const useUpdateDeck = () => {
 export const useDeleteDeck = () => {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: (deckId: number) => deleteDeckApiV1DecksDeckIdDelete({ deckId }),
-                       onSuccess: () => {
-                           queryClient.invalidateQueries({ queryKey: queryKeys.flashcards.lists() });
-                       },
+        mutationFn: (deckId: number) => FlashcardsService.deleteDeckApiV1DecksDeckIdDelete(deckId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.flashcards.lists() });
+        },
     });
 };
 
@@ -96,10 +83,10 @@ export const useGenerateFlashcards = () => {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: (data: FlashcardGenerateRequest) =>
-        generateFlashcardsApiV1DecksGeneratePost({ requestBody: data }),
-                       onSuccess: () => {
-                           queryClient.invalidateQueries({ queryKey: queryKeys.flashcards.lists() });
-                       },
+            FlashcardsService.generateFlashcardsApiV1DecksGeneratePost(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.flashcards.lists() });
+        },
     });
 };
 
@@ -108,12 +95,13 @@ export const useGenerateFlashcards = () => {
  */
 export const useCreateCard = () => {
     const queryClient = useQueryClient();
-    return useMutation({
-        mutationFn: (data: FlashcardCreate) => createCardApiV1CardsPost({ requestBody: data }),
-                       onSuccess: (_, variables) => {
-                           queryClient.invalidateQueries({ queryKey: queryKeys.flashcards.detail(variables.deck_id) });
-                           queryClient.invalidateQueries({ queryKey: queryKeys.flashcards.cards.due() });
-                       },
+    return useMutation<FlashcardResponse, Error, FlashcardCreate>({
+        mutationFn: (data: FlashcardCreate) => FlashcardsService.createCardApiV1CardsPost(data),
+        onSuccess: (newCard, variables) => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.flashcards.detail(variables.deck_id) });
+            queryClient.invalidateQueries({ queryKey: queryKeys.flashcards.detail(newCard.id) });
+            queryClient.invalidateQueries({ queryKey: queryKeys.flashcards.due() });
+        },
     });
 };
 
@@ -122,8 +110,8 @@ export const useCreateCard = () => {
  */
 export const useDueCards = (params?: { deckId?: number; limit?: number }) => {
     return useQuery<FlashcardResponse[]>({
-        queryKey: queryKeys.flashcards.cards.due(params),
-                                         queryFn: () => getDueCardsApiV1CardsDueGet(params || {}),
+        queryKey: queryKeys.flashcards.due(params),
+        queryFn: () => FlashcardsService.getDueCardsApiV1CardsDueGet(params?.deckId, params?.limit),
     });
 };
 
@@ -132,9 +120,9 @@ export const useDueCards = (params?: { deckId?: number; limit?: number }) => {
  */
 export const useCard = (cardId: number) => {
     return useQuery<FlashcardResponse>({
-        queryKey: queryKeys.flashcards.cards.detail(cardId),
-                                       queryFn: () => getCardApiV1CardsCardIdGet({ cardId }),
-                                       enabled: !!cardId,
+        queryKey: queryKeys.flashcards.detail(cardId),
+        queryFn: () => FlashcardsService.getCardApiV1CardsCardIdGet(cardId),
+        enabled: !!cardId,
     });
 };
 
@@ -143,19 +131,19 @@ export const useCard = (cardId: number) => {
  */
 export const useUpdateCard = () => {
     const queryClient = useQueryClient();
-    return useMutation({
+    return useMutation<FlashcardResponse, Error, { cardId: number; data: FlashcardUpdate }>({
         mutationFn: ({ cardId, data }: { cardId: number; data: FlashcardUpdate }) =>
-        updateCardApiV1CardsCardIdPut({ cardId, requestBody: data }),
-                       onSuccess: (updatedCard, variables) => {
-                           // Invalidate the specific card
-                           queryClient.invalidateQueries({ queryKey: queryKeys.flashcards.cards.detail(variables.cardId) });
-                           // Invalidate the deck that contains this card
-                           if (updatedCard.deck_id) {
-                               queryClient.invalidateQueries({ queryKey: queryKeys.flashcards.detail(updatedCard.deck_id) });
-                           }
-                           // Invalidate due cards list
-                           queryClient.invalidateQueries({ queryKey: queryKeys.flashcards.cards.due() });
-                       },
+            FlashcardsService.updateCardApiV1CardsCardIdPut(cardId, data),
+        onSuccess: (updatedCard, variables) => {
+            // Invalidate the specific card
+            queryClient.invalidateQueries({ queryKey: queryKeys.flashcards.detail(variables.cardId) });
+            // Invalidate the deck that contains this card
+            if (updatedCard.deck_id) {
+                queryClient.invalidateQueries({ queryKey: queryKeys.flashcards.detail(updatedCard.deck_id) });
+            }
+            // Invalidate due cards list
+            queryClient.invalidateQueries({ queryKey: queryKeys.flashcards.due() });
+        },
     });
 };
 
@@ -166,12 +154,12 @@ export const useReviewCard = () => {
     const queryClient = useQueryClient();
     return useMutation<ReviewResult, Error, { cardId: number; data: ReviewSubmit }>({
         mutationFn: ({ cardId, data }) =>
-        reviewCardApiV1CardsCardIdReviewPost({ cardId, requestBody: data }),
-                                                                                    onSuccess: (_, variables) => {
-                                                                                        queryClient.invalidateQueries({ queryKey: queryKeys.flashcards.cards.due() });
-                                                                                        queryClient.invalidateQueries({ queryKey: queryKeys.flashcards.cards.detail(variables.cardId) });
-                                                                                        queryClient.invalidateQueries({ queryKey: queryKeys.analytics.all });
-                                                                                    },
+            FlashcardsService.reviewCardApiV1CardsCardIdReviewPost(cardId, data),
+        onSuccess: (_, variables) => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.flashcards.due() });
+            queryClient.invalidateQueries({ queryKey: queryKeys.flashcards.detail(variables.cardId) });
+            queryClient.invalidateQueries({ queryKey: queryKeys.analytics.all });
+        },
     });
 };
 
@@ -181,10 +169,10 @@ export const useReviewCard = () => {
 export const useDeleteCard = () => {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: (cardId: number) => deleteCardApiV1CardsCardIdDelete({ cardId }),
-                       onSuccess: () => {
-                           queryClient.invalidateQueries({ queryKey: queryKeys.flashcards.cards.lists() });
-                           queryClient.invalidateQueries({ queryKey: queryKeys.flashcards.lists() });
-                       },
+        mutationFn: (cardId: number) => FlashcardsService.deleteCardApiV1CardsCardIdDelete(cardId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: queryKeys.flashcards.lists() });
+            queryClient.invalidateQueries({ queryKey: queryKeys.flashcards.lists() });
+        },
     });
 };

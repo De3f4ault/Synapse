@@ -4,10 +4,9 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import {  ChatService  } from '@/api/generated';
+import { ChatService } from '@/api/generated';
 import type {
   ChatMessageResponse,
-  ChatMessageCreate,
 } from '@/api/generated';
 import { toast } from 'sonner';
 

@@ -61,11 +61,12 @@
     "socket.io-client": "^4.8.1",
     "sonner": "^1.7.1",
     "tailwind-merge": "^2.6.0",
+    "vaul": "^1.1.2",
     "zod": "^3.23.8",
     "zustand": "^5.0.8"
   },
   "devDependencies": {
-    "@types/node": "^22.10.2",
+    "@types/node": "^22.19.3",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
     "@types/react-syntax-highlighter": "^15.5.13",

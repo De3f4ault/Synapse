@@ -2,7 +2,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { NotesService } from '@/api/generated';
 import { queryKeys } from '@/lib/queryKeys';
-import type { NoteResponse } from '@/api/generated';
 
 /**
  * Custom hook for managing notes CRUD operations
@@ -93,8 +92,6 @@ export function useNotes() {
  * Custom hook for fetching a single note
  */
 export function useNote(noteId: number) {
-    const queryClient = useQueryClient();
-
     const { data: note, isLoading, error } = useQuery({
         queryKey: queryKeys.notes.detail(noteId),
         queryFn: () => NotesService.getNoteApiV1NotesNoteIdGet(noteId),

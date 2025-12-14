@@ -1,123 +1,152 @@
 /**
- * ChatPage - Dual-Mode Chat Interface
+ * ChatPage - Auto-Navigation & Retractable Sidebar
  * 
- * Supports two modes:
- * - Normal Mode: Traditional full-width AI chat
- * - Study Mode: 3-panel NotebookLM-style layout
- *
- * Location: frontend/src/pages/chat/ChatPage.tsx
+ * Features:
+ * - Auto-redirects to latest session
+ * - Auto-creates first session if none exist
+ * - Retractable sidebar with localStorage persistence
  */
 
-import { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { ChatInterfaceHandle } from '@/modules/chat/components/ChatInterface';
-import { NormalChatLayout } from './layouts/NormalChatLayout';
-import { StudyChatLayout } from './layouts/StudyChatLayout';
-import { useCreateSession } from './hooks/useChatSession';
-import { motion, AnimatePresence } from 'framer-motion';
-
-type ChatMode = 'normal' | 'study';
+import { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { ChatSidebar } from './components/chat-sidebar';
+import { ChatMain } from './components/chat-main';
+import { GridPattern } from '@/components/ui/grid-pattern';
+import { Sheet, SheetContent } from '@/components/ui/sheet';
+import { Button } from '@/components/ui/button';
+import { MenuIcon, PanelLeftIcon } from 'lucide-react';
+import { useChatSessions, useCreateSession } from './hooks/useChatSession';
+import { cn } from '@/lib/utils';
 
 export const ChatPage: React.FC = () => {
     const { sessionId } = useParams<{ sessionId: string }>();
-    const [searchParams] = useSearchParams();
-    const chatRef = useRef<ChatInterfaceHandle>(null);
+    const navigate = useNavigate();
+    const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+    const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+    // Fetch sessions and handle auto-navigation
+    const { data: sessions = [], isLoading } = useChatSessions();
+    const createSessionMutation = useCreateSession();
     const numericSessionId = sessionId ? parseInt(sessionId) : undefined;
 
-    // Session creation hook
-    const createSessionMutation = useCreateSession();
-
-    // Check for mode in URL params, otherwise load from localStorage
-    const urlMode = searchParams.get('mode') as ChatMode | null;
-
-    const [chatMode, setChatMode] = useState<ChatMode>(() => {
-        if (urlMode === 'normal' || urlMode === 'study') return urlMode;
-        const saved = localStorage.getItem('synapse-chat-mode');
-        return (saved as ChatMode) || 'normal';
-    });
-
-    // Persist mode changes to localStorage
+    // Load sidebar state from localStorage
     useEffect(() => {
-        localStorage.setItem('synapse-chat-mode', chatMode);
-    }, [chatMode]);
-
-    // Keyboard shortcut for mode switching (⌘M / Ctrl+M)
-    useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key === 'm' && (e.metaKey || e.ctrlKey)) {
-                e.preventDefault();
-                setChatMode(prev => prev === 'normal' ? 'study' : 'normal');
-            }
-        };
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
+        const saved = localStorage.getItem('sidebarCollapsed');
+        if (saved) {
+            setSidebarCollapsed(JSON.parse(saved));
+        }
     }, []);
 
-    // Redirect to a session if none exists
+    // Auto-navigation logic
     useEffect(() => {
-        if (!sessionId) {
-            // For now, just show empty state or create new session
-            // You could auto-create a session here
-        }
-    }, [sessionId]);
+        if (isLoading) return;
 
-    // Handle new chat creation
-    const handleNewChat = () => {
-        createSessionMutation.mutate({
-            title: 'New Conversation',
-        });
+        if (!sessionId) {
+            if (sessions.length > 0) {
+                // Sort by updated_at DESC and redirect to latest
+                const sortedSessions = [...sessions].sort((a, b) => {
+                    const aDate = new Date(a.updated_at || a.created_at).getTime();
+                    const bDate = new Date(b.updated_at || b.created_at).getTime();
+                    return bDate - aDate;
+                });
+                const latest = sortedSessions[0];
+                if (latest) {
+                    navigate(`/chat/${latest.id}`, { replace: true });
+                }
+            } else {
+                // No sessions exist - create first one
+                createSessionMutation.mutate(
+                    { title: 'New Conversation' },
+                    {
+                        onSuccess: (newSession) => {
+                            navigate(`/chat/${newSession.id}`, { replace: true });
+                        },
+                    }
+                );
+            }
+        }
+    }, [sessionId, sessions, isLoading, navigate, createSessionMutation]);
+
+    // Toggle sidebar
+    const toggleSidebar = () => {
+        const newState = !sidebarCollapsed;
+        setSidebarCollapsed(newState);
+        localStorage.setItem('sidebarCollapsed', JSON.stringify(newState));
     };
 
-    if (!numericSessionId) {
+    // Show loading state during auto-navigation
+    if (isLoading || !numericSessionId) {
         return (
-            <div className="h-screen flex items-center justify-center bg-[var(--synapse-bg-primary)]">
-                <div className="text-center space-y-4">
-                    <h2 className="text-2xl font-bold text-white">No Active Session</h2>
-                    <p className="text-slate-400">Create a new chat session to get started</p>
-                    <button
-                        onClick={handleNewChat}
-                        disabled={createSessionMutation.isPending}
-                        className="synapse-button synapse-button-primary"
-                    >
-                        {createSessionMutation.isPending ? 'Creating...' : 'New Chat'}
-                    </button>
+            <div className="h-screen flex items-center justify-center bg-background">
+                <div className="text-center space-y-2">
+                    <div className="animate-spin size-8 border-2 border-primary border-t-transparent rounded-full mx-auto" />
+                    <p className="text-sm text-muted-foreground">Loading chat...</p>
                 </div>
             </div>
         );
     }
 
     return (
-        <>
-            <AnimatePresence mode="wait">
-                <motion.div
-                    key={chatMode}
-                    initial={{ opacity: 0, scale: 0.98 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.98 }}
-                    transition={{ duration: 0.2 }}
-                    className="h-screen"
+        <div className="flex h-screen overflow-hidden bg-background">
+            {/* Desktop Sidebar - Retractable */}
+            <div
+                className={cn(
+                    "hidden md:block border-r border-border transition-all duration-300 ease-in-out",
+                    sidebarCollapsed ? "w-0" : "w-64"
+                )}
+            >
+                <div className={cn("h-full", sidebarCollapsed && "opacity-0")}>
+                    <ChatSidebar currentSessionId={numericSessionId} />
+                </div>
+            </div>
+
+            {/* Mobile Sidebar (Drawer) */}
+            <Sheet open={mobileSidebarOpen} onOpenChange={setMobileSidebarOpen}>
+                <SheetContent
+                    side="left"
+                    className="w-64 p-0 border-none [&>button]:hidden"
                 >
-                    {chatMode === 'normal' ? (
-                        <NormalChatLayout
-                            sessionId={numericSessionId}
-                            chatRef={chatRef}
-                            mode={chatMode}
-                            onModeChange={setChatMode}
-                        />
-                    ) : (
-                        <StudyChatLayout
-                            sessionId={numericSessionId}
-                            chatRef={chatRef}
-                            mode={chatMode}
-                            onModeChange={setChatMode}
-                        />
-                    )}
-                </motion.div>
-            </AnimatePresence>
+                    <ChatSidebar currentSessionId={numericSessionId} />
+                </SheetContent>
+            </Sheet>
 
-            {/* Mode Switcher moved into layouts for better positioning */}
+            {/* Main Content Area */}
+            <div className="flex flex-1 flex-col overflow-hidden">
+                {/* Header with Toggle */}
+                <div className="flex items-center justify-between border-b border-border px-4 h-14 bg-background z-20">
+                    {/* Desktop Toggle */}
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={toggleSidebar}
+                        className="hidden md:flex"
+                    >
+                        <PanelLeftIcon className="size-5" />
+                    </Button>
 
-        </>
+                    {/* Mobile Hamburger */}
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setMobileSidebarOpen(true)}
+                        className="md:hidden"
+                    >
+                        <MenuIcon className="size-5" />
+                    </Button>
+
+                    <div className="flex-1" />
+                </div>
+
+                {/* Chat Interface with Grid Background */}
+                <div className="flex-1 overflow-hidden relative">
+                    <GridPattern className="pointer-events-none" />
+
+                    <div className="relative z-10 h-full">
+                        <ChatMain sessionId={numericSessionId} />
+                    </div>
+                </div>
+            </div>
+        </div>
     );
 };
 

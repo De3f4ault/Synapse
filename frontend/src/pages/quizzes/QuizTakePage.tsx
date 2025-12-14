@@ -4,8 +4,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import Confetti from 'react-confetti';
 import {
-    startQuizAttemptApiV1QuizzesQuizIdStartPost,
-    submitQuizAttemptApiV1QuizzesAttemptsAttemptIdSubmitPost,
+    QuizzesService,
 } from '@/api/generated';
 import { queryKeys } from '@/lib/queryKeys';
 import type { QuizAttemptStart, AnswerSubmit } from '@/api/generated';
@@ -77,7 +76,10 @@ export function QuizTakePage() {
 
     // --- MUTATIONS ---
     const { mutate: startAttempt } = useMutation({
-        mutationFn: () => startQuizAttemptApiV1QuizzesQuizIdStartPost({ quizId: id }),
+        mutationFn: async () => {
+            const result = await QuizzesService.startQuizAttemptApiV1QuizzesQuizIdStartPost(Number(id));
+            return result;
+        },
         onSuccess: (data) => {
             setAttemptData(data);
             setGameState('ACTIVE');
@@ -91,16 +93,16 @@ export function QuizTakePage() {
     });
 
     const { mutate: submitQuiz, data: results } = useMutation({
-        mutationFn: () => {
+        mutationFn: async () => {
             if (!attemptData) throw new Error('No attempt data');
             const answersArray: AnswerSubmit[] = Array.from(answers.entries()).map(([qId, ans]) => ({
                 question_id: qId,
                 answer: ans,
             }));
-            return submitQuizAttemptApiV1QuizzesAttemptsAttemptIdSubmitPost({
-                attemptId: attemptData.attempt_id,
-                requestBody: answersArray,
-            });
+            return QuizzesService.submitQuizAttemptApiV1QuizzesAttemptsAttemptIdSubmitPost(
+                attemptData.attempt_id,
+                answersArray
+            );
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.quizzes.all });

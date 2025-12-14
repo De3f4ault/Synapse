@@ -6,13 +6,10 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import {
-    startSessionApiV1StudySessionsPost,
-    completeSessionApiV1StudySessionsSessionIdCompletePost,
-} from '@/api/generated';
+import { StudyService, StudySessionType } from '@/api/generated';
 import { QUERY_KEYS } from '@/lib/constants';
 import { useToast } from '@/hooks/use-toast';
-import type { StudyItem, StudySessionResponse } from '../types/study.types';
+import type { StudyItem } from '../types/study.types';
 
 interface UseStudySessionReturn {
     session: SessionState;
@@ -57,16 +54,16 @@ export function useStudySession(items: StudyItem[]): UseStudySessionReturn {
         currentIndex: 0,
         items,
         completedItems: new Map(),
-                                                         startTime: new Date(),
-                                                         endTime: null,
-                                                         stats: {
-                                                             totalItems: items.length,
-                                                             completedItems: 0,
-                                                             correctItems: 0,
-                                                             accuracy: 0,
-                                                             timeSpent: 0,
-                                                             streak: 0,
-                                                         },
+        startTime: new Date(),
+        endTime: null,
+        stats: {
+            totalItems: items.length,
+            completedItems: 0,
+            correctItems: 0,
+            accuracy: 0,
+            timeSpent: 0,
+            streak: 0,
+        },
     });
 
     // Timer for elapsed time
@@ -75,13 +72,11 @@ export function useStudySession(items: StudyItem[]): UseStudySessionReturn {
 
     // Start session mutation
     const startSessionMutation = useMutation({
-        mutationFn: () => startSessionApiV1StudySessionsPost({
-            requestBody: {
-                session_type: 'mixed',
-                modules: ['flashcards', 'quizzes'],
-            },
+        mutationFn: () => StudyService.startSessionApiV1StudySessionsPost({
+            session_type: StudySessionType.MIXED,
+            modules: ['flashcards', 'quizzes'],
         }),
-        onSuccess: (result) => {
+        onSuccess: (result: any) => {
             setSession(prev => ({ ...prev, id: result.id }));
         },
         onError: (error) => {
@@ -96,19 +91,19 @@ export function useStudySession(items: StudyItem[]): UseStudySessionReturn {
     // Complete session mutation
     const completeSessionMutation = useMutation({
         mutationFn: (sessionId: number) =>
-        completeSessionApiV1StudySessionsSessionIdCompletePost({ sessionId }),
-                                                onSuccess: (result) => {
-                                                    const minutes = Math.floor(result.time_spent_seconds / 60);
-                                                    const accuracy = (result.accuracy * 100).toFixed(1);
+            StudyService.completeSessionApiV1StudySessionsSessionIdCompletePost(sessionId),
+        onSuccess: (result) => {
+            const minutes = Math.floor(result.time_spent_seconds / 60);
+            const accuracy = (result.accuracy * 100).toFixed(1);
 
-                                                    toast({
-                                                        title: 'Session Complete!',
-                                                        description: `${result.items_completed} items in ${minutes}m · ${accuracy}% accuracy`,
-                                                    });
+            toast({
+                title: 'Session Complete!',
+                description: `${result.items_completed} items in ${minutes}m · ${accuracy}% accuracy`,
+            });
 
-                                                    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.STUDY.DUE });
-                                                    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.STUDY.RECOMMENDATIONS });
-                                                },
+            queryClient.invalidateQueries({ queryKey: QUERY_KEYS.STUDY.DUE });
+            queryClient.invalidateQueries({ queryKey: QUERY_KEYS.STUDY.RECOMMENDATIONS });
+        },
     });
 
     // Start session on mount
@@ -148,6 +143,8 @@ export function useStudySession(items: StudyItem[]): UseStudySessionReturn {
     const handleAnswer = useCallback((isCorrect: boolean) => {
         setSession(prev => {
             const currentItem = prev.items[prev.currentIndex];
+            if (!currentItem) return prev;
+
             const newCompletedItems = new Map(prev.completedItems);
             newCompletedItems.set(currentItem.id, isCorrect);
 

@@ -5,7 +5,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import {  reviewCardApiV1CardsCardIdReviewPost , FlashcardsService } from '@/api/generated';
+import { FlashcardsService } from '@/api/generated';
 import { queryKeys } from '@/lib/queryKeys';
 import { toast } from 'sonner';
 import type {
@@ -57,12 +57,9 @@ export function useReviewSession({
     const { mutate: submitReview, isPending } = useMutation({
         mutationFn: ({ cardId, quality }: { cardId: number; quality: ReviewQuality }) => {
             const qualityMap = { again: 0, hard: 1, good: 3, easy: 5 };
-            return reviewCardApiV1CardsCardIdReviewPost({
-                cardId,
-                requestBody: {
-                    quality: qualityMap[quality],
-                    time_taken_ms: 0,
-                },
+            return FlashcardsService.reviewCardApiV1CardsCardIdReviewPost(cardId, {
+                quality: qualityMap[quality],
+                time_taken_ms: 0,
             });
         },
         onSuccess: () => {
@@ -179,7 +176,7 @@ export function useReviewSession({
 
                 if (e.key in keyMap) {
                     e.preventDefault();
-                    reviewCard(keyMap[e.key]);
+                    reviewCard(keyMap[e.key] as ReviewQuality);
                 }
             }
         };

@@ -9,7 +9,7 @@ import { StudyStats } from './components/shared/StudyStats';
 import { StreakIndicator } from './components/shared/StreakIndicator';
 import { useDueItemsStats } from './hooks/useDueItems';
 import { useRecommendations } from './hooks/useRecommendations';
-import {  getStatisticsApiV1UsersMeStatisticsGet , AuthenticationService, UsersService } from '@/api/generated';
+import { AuthenticationService, UsersService } from '@/api/generated';
 import { cn } from '@/lib/utils';
 import type { StudyItem, StudySessionResponse, StudyStreak } from './types/study.types';
 
@@ -26,7 +26,7 @@ export function StudyPage() {
 
     const { data: userStats } = useQuery({
         queryKey: ['user-statistics'],
-        queryFn: getStatisticsApiV1UsersMeStatisticsGet,
+        queryFn: () => UsersService.getStatisticsApiV1UsersMeStatisticsGet(),
         staleTime: 1000 * 60 * 5, // 5 minutes
     });
 
