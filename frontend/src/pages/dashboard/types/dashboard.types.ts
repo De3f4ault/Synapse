@@ -8,6 +8,7 @@ import type {
     DocumentResponse,
     ChatSessionResponse,
     QuizResponse,
+    TopicMastery,
 } from '@/api/generated';
 
 /**
@@ -21,6 +22,7 @@ export interface DashboardData {
     weakAreas: WeakArea[];
     performance: PerformanceTrend[];
     heatmap: HeatmapData[];
+    topicMastery: TopicMastery[];
 
     // Resource data for knowledge graph
     dueCards: FlashcardResponse[];

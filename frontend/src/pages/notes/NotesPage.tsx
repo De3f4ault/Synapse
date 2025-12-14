@@ -11,8 +11,8 @@ import { useNoteTree } from './hooks/useNoteTree';
 // Components
 import { NoteTree } from './components/list/NoteTree';
 import { NoteCard } from './components/list/NoteCard';
-import { NoteSearch } from './components/list/NoteSearch';
 import { NoteStats } from './components/shared/NoteStats';
+import { FloatingPageDock } from '@/components/layout/FloatingPageDock';
 
 type ViewMode = 'tree' | 'grid' | 'list';
 
@@ -51,7 +51,7 @@ export function NotesPage() {
         createNote(
             {
                 title: 'New Fragment',
-                content: '',
+                content: ' ', // Backend requires min 1 char
                 tags: [],
             },
             {
@@ -75,207 +75,164 @@ export function NotesPage() {
     };
 
     return (
-        <div className="h-[calc(100vh-64px)] overflow-hidden flex flex-col p-6 space-y-6">
-            {/* Header */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 shrink-0">
-                <div>
-                    <h1 className="text-3xl font-bold text-white mb-2 tracking-tight">
-                        Notes
-                    </h1>
-                    <p className="text-slate-400 font-mono text-xs tracking-wider uppercase">
-                        Manage your knowledge fragments
-                    </p>
+        <div className="h-[calc(100vh-64px)] overflow-hidden flex flex-col bg-background">
+            {/* Stats Section */}
+            {notes && notes.length > 0 && (
+                <div className="shrink-0 px-6 pt-6">
+                    <NoteStats notes={notes} />
                 </div>
+            )}
 
-                <div className="flex items-center gap-4 w-full md:w-auto">
+            {/* Floating Page Dock with Search & Controls */}
+            <div className="shrink-0 px-6 pt-4">
+                <FloatingPageDock className="justify-between">
                     {/* Search */}
-                    <div className="w-full md:w-64">
-                        <NoteSearch
+                    <div className="relative flex-1 max-w-md group">
+                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground group-focus-within:text-primary transition-colors">
+                            <FileText size={16} />
+                        </div>
+                        <input
+                            type="text"
                             value={searchQuery}
-                            onChange={setSearchQuery}
                             placeholder="Search notes..."
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full h-10 bg-transparent border-none outline-none pl-9 pr-4 text-sm text-foreground placeholder:text-muted-foreground/70 focus:ring-0"
                         />
                     </div>
 
-                    {/* View Mode Toggle */}
-                    <div className="flex bg-white/5 border border-white/5 rounded-lg p-1">
+                    <div className="h-6 w-px bg-border mx-2" />
+
+                    {/* View Toggles */}
+                    <div className="flex items-center gap-1 bg-muted/50 rounded-full p-1 border border-border">
                         <button
                             onClick={() => setViewMode('tree')}
-                            className={cn(
-                                'p-2 rounded transition-all',
-                                viewMode === 'tree'
-                                    ? 'bg-cyan-500/20 text-cyan-400'
-                                    : 'text-slate-500 hover:text-white'
-                            )}
+                            className={cn("p-2 rounded-full transition-all", viewMode === 'tree' ? "bg-background shadow-sm text-primary" : "text-muted-foreground hover:text-foreground")}
                             title="Tree View"
                         >
-                            <Network size={18} />
+                            <Network size={16} />
                         </button>
                         <button
                             onClick={() => setViewMode('grid')}
-                            className={cn(
-                                'p-2 rounded transition-all',
-                                viewMode === 'grid'
-                                    ? 'bg-cyan-500/20 text-cyan-400'
-                                    : 'text-slate-500 hover:text-white'
-                            )}
+                            className={cn("p-2 rounded-full transition-all", viewMode === 'grid' ? "bg-background shadow-sm text-primary" : "text-muted-foreground hover:text-foreground")}
                             title="Grid View"
                         >
-                            <Grid size={18} />
+                            <Grid size={16} />
                         </button>
                         <button
                             onClick={() => setViewMode('list')}
-                            className={cn(
-                                'p-2 rounded transition-all',
-                                viewMode === 'list'
-                                    ? 'bg-cyan-500/20 text-cyan-400'
-                                    : 'text-slate-500 hover:text-white'
-                            )}
+                            className={cn("p-2 rounded-full transition-all", viewMode === 'list' ? "bg-background shadow-sm text-primary" : "text-muted-foreground hover:text-foreground")}
                             title="List View"
                         >
-                            <ListIcon size={18} />
+                            <ListIcon size={16} />
                         </button>
                     </div>
+
+                    <div className="h-6 w-px bg-border mx-2" />
 
                     {/* Create Button */}
                     <button
                         onClick={handleCreateNote}
                         disabled={isCreating}
-                        className="synapse-button whitespace-nowrap"
+                        className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-full hover:bg-primary/90 transition-all shadow-sm hover:shadow-md disabled:opacity-50"
                     >
                         {isCreating ? (
-                            <Loader2 size={14} className="animate-spin mr-2" />
+                            <Loader2 size={16} className="animate-spin" />
                         ) : (
-                            <Plus size={14} className="mr-2" />
+                            <Plus size={16} />
                         )}
-                        New Note
+                        <span className="text-sm font-medium">New Note</span>
                     </button>
-                </div>
+                </FloatingPageDock>
             </div>
 
-            {/* Stats */}
-            {notes && notes.length > 0 && (
-                <div className="shrink-0">
-                    <NoteStats notes={notes} />
-                </div>
-            )}
-
-            {/* Main Content Area */}
-            <div className="flex-1 min-h-0 overflow-y-auto pr-2 custom-scrollbar">
-                {/* Loading State */}
-                {isLoading && (
-                    <div className="flex flex-col items-center justify-center h-full">
-                        <Loader2 className="w-12 h-12 text-cyan-500 animate-spin mb-4" />
-                        <p className="text-slate-400 font-mono text-sm uppercase tracking-wider">
-                            Loading Notes...
-                        </p>
+            {/* Content Area */}
+            <div className="flex-1 overflow-y-auto px-6 py-6">
+                {isLoading ? (
+                    <div className="h-64 flex items-center justify-center">
+                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
                     </div>
-                )}
-
-                {/* Empty State */}
-                {!isLoading && (!notes || notes.length === 0) && (
-                    <div className="flex flex-col items-center justify-center h-full border border-white/5 border-dashed rounded-xl bg-white/[0.02]">
-                        <FileText className="w-16 h-16 text-slate-700 mb-6" />
-                        <h3 className="text-xl font-bold text-white mb-2">
-                            No Notes Found
-                        </h3>
-                        <p className="text-slate-500 font-mono text-xs tracking-wider uppercase mb-6">
-                            Create your first note to get started
-                        </p>
+                ) : notes && notes.length === 0 ? (
+                    <div className="h-64 flex flex-col items-center justify-center text-center">
+                        <FileText size={48} className="text-muted-foreground/30 mb-4" />
+                        <h3 className="text-lg font-semibold text-foreground mb-2">No notes yet</h3>
+                        <p className="text-sm text-muted-foreground mb-4">Create your first note to get started</p>
                         <button
                             onClick={handleCreateNote}
-                            disabled={isCreating}
-                            className="synapse-button"
+                            className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-full hover:bg-primary/90 transition-all"
                         >
-                            {isCreating ? (
-                                <Loader2 size={14} className="animate-spin mr-2" />
-                            ) : (
-                                <Plus size={14} className="mr-2" />
-                            )}
-                            Create Note
+                            <Plus size={16} />
+                            <span className="text-sm font-medium">Create Note</span>
                         </button>
                     </div>
-                )}
-
-                {/* Content Views */}
-                {!isLoading && notes && notes.length > 0 && (
+                ) : (
                     <AnimatePresence mode="wait">
-                        {viewMode === 'tree' && (
-                            <motion.div
-                                key="tree"
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -10 }}
-                                className="synapse-panel p-6"
-                            >
-                                <div className="flex justify-between items-center mb-4 border-b border-white/5 pb-4">
-                                    <h2 className="text-sm font-bold text-slate-300 uppercase tracking-wider">
-                                        Directory Structure
-                                    </h2>
-                                    <div className="flex gap-2">
-                                        <button
-                                            onClick={expandAll}
-                                            className="text-xs text-slate-500 hover:text-cyan-400 transition-colors"
-                                        >
-                                            Expand All
-                                        </button>
-                                        <span className="text-slate-700">|</span>
-                                        <button
-                                            onClick={collapseAll}
-                                            className="text-xs text-slate-500 hover:text-cyan-400 transition-colors"
-                                        >
-                                            Collapse All
-                                        </button>
+                        <motion.div
+                            key={viewMode}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                            transition={{ duration: 0.2 }}
+                        >
+                            {viewMode === 'tree' && filteredTree && (
+                                <div className="bg-card border border-border rounded-lg p-6">
+                                    <div className="flex justify-between items-center mb-4 border-b border-border pb-4">
+                                        <h2 className="text-sm font-semibold text-foreground uppercase tracking-wide">
+                                            Notes Structure
+                                        </h2>
+                                        <div className="flex gap-2 text-xs">
+                                            <button
+                                                onClick={expandAll}
+                                                className="text-muted-foreground hover:text-primary transition-colors"
+                                            >
+                                                Expand All
+                                            </button>
+                                            <span className="text-border">|</span>
+                                            <button
+                                                onClick={collapseAll}
+                                                className="text-muted-foreground hover:text-primary transition-colors"
+                                            >
+                                                Collapse All
+                                            </button>
+                                        </div>
                                     </div>
+                                    <NoteTree
+                                        items={filteredTree}
+                                        selectedId={selectedId}
+                                        expandedIds={expandedFolders}
+                                        toggleExpand={toggleFolder}
+                                        onSelect={handleSelectNote}
+                                        onDelete={handleDeleteNote}
+                                    />
                                 </div>
-                                <NoteTree
-                                    items={filteredTree}
-                                    selectedId={selectedId}
-                                    expandedIds={expandedFolders}
-                                    toggleExpand={toggleFolder}
-                                    onSelect={handleSelectNote}
-                                    onDelete={handleDeleteNote}
-                                />
-                            </motion.div>
-                        )}
+                            )}
 
-                        {viewMode === 'grid' && (
-                            <motion.div
-                                key="grid"
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -10 }}
-                                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
-                            >
-                                {notes.map((note, index) => (
-                                    <NoteCard
-                                        key={note.id}
-                                        note={note}
-                                        onClick={() => handleSelectNote(note.id)}
-                                        index={index}
-                                    />
-                                ))}
-                            </motion.div>
-                        )}
+                            {viewMode === 'grid' && notes && (
+                                <div className="columns-1 md:columns-2 lg:columns-3 xl:columns-4 gap-4 space-y-4">
+                                    {notes.map((note: any, index: number) => (
+                                        <div key={note.id} className="break-inside-avoid mb-4">
+                                            <NoteCard
+                                                note={note}
+                                                onClick={() => handleSelectNote(note.id)}
+                                                index={index}
+                                            />
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
 
-                        {viewMode === 'list' && (
-                            <motion.div
-                                key="list"
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: -10 }}
-                                className="space-y-2"
-                            >
-                                {notes.map((note, index) => (
-                                    <NoteCard
-                                        key={note.id}
-                                        note={note}
-                                        onClick={() => handleSelectNote(note.id)}
-                                        index={index}
-                                    />
-                                ))}
-                            </motion.div>
-                        )}
+                            {viewMode === 'list' && notes && (
+                                <div className="space-y-3 max-w-4xl">
+                                    {notes.map((note: any, index: number) => (
+                                        <NoteCard
+                                            key={note.id}
+                                            note={note}
+                                            onClick={() => handleSelectNote(note.id)}
+                                            index={index}
+                                        />
+                                    ))}
+                                </div>
+                            )}
+                        </motion.div>
                     </AnimatePresence>
                 )}
             </div>

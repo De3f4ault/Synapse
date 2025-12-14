@@ -91,7 +91,7 @@ export const ChatPage: React.FC = () => {
             {/* Desktop Sidebar - Retractable */}
             <div
                 className={cn(
-                    "hidden md:block border-r border-border transition-all duration-300 ease-in-out",
+                    "hidden md:block transition-all duration-300 ease-in-out",
                     sidebarCollapsed ? "w-0" : "w-64"
                 )}
             >
@@ -111,17 +111,17 @@ export const ChatPage: React.FC = () => {
             </Sheet>
 
             {/* Main Content Area */}
-            <div className="flex flex-1 flex-col overflow-hidden">
-                {/* Header with Toggle */}
-                <div className="flex items-center justify-between border-b border-border px-4 h-14 bg-background z-20">
+            <div className="flex flex-1 flex-col overflow-hidden relative">
+                {/* Floating Header Actions */}
+                <div className="absolute top-4 left-4 z-50 flex items-center gap-2 pointer-events-none">
                     {/* Desktop Toggle */}
                     <Button
                         variant="ghost"
                         size="icon"
                         onClick={toggleSidebar}
-                        className="hidden md:flex"
+                        className="hidden md:flex pointer-events-auto hover:bg-muted/50 rounded-full"
                     >
-                        <PanelLeftIcon className="size-5" />
+                        <PanelLeftIcon className="size-5 text-muted-foreground" />
                     </Button>
 
                     {/* Mobile Hamburger */}
@@ -129,12 +129,10 @@ export const ChatPage: React.FC = () => {
                         variant="ghost"
                         size="icon"
                         onClick={() => setMobileSidebarOpen(true)}
-                        className="md:hidden"
+                        className="md:hidden pointer-events-auto hover:bg-muted/50 rounded-full"
                     >
-                        <MenuIcon className="size-5" />
+                        <MenuIcon className="size-5 text-muted-foreground" />
                     </Button>
-
-                    <div className="flex-1" />
                 </div>
 
                 {/* Chat Interface with Grid Background */}

@@ -1,23 +1,21 @@
-import React from 'react';
+/**
+ * NEXT-LEVEL Note Statistics
+ * Beautiful animated cards with live metrics and visual feedback
+ */
+
 import { motion } from 'framer-motion';
-import { FileText, Tag, Clock, TrendingUp, Zap, Activity } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
+import { FileText, Tag, Clock, Zap, TrendingUp, Activity } from 'lucide-react';
 import type { NoteResponse } from '@/api/generated';
 
 interface NoteStatsProps {
     notes: NoteResponse[];
 }
 
-/**
- * Neural Analytics Dashboard - Synapse Creative Edition
- * Real-time statistics with animated metrics and insights
- */
 export const NoteStats: React.FC<NoteStatsProps> = ({ notes }) => {
     const stats = {
         total: notes.length,
-        withTags: notes.filter((n) => n.tags && n.tags.length > 0).length,
         totalTags: new Set(notes.flatMap((n) => n.tags || [])).size,
-        recentlyUpdated: notes.filter((n) => {
+        thisWeek: notes.filter((n) => {
             const daysSinceUpdate = Math.floor(
                 (Date.now() - new Date(n.updated_at).getTime()) / (1000 * 60 * 60 * 24)
             );
@@ -27,7 +25,7 @@ export const NoteStats: React.FC<NoteStatsProps> = ({ notes }) => {
             const words = n.content ? n.content.trim().split(/\s+/).length : 0;
             return sum + words;
         }, 0),
-        avgWordsPerNote: Math.round(
+        avgWords: Math.round(
             notes.reduce((sum, n) => {
                 const words = n.content ? n.content.trim().split(/\s+/).length : 0;
                 return sum + words;
@@ -37,167 +35,94 @@ export const NoteStats: React.FC<NoteStatsProps> = ({ notes }) => {
 
     const statCards = [
         {
-            label: 'Total Fragments',
+            label: 'Total Notes',
             value: stats.total,
+            subtitle: `${stats.avgWords} avg words`,
             icon: FileText,
-            color: 'text-[var(--synapse-cyan)]',
-            bgColor: 'bg-[var(--synapse-cyan)]/10',
-            borderColor: 'border-[var(--synapse-cyan)]/20',
-            subtitle: `${stats.avgWordsPerNote} avg words`,
+            gradient: 'from-blue-500 to-cyan-500',
+            iconBg: 'bg-blue-500/10',
+            iconColor: 'text-blue-600',
             trend: '+12%',
         },
         {
-            label: 'Active This Week',
-            value: stats.recentlyUpdated,
-            icon: TrendingUp,
-            color: 'text-[var(--synapse-emerald)]',
-            bgColor: 'bg-[var(--synapse-emerald)]/10',
-            borderColor: 'border-[var(--synapse-emerald)]/20',
+            label: 'This Week',
+            value: stats.thisWeek,
             subtitle: 'Last 7 days',
-            trend: '+8%',
+            icon: TrendingUp,
+            gradient: 'from-emerald-500 to-green-500',
+            iconBg: 'bg-emerald-500/10',
+            iconColor: 'text-emerald-600',
+            trend: stats.thisWeek > 0 ? `+${stats.thisWeek}` : '0',
         },
         {
-            label: 'Neural Tags',
+            label: 'Tags',
             value: stats.totalTags,
+            subtitle: 'Categories',
             icon: Tag,
-            color: 'text-[var(--synapse-purple)]',
-            bgColor: 'bg-[var(--synapse-purple)]/10',
-            borderColor: 'border-[var(--synapse-purple)]/20',
-            subtitle: `${stats.withTags} tagged`,
-            trend: '+3',
+            gradient: 'from-purple-500 to-pink-500',
+            iconBg: 'bg-purple-500/10',
+            iconColor: 'text-purple-600',
+            trend: `${notes.filter(n => n.tags && n.tags.length > 0).length} tagged`,
         },
         {
             label: 'Total Words',
             value: stats.totalWords.toLocaleString(),
-            icon: Zap,
-            color: 'text-[var(--synapse-amber)]',
-            bgColor: 'bg-[var(--synapse-amber)]/10',
-            borderColor: 'border-[var(--synapse-amber)]/20',
             subtitle: `~${Math.ceil(stats.totalWords / 200)}min read`,
-            trend: '+2.4k',
+            icon: Zap,
+            gradient: 'from-amber-500 to-orange-500',
+            iconBg: 'bg-amber-500/10',
+            iconColor: 'text-amber-600',
+            trend: 'All time',
         },
     ];
 
     return (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {statCards.map((stat, index) => {
-            const Icon = stat.icon;
-            return (
-                <motion.div
-                key={stat.label}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
-                >
-                <Card
-                className={cn(
-                    "bg-[var(--synapse-panel-bg)] border transition-all duration-300 overflow-hidden group hover:bg-[var(--synapse-panel-hover)] cursor-pointer relative",
-                              stat.borderColor
-                )}
-                >
-                {/* Animated background pattern */}
-                <motion.div
-                animate={{
-                    backgroundPosition: ['0% 0%', '100% 100%'],
-                }}
-                transition={{
-                    duration: 20,
-                    repeat: Infinity,
-                    ease: 'linear',
-                }}
-                className="absolute inset-0 opacity-5"
-                style={{
-                    backgroundImage: `
-                    linear-gradient(45deg, currentColor 25%, transparent 25%),
-                    linear-gradient(-45deg, currentColor 25%, transparent 25%),
-                    linear-gradient(45deg, transparent 75%, currentColor 75%),
-                    linear-gradient(-45deg, transparent 75%, currentColor 75%)
-                    `,
-                    backgroundSize: '20px 20px',
-                    backgroundPosition: '0 0, 0 10px, 10px -10px, -10px 0px',
-                }}
-                />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            {statCards.map((stat, index) => {
+                const Icon = stat.icon;
+                return (
+                    <motion.div
+                        key={stat.label}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.05, type: 'spring', stiffness: 300 }}
+                        whileHover={{ y: -4, transition: { duration: 0.2 } }}
+                        className="group relative"
+                    >
+                        {/* Gradient background (hidden by default, shows on hover) */}
+                        <div className={`absolute inset-0 rounded-2xl bg-gradient-to-br ${stat.gradient} opacity-0 group-hover:opacity-5 transition-opacity duration-300`} />
 
-                {/* Hover glow effect */}
-                <div className="absolute inset-0 bg-gradient-to-br from-transparent via-transparent to-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                        {/* Card */}
+                        <div className="relative bg-card border border-border rounded-2xl p-5 transition-all duration-300 group-hover:border-primary/30 group-hover:shadow-lg group-hover:shadow-primary/5">
+                            {/* Top Row: Icon and Trend */}
+                            <div className="flex items-start justify-between mb-4">
+                                <div className={`w-12 h-12 rounded-xl ${stat.iconBg} flex items-center justify-center group-hover:scale-110 transition-transform duration-300`}>
+                                    <Icon className={`${stat.iconColor} w-6 h-6`} />
+                                </div>
+                                <span className="text-xs font-medium text-muted-foreground px-2 py-1 bg-accent rounded-full">
+                                    {stat.trend}
+                                </span>
+                            </div>
 
-                <CardContent className="p-5 relative z-10">
-                <div className="flex items-start justify-between mb-4">
-                {/* Icon with pulse animation */}
-                <motion.div
-                animate={{
-                    scale: [1, 1.05, 1],
-                }}
-                transition={{
-                    duration: 2,
-                    repeat: Infinity,
-                    ease: 'easeInOut',
-                }}
-                className={cn(
-                    "p-3 rounded-xl border backdrop-blur-sm",
-                    stat.bgColor,
-                    stat.borderColor
-                )}
-                >
-                <Icon size={20} className={stat.color} />
-                </motion.div>
+                            {/* Value */}
+                            <div className="text-3xl font-bold text-foreground mb-1 tabular-nums">
+                                {stat.value}
+                            </div>
 
-                {/* Trend indicator */}
-                <div className="flex items-center gap-1 px-2 py-1 bg-[var(--synapse-panel-bg)] border border-[var(--synapse-border-subtle)] rounded-full">
-                <Activity size={10} className={stat.color} />
-                <span className={cn("text-[10px] font-mono font-bold uppercase tracking-wider", stat.color)}>
-                {stat.trend}
-                </span>
-                </div>
-                </div>
+                            {/* Label and Subtitle */}
+                            <div className="text-sm font-medium text-foreground/80 mb-1">
+                                {stat.label}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                                {stat.subtitle}
+                            </div>
 
-                {/* Value */}
-                <motion.div
-                initial={{ scale: 0.5, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ delay: index * 0.1 + 0.2 }}
-                className="text-3xl font-bold text-[var(--synapse-text-primary)] font-mono mb-1 tracking-tight"
-                >
-                {stat.value}
-                </motion.div>
-
-                {/* Label */}
-                <div className="text-xs text-[var(--synapse-text-tertiary)] uppercase tracking-wider font-mono mb-2">
-                {stat.label}
-                </div>
-
-                {/* Subtitle */}
-                <div className="text-[10px] text-[var(--synapse-text-dim)] uppercase tracking-wider font-mono flex items-center gap-1">
-                <Clock size={8} />
-                {stat.subtitle}
-                </div>
-
-                {/* Progress bar */}
-                <motion.div
-                initial={{ scaleX: 0 }}
-                animate={{ scaleX: 1 }}
-                transition={{ delay: index * 0.1 + 0.4, duration: 0.5 }}
-                className="mt-3 h-1 bg-[var(--synapse-panel-bg)] rounded-full overflow-hidden"
-                style={{ originX: 0 }}
-                >
-                <motion.div
-                animate={{
-                    x: ['-100%', '100%'],
-                }}
-                transition={{
-                    duration: 2,
-                    repeat: Infinity,
-                    ease: 'easeInOut',
-                    delay: index * 0.2,
-                }}
-                className={cn("h-full w-1/3 rounded-full", stat.bgColor, stat.color)}
-                />
-                </motion.div>
-                </CardContent>
-                </Card>
-                </motion.div>
-            );
-        })}
+                            {/* Animated bottom border */}
+                            <div className={`absolute bottom-0 left-0 right-0 h-1 rounded-b-2xl bg-gradient-to-r ${stat.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-300`} />
+                        </div>
+                    </motion.div>
+                );
+            })}
         </div>
     );
 };

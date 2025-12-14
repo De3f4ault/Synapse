@@ -42,27 +42,16 @@ export function ChatInputBox({
     return (
         <div
             className={cn(
-                "relative rounded-xl transition-all duration-200",
-                "bg-secondary/50 dark:bg-card/50 backdrop-blur-sm",
-                "border-2",
+                "relative rounded-3xl transition-all duration-300 ease-in-out",
+                "bg-muted/50 backdrop-blur-sm",
+                "border shadow-sm",
                 isFocused
-                    ? "border-primary/50 shadow-lg shadow-primary/10"
-                    : "border-border",
+                    ? "bg-background border-primary/30 ring-4 ring-primary/10 shadow-lg"
+                    : "border-transparent shadow-inner hover:bg-muted/70",
                 className
             )}
         >
-            <div className="flex items-end gap-2 p-3">
-                {/* Attachment Button */}
-                <Button
-                    variant="ghost"
-                    size="icon"
-                    className="size-9 shrink-0 self-end mb-0.5 rounded-lg hover:bg-accent"
-                    type="button"
-                    disabled={disabled}
-                >
-                    <PaperclipIcon className="size-4 text-muted-foreground" />
-                </Button>
-
+            <div className="flex items-end gap-2 p-2">
                 {/* Text Input */}
                 <Textarea
                     placeholder={placeholder}
@@ -74,30 +63,44 @@ export function ChatInputBox({
                     disabled={disabled}
                     className={cn(
                         "min-h-[44px] max-h-[200px] resize-none",
-                        "border-0 bg-transparent px-0 py-2.5",
-                        "text-base placeholder:text-muted-foreground/50",
+                        "border-0 bg-transparent px-4 py-3",
+                        "text-sm placeholder:text-muted-foreground/50",
                         "focus-visible:ring-0 focus-visible:ring-offset-0",
-                        "leading-relaxed"
+                        "leading-relaxed flex-1"
                     )}
                     rows={1}
                 />
 
-                {/* Send Button */}
-                <Button
-                    size="icon"
-                    onClick={onSend}
-                    disabled={!message.trim() || disabled}
-                    className={cn(
-                        "size-9 shrink-0 self-end mb-0.5 rounded-lg",
-                        "transition-all duration-200",
-                        message.trim() && !disabled
-                            ? "bg-primary hover:bg-primary/90 shadow-md"
-                            : "bg-muted"
-                    )}
-                    type="button"
-                >
-                    <SendIcon className="size-4" />
-                </Button>
+                {/* Actions Container */}
+                <div className="flex items-center gap-1 pb-1 pr-1">
+                    {/* Attachment Button */}
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-8 shrink-0 rounded-full hover:bg-primary/10 hover:text-primary transition-colors"
+                        type="button"
+                        disabled={disabled}
+                    >
+                        <PaperclipIcon className="size-4" />
+                    </Button>
+
+                    {/* Send Button */}
+                    <Button
+                        size="icon"
+                        onClick={onSend}
+                        disabled={!message.trim() || disabled}
+                        className={cn(
+                            "size-8 shrink-0 rounded-full shadow-sm",
+                            "transition-all duration-300",
+                            message.trim() && !disabled
+                                ? "bg-primary text-primary-foreground scale-100 hover:bg-primary/90"
+                                : "bg-muted text-muted-foreground scale-90 opacity-50"
+                        )}
+                        type="button"
+                    >
+                        <SendIcon className="size-4" />
+                    </Button>
+                </div>
             </div>
         </div>
     );

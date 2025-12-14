@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { useDecks, useDeleteDeck } from './hooks/useDecks';
 import { useGenerateFlashcards } from '@/api/hooks/useAIGeneration';
 import { DeckList } from './components/deck/DeckList';
+import { FloatingPageDock } from '@/components/layout/FloatingPageDock';
 
 export function DecksPage() {
     const navigate = useNavigate();
@@ -34,46 +35,9 @@ export function DecksPage() {
 
     return (
         <div className="space-y-6 p-8 relative z-10">
-            {/* Header */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-4">
-                <div>
-                    <h1 className="text-3xl font-bold text-white mb-2 tracking-tight">Flashcards</h1>
-                    <p className="text-slate-400 font-mono text-xs tracking-wider uppercase">
-                        NEURAL MNEMONIC INTERFACE
-                    </p>
-                </div>
-                <div className="flex gap-3">
-                    <Button
-                        onClick={() => setShowGenerator(true)}
-                        className="synapse-button flex items-center gap-2 bg-gradient-to-r from-purple-500/20 to-cyan-500/20 border-purple-500/30 hover:border-cyan-500/50"
-                    >
-                        <Sparkles size={16} className="text-cyan-400" />
-                        AI GENERATE
-                    </Button>
-                    <Button
-                        onClick={() => navigate('/flashcards/create')}
-                        className="synapse-button flex items-center gap-2"
-                    >
-                        <Plus size={16} />
-                        NEW DECK
-                    </Button>
-                </div>
-            </div>
-
-            {/* Search Bar */}
-            <div className="relative max-w-md">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-500" />
-                <input
-                    placeholder="Search decks..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="synapse-input w-full pl-10"
-                />
-            </div>
-
             {/* Loading State */}
             {isLoading && (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-10">
                     {[...Array(6)].map((_, i) => (
                         <div key={i} className="h-48 rounded-2xl bg-white/5 border border-white/5 animate-pulse" />
                     ))}
@@ -83,9 +47,9 @@ export function DecksPage() {
             {/* Error State */}
             {isError && (
                 <div className="flex flex-col items-center justify-center py-20">
-                    <AlertTriangle className="h-12 w-12 text-red-500 mb-4" />
-                    <h2 className="text-xl font-bold text-white mb-2">Connection Error</h2>
-                    <p className="text-slate-400 font-mono text-sm mb-6 text-center max-w-md">
+                    <AlertTriangle className="h-12 w-12 text-destructive mb-4" />
+                    <h2 className="text-xl font-bold text-foreground mb-2">Connection Error</h2>
+                    <p className="text-muted-foreground font-mono text-sm mb-6 text-center max-w-md">
                         {error instanceof Error ? error.message : 'Failed to load decks.'}
                     </p>
                     <Button
@@ -101,44 +65,63 @@ export function DecksPage() {
             {/* Empty State */}
             {!isLoading && !isError && filteredDecks.length === 0 && (
                 <div className="flex flex-col items-center justify-center py-20 text-center">
-                    <Sparkles className="h-12 w-12 text-slate-600 mb-4" />
-                    <h2 className="text-xl font-bold text-white mb-2">
+                    <Sparkles className="h-12 w-12 text-muted-foreground mb-4" />
+                    <h2 className="text-xl font-bold text-foreground mb-2">
                         {searchQuery ? 'No decks found' : 'No decks created'}
                     </h2>
-                    <p className="text-slate-400 font-mono text-sm mb-6">
+                    <p className="text-muted-foreground font-mono text-sm mb-6">
                         {searchQuery ? 'Try adjusting your search' : 'Create a deck manually or generate with AI'}
                     </p>
-                    {!searchQuery && (
-                        <div className="flex gap-3">
-                            <Button
-                                onClick={() => setShowGenerator(true)}
-                                className="synapse-button bg-gradient-to-r from-purple-500/20 to-cyan-500/20"
-                            >
-                                <Sparkles className="mr-2 h-4 w-4" />
-                                AI GENERATE
-                            </Button>
-                            <Button
-                                onClick={() => navigate('/flashcards/create')}
-                                className="synapse-button"
-                            >
-                                <Plus className="mr-2 h-4 w-4" />
-                                CREATE DECK
-                            </Button>
-                        </div>
-                    )}
                 </div>
             )}
 
             {/* Decks Grid */}
             {!isLoading && !isError && filteredDecks.length > 0 && (
-                <DeckList
-                    decks={filteredDecks}
-                    onDeckClick={(id) => navigate(`/flashcards/${id}`)}
-                    onDeckDelete={(id) => deleteDeck(id)}
-                    onDeckEdit={(id) => navigate(`/flashcards/${id}/edit`)}
-                    onDeckReview={(id) => navigate(`/flashcards/${id}/review`)}
-                />
+                <div className="pb-24">
+                    <DeckList
+                        decks={filteredDecks}
+                        onDeckClick={(id) => navigate(`/flashcards/${id}`)}
+                        onDeckDelete={(id) => deleteDeck(id)}
+                        onDeckEdit={(id) => navigate(`/flashcards/${id}/edit`)}
+                        onDeckReview={(id) => navigate(`/flashcards/${id}/review`)}
+                    />
+                </div>
             )}
+
+            <FloatingPageDock className="justify-between">
+                {/* Search */}
+                <div className="relative flex-1 max-w-md group">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                    <input
+                        type="text"
+                        value={searchQuery}
+                        placeholder="Search decks..."
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full h-10 bg-transparent border-none outline-none pl-9 pr-4 text-sm text-foreground placeholder:text-muted-foreground/70 focus:ring-0"
+                    />
+                </div>
+
+                <div className="h-6 w-px bg-border mx-2" />
+
+                {/* Actions */}
+                <div className="flex items-center gap-2">
+                    <Button
+                        onClick={() => setShowGenerator(true)}
+                        size="sm"
+                        className="rounded-full bg-gradient-to-r from-purple-500/20 to-cyan-500/20 text-cyan-400 hover:text-cyan-300 border border-purple-500/30 hover:border-cyan-500/50"
+                    >
+                        <Sparkles className="w-4 h-4 mr-2" />
+                        AI GENERATE
+                    </Button>
+                    <Button
+                        onClick={() => navigate('/flashcards/create')}
+                        size="icon"
+                        className="rounded-full bg-primary text-primary-foreground hover:bg-primary/90"
+                    >
+                        <Plus className="w-5 h-5" />
+                    </Button>
+                </div>
+            </FloatingPageDock>
 
             {/* AI Generator Modal */}
             <AnimatePresence>
@@ -253,12 +236,12 @@ function FlashcardGenerator({ onClose, onSuccess }: FlashcardGeneratorProps) {
                                 onClick={() => setDifficulty(d)}
                                 disabled={generating}
                                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${difficulty === d
-                                        ? d === 'easy'
-                                            ? 'bg-green-500/20 text-green-400 border border-green-500/50'
-                                            : d === 'medium'
-                                                ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/50'
-                                                : 'bg-red-500/20 text-red-400 border border-red-500/50'
-                                        : 'bg-slate-800/50 text-slate-400 border border-slate-700 hover:border-slate-600'
+                                    ? d === 'easy'
+                                        ? 'bg-green-500/20 text-green-400 border border-green-500/50'
+                                        : d === 'medium'
+                                            ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/50'
+                                            : 'bg-red-500/20 text-red-400 border border-red-500/50'
+                                    : 'bg-slate-800/50 text-slate-400 border border-slate-700 hover:border-slate-600'
                                     }`}
                             >
                                 {d.charAt(0).toUpperCase() + d.slice(1)}

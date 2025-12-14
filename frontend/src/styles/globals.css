@@ -285,3 +285,17 @@
 *:focus-visible {
     @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
 }
+
+/**
+ * Utility to hide scrollbars
+ */
+.scrollbar-hide {
+    -ms-overflow-style: none;
+    /* IE and Edge */
+    scrollbar-width: none;
+    /* Firefox */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+    display: none;
+}

@@ -9,41 +9,46 @@ interface ChatMessageProps {
 
 export function ChatMessage({ message }: ChatMessageProps) {
     const isUser = message.role === "user";
+    const BotIcon = Logo; // Using Logo as Bot Icon
 
     return (
         <div
             className={cn(
-                "flex gap-4",
-                isUser ? "justify-end" : "justify-start"
+                "flex w-full gap-3",
+                isUser ? "flex-row-reverse" : "flex-row"
             )}
         >
-            {!isUser && (
-                <div className="shrink-0">
-                    <div className="size-8 rounded-full bg-secondary flex items-center justify-center">
-                        <Logo className="size-6" />
-                    </div>
-                </div>
-            )}
-
-            <div
-                className={cn(
-                    "rounded-2xl px-4 py-3 max-w-[80%]",
-                    isUser
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-secondary"
+            {/* Avatar */}
+            <div className={cn(
+                "h-8 w-8 rounded-full flex items-center justify-center shrink-0 border shadow-sm",
+                isUser ? "bg-primary/10 border-primary/20" : "bg-card border-border"
+            )}>
+                {isUser ? (
+                    <div className="h-4 w-4 rounded-full bg-primary/50" />
+                ) : (
+                    <BotIcon className="h-5 w-5 text-primary p-0.5" />
                 )}
-            >
-                <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
             </div>
 
-            {isUser && (
-                <div className="shrink-0">
-                    <Avatar className="size-8">
-                        <AvatarImage src="/avatar.png" alt="User" />
-                        <AvatarFallback>U</AvatarFallback>
-                    </Avatar>
+            {/* Message Bubble (Card Style) */}
+            <div className={cn(
+                "flex flex-col gap-1 max-w-[80%]",
+                isUser ? "items-end" : "items-start"
+            )}>
+                <div
+                    className={cn(
+                        "rounded-2xl px-4 py-3 text-sm shadow-sm border",
+                        isUser
+                            ? "bg-primary/10 border-primary/20 text-foreground rounded-tr-sm"
+                            : "bg-card border-border/50 text-foreground/90 rounded-tl-sm"
+                    )}
+                >
+                    <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
                 </div>
-            )}
+                <span className="text-[10px] text-muted-foreground px-1 opacity-50">
+                    {message.created_at ? new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now'}
+                </span>
+            </div>
         </div>
     );
 }

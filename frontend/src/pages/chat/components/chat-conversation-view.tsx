@@ -32,13 +32,13 @@ export function ChatConversationView({
     return (
         <div className="flex h-full flex-col">
             <div className="flex-1 overflow-y-auto px-4 md:px-8 py-8">
-                <div className="max-w-[640px] mx-auto space-y-6">
+                <div className="max-w-4xl mx-auto space-y-6">
                     <div className="flex justify-end mb-2">
                         <Button
                             variant="secondary"
                             size="icon"
                             onClick={onReset}
-                            className="size-8 rounded-full border"
+                            className="size-8 rounded-full border bg-background/50 hover:bg-background"
                         >
                             <XIcon className="size-4" />
                         </Button>
@@ -50,8 +50,8 @@ export function ChatConversationView({
                 </div>
             </div>
 
-            <div className="border-t border-border px-4 md:px-8 py-4">
-                <div className="max-w-[640px] mx-auto">
+            <div className="px-4 md:px-8 pb-6 pt-2">
+                <div className="max-w-4xl mx-auto">
                     <ChatInputBox
                         message={message}
                         onMessageChange={onMessageChange}

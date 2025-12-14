@@ -13,6 +13,7 @@ import { useReviewSession, formatTime } from './hooks/useReviewSession';
 import { CardFlip } from './components/review/CardFlip';
 import { DifficultyButtons } from './components/review/DifficultyButtons';
 import { SwipeGesture } from './components/review/SwipeGesture';
+import { FloatingPageDock } from '@/components/layout/FloatingPageDock';
 import { cn } from '@/lib/utils';
 import type { ReviewQuality } from './types/flashcards.types';
 
@@ -231,33 +232,28 @@ export function ReviewPage() {
             </div>
 
             {/* Controls Footer */}
-            <div className="h-24 border-t border-white/5 bg-black/40 backdrop-blur-xl flex items-center justify-center z-20">
+            <FloatingPageDock className="justify-center bg-black/40 backdrop-blur-xl border-t border-white/5">
                 <AnimatePresence mode="wait">
                     {isFlipped ? (
-                        <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: 20 }}
-                            className="w-full max-w-2xl px-6"
-                        >
+                        <div className="w-full max-w-2xl px-4">
                             <DifficultyButtons
                                 onReview={(q) => reviewCard(q as ReviewQuality)}
                                 disabled={isPending}
                             />
-                        </motion.div>
+                        </div>
                     ) : (
                         <motion.button
                             initial={{ opacity: 0, scale: 0.9 }}
                             animate={{ opacity: 1, scale: 1 }}
                             exit={{ opacity: 0, scale: 0.9 }}
                             onClick={flipCard}
-                            className="synapse-button px-12 py-3 text-lg font-medium tracking-wide w-full max-w-sm mx-6"
+                            className="synapse-button px-12 py-3 text-lg font-medium tracking-wide w-full max-w-sm"
                         >
                             Show Answer
                         </motion.button>
                     )}
                 </AnimatePresence>
-            </div>
+            </FloatingPageDock>
         </div>
     );
 }

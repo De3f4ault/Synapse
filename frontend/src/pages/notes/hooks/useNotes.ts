@@ -5,9 +5,6 @@ import { queryKeys } from '@/lib/queryKeys';
 
 /**
  * Custom hook for managing notes CRUD operations
- * 
- * NOTE: @hey-api/client-fetch returns { data, request, response }
- * We need to extract .data from each response
  */
 export function useNotes() {
     const queryClient = useQueryClient();
@@ -26,11 +23,14 @@ export function useNotes() {
     // Create note mutation
     const createNoteMutation = useMutation({
         mutationFn: (data: { title: string; content?: string; tags?: string[] }) =>
-            NotesService.createNoteApiV1NotesPost({ ...data, content: data.content || '' }),
-        onSuccess: (data) => {
+            NotesService.createNoteApiV1NotesPost({
+                title: data.title,
+                content: data.content || '',
+                tags: data.tags || null,
+            }),
+        onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.notes.all });
             toast.success('NEURAL NODE INITIALIZED');
-            return data;
         },
         onError: (error) => {
             toast.error('INITIALIZATION FAILED', {
@@ -79,9 +79,9 @@ export function useNotes() {
         isLoading,
         error,
         refetch,
-        createNote: createNoteMutation.mutate,
-        updateNote: updateNoteMutation.mutate,
-        deleteNote: deleteNoteMutation.mutate,
+        createNote: createNoteMutation.mutateAsync, // Use mutateAsync for proper callbacks
+        updateNote: updateNoteMutation.mutateAsync,
+        deleteNote: deleteNoteMutation.mutateAsync,
         isCreating: createNoteMutation.isPending,
         isUpdating: updateNoteMutation.isPending,
         isDeleting: deleteNoteMutation.isPending,
@@ -104,4 +104,3 @@ export function useNote(noteId: number) {
         error,
     };
 }
-

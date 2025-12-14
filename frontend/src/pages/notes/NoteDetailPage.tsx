@@ -1,24 +1,25 @@
 /**
- * Complete Note Detail Page - Fully Functional
- * File: frontend/src/pages/notes/NoteDetailPage.tsx
+ * Document-Style Note Editor with AI Insights Panel
+ * Mature, professional design with floating toolbar and non-destructive AI
  */
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { ArrowLeft, Loader2, AlertCircle } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+    ArrowLeft, Loader2, AlertCircle, Columns, FileText, Sun, Moon
+} from 'lucide-react';
 import { toast } from 'sonner';
+import { useThemeStore } from '@/stores/themeStore';
 
 // Hooks
 import { useNote, useNotes } from './hooks/useNotes';
 import { useNoteEditor } from './hooks/useNoteEditor';
 
 // Components
-import { NoteEditor } from './components/editor/NoteEditor';
-import { EditorToolbar } from './components/editor/EditorToolbar';
 import { MarkdownPreview } from './components/editor/MarkdownPreview';
-import { NoteHeader } from './components/detail/NoteHeader';
-import { NoteTags } from './components/detail/NoteTags';
+import { EditorToolbar } from './components/editor/EditorToolbar';
+import { AIInsightsPanel } from './components/editor/AIInsightsPanel';
 
 // Services
 import { NoteAIService } from '@/services/noteAI.service';
@@ -26,19 +27,33 @@ import { NoteAIService } from '@/services/noteAI.service';
 // Types
 import type { ToolDockAction } from './types/notes.types';
 
+interface AIInsight {
+    type: 'summary' | 'tags' | 'expansion' | 'suggestions';
+    title: string;
+    content: string | string[];
+    timestamp: Date;
+}
+
 export function NoteDetailPage() {
     const { noteId } = useParams<{ noteId: string }>();
     const navigate = useNavigate();
     const numericNoteId = noteId ? parseInt(noteId) : 0;
 
-    // Refs for textarea access
-    const textareaRef = useRef<HTMLTextAreaElement>(null);
+    // Refs
+    const titleRef = useRef<HTMLTextAreaElement>(null);
+    const contentRef = useRef<HTMLTextAreaElement>(null);
+
+    // State
+    const [splitView, setSplitView] = useState(false);
+    const [aiInsights, setAiInsights] = useState<AIInsight[]>([]);
+    const [showAIPanel, setShowAIPanel] = useState(false);
+    const { theme, toggleTheme } = useThemeStore();
 
     // Fetch note data
     const { note, isLoading, error } = useNote(numericNoteId);
     const { updateNote, deleteNote, isUpdating } = useNotes();
 
-    // Editor state management
+    // Editor state
     const {
         mode,
         localNote,
@@ -46,8 +61,6 @@ export function NoteDetailPage() {
         aiStatus,
         updateTitle,
         updateContent,
-        removeTag,
-        addTag,
         toggleMode,
         save,
         startAIProcessing,
@@ -68,24 +81,33 @@ export function NoteDetailPage() {
         },
     });
 
+    // Auto-resize title
+    useEffect(() => {
+        if (titleRef.current) {
+            titleRef.current.style.height = 'auto';
+            titleRef.current.style.height = titleRef.current.scrollHeight + 'px';
+        }
+    }, [localNote?.title]);
+
     // Keyboard shortcuts
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
-            // Cmd/Ctrl + S to save
             if ((e.metaKey || e.ctrlKey) && e.key === 's') {
                 e.preventDefault();
                 save();
             }
-            // Cmd/Ctrl + E to toggle edit mode
             if ((e.metaKey || e.ctrlKey) && e.key === 'e') {
                 e.preventDefault();
                 toggleMode();
+            }
+            if (e.key === 'Escape') {
+                navigate('/notes');
             }
         };
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [save, toggleMode]);
+    }, [save, toggleMode, navigate]);
 
     // Handle toolbar actions
     const handleAction = async (action: ToolDockAction) => {
@@ -105,15 +127,17 @@ export function NoteDetailPage() {
                     startAIProcessing('summarize');
                     const summary = await NoteAIService.summarize(localNote.content);
 
-                    // Append summary to content
-                    const newContent = `${localNote.content}\n\n---\n\n**NEURAL SYNTHESIS:**\n${summary}`;
-                    updateContent(newContent);
+                    setAiInsights(prev => [...prev, {
+                        type: 'summary',
+                        title: 'AI Summary',
+                        content: summary,
+                        timestamp: new Date(),
+                    }]);
+                    setShowAIPanel(true);
 
-                    toast.success('SYNTHESIS COMPLETE');
+                    toast.success('Summary generated');
                 } catch (error) {
-                    toast.error('Neural link failure', {
-                        description: error instanceof Error ? error.message : 'Unknown error'
-                    });
+                    toast.error('Failed to generate summary');
                 } finally {
                     stopAIProcessing();
                 }
@@ -122,25 +146,26 @@ export function NoteDetailPage() {
             case 'ai_tags':
                 try {
                     startAIProcessing('tags');
-                    const newTags = await NoteAIService.generateTags(localNote.title, localNote.content);
+                    const tags = await NoteAIService.generateTags(localNote.title, localNote.content);
 
-                    // Add new tags to existing ones (remove duplicates)
-                    const allTags = [...new Set([...(localNote.tags || []), ...newTags])];
-                    updateContent(localNote.content); // Trigger update
-                    localNote.tags = allTags;
+                    setAiInsights(prev => [...prev, {
+                        type: 'tags',
+                        title: 'Suggested Tags',
+                        content: tags,
+                        timestamp: new Date(),
+                    }]);
+                    setShowAIPanel(true);
 
-                    toast.success(`Generated ${newTags.length} tags`);
+                    toast.success(`Generated ${tags.length} tags`);
                 } catch (error) {
-                    toast.error('Tag generation failed', {
-                        description: error instanceof Error ? error.message : 'Unknown error'
-                    });
+                    toast.error('Failed to generate tags');
                 } finally {
                     stopAIProcessing();
                 }
                 break;
 
             case 'delete':
-                if (window.confirm('Archive this fragment permanently?')) {
+                if (window.confirm('Delete this note permanently?')) {
                     deleteNote(numericNoteId, {
                         onSuccess: () => navigate('/notes'),
                     });
@@ -149,14 +174,17 @@ export function NoteDetailPage() {
         }
     };
 
+    // Handle saving AI insights to note
+    const handleSaveToNote = (content: string) => {
+        if (!localNote) return;
+        updateContent(localNote.content + content);
+    };
+
     // Loading state
     if (isLoading) {
         return (
-            <div className="h-full flex flex-col items-center justify-center">
-                <Loader2 className="h-12 w-12 animate-spin text-cyan-400 mb-4" />
-                <p className="text-xs font-mono text-cyan-500 tracking-widest uppercase">
-                    Loading Note...
-                </p>
+            <div className="h-screen flex items-center justify-center">
+                <Loader2 className="h-12 w-12 animate-spin text-cyan-400" />
             </div>
         );
     }
@@ -164,100 +192,165 @@ export function NoteDetailPage() {
     // Error state
     if (error || !note) {
         return (
-            <div className="h-full flex flex-col items-center justify-center text-center max-w-md mx-auto">
+            <div className="h-screen flex flex-col items-center justify-center">
                 <AlertCircle className="h-16 w-16 text-red-400 mb-4" />
                 <h2 className="text-xl font-bold text-white mb-2">Note Not Found</h2>
-                <p className="text-slate-400 mb-6">
-                    The requested note does not exist or has been archived.
-                </p>
                 <button
                     onClick={() => navigate('/notes')}
                     className="synapse-button flex items-center gap-2"
                 >
                     <ArrowLeft size={16} />
-                    Return to List
+                    Back to Notes
                 </button>
             </div>
         );
     }
 
     return (
-        <div className="h-[calc(100vh-64px)] overflow-hidden flex flex-col relative">
-            {/* Header */}
-            <div className="shrink-0 bg-white/5 border-b border-white/5 p-4 flex items-center justify-between z-10">
+        <div className="h-screen bg-background overflow-hidden flex flex-col relative">
+            {/* Minimal Header */}
+            <div className="flex items-center justify-between px-6 py-3 bg-background border-b border-border">
                 <button
                     onClick={() => navigate('/notes')}
-                    className="synapse-button flex items-center gap-2"
+                    className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
                 >
                     <ArrowLeft size={16} />
-                    Back
+                    <span className="font-medium">Back to Notes</span>
                 </button>
-                <NoteHeader
-                    title={localNote?.title || 'Untitled'}
-                    hasUnsavedChanges={hasUnsavedChanges}
-                    isSaving={isUpdating}
-                    onAction={handleAction}
-                    simpleMode={true} // Assuming NoteHeader supports a simpler mode or we just rely on its props. I'll check NoteHeader later if needed, but for now passing existing props + maybe cleaning up its internal style via global CSS if it uses classes.
-                />
-            </div>
 
-
-            {/* Main Content Area */}
-            <div className="flex-1 overflow-y-auto custom-scrollbar p-8">
-                <div className="max-w-4xl mx-auto space-y-8">
-
-                    {/* Editor / Preview */}
-                    <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="synapse-panel p-8 min-h-[500px]"
-                    >
-                        {mode === 'edit' && localNote ? (
-                            <NoteEditor
-                                title={localNote.title}
-                                content={localNote.content}
-                                onTitleChange={updateTitle}
-                                onContentChange={updateContent}
-                                mode={mode}
-                                textareaRef={textareaRef}
-                            />
-                        ) : (
-                            <div className="space-y-6">
-                                <h1 className="text-4xl md:text-5xl font-bold text-white tracking-tight border-b border-white/10 pb-4">
-                                    {note.title || 'Untitled'}
-                                </h1>
-                                <div className="prose prose-invert prose-cyan max-w-none">
-                                    <MarkdownPreview content={note.content || ''} />
-                                </div>
-                            </div>
-                        )}
-                    </motion.div>
-
-                    {/* Tags & Metadata */}
-                    {localNote && (
-                        <div className="synapse-panel p-6">
-                            <NoteTags
-                                tags={localNote.tags || []}
-                                updatedAt={note.updated_at}
-                                isEditing={mode === 'edit'}
-                                onRemoveTag={removeTag}
-                            />
-                        </div>
+                <div className="flex items-center gap-3">
+                    {/* Status */}
+                    {hasUnsavedChanges && (
+                        <span className="text-xs text-amber-600 dark:text-amber-400 font-medium">Unsaved changes</span>
                     )}
+
+                    {/* Theme Toggle */}
+                    <button
+                        onClick={toggleTheme}
+                        className="p-2 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+                        title="Toggle theme"
+                    >
+                        {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+                    </button>
+
+                    {/* Split View Toggle */}
+                    <button
+                        onClick={() => setSplitView(!splitView)}
+                        className={`p-2 rounded-lg transition-colors ${splitView
+                                ? 'bg-primary/10 text-primary'
+                                : 'hover:bg-accent text-muted-foreground hover:text-foreground'
+                            }`}
+                        title="Toggle split view"
+                    >
+                        < Columns size={18} />
+                    </button>
+
+                    {/* Note Stats */}
+                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <FileText size={12} />
+                        <span>{localNote?.content?.split(/\s+/).length || 0} words</span>
+                    </div>
                 </div>
             </div>
 
-            {/* Floating Toolbar (Botton) */}
-            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-20">
-                <EditorToolbar
-                    mode={mode}
-                    onAction={handleAction}
-                    isProcessing={aiStatus.isProcessing}
-                    hasUnsavedChanges={hasUnsavedChanges}
-                    isSaving={isUpdating}
-                    textareaRef={textareaRef}
-                />
+            {/* Editor Area */}
+            <div className="flex-1 overflow-hidden">
+                {splitView ? (
+                    /* Split View: Edit + Preview */
+                    <div className="h-full flex">
+                        {/* Edit Pane */}
+                        <div className="flex-1 overflow-y-auto border-r border-border">
+                            <div className="max-w-3xl mx-auto px-12 py-8">
+                                {mode === 'edit' && localNote && (
+                                    <>
+                                        <textarea
+                                            ref={titleRef}
+                                            value={localNote.title}
+                                            onChange={(e) => updateTitle(e.target.value)}
+                                            placeholder="Note title..."
+                                            className="w-full bg-transparent text-4xl font-bold text-foreground placeholder:text-muted-foreground/40 border-none outline-none resize-none mb-6"
+                                            rows={1}
+                                        />
+                                        <textarea
+                                            ref={contentRef}
+                                            value={localNote.content}
+                                            onChange={(e) => updateContent(e.target.value)}
+                                            placeholder="Start writing..."
+                                            className="w-full bg-transparent text-base text-foreground/90 placeholder:text-muted-foreground/40 border-none outline-none resize-none font-serif leading-relaxed"
+                                            style={{ minHeight: 'calc(100vh - 300px)' }}
+                                        />
+                                    </>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Preview Pane */}
+                        <div className="flex-1 overflow-y-auto bg-card">
+                            <div className="max-w-3xl mx-auto px-12 py-8">
+                                <h1 className="text-4xl font-bold text-foreground mb-6">
+                                    {note.title || 'Untitled'}
+                                </h1>
+                                <div className="prose prose-lg dark:prose-invert max-w-none">
+                                    <MarkdownPreview content={note.content || ''} />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                ) : (
+                    /* Single View */
+                    <div className="h-full overflow-y-auto">
+                        <div className="max-w-4xl mx-auto px-20 py-12">
+                            {mode === 'edit' && localNote ? (
+                                <>
+                                    <textarea
+                                        ref={titleRef}
+                                        value={localNote.title}
+                                        onChange={(e) => updateTitle(e.target.value)}
+                                        placeholder="Note title..."
+                                        className="w-full bg-transparent text-5xl font-bold text-foreground placeholder:text-muted-foreground/40 border-none outline-none resize-none mb-8"
+                                        rows={1}
+                                    />
+                                    <textarea
+                                        ref={contentRef}
+                                        value={localNote.content}
+                                        onChange={(e) => updateContent(e.target.value)}
+                                        placeholder="Start writing..."
+                                        className="w-full bg-transparent text-lg text-foreground/90 placeholder:text-muted-foreground/40 border-none outline-none resize-none font-serif leading-relaxed"
+                                        style={{ minHeight: 'calc(100vh - 300px)' }}
+                                    />
+                                </>
+                            ) : (
+                                <>
+                                    <h1 className="text-5xl font-bold text-foreground mb-8">
+                                        {note.title || 'Untitled'}
+                                    </h1>
+                                    <div className="prose prose-xl dark:prose-invert max-w-none">
+                                        <MarkdownPreview content={note.content || ''} />
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                )}
             </div>
+
+            {/* Floating Toolbar */}
+            <EditorToolbar
+                mode={mode}
+                onAction={handleAction}
+                isProcessing={aiStatus.isProcessing}
+                hasUnsavedChanges={hasUnsavedChanges}
+                isSaving={isUpdating}
+                textareaRef={contentRef}
+            />
+
+            {/* AI Insights Panel */}
+            <AIInsightsPanel
+                insights={aiInsights}
+                isOpen={showAIPanel}
+                onClose={() => setShowAIPanel(false)}
+                onSaveToNote={handleSaveToNote}
+            />
 
             {/* AI Processing Overlay */}
             <AnimatePresence>
@@ -266,15 +359,14 @@ export function NoteDetailPage() {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="absolute inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center"
+                        className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center"
                     >
-                        <div className="synapse-panel p-8 flex flex-col items-center gap-4">
-                            <Loader2 className="h-10 w-10 animate-spin text-cyan-400" />
-                            <p className="text-sm font-mono text-cyan-400 uppercase tracking-widest">
-                                {aiStatus.action === 'summarize' && 'Synthesizing...'}
-                                {aiStatus.action === 'tags' && 'Generating Tags...'}
-                                {aiStatus.action === 'expand' && 'Expanding Content...'}
-                                {aiStatus.action === 'correct' && 'Correcting...'}
+                        <div className="bg-white rounded-xl p-8 flex flex-col items-center gap-4 shadow-2xl">
+                            <Loader2 className="h-10 w-10 animate-spin text-purple-600" />
+                            <p className="text-sm font-medium text-gray-700">
+                                {aiStatus.action === 'summarize' && 'Generating summary...'}
+                                {aiStatus.action === 'tags' && 'Generating tags...'}
+                                {aiStatus.action === 'expand' && 'Expanding content...'}
                             </p>
                         </div>
                     </motion.div>

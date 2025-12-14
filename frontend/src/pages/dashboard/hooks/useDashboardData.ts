@@ -13,9 +13,6 @@ import type { DashboardData } from '../types/dashboard.types';
 /**
  * Main data orchestrator hook
  * Fetches all dashboard data in parallel
- * 
- * NOTE: The @hey-api/client-fetch returns { data, request, response }
- * We need to extract .data from each response
  */
 export function useDashboardData() {
     // Overview statistics
@@ -81,6 +78,13 @@ export function useDashboardData() {
         staleTime: 1000 * 60 * 5,
     });
 
+    // Topic Mastery
+    const topicMasteryQuery = useQuery({
+        queryKey: queryKeys.analytics.topics(),
+        queryFn: () => AnalyticsService.getTopicMasteryApiV1AnalyticsTopicsGet(),
+        staleTime: 1000 * 60 * 60, // 1 hour
+    });
+
     // Aggregate loading state
     const isLoading =
         overviewQuery.isLoading ||
@@ -91,7 +95,8 @@ export function useDashboardData() {
         notesQuery.isLoading ||
         documentsQuery.isLoading ||
         chatSessionsQuery.isLoading ||
-        quizzesQuery.isLoading;
+        quizzesQuery.isLoading ||
+        topicMasteryQuery.isLoading;
 
     // Aggregate error state
     const error =
@@ -103,7 +108,8 @@ export function useDashboardData() {
         notesQuery.error ||
         documentsQuery.error ||
         chatSessionsQuery.error ||
-        quizzesQuery.error;
+        quizzesQuery.error ||
+        topicMasteryQuery.error;
 
     // Aggregate data
     const data: DashboardData | undefined = isLoading
@@ -113,6 +119,7 @@ export function useDashboardData() {
             weakAreas: weakAreasQuery.data || [],
             performance: performanceQuery.data || [],
             heatmap: heatmapQuery.data || [],
+            topicMastery: topicMasteryQuery.data || [],
             dueCards: dueCardsQuery.data || [],
             notes: notesQuery.data || [],
             documents: documentsQuery.data || [],
@@ -134,6 +141,7 @@ export function useDashboardData() {
             documentsQuery.refetch();
             chatSessionsQuery.refetch();
             quizzesQuery.refetch();
+            topicMasteryQuery.refetch();
         },
     };
 }
