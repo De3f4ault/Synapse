@@ -5,6 +5,8 @@
 import type { AnswerSubmit } from '../models/AnswerSubmit';
 import type { QuizAttemptStart } from '../models/QuizAttemptStart';
 import type { QuizCreate } from '../models/QuizCreate';
+import type { QuizGenerateRequest } from '../models/QuizGenerateRequest';
+import type { QuizGenerateResponse } from '../models/QuizGenerateResponse';
 import type { QuizResponse } from '../models/QuizResponse';
 import type { QuizResultResponse } from '../models/QuizResultResponse';
 import type { CancelablePromise } from '../core/CancelablePromise';
@@ -50,6 +52,26 @@ export class QuizzesService {
                 'page': page,
                 'page_size': pageSize,
             },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Generate quiz with AI
+     * Use AI to generate a quiz from a topic or document
+     * @param requestBody
+     * @returns QuizGenerateResponse Successful Response
+     * @throws ApiError
+     */
+    public static generateQuizApiV1QuizzesGeneratePost(
+        requestBody: QuizGenerateRequest,
+    ): CancelablePromise<QuizGenerateResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/quizzes/generate',
+            body: requestBody,
+            mediaType: 'application/json',
             errors: {
                 422: `Validation Error`,
             },

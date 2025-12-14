@@ -14,10 +14,15 @@ Key Features:
 - Supports iterative improvement
 """
 
-from typing import TypedDict, Optional, Dict, Any, Literal
+from typing import TypedDict, Optional, Dict, Any, Literal, List
 from langgraph.graph import StateGraph, END
-from langgraph.checkpoint.postgres import PostgresSaver
 import structlog
+
+# Make PostgresSaver import optional
+try:
+    from langgraph.checkpoint.postgres import PostgresSaver
+except ImportError:
+    PostgresSaver = None  # Will use in-memory if not available
 
 logger = structlog.get_logger()
 

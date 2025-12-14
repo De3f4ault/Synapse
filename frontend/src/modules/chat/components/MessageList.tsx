@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -6,11 +6,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { StreamingMessage, TypingIndicator } from './StreamingMessage';
 import { cn, formatRelativeTime, getInitials } from '@/lib/utils';
-import { Bot, User, Copy, Check } from 'lucide-react';
+import { Bot, User, Copy, Check, Brain, Plus } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
-import { useState } from 'react';
 import type { ChatMessageResponse } from '@/api/generated';
-import { Brain, Plus } from 'lucide-react';
 
 /**
  * Enhanced MessageList Component
@@ -39,7 +37,7 @@ interface MessageItemProps {
     index?: number;
 }
 
-function MessageItem({ message, userName, isStreaming = false, index = 0 }: MessageItemProps) {
+const MessageItem = React.memo(function MessageItem({ message, userName, isStreaming = false, index = 0 }: MessageItemProps) {
     const isUser = message.role === 'user';
     const [copied, setCopied] = useState(false);
 
@@ -168,7 +166,7 @@ function MessageItem({ message, userName, isStreaming = false, index = 0 }: Mess
             </div>
         </motion.div>
     );
-}
+});
 
 function MessageSkeleton() {
     return (

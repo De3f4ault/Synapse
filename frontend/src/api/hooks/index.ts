@@ -7,3 +7,4 @@ export * from './useStudy';
 export * from './useChat';
 export * from './useQuizzes';
 export * from './useAnalytics';
+export * from './useAIGeneration';

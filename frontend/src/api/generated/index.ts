@@ -50,6 +50,8 @@ export { QuestionType } from './models/QuestionType';
 export type { QuizAttemptStart } from './models/QuizAttemptStart';
 export type { QuizCreate } from './models/QuizCreate';
 export { QuizDifficulty } from './models/QuizDifficulty';
+export type { QuizGenerateRequest } from './models/QuizGenerateRequest';
+export type { QuizGenerateResponse } from './models/QuizGenerateResponse';
 export type { QuizResponse } from './models/QuizResponse';
 export type { QuizResultResponse } from './models/QuizResultResponse';
 export type { ReviewResult } from './models/ReviewResult';

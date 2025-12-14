@@ -121,7 +121,8 @@ async def generate_ai_response(
     user_id: int,
     session_id: int,
     context: Optional[dict] = None,
-    db: Optional[AsyncSession] = None
+    db: Optional[AsyncSession] = None,
+    chat_history: Optional[List[dict]] = None
 ) -> dict:
     """
     Generate AI response using TutorAgent.
@@ -151,11 +152,12 @@ async def generate_ai_response(
         # Create TutorAgent
         agent = await create_agent("tutor")
 
-        # Execute agent with user message and context
+        # Execute agent with user message, context, and chat history
         result = await agent.execute(
             user_id=user_id,
             input=message,
-            context=context or {}
+            context=context or {},
+            chat_history=chat_history or []
         )
 
         # Extract response components from AgentResult dataclass
@@ -414,8 +416,9 @@ async def get_messages(
             content=msg.content,
             tokens=msg.tokens,
             model_used=msg.model_used,
-            function_calls=msg.function_calls,
-            grounding_sources=msg.grounding_sources,
+            # Handle legacy records where function_calls might be int instead of dict
+            function_calls=msg.function_calls if isinstance(msg.function_calls, dict) else None,
+            grounding_sources=msg.grounding_sources if isinstance(msg.grounding_sources, dict) else None,
             created_at=msg.created_at
         )
         for msg in messages
@@ -481,23 +484,56 @@ async def send_message(
 
         logger.info(f"User message saved: {user_message.id} in session {session_id}")
 
-        # Generate AI response
-        ai_response_data = await generate_ai_response(
+        # Fetch conversation history (excluding the message we just added)
+        history_result = await db.execute(
+            select(ChatMessage).where(
+                ChatMessage.session_id == session_id
+            ).order_by(ChatMessage.created_at.asc()).limit(50)  # Limit to last 50 messages
+        )
+        history_messages = history_result.scalars().all()
+        
+        # Format chat history for the agent (exclude the current user message we just added)
+        chat_history = [
+            {"role": msg.role.value, "content": msg.content}
+            for msg in history_messages
+            if msg.id != user_message.id  # Exclude current message
+        ]
+        
+        logger.info(f"Loaded {len(chat_history)} previous messages for context")
+
+        # Use orchestrator for intelligent agent routing
+        from app.core.ai.orchestrator import get_orchestrator
+        
+        orchestrator = get_orchestrator()
+        orchestration_result = await orchestrator.handle_message(
             message=message_data.content,
             user_id=current_user.id,
             session_id=session_id,
-            db=None
+            context={
+                "document_id": session.document_id,
+                "context_modules": session.context_modules
+            },
+            chat_history=chat_history
         )
 
-        # Create AI message record
+        # Create AI message record from orchestration result
+        # Safely get tool_calls as dict or None (not int)
+        tool_calls_data = None
+        if orchestration_result.metadata:
+            tc = orchestration_result.metadata.get("tool_calls")
+            if isinstance(tc, dict):
+                tool_calls_data = tc
+            elif isinstance(tc, int) and tc > 0:
+                tool_calls_data = {"count": tc}
+        
         ai_message = ChatMessage(
             session_id=session_id,
             role=MessageRole.ASSISTANT,
-            content=ai_response_data["output"],
-            tokens=ai_response_data["tokens"],
-            model_used=ai_response_data["model"],
-            function_calls=ai_response_data["function_calls"],
-            grounding_sources=ai_response_data["grounding_sources"]
+            content=orchestration_result.output,
+            tokens=orchestration_result.tokens_used or estimate_tokens(orchestration_result.output),
+            model_used=f"gemini-2.5-flash ({orchestration_result.agent_used})",
+            function_calls=tool_calls_data,
+            grounding_sources=None
         )
         db.add(ai_message)
 
@@ -516,8 +552,9 @@ async def send_message(
             content=ai_message.content,
             tokens=ai_message.tokens,
             model_used=ai_message.model_used,
-            function_calls=ai_message.function_calls,
-            grounding_sources=ai_message.grounding_sources,
+            # Ensure function_calls is dict or None
+            function_calls=ai_message.function_calls if isinstance(ai_message.function_calls, dict) else None,
+            grounding_sources=ai_message.grounding_sources if isinstance(ai_message.grounding_sources, dict) else None,
             created_at=ai_message.created_at
         )
 

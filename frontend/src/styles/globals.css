@@ -1,9 +1,9 @@
+/* Import chat UI color system */
+@import './globals-chat.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-/* Import chat UI color system */
-@import './globals-chat.css';
 
 /**
  * Global Styles (ENHANCED)

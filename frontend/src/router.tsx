@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom
 import { useAuthStore } from '@/stores/authStore';
 import { AppShell } from '@/components/layout/AppShell';
 import { LoadingScreen } from '@/components/layout/LoadingScreen';
+import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 
 // ==================== LAZY LOADED PAGES ====================
 
@@ -55,7 +56,9 @@ function ProtectedRoute() {
 
     return (
         <AppShell>
-            <Outlet />
+            <ErrorBoundary level="module">
+                <Outlet />
+            </ErrorBoundary>
         </AppShell>
     );
 }

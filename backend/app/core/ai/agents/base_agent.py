@@ -171,6 +171,7 @@ class BaseAgent(ABC):
         user_id: int,
         input: str,
         context: Optional[Dict[str, Any]] = None,
+        chat_history: Optional[List[Dict[str, Any]]] = None,
         **kwargs
     ) -> AgentResult:
         """
@@ -216,6 +217,25 @@ class BaseAgent(ABC):
             # ================================================================
             system_prompt = await self._get_system_prompt(context)
             state.add_message(SystemMessage(content=system_prompt))
+            
+            # ================================================================
+            # INJECT CONVERSATION HISTORY
+            # ================================================================
+            if chat_history:
+                for msg in chat_history:
+                    role = msg.get("role", "").upper()
+                    content = msg.get("content", "")
+                    if role == "USER":
+                        state.add_message(HumanMessage(content=content))
+                    elif role == "ASSISTANT":
+                        state.add_message(AIMessage(content=content))
+                
+                self.logger.debug(
+                    "chat_history_injected",
+                    message_count=len(chat_history)
+                )
+            
+            # Add current user message
             state.add_message(HumanMessage(content=input))
 
             # ================================================================

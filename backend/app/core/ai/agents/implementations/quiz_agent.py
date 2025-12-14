@@ -317,13 +317,13 @@ Before submitting quiz:
 
 Return quiz as structured data:
 ```json
-{
+{{
   "title": "Photosynthesis Quiz",
   "topic": "Biology - Photosynthesis",
   "difficulty": "Medium",
   "time_limit_minutes": 20,
   "questions": [
-    {
+    {{
       "type": "multiple_choice",
       "question": "...",
       "options": ["A", "B", "C", "D"],
@@ -332,12 +332,11 @@ Return quiz as structured data:
       "difficulty": "Medium",
       "blooms_level": "Comprehension",
       "points": 1
-    },
-    // ... more questions
+    }}
   ],
   "total_points": 10,
   "weak_areas_covered": ["photosynthesis", "cell structure"]
-}
+}}
 ```
 
 **Remember:**

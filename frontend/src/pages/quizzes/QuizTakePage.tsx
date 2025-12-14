@@ -1,41 +1,36 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import Confetti from 'react-confetti';
-import {
-    QuizzesService,
-} from '@/api/generated';
+import { QuizzesService } from '@/api/generated';
 import { queryKeys } from '@/lib/queryKeys';
-import type { QuizAttemptStart, AnswerSubmit } from '@/api/generated';
+import type { QuizAttemptStart, AnswerSubmit, AnswerResult } from '@/api/generated';
 import {
-    Brain, Zap, CheckCircle, XCircle, Trophy,
-    XCircle as XIcon, Loader2, HelpCircle, Bot,
-    AlertTriangle, Target, Cpu
+    CheckCircle, XCircle, Trophy, Loader2, Lightbulb,
+    ChevronDown, ChevronUp, ArrowLeft, ArrowRight,
+    BookOpen, Clock
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
-// TODO: Implement AI Proctor with Gemini API
-// File: src/api/services/gemini.ts
-// Should provide contextual hints without revealing answers
-const mockGetHint = async (question: string, options: string[]) => {
-    await new Promise(r => setTimeout(r, 1500));
-    const keyword = question.split(' ').find(w => w.length > 6) || 'concept';
-    return `TACTICAL HINT: Consider the core function of ${keyword}. Analyze each option's relationship to the primary objective. Eliminate obvious outliers first.`;
-};
-
 /**
- * Protocol: CRUCIBLE - Active Simulation
- *
+ * QuizTakePage - Enhanced Quiz Experience with Real-Time Feedback
+ * 
  * Features:
- * - High-stakes testing environment
- * - Real-time answer feedback with visual states
- * - AI Proctor sidebar with tactical hints
- * - Streak tracking and momentum system
- * - Military-grade HUD with progress indicators
- * - Immersive completion ceremony with rank calculation
+ * - Real-time feedback on each answer (correct/incorrect shown immediately)
+ * - Explanation shown after answering
+ * - Previous/Next navigation
+ * - Collapsible hints
+ * - Detailed results summary
  */
+
+interface QuestionState {
+    answered: boolean;
+    selectedAnswer: string | null;
+    isCorrect: boolean | null;
+    showExplanation: boolean;
+}
 
 export function QuizTakePage() {
     const { quizId } = useParams<{ quizId: string }>();
@@ -45,60 +40,64 @@ export function QuizTakePage() {
 
     // Core State
     const [currentIdx, setCurrentIdx] = useState(0);
-    const [answers, setAnswers] = useState<Map<number, string>>(new Map());
-    const [streak, setStreak] = useState(0);
-    const [maxStreak, setMaxStreak] = useState(0);
+    const [questionStates, setQuestionStates] = useState<Map<number, QuestionState>>(new Map());
     const [attemptData, setAttemptData] = useState<QuizAttemptStart | null>(null);
 
     // UI State
-    const [gameState, setGameState] = useState<'LOADING' | 'ACTIVE' | 'REVIEW' | 'END'>('LOADING');
-    const [selectedOption, setSelectedOption] = useState<string | null>(null);
-    const [aiHint, setAiHint] = useState<string | null>(null);
-    const [loadingHint, setLoadingHint] = useState(false);
+    const [gameState, setGameState] = useState<'LOADING' | 'ACTIVE' | 'RESULTS'>('LOADING');
+    const [showHint, setShowHint] = useState(false);
     const [startTime] = useState(Date.now());
-
-    // Session timer
     const [elapsedTime, setElapsedTime] = useState(0);
+
+    // Timer
     useEffect(() => {
-        if (gameState === 'ACTIVE' || gameState === 'REVIEW') {
+        if (gameState === 'ACTIVE') {
             const interval = setInterval(() => {
                 setElapsedTime(Math.floor((Date.now() - startTime) / 1000));
             }, 1000);
             return () => clearInterval(interval);
         }
+        return undefined;
     }, [gameState, startTime]);
 
-    const formatTime = (seconds: number) => {
+    const formatTime = (seconds: number): string => {
         const mins = Math.floor(seconds / 60);
         const secs = seconds % 60;
         return `${mins}:${secs.toString().padStart(2, '0')}`;
     };
 
-    // --- MUTATIONS ---
+    // Start Quiz
     const { mutate: startAttempt } = useMutation({
         mutationFn: async () => {
-            const result = await QuizzesService.startQuizAttemptApiV1QuizzesQuizIdStartPost(Number(id));
-            return result;
+            return QuizzesService.startQuizAttemptApiV1QuizzesQuizIdStartPost(Number(id));
         },
         onSuccess: (data) => {
             setAttemptData(data);
             setGameState('ACTIVE');
         },
         onError: (error) => {
-            toast.error('CONNECTION SEVERED: UNABLE TO START SIMULATION', {
+            toast.error('Failed to start quiz', {
                 description: error instanceof Error ? error.message : 'Unknown error',
             });
             navigate('/quizzes');
         },
     });
 
-    const { mutate: submitQuiz, data: results } = useMutation({
+    // Submit Quiz
+    const { mutate: submitQuiz, data: results, isPending: isSubmitting } = useMutation({
         mutationFn: async () => {
             if (!attemptData) throw new Error('No attempt data');
-            const answersArray: AnswerSubmit[] = Array.from(answers.entries()).map(([qId, ans]) => ({
-                question_id: qId,
-                answer: ans,
-            }));
+            const answersArray: AnswerSubmit[] = [];
+
+            questionStates.forEach((state, qId) => {
+                if (state.selectedAnswer) {
+                    answersArray.push({
+                        question_id: qId,
+                        answer: state.selectedAnswer,
+                    });
+                }
+            });
+
             return QuizzesService.submitQuizAttemptApiV1QuizzesAttemptsAttemptIdSubmitPost(
                 attemptData.attempt_id,
                 answersArray
@@ -106,370 +105,478 @@ export function QuizTakePage() {
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.quizzes.all });
-            setGameState('END');
+            setGameState('RESULTS');
         },
         onError: (error) => {
-            toast.error('UPLOAD FAILED: DATA PACKET LOST', {
+            toast.error('Failed to submit quiz', {
                 description: error instanceof Error ? error.message : 'Unknown error',
             });
         },
     });
 
-    // --- EFFECTS ---
     useEffect(() => {
         if (id && !attemptData) startAttempt();
     }, [id]);
 
-    // Keyboard shortcuts
-    useEffect(() => {
-        const handleKeyPress = (e: KeyboardEvent) => {
-            if (gameState === 'END' || gameState === 'LOADING') return;
-
-            // ESC to abort
-            if (e.key === 'Escape') {
-                if (confirm('Abort simulation? Progress will be lost.')) {
-                    navigate('/quizzes');
-                }
-            }
-
-            // Enter to proceed when in review
-            if (e.key === 'Enter' && gameState === 'REVIEW') {
-                nextQuestion();
-            }
+    // Get current question state
+    const getCurrentState = useCallback((questionId: number): QuestionState => {
+        return questionStates.get(questionId) || {
+            answered: false,
+            selectedAnswer: null,
+            isCorrect: null,
+            showExplanation: false
         };
+    }, [questionStates]);
 
-        window.addEventListener('keydown', handleKeyPress);
-        return () => window.removeEventListener('keydown', handleKeyPress);
-    }, [gameState]);
+    // Handle answer selection with real-time feedback
+    const handleAnswer = (questionId: number, answer: string, correctAnswer: string) => {
+        const isCorrect = answer.toLowerCase().trim() === correctAnswer.toLowerCase().trim();
 
-    // --- HANDLERS ---
-    const handleAnswer = (option: string) => {
-        if (selectedOption !== null || !attemptData?.questions) return;
-
-        setSelectedOption(option);
-        const currentQ = attemptData.questions[currentIdx];
-
-        // Store answer
-        setAnswers(prev => new Map(prev).set(currentQ.id, option));
-
-        // Update streak (optimistic - we don't know if it's correct yet)
-        // In a real system with correct_answer field, we'd check here
-        const newStreak = streak + 1;
-        setStreak(newStreak);
-        setMaxStreak(Math.max(maxStreak, newStreak));
-
-        // Move to review state
-        setTimeout(() => setGameState('REVIEW'), 600);
+        setQuestionStates(prev => {
+            const newMap = new Map(prev);
+            newMap.set(questionId, {
+                answered: true,
+                selectedAnswer: answer,
+                isCorrect,
+                showExplanation: true // Auto-show explanation on answer
+            });
+            return newMap;
+        });
     };
 
-    const nextQuestion = () => {
-        if (!attemptData?.questions) return;
-
-        // Reset UI state
-        setAiHint(null);
-        setSelectedOption(null);
-
-        if (currentIdx < attemptData.questions.length - 1) {
-            setCurrentIdx(p => p + 1);
-            setGameState('ACTIVE');
-        } else {
-            // Last question - submit
-            submitQuiz();
+    // Navigation
+    const goToQuestion = (idx: number) => {
+        if (attemptData?.questions && idx >= 0 && idx < attemptData.questions.length) {
+            setCurrentIdx(idx);
+            setShowHint(false);
         }
     };
 
-    const getHint = async () => {
-        if (!attemptData?.questions) return;
-        setLoadingHint(true);
+    const handleFinish = () => {
+        // Check if all questions answered
+        const answeredCount = Array.from(questionStates.values()).filter(s => s.answered).length;
+        const totalQuestions = attemptData?.questions.length || 0;
 
-        try {
-            const q = attemptData.questions[currentIdx];
-            const options = typeof q.options === 'object' && q.options !== null
-                ? Object.values(q.options).map(String)
-                : [];
-
-            // TODO: Replace with actual Gemini API call
-            const hint = await mockGetHint(q.question_text, options);
-            setAiHint(hint);
-        } catch {
-            setAiHint('LINK OFFLINE - NEURAL ASSISTANCE UNAVAILABLE');
+        if (answeredCount < totalQuestions) {
+            if (!confirm(`You've only answered ${answeredCount} of ${totalQuestions} questions. Submit anyway?`)) {
+                return;
+            }
         }
-
-        setLoadingHint(false);
+        submitQuiz();
     };
 
-    // --- RENDER STATES ---
+    // Calculate stats
+    const getStats = () => {
+        const answered = Array.from(questionStates.values());
+        const correct = answered.filter(s => s.isCorrect === true).length;
+        const total = attemptData?.questions.length || 0;
+
+        return {
+            answered: answered.filter(s => s.answered).length,
+            correct,
+            total,
+            percentage: total > 0 ? Math.round((correct / total) * 100) : 0
+        };
+    };
 
     // Loading State
     if (gameState === 'LOADING' || !attemptData?.questions) {
         return (
             <div className="h-full flex flex-col items-center justify-center">
                 <Loader2 className="w-12 h-12 text-cyan-400 animate-spin mb-4" />
-                <p className="text-slate-400 font-mono text-sm uppercase tracking-wider">
-                    Initializing Quiz...
-                </p>
+                <p className="text-slate-400 text-sm">Loading Quiz...</p>
             </div>
         );
     }
 
-    // End State - Results Summary
-    if (gameState === 'END' && results) {
-        const score = typeof results.score === 'string' ? parseFloat(results.score) : results.score || 0;
+    // Results State
+    if (gameState === 'RESULTS' && results) {
+        const stats = getStats();
         const percentage = results.percentage || 0;
 
-        // Calculate rank
         const getRank = (pct: number) => {
-            if (pct >= 95) return { grade: 'S', color: 'text-yellow-400' };
-            if (pct >= 85) return { grade: 'A', color: 'text-emerald-400' };
-            if (pct >= 75) return { grade: 'B', color: 'text-cyan-400' };
-            if (pct >= 60) return { grade: 'C', color: 'text-purple-400' };
-            return { grade: 'D', color: 'text-red-400' };
+            if (pct >= 90) return { grade: 'A+', color: 'text-emerald-400', bg: 'bg-emerald-500/10' };
+            if (pct >= 80) return { grade: 'A', color: 'text-emerald-400', bg: 'bg-emerald-500/10' };
+            if (pct >= 70) return { grade: 'B', color: 'text-cyan-400', bg: 'bg-cyan-500/10' };
+            if (pct >= 60) return { grade: 'C', color: 'text-yellow-400', bg: 'bg-yellow-500/10' };
+            return { grade: 'D', color: 'text-red-400', bg: 'bg-red-500/10' };
         };
-
         const rank = getRank(percentage);
 
         return (
-            <div className="h-[calc(100vh-64px)] overflow-hidden flex flex-col items-center justify-center p-8">
-                <Confetti recycle={false} numberOfPieces={500} />
-                <motion.div
-                    initial={{ scale: 0.9, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    className="synapse-panel max-w-lg w-full p-8 text-center"
-                >
-                    <Trophy size={64} className="mx-auto text-yellow-400 mb-6" />
+            <div className="h-full overflow-y-auto p-6">
+                {percentage >= 70 && <Confetti recycle={false} numberOfPieces={300} />}
 
-                    <h2 className="text-3xl font-bold text-white mb-2">Quiz Complete</h2>
-                    <p className="text-slate-400 text-sm mb-8">
-                        Performance Report
-                    </p>
-
-                    {/* Stats Grid */}
-                    <div className="grid grid-cols-3 gap-4 mb-8">
-                        <div className="p-4 rounded-xl bg-white/5 border border-white/5">
-                            <div className="text-2xl font-bold text-white">{percentage.toFixed(0)}%</div>
-                            <div className="text-[10px] text-slate-500 uppercase tracking-wider mt-1">Accuracy</div>
-                        </div>
-                        <div className="p-4 rounded-xl bg-white/5 border border-white/5">
-                            <div className="text-2xl font-bold text-cyan-400">{score.toFixed(0)}</div>
-                            <div className="text-[10px] text-slate-500 uppercase tracking-wider mt-1">Score</div>
-                        </div>
-                        <div className="p-4 rounded-xl bg-white/5 border border-white/5">
-                            <div className={cn("text-2xl font-bold", rank.color)}>{rank.grade}</div>
-                            <div className="text-[10px] text-slate-500 uppercase tracking-wider mt-1">Rank</div>
-                        </div>
-                    </div>
-
-                    {/* Additional Stats */}
-                    <div className="grid grid-cols-2 gap-4 mb-8">
-                        <div className="p-3 rounded-lg bg-white/5 border border-white/5 text-left">
-                            <div className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Max Streak</div>
-                            <div className="text-xl font-bold text-purple-400 flex items-center gap-2">
-                                <Zap size={16} fill="currentColor" />
-                                {maxStreak}
-                            </div>
-                        </div>
-                        <div className="p-3 rounded-lg bg-white/5 border border-white/5 text-left">
-                            <div className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Duration</div>
-                            <div className="text-xl font-bold text-cyan-400 flex items-center gap-2">
-                                <Target size={16} />
-                                {formatTime(elapsedTime)}
-                            </div>
-                        </div>
-                    </div>
-
-                    <button
-                        onClick={() => navigate('/quizzes')}
-                        className="synapse-button w-full justify-center"
+                <div className="max-w-3xl mx-auto">
+                    {/* Header */}
+                    <motion.div
+                        initial={{ opacity: 0, y: -20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="text-center mb-8"
                     >
-                        Return to Quizzes
-                    </button>
-                </motion.div>
+                        <Trophy size={48} className="mx-auto text-yellow-400 mb-4" />
+                        <h1 className="text-3xl font-bold text-white mb-2">Quiz Complete!</h1>
+                        <p className="text-slate-400">Here's how you did</p>
+                    </motion.div>
+
+                    {/* Score Card */}
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: 0.1 }}
+                        className="synapse-panel p-6 mb-6"
+                    >
+                        <div className="grid grid-cols-4 gap-4 text-center">
+                            <div className={cn("p-4 rounded-xl", rank.bg)}>
+                                <div className={cn("text-3xl font-bold mb-1", rank.color)}>{rank.grade}</div>
+                                <div className="text-xs text-slate-500 uppercase">Grade</div>
+                            </div>
+                            <div className="p-4 rounded-xl bg-white/5">
+                                <div className="text-3xl font-bold text-white mb-1">{percentage}%</div>
+                                <div className="text-xs text-slate-500 uppercase">Score</div>
+                            </div>
+                            <div className="p-4 rounded-xl bg-white/5">
+                                <div className="text-3xl font-bold text-cyan-400 mb-1">{stats.correct}/{stats.total}</div>
+                                <div className="text-xs text-slate-500 uppercase">Correct</div>
+                            </div>
+                            <div className="p-4 rounded-xl bg-white/5">
+                                <div className="text-3xl font-bold text-purple-400 mb-1">{formatTime(elapsedTime)}</div>
+                                <div className="text-xs text-slate-500 uppercase">Time</div>
+                            </div>
+                        </div>
+                    </motion.div>
+
+                    {/* Answer Review */}
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 0.2 }}
+                        className="space-y-4 mb-8"
+                    >
+                        <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+                            <BookOpen size={18} />
+                            Review Answers
+                        </h2>
+
+                        {results.answers?.map((answer: AnswerResult, idx: number) => (
+                            <div
+                                key={idx}
+                                className={cn(
+                                    "synapse-panel p-4 border-l-4",
+                                    answer.is_correct ? "border-l-emerald-500" : "border-l-red-500"
+                                )}
+                            >
+                                <div className="flex items-start gap-3">
+                                    {answer.is_correct ? (
+                                        <CheckCircle className="text-emerald-400 mt-1 flex-shrink-0" size={20} />
+                                    ) : (
+                                        <XCircle className="text-red-400 mt-1 flex-shrink-0" size={20} />
+                                    )}
+                                    <div className="flex-1">
+                                        <p className="text-white font-medium mb-2">{answer.question_text}</p>
+                                        <div className="space-y-1 text-sm">
+                                            <p className="text-slate-400">
+                                                Your answer: <span className={answer.is_correct ? "text-emerald-400" : "text-red-400"}>
+                                                    {answer.your_answer}
+                                                </span>
+                                            </p>
+                                            {!answer.is_correct && (
+                                                <p className="text-slate-400">
+                                                    Correct answer: <span className="text-emerald-400">{answer.correct_answer}</span>
+                                                </p>
+                                            )}
+                                            {answer.explanation && (
+                                                <p className="text-slate-500 mt-2 pt-2 border-t border-white/5">
+                                                    {answer.explanation}
+                                                </p>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </motion.div>
+
+                    {/* Actions */}
+                    <div className="flex gap-4 justify-center">
+                        <button
+                            onClick={() => navigate('/quizzes')}
+                            className="synapse-button px-6"
+                        >
+                            Back to Quizzes
+                        </button>
+                    </div>
+                </div>
             </div>
         );
     }
 
-    // Active Simulation State
-    const currentQ = attemptData.questions[currentIdx];
+    // Active Quiz State - Get current question safely
+    const questions = attemptData.questions;
+    const currentQ = questions[currentIdx];
+
+    if (!currentQ) {
+        return (
+            <div className="h-full flex flex-col items-center justify-center">
+                <p className="text-slate-400">Question not found</p>
+            </div>
+        );
+    }
+
+    const currentState = getCurrentState(currentQ.id);
     const options = typeof currentQ.options === 'object' && currentQ.options !== null
-        ? Object.values(currentQ.options).map(String)
+        ? Object.entries(currentQ.options as Record<string, string>)
         : [];
+    const stats = getStats();
+
+    // Get correct answer from question (now available from backend)
+    const correctAnswer = (currentQ as any).correct_answer || '';
+    const explanation = (currentQ as any).explanation || '';
 
     return (
-        <div className="h-[calc(100vh-64px)] overflow-hidden flex flex-col relative font-sans">
-            {/* Top HUD */}
-            <div className="h-16 border-b border-white/5 flex items-center justify-between px-8 bg-black/20 backdrop-blur-sm z-20">
+        <div className="h-full flex flex-col">
+            {/* Header */}
+            <div className="h-14 border-b border-white/5 flex items-center justify-between px-6 bg-black/20">
                 <button
                     onClick={() => {
-                        if (confirm('Abort quiz? Progress will be lost.')) {
-                            navigate('/quizzes');
+                        if (confirm('Exit quiz? Your progress will be submitted.')) {
+                            handleFinish();
                         }
                     }}
-                    className="text-slate-500 hover:text-white flex items-center gap-2 text-xs font-bold uppercase tracking-wider transition-colors"
+                    className="text-slate-400 hover:text-white text-sm flex items-center gap-2"
                 >
-                    <XIcon size={16} />
+                    <ArrowLeft size={16} />
                     Exit
                 </button>
 
-                {/* Progress Tracker */}
-                <div className="flex flex-col items-center">
-                    <div className="flex gap-1.5">
-                        {attemptData.questions.map((_, i) => (
-                            <div
-                                key={i}
-                                className={cn(
-                                    "w-8 h-1 rounded-full transition-all duration-300",
-                                    i < currentIdx ? 'bg-cyan-500' :
-                                        i === currentIdx ? 'bg-white' :
-                                            'bg-white/10'
-                                )}
-                            />
-                        ))}
-                    </div>
+                <div className="text-sm text-slate-400">
+                    <span className="text-white font-medium">{currentIdx + 1}</span> / {questions.length}
                 </div>
 
-                {/* Stats */}
-                <div className="flex items-center gap-4">
-                    <div className="text-xs font-mono text-slate-400">
+                <div className="flex items-center gap-4 text-sm">
+                    <span className="text-slate-400 flex items-center gap-1">
+                        <Clock size={14} />
                         {formatTime(elapsedTime)}
-                    </div>
-                    <div className="text-xs font-mono text-purple-400 flex items-center gap-2 px-3 py-1 bg-purple-500/10 border border-purple-500/20 rounded-full">
-                        <Zap size={14} fill="currentColor" />
-                        Streak: {streak}
-                    </div>
+                    </span>
+                    <span className="text-emerald-400 flex items-center gap-1">
+                        <CheckCircle size={14} />
+                        {stats.correct}
+                    </span>
                 </div>
             </div>
 
-            {/* Main Arena */}
-            <div className="flex-1 flex items-center justify-center p-4 md:p-8 relative z-10 overflow-y-auto custom-scrollbar">
-                <div className="max-w-6xl w-full grid grid-cols-1 lg:grid-cols-12 gap-8">
+            {/* Progress Bar */}
+            <div className="h-1 bg-slate-800">
+                <div
+                    className="h-full bg-gradient-to-r from-cyan-500 to-purple-500 transition-all duration-300"
+                    style={{ width: `${((currentIdx + 1) / questions.length) * 100}%` }}
+                />
+            </div>
 
-                    {/* Question Panel */}
-                    <div className="lg:col-span-8 flex flex-col gap-6">
-                        <motion.div
-                            key={currentIdx}
-                            initial={{ opacity: 0, x: -10 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            className="synapse-panel p-8"
-                        >
-                            {/* Question Text */}
-                            <h2 className="text-2xl font-bold text-white leading-relaxed mb-8">
+            {/* Main Content */}
+            <div className="flex-1 overflow-y-auto p-6">
+                <div className="max-w-2xl mx-auto">
+                    <motion.div
+                        key={currentIdx}
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        className="space-y-6"
+                    >
+                        {/* Question */}
+                        <div className="synapse-panel p-6">
+                            <h2 className="text-xl font-medium text-white leading-relaxed mb-6">
                                 {currentQ.question_text}
                             </h2>
 
                             {/* Options */}
                             <div className="space-y-3">
-                                {options.map((opt, i) => {
-                                    const optStr = String(opt);
-                                    const isSelected = selectedOption === optStr;
+                                {options.map(([key, value]) => {
+                                    const optionLetter = key;
+                                    const optionText = typeof value === 'string' ? value : String(value);
+                                    const isSelected = currentState.selectedAnswer === optionLetter;
+                                    const isAnswered = currentState.answered;
+                                    const isThisCorrect = optionLetter.toLowerCase() === correctAnswer.toLowerCase();
 
-                                    let statusClass = 'border-white/10 hover:border-cyan-500/50 hover:bg-white/5 text-slate-300';
-                                    if (selectedOption !== null) {
-                                        if (isSelected) statusClass = 'border-cyan-500 bg-cyan-500/10 text-cyan-400';
-                                        else statusClass = 'border-white/5 text-slate-600 opacity-50';
+                                    let statusClass = 'border-slate-700 hover:border-cyan-500/50 text-slate-300';
+
+                                    if (isAnswered) {
+                                        if (isThisCorrect) {
+                                            // This is the correct answer - always show green
+                                            statusClass = 'border-emerald-500 bg-emerald-500/10 text-emerald-400';
+                                        } else if (isSelected) {
+                                            // User selected this wrong answer
+                                            statusClass = 'border-red-500 bg-red-500/10 text-red-400';
+                                        } else {
+                                            // Other options
+                                            statusClass = 'border-slate-800 text-slate-600';
+                                        }
                                     }
 
                                     return (
                                         <button
-                                            key={i}
-                                            onClick={() => handleAnswer(optStr)}
-                                            disabled={selectedOption !== null}
+                                            key={key}
+                                            onClick={() => {
+                                                if (!isAnswered) {
+                                                    handleAnswer(currentQ.id, optionLetter, correctAnswer);
+                                                }
+                                            }}
+                                            disabled={isAnswered}
                                             className={cn(
-                                                "w-full p-4 rounded-lg border text-left transition-all duration-200 relative overflow-hidden group",
-                                                statusClass
+                                                "w-full p-4 rounded-lg border text-left transition-all",
+                                                statusClass,
+                                                !isAnswered && "hover:bg-white/5 cursor-pointer"
                                             )}
                                         >
-                                            <div className="flex items-center justify-between relative z-10">
-                                                <span className="text-sm font-medium">{optStr}</span>
-                                                {isSelected && <CheckCircle size={18} className="text-cyan-400" />}
+                                            <div className="flex items-start gap-3">
+                                                <span className="font-mono text-sm opacity-60">{optionLetter}.</span>
+                                                <span className="flex-1">{optionText}</span>
+                                                {isAnswered && isThisCorrect && (
+                                                    <CheckCircle size={18} className="text-emerald-400 flex-shrink-0" />
+                                                )}
+                                                {isAnswered && isSelected && !isThisCorrect && (
+                                                    <XCircle size={18} className="text-red-400 flex-shrink-0" />
+                                                )}
                                             </div>
                                         </button>
                                     );
                                 })}
                             </div>
-                        </motion.div>
 
-                        {/* Review State Action */}
-                        <AnimatePresence>
-                            {gameState === 'REVIEW' && (
-                                <motion.div
-                                    initial={{ opacity: 0, y: 10 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    exit={{ opacity: 0, y: -10 }}
-                                    className="synapse-panel p-4 flex items-center justify-between"
-                                >
-                                    <div>
-                                        <div className="flex items-center gap-2 text-slate-300 text-sm font-medium">
-                                            Answer recorded.
-                                        </div>
-                                    </div>
-                                    <button
-                                        onClick={nextQuestion}
-                                        className="synapse-button"
-                                    >
-                                        Next Question
-                                    </button>
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
-                    </div>
-
-                    {/* AI Proctor Sidebar */}
-                    <div className="lg:col-span-4">
-                        <div className="h-full synapse-panel p-6 flex flex-col min-h-[300px]">
-                            {/* Header */}
-                            <div className="flex items-center gap-3 mb-6 border-b border-white/5 pb-4">
-                                <Bot size={20} className="text-cyan-400" />
-                                <div>
-                                    <div className="text-xs font-bold text-white uppercase tracking-wider">
-                                        AI Assistant
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Hint Display */}
-                            <div className="flex-1 overflow-y-auto mb-4 text-sm text-slate-400 leading-relaxed custom-scrollbar">
-                                {aiHint ? (
+                            {/* Real-time Feedback after answering */}
+                            <AnimatePresence>
+                                {currentState.answered && (
                                     <motion.div
-                                        initial={{ opacity: 0, y: 10 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        className="bg-purple-500/10 border border-purple-500/20 p-4 rounded text-purple-200 text-xs"
+                                        initial={{ opacity: 0, height: 0 }}
+                                        animate={{ opacity: 1, height: 'auto' }}
+                                        exit={{ opacity: 0, height: 0 }}
+                                        className={cn(
+                                            "mt-4 p-4 rounded-lg border",
+                                            currentState.isCorrect
+                                                ? "bg-emerald-500/10 border-emerald-500/30"
+                                                : "bg-red-500/10 border-red-500/30"
+                                        )}
                                     >
-                                        <span className="font-bold block mb-2 text-purple-400 font-mono tracking-wider uppercase text-[10px]">
-                                            Hint:
-                                        </span>
-                                        {aiHint}
+                                        <div className="flex items-start gap-3">
+                                            {currentState.isCorrect ? (
+                                                <CheckCircle className="text-emerald-400 flex-shrink-0" size={20} />
+                                            ) : (
+                                                <XCircle className="text-red-400 flex-shrink-0" size={20} />
+                                            )}
+                                            <div>
+                                                <p className={cn(
+                                                    "font-medium mb-1",
+                                                    currentState.isCorrect ? "text-emerald-400" : "text-red-400"
+                                                )}>
+                                                    {currentState.isCorrect ? "That's right!" : "Not quite"}
+                                                </p>
+                                                {explanation && (
+                                                    <p className="text-slate-400 text-sm">
+                                                        {explanation}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        </div>
                                     </motion.div>
-                                ) : (
-                                    <div className="text-center opacity-30 mt-10 text-xs font-mono space-y-1">
-                                        <p>NO ACTIVE HINTS</p>
-                                    </div>
                                 )}
-                            </div>
+                            </AnimatePresence>
+                        </div>
 
-                            {/* Request Button */}
+                        {/* Hint Section */}
+                        {!currentState.answered && (
+                            <div className="synapse-panel overflow-hidden">
+                                <button
+                                    onClick={() => setShowHint(!showHint)}
+                                    className="w-full p-4 flex items-center justify-between text-left"
+                                >
+                                    <span className="flex items-center gap-2 text-slate-400">
+                                        <Lightbulb size={16} />
+                                        Need a hint?
+                                    </span>
+                                    {showHint ? (
+                                        <ChevronUp size={16} className="text-slate-400" />
+                                    ) : (
+                                        <ChevronDown size={16} className="text-slate-400" />
+                                    )}
+                                </button>
+                                <AnimatePresence>
+                                    {showHint && (
+                                        <motion.div
+                                            initial={{ opacity: 0, height: 0 }}
+                                            animate={{ opacity: 1, height: 'auto' }}
+                                            exit={{ opacity: 0, height: 0 }}
+                                            className="px-4 pb-4"
+                                        >
+                                            <p className="text-slate-500 text-sm">
+                                                Think about the core concept being tested. Eliminate obviously incorrect answers first.
+                                            </p>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
+                            </div>
+                        )}
+                    </motion.div>
+                </div>
+            </div>
+
+            {/* Footer Navigation */}
+            <div className="h-16 border-t border-white/5 flex items-center justify-between px-6 bg-black/20">
+                <button
+                    onClick={() => goToQuestion(currentIdx - 1)}
+                    disabled={currentIdx === 0}
+                    className="synapse-button disabled:opacity-50 flex items-center gap-2"
+                >
+                    <ArrowLeft size={14} />
+                    Previous
+                </button>
+
+                <div className="flex gap-2">
+                    {questions.map((q, idx) => {
+                        const state = getCurrentState(q.id);
+                        return (
                             <button
-                                onClick={getHint}
-                                disabled={loadingHint || selectedOption !== null}
+                                key={idx}
+                                onClick={() => goToQuestion(idx)}
                                 className={cn(
-                                    "synapse-button w-full",
-                                    selectedOption !== null && "opacity-50 cursor-not-allowed"
+                                    "w-8 h-8 rounded-full text-xs font-medium transition-all",
+                                    idx === currentIdx
+                                        ? "bg-cyan-500 text-white"
+                                        : state.answered
+                                            ? state.isCorrect
+                                                ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/50"
+                                                : "bg-red-500/20 text-red-400 border border-red-500/50"
+                                            : "bg-slate-800 text-slate-500 hover:bg-slate-700"
                                 )}
                             >
-                                {loadingHint ? (
-                                    <>
-                                        <Loader2 size={14} className="animate-spin mr-2" />
-                                        Analyzing...
-                                    </>
-                                ) : (
-                                    <>
-                                        <HelpCircle size={14} className="mr-2" />
-                                        Get Hint
-                                    </>
-                                )}
+                                {idx + 1}
                             </button>
-                        </div>
-                    </div>
+                        );
+                    })}
                 </div>
+
+                {currentIdx === questions.length - 1 ? (
+                    <button
+                        onClick={handleFinish}
+                        disabled={isSubmitting}
+                        className="synapse-button-primary px-6 flex items-center gap-2"
+                    >
+                        {isSubmitting ? (
+                            <>
+                                <Loader2 size={14} className="animate-spin" />
+                                Submitting...
+                            </>
+                        ) : (
+                            'Finish Quiz'
+                        )}
+                    </button>
+                ) : (
+                    <button
+                        onClick={() => goToQuestion(currentIdx + 1)}
+                        className="synapse-button-primary px-6 flex items-center gap-2"
+                    >
+                        Next
+                        <ArrowRight size={14} />
+                    </button>
+                )}
             </div>
         </div>
     );

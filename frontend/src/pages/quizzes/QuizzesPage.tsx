@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { QuizzesService } from '@/api/generated';
@@ -8,21 +8,9 @@ import {
     Plus, Search, Wand2, FileQuestion, Play,
     Loader2, Sparkles, Brain, Trophy
 } from 'lucide-react';
-import { toast } from 'sonner';
 import type { QuizResponse } from '@/api/generated';
+import { useGenerateQuiz } from '@/api/hooks/useAIGeneration';
 
-// TODO: Implement AI Quiz Generation
-// File: src/api/services/gemini.ts
-// This should contain the actual Gemini API integration for quiz generation
-const mockGenerateQuizSchema = async (topic: string) => {
-    await new Promise(r => setTimeout(r, 2000)); // Simulated AI delay
-    return {
-        title: `Protocol: ${topic.toUpperCase()}`,
-        description: `Tactical simulation regarding ${topic}. Constructed by The Architect AI.`,
-        time_limit_minutes: 15,
-        difficulty: 'Hard'
-    };
-};
 
 /**
  * Protocol: CRUCIBLE - Command Hub
@@ -281,44 +269,28 @@ interface TheArchitectProps {
 
 function TheArchitect({ onCancel, onSuccess }: TheArchitectProps) {
     const [topic, setTopic] = useState('');
-    const [generating, setGenerating] = useState(false);
+    const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('medium');
+    const [numQuestions, setNumQuestions] = useState(10);
 
-    // Create quiz mutation
-    const createMutation = useMutation({
-        mutationFn: (data: any) => QuizzesService.createQuizApiV1QuizzesPost(data),
-        onSuccess: () => {
-            toast.success('Quiz Generated Successfully');
-            onSuccess();
-        },
-        onError: (error) => {
-            toast.error('Generation Failed', {
-                description: error instanceof Error ? error.message : 'Unknown error',
-            });
-            setGenerating(false);
-        },
-    });
+    // Use real AI generation hook
+    const generateQuiz = useGenerateQuiz();
+    const generating = generateQuiz.isPending;
 
     const handleCreate = async () => {
         if (!topic.trim()) return;
-        setGenerating(true);
 
-        try {
-            // Simulated AI Generation step
-            const schema = await mockGenerateQuizSchema(topic);
-
-            // Create the quiz entry
-            createMutation.mutate({
-                title: schema.title,
-                description: schema.description,
-                time_limit_minutes: schema.time_limit_minutes,
-                difficulty: schema.difficulty as any, // Cast to any to avoid strict enum check for now
-            });
-        } catch (error) {
-            toast.error('Generation Failed', {
-                description: error instanceof Error ? error.message : 'Unknown error',
-            });
-            setGenerating(false);
-        }
+        generateQuiz.mutate(
+            {
+                topic: topic.trim(),
+                num_questions: numQuestions,
+                difficulty: difficulty
+            },
+            {
+                onSuccess: () => {
+                    onSuccess();
+                }
+            }
+        );
     };
 
     const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -332,7 +304,7 @@ function TheArchitect({ onCancel, onSuccess }: TheArchitectProps) {
 
     return (
         <div className="flex-1 flex flex-col items-center justify-center p-6 bg-black/50">
-            <div className="synapse-panel max-w-lg w-full p-10 text-center space-y-8">
+            <div className="synapse-panel max-w-lg w-full p-10 text-center space-y-6">
                 <div>
                     <div className="w-16 h-16 mx-auto bg-cyan-500/10 rounded-full flex items-center justify-center border border-cyan-500/20 mb-6">
                         <Wand2 size={28} className="text-cyan-400" />
@@ -346,18 +318,62 @@ function TheArchitect({ onCancel, onSuccess }: TheArchitectProps) {
                 </div>
 
                 <div className="space-y-4">
+                    {/* Topic Input */}
                     <input
                         value={topic}
                         onChange={(e) => setTopic(e.target.value)}
                         onKeyDown={handleKeyPress}
                         placeholder="e.g. Molecular Biology, History of Rome..."
-                        className="synapse-input w-full text-center text-lg py-3"
+                        className="synapse-input w-full text-center text-lg py-3 text-white bg-slate-900/50 border border-slate-700 rounded-lg focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 outline-none transition-colors"
                         disabled={generating}
                         autoFocus
                     />
+
+                    {/* Difficulty Selection */}
+                    <div className="flex gap-2 justify-center">
+                        {(['easy', 'medium', 'hard'] as const).map((d) => (
+                            <button
+                                key={d}
+                                onClick={() => setDifficulty(d)}
+                                disabled={generating}
+                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${difficulty === d
+                                        ? d === 'easy'
+                                            ? 'bg-green-500/20 text-green-400 border border-green-500/50'
+                                            : d === 'medium'
+                                                ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/50'
+                                                : 'bg-red-500/20 text-red-400 border border-red-500/50'
+                                        : 'bg-slate-800/50 text-slate-400 border border-slate-700 hover:border-slate-600'
+                                    }`}
+                            >
+                                {d.charAt(0).toUpperCase() + d.slice(1)}
+                            </button>
+                        ))}
+                    </div>
+
+                    {/* Question Count */}
+                    <div className="flex items-center justify-center gap-4">
+                        <span className="text-slate-400 text-sm">Questions:</span>
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => setNumQuestions(Math.max(5, numQuestions - 5))}
+                                disabled={generating || numQuestions <= 5}
+                                className="w-8 h-8 rounded bg-slate-800 text-slate-300 hover:bg-slate-700 disabled:opacity-50 transition-colors"
+                            >
+                                -
+                            </button>
+                            <span className="text-white font-medium w-8 text-center">{numQuestions}</span>
+                            <button
+                                onClick={() => setNumQuestions(Math.min(30, numQuestions + 5))}
+                                disabled={generating || numQuestions >= 30}
+                                className="w-8 h-8 rounded bg-slate-800 text-slate-300 hover:bg-slate-700 disabled:opacity-50 transition-colors"
+                            >
+                                +
+                            </button>
+                        </div>
+                    </div>
                 </div>
 
-                <div className="flex gap-3 justify-center">
+                <div className="flex gap-3 justify-center pt-2">
                     <button
                         onClick={onCancel}
                         className="synapse-button text-slate-400 hover:text-white"

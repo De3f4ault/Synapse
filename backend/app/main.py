@@ -99,6 +99,15 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.warning("agent_registration_failed", error=str(e))
 
+        # Initialize Agent Orchestrator
+        try:
+            from app.core.ai.orchestrator import get_orchestrator
+            orchestrator = get_orchestrator()
+            await orchestrator.initialize()
+            logger.info("orchestrator_initialized")
+        except Exception as e:
+            logger.warning("orchestrator_init_failed", error=str(e))
+
         logger.info(
             "application_started",
             app_name=settings.APP_NAME,

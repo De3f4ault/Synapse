@@ -172,7 +172,6 @@ export const useDeleteCard = () => {
         mutationFn: (cardId: number) => FlashcardsService.deleteCardApiV1CardsCardIdDelete(cardId),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.flashcards.lists() });
-            queryClient.invalidateQueries({ queryKey: queryKeys.flashcards.lists() });
         },
     });
 };

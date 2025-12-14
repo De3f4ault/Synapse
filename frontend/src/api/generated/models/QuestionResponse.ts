@@ -4,7 +4,7 @@
 /* eslint-disable */
 import type { QuestionType } from './QuestionType';
 /**
- * Question response (without correct answer).
+ * Question response with answers for learning mode.
  */
 export type QuestionResponse = {
     id: number;
@@ -13,5 +13,7 @@ export type QuestionResponse = {
     options: (Record<string, any> | null);
     points: number;
     order: number;
+    correct_answer: string;
+    explanation?: (string | null);
 };
 
