@@ -184,14 +184,15 @@ Respond with ONLY valid JSON (no markdown):
         
         # Parse JSON response - handle ProviderResponse object
         try:
-            # Get text content from response object
-            response_text = response.content if hasattr(response, 'content') else str(response)
+            # Get text content from ProviderResponse
+            response_text = response.text if hasattr(response, 'text') else str(response)
             
             # Clean response - remove markdown code blocks if present
             cleaned = response_text.strip()
-            if cleaned.startswith("```"):
-                cleaned = re.sub(r"```(?:json)?\n?", "", cleaned)
-                cleaned = cleaned.strip()
+            # Handle ```json\n...\n``` or ```\n...\n```
+            cleaned = re.sub(r'^```(?:json)?\s*\n', '', cleaned)
+            cleaned = re.sub(r'\n```\s*$', '', cleaned)
+            cleaned = cleaned.strip()
             
             data = json.loads(cleaned)
             return IntentClassification(
@@ -200,7 +201,12 @@ Respond with ONLY valid JSON (no markdown):
                 reasoning=data.get("reasoning", "LLM classification")
             )
         except (json.JSONDecodeError, KeyError, ValueError) as e:
-            self.logger.warning("failed_to_parse_llm_response", error=str(e), response=str(response))
+            self.logger.warning(
+                "failed_to_parse_llm_response", 
+                error=str(e), 
+                response_text=response_text[:200] if 'response_text' in locals() else str(response)[:200],
+                cleaned_text=cleaned[:200] if 'cleaned' in locals() else "N/A"
+            )
             # Fallback
             return IntentClassification(
                 intent=IntentType.LEARNING,

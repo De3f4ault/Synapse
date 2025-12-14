@@ -37,7 +37,7 @@ export const NoteCard = ({ note, onClick, index }: NoteCardProps) => {
         }
 
         const hash = note.tags[0]?.name?.charCodeAt(0) || 0;
-        return colorPalette[hash % colorPalette.length] || colorPalette[0];
+        return colorPalette[hash % colorPalette.length] ?? { primary: '#6366f1', light: '#6366f115' };
     };
 
     // Extract preview text

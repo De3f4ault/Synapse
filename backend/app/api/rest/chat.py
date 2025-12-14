@@ -14,14 +14,14 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, func, delete
 from pydantic import BaseModel, Field
-import logging
+import structlog
 from app.core.ai.agents.factory import create_agent
 from app.api.deps import get_db, get_current_user
 from app.models.user import User
 from app.models.chat_session import ChatSession
 from app.models.chat_message import ChatMessage, MessageRole
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 router = APIRouter()
 
 
@@ -821,3 +821,249 @@ async def list_models():
     ]
 
     return models
+
+
+# ============================================================================
+# Dashboard Orchestrator Endpoint
+# ============================================================================
+
+DASHBOARD_SESSION_STORAGE_KEY = 'synapse_dashboard_session'
+
+@router.post(
+    "/sessions/dashboard/message",
+    response_model=ChatMessageResponse,
+    summary="Dashboard Orchestrator Message",
+    description="Send message to dashboard orchestrator with full system access"
+)
+async def send_dashboard_message(
+    message_data: ChatMessageCreate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Send message to dashboard orchestrator.
+    
+    Different from regular chat:
+    - Uses DashboardAgent with ALL tools
+    - Builds comprehensive context from all modules
+    - Returns rich metadata for UI rendering
+    - Stores in dedicated dashboard session
+    
+    The Dashboard Orchestrator has:
+    - Complete knowledge of user's learning state
+    - Ability to create flashcards, notes, quizzes
+    - Proactive recommendations
+    - Analytics and insights
+    """
+    try:
+        logger.info(
+            "dashboard_message_received",
+            user_id=current_user.id,
+            message_length=len(message_data.content)
+        )
+        
+        # ====================================================================
+        # GET OR CREATE DASHBOARD SESSION
+        # ====================================================================
+        # Dashboard has its own persistent session
+        session_query = select(ChatSession).where(
+            and_(
+                ChatSession.user_id == current_user.id,
+                ChatSession.title == DASHBOARD_SESSION_STORAGE_KEY,
+                ChatSession.deleted_at.is_(None)
+            )
+        )
+        result = await db.execute(session_query)
+        session = result.scalar_one_or_none()
+        
+        if not session:
+            # Create new dashboard session
+            session = ChatSession(
+                user_id=current_user.id,
+                title=DASHBOARD_SESSION_STORAGE_KEY
+            )
+            db.add(session)
+            await db.commit()
+            await db.refresh(session)
+            
+            logger.info(
+                "dashboard_session_created",
+                user_id=current_user.id,
+                session_id=session.id
+            )
+        
+        # ====================================================================
+        # SAVE USER MESSAGE
+        # ====================================================================
+        user_message = ChatMessage(
+            session_id=session.id,
+            role=MessageRole.USER,
+            content=message_data.content,
+            tokens=estimate_tokens(message_data.content)
+        )
+        db.add(user_message)
+        await db.commit()
+        await db.refresh(user_message)
+        
+        # ====================================================================
+        # BUILD COMPREHENSIVE DASHBOARD CONTEXT
+        # ====================================================================
+        from app.core.ai.context.dashboard_context_builder import build_dashboard_context
+        
+        context = await build_dashboard_context(
+            user_id=current_user.id,
+            db=db
+        )
+        
+        logger.debug(
+            "dashboard_context_built",
+            user_id=current_user.id,
+            flashcards=context.get("user_stats", {}).get("total_flashcards", 0),
+            notes=context.get("user_stats", {}).get("total_notes", 0)
+        )
+        
+        # ====================================================================
+        # GET CONVERSATION HISTORY
+        # ====================================================================
+        history_query = select(ChatMessage).where(
+            ChatMessage.session_id == session.id
+        ).order_by(ChatMessage.created_at).limit(20)  # Last 20 messages
+        
+        history_result = await db.execute(history_query)
+        history = history_result.scalars().all()
+        
+        chat_history = [
+            {
+                "role": msg.role.value,
+                "content": msg.content
+            }
+            for msg in history[:-1]  # Exclude the message we just added
+        ]
+        
+        # ====================================================================
+        # CALL DASHBOARD ORCHESTRATOR
+        # ====================================================================
+        from app.core.ai.orchestrator import get_orchestrator
+        
+        orchestrator = get_orchestrator()
+        
+        # Force dashboard agent by adding preference to context
+        context["agent_preference"] = "dashboard"
+        
+        result = await orchestrator.handle_message(
+            message=message_data.content,
+            user_id=current_user.id,
+            session_id=session.id,
+            context=context,
+            chat_history=chat_history
+        )
+        
+        logger.info(
+            "dashboard_orchestration_complete",
+            user_id=current_user.id,
+            agent_used=result.agent_used,
+            tools_called=len(result.metadata.get("tool_calls", [])) if isinstance(result.metadata.get("tool_calls"), list) else 0,
+            tokens=result.tokens_used
+        )
+        
+        # ====================================================================
+        # EXTRACT ACTIONS TAKEN
+        # ====================================================================
+        actions_taken = []
+        tool_calls = result.metadata.get("tool_calls", [])
+        # Ensure tool_calls is a list (sometimes it might be an int or other type)
+        if isinstance(tool_calls, list):
+            for tool_call in tool_calls:
+                tool_result = tool_call.get("result", {})
+                if isinstance(tool_result, dict) and tool_result.get("success"):
+                    action_data = tool_result.get("data", {})
+                    actions_taken.append({
+                        "type": tool_call.get("tool", ""),
+                        "data": action_data,
+                        "message": tool_result.get("message", "")
+                    })
+        
+        # ====================================================================
+        # SAVE AI RESPONSE
+        # ====================================================================
+        ai_message = ChatMessage(
+            session_id=session.id,
+            role=MessageRole.ASSISTANT,
+            content=result.output,
+            tokens=result.tokens_used,
+            model_used=result.agent_used,
+            function_calls={
+                "tool_calls": result.metadata.get("tool_calls", []),
+                "actions_taken": actions_taken
+            },
+            grounding_sources=None
+        )
+        db.add(ai_message)
+        
+        # Update session timestamp
+        session.updated_at = datetime.utcnow()
+        
+        await db.commit()
+        await db.refresh(ai_message)
+        
+        logger.info(
+            "dashboard_message_saved",
+            user_id=current_user.id,
+            message_id=ai_message.id,
+            actions=len(actions_taken)
+        )
+        
+        # ====================================================================
+        # RETURN ENRICHED RESPONSE
+        # ====================================================================
+        return ChatMessageResponse(
+            id=ai_message.id,
+            session_id=ai_message.session_id,
+            role=ai_message.role,
+            content=ai_message.content,
+            tokens=ai_message.tokens,
+            model_used=ai_message.model_used,
+            function_calls=ai_message.function_calls,
+            grounding_sources=ai_message.grounding_sources,
+            created_at=ai_message.created_at
+        )
+        
+    except Exception as e:
+        logger.error(
+            "dashboard_message_error",
+            user_id=current_user.id,
+            error=str(e),
+            error_type=type(e).__name__,
+            exc_info=True
+        )
+        
+        # Create error message
+        error_message = ChatMessage(
+            session_id=session.id if session else None,
+            role=MessageRole.ASSISTANT,
+            content="I encountered an error processing your request. Please try again.",
+            tokens=0,
+            model_used="error"
+        )
+        
+        if session:
+            db.add(error_message)
+            await db.commit()
+            await db.refresh(error_message)
+            
+            return ChatMessageResponse(
+                id=error_message.id,
+                session_id=error_message.session_id,
+                role=error_message.role,
+                content=error_message.content,
+                tokens=error_message.tokens,
+                model_used=error_message.model_used,
+                function_calls=None,
+                grounding_sources=None,
+                created_at=error_message.created_at
+            )
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Dashboard orchestrator error: {str(e)}"
+            )

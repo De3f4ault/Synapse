@@ -82,6 +82,7 @@ class AgentOrchestrator:
         from app.core.ai.agents.implementations.tutor_agent import TutorAgent
         from app.core.ai.agents.implementations.document_agent import DocumentAgent
         from app.core.ai.agents.implementations.quiz_agent import QuizAgent
+        from app.core.ai.agents.implementations.dashboard_agent import DashboardAgent
         
         factory = get_agent_factory()
         registry = AgentRegistry()
@@ -90,7 +91,8 @@ class AgentOrchestrator:
         agent_classes = {
             "tutor": TutorAgent,
             "document": DocumentAgent,
-            "quiz": QuizAgent
+            "quiz": QuizAgent,
+            "dashboard": DashboardAgent
         }
         
         for name, agent_class in agent_classes.items():

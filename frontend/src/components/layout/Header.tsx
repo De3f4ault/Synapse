@@ -11,9 +11,9 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Home, BookOpen, FileText, FileQuestion, MessageSquare,
-    BarChart, FileStack, Atom, Bell, User, Settings,
+    FileStack, Atom, Bell, User, Settings,
     LogOut, Moon, Sun, ChevronRight, Search,
-    Grid, Activity, Cpu, Shield, Wifi, X, Plus,
+    Grid, X, Plus,
     CreditCard, ClipboardList, Upload
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -76,14 +76,6 @@ export function Header({ className }: HeaderProps) {
 
     const [controlPanelOpen, setControlPanelOpen] = useState(false);
     const [launcherOpen, setLauncherOpen] = useState(false);
-    const [isScrolled, setIsScrolled] = useState(false);
-
-    // Scroll Effect
-    useEffect(() => {
-        const handleScroll = () => setIsScrolled(window.scrollY > 20);
-        window.addEventListener('scroll', handleScroll);
-        return () => window.removeEventListener('scroll', handleScroll);
-    }, []);
 
     // Close menus on route change
     useEffect(() => {

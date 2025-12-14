@@ -222,6 +222,20 @@ class AgentFactory:
                 "model": "gemini-1.5-flash",
                 "temperature": 0.5,  # Creative for varied questions
                 "max_iterations": 5,
+            },
+            "dashboard": {
+                "display_name": "Dashboard Orchestrator",
+                "description": "All-knowing AI assistant with full system access",
+                "capabilities": [
+                    AgentCapability.CHAT,
+                    AgentCapability.TOOL_USE,
+                    AgentCapability.MEMORY,
+                    AgentCapability.PLANNING,
+                    AgentCapability.FILE_ACCESS
+                ],
+                "model": "gemini-2.0-flash-exp",  # Latest model for best performance
+                "temperature": 0.4,  # Balanced creativity
+                "max_iterations": 12,  # Allow complex operations
             }
         }
 
