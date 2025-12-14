@@ -10,14 +10,14 @@
 
 import { useNavigate } from "react-router-dom";
 import {
-    SearchIcon,
-    MoreVerticalIcon,
-    Share2Icon,
-    PencilIcon,
-    ArchiveIcon,
-    ArchiveRestoreIcon,
-    Trash2Icon,
-    MessageCircleIcon,
+    Search,
+    MoreVertical,
+    Share2,
+    Pencil,
+    Archive,
+    ArchiveRestore,
+    Trash2,
+    MessageCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -64,7 +64,7 @@ export function ChatSidebar({ currentSessionId, className }: ChatSidebarProps) {
             {/* Search */}
             <div className="p-3">
                 <div className="relative flex items-center">
-                    <SearchIcon className="absolute left-3 size-4 text-muted-foreground" />
+                    <Search className="absolute left-3 size-4 text-muted-foreground" />
                     <Input
                         placeholder="Search conversations"
                         className="pl-9 pr-10 h-[34px] bg-muted/50"
@@ -106,7 +106,7 @@ export function ChatSidebar({ currentSessionId, className }: ChatSidebarProps) {
                                             )}
                                             onClick={() => navigate(`/chat/${session.id}`)}
                                         >
-                                            <MessageCircleIcon className="size-4 shrink-0" />
+                                            <MessageCircle className="size-4 shrink-0" />
                                             <span className="text-sm truncate min-w-0">
                                                 {session.title || "New Chat"}
                                             </span>
@@ -118,7 +118,7 @@ export function ChatSidebar({ currentSessionId, className }: ChatSidebarProps) {
                                                     size="icon"
                                                     className="absolute right-1 size-7 opacity-0 group-hover/item:opacity-100 data-[state=open]:opacity-100 transition-opacity"
                                                 >
-                                                    <MoreVerticalIcon className="size-4" />
+                                                    <MoreVertical className="size-4" />
                                                     <span className="sr-only">More</span>
                                                 </Button>
                                             </DropdownMenuTrigger>
@@ -128,15 +128,15 @@ export function ChatSidebar({ currentSessionId, className }: ChatSidebarProps) {
                                                 align="start"
                                             >
                                                 <DropdownMenuItem>
-                                                    <Share2Icon className="size-4 text-muted-foreground" />
+                                                    <Share2 className="size-4 text-muted-foreground" />
                                                     <span>Share</span>
                                                 </DropdownMenuItem>
                                                 <DropdownMenuItem>
-                                                    <PencilIcon className="size-4 text-muted-foreground" />
+                                                    <Pencil className="size-4 text-muted-foreground" />
                                                     <span>Rename</span>
                                                 </DropdownMenuItem>
                                                 <DropdownMenuItem>
-                                                    <ArchiveIcon className="size-4 text-muted-foreground" />
+                                                    <Archive className="size-4 text-muted-foreground" />
                                                     <span>Archive</span>
                                                 </DropdownMenuItem>
                                                 <DropdownMenuSeparator />
@@ -144,7 +144,7 @@ export function ChatSidebar({ currentSessionId, className }: ChatSidebarProps) {
                                                     className="text-destructive"
                                                     onClick={() => handleDeleteSession(session.id)}
                                                 >
-                                                    <Trash2Icon className="size-4" />
+                                                    <Trash2 className="size-4" />
                                                     <span>Delete</span>
                                                 </DropdownMenuItem>
                                             </DropdownMenuContent>
@@ -181,7 +181,7 @@ export function ChatSidebar({ currentSessionId, className }: ChatSidebarProps) {
                                             )}
                                             onClick={() => navigate(`/chat/${session.id}`)}
                                         >
-                                            <MessageCircleIcon className="size-4 shrink-0" />
+                                            <MessageCircle className="size-4 shrink-0" />
                                             <span className="text-sm truncate min-w-0">
                                                 {session.title || "New Chat"}
                                             </span>
@@ -193,7 +193,7 @@ export function ChatSidebar({ currentSessionId, className }: ChatSidebarProps) {
                                                     size="icon"
                                                     className="absolute right-1 size-7 opacity-0 group-hover/item:opacity-100 data-[state=open]:opacity-100 transition-opacity"
                                                 >
-                                                    <MoreVerticalIcon className="size-4" />
+                                                    <MoreVertical className="size-4" />
                                                     <span className="sr-only">More</span>
                                                 </Button>
                                             </DropdownMenuTrigger>
@@ -203,15 +203,15 @@ export function ChatSidebar({ currentSessionId, className }: ChatSidebarProps) {
                                                 align="start"
                                             >
                                                 <DropdownMenuItem>
-                                                    <Share2Icon className="size-4 text-muted-foreground" />
+                                                    <Share2 className="size-4 text-muted-foreground" />
                                                     <span>Share</span>
                                                 </DropdownMenuItem>
                                                 <DropdownMenuItem>
-                                                    <PencilIcon className="size-4 text-muted-foreground" />
+                                                    <Pencil className="size-4 text-muted-foreground" />
                                                     <span>Rename</span>
                                                 </DropdownMenuItem>
                                                 <DropdownMenuItem>
-                                                    <ArchiveRestoreIcon className="size-4 text-muted-foreground" />
+                                                    <ArchiveRestore className="size-4 text-muted-foreground" />
                                                     <span>Unarchive</span>
                                                 </DropdownMenuItem>
                                                 <DropdownMenuSeparator />
@@ -219,7 +219,7 @@ export function ChatSidebar({ currentSessionId, className }: ChatSidebarProps) {
                                                     className="text-destructive"
                                                     onClick={() => handleDeleteSession(session.id)}
                                                 >
-                                                    <Trash2Icon className="size-4" />
+                                                    <Trash2 className="size-4" />
                                                     <span>Delete</span>
                                                 </DropdownMenuItem>
                                             </DropdownMenuContent>
