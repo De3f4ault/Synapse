@@ -4,7 +4,7 @@
  */
 
 import { motion } from 'framer-motion';
-import { FileText, Tag, Clock, Zap, TrendingUp, Activity } from 'lucide-react';
+import { FileText, Tag, TrendingUp, Zap } from 'lucide-react';
 import type { NoteResponse } from '@/api/generated';
 
 interface NoteStatsProps {
@@ -14,7 +14,7 @@ interface NoteStatsProps {
 export const NoteStats: React.FC<NoteStatsProps> = ({ notes }) => {
     const stats = {
         total: notes.length,
-        totalTags: new Set(notes.flatMap((n) => n.tags || [])).size,
+        totalTags: new Set(notes.flatMap((n: any) => n.tags || [])).size,
         thisWeek: notes.filter((n) => {
             const daysSinceUpdate = Math.floor(
                 (Date.now() - new Date(n.updated_at).getTime()) / (1000 * 60 * 60 * 24)
@@ -62,7 +62,7 @@ export const NoteStats: React.FC<NoteStatsProps> = ({ notes }) => {
             gradient: 'from-purple-500 to-pink-500',
             iconBg: 'bg-purple-500/10',
             iconColor: 'text-purple-600',
-            trend: `${notes.filter(n => n.tags && n.tags.length > 0).length} tagged`,
+            trend: `${notes.filter((n: any) => n.tags && n.tags.length > 0).length} tagged`,
         },
         {
             label: 'Total Words',

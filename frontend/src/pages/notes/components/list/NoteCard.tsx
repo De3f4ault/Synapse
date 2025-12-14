@@ -4,9 +4,8 @@
  */
 
 import { motion } from 'framer-motion';
-import { Calendar, Tag, FileText, Clock, MoreVertical } from 'lucide-react';
+import { FileText, Clock, MoreVertical } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
-import { useState } from 'react';
 
 interface NoteCardProps {
     note: {
@@ -21,13 +20,10 @@ interface NoteCardProps {
 }
 
 export const NoteCard = ({ note, onClick, index }: NoteCardProps) => {
-    const [isHovered, setIsHovered] = useState(false);
 
     // Get color accent based on first tag or default
-    const getAccentColor = () => {
-        if (!note.tags || note.tags.length === 0) return { primary: '#6366f1', light: '#6366f115' };
-
-        const colors = [
+    const getAccentColor = (): { primary: string; light: string } => {
+        const colorPalette = [
             { primary: '#8b5cf6', light: '#8b5cf615' }, // purple
             { primary: '#ec4899', light: '#ec489915' }, // pink
             { primary: '#f59e0b', light: '#f59e0b15' }, // amber
@@ -35,8 +31,13 @@ export const NoteCard = ({ note, onClick, index }: NoteCardProps) => {
             { primary: '#3b82f6', light: '#3b82f615' }, // blue
             { primary: '#ef4444', light: '#ef444415' }, // red
         ];
+
+        if (!note.tags || note.tags.length === 0) {
+            return { primary: '#6366f1', light: '#6366f115' }; // default indigo
+        }
+
         const hash = note.tags[0]?.name?.charCodeAt(0) || 0;
-        return colors[hash % colors.length];
+        return colorPalette[hash % colorPalette.length] || colorPalette[0];
     };
 
     // Extract preview text
@@ -50,7 +51,7 @@ export const NoteCard = ({ note, onClick, index }: NoteCardProps) => {
 
     const wordCount = note.content?.split(/\s+/).length || 0;
     const readTime = Math.max(1, Math.ceil(wordCount / 200));
-    const colors = getAccentColor();
+    const colors = getAccentColor();  // Always returns a valid color object
 
     return (
         <motion.div
@@ -58,8 +59,6 @@ export const NoteCard = ({ note, onClick, index }: NoteCardProps) => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.03, type: 'spring', stiffness: 300 }}
             whileHover={{ y: -6, transition: { duration: 0.2 } }}
-            onHoverStart={() => setIsHovered(true)}
-            onHoverEnd={() => setIsHovered(false)}
             onClick={onClick}
             className="group relative cursor-pointer"
         >
