@@ -166,8 +166,8 @@ async def execute_escalation(
 
         # Gemini upgrade path: flash-8b → flash → pro
         upgrade_map = {
-            "gemini-1.5-flash-8b": "gemini-1.5-flash",
-            "gemini-1.5-flash": "gemini-1.5-pro"
+            "gemini-2.5-flash-8b": "gemini-2.5-flash",
+            "gemini-2.5-flash": "gemini-2.5-pro"
         }
 
         new_model = upgrade_map.get(current_model)

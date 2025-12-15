@@ -2,14 +2,14 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
-import Confetti from 'react-confetti';
 import { QuizzesService } from '@/api/generated';
 import { queryKeys } from '@/lib/queryKeys';
+import { QuizResultsView } from './components/results/QuizResultsView';
 import type { QuizAttemptStart, AnswerSubmit, AnswerResult } from '@/api/generated';
 import {
-    CheckCircle, XCircle, Trophy, Loader2, Lightbulb,
+    CheckCircle, XCircle, Loader2, Lightbulb,
     ChevronDown, ChevronUp, ArrowLeft, ArrowRight,
-    BookOpen, Clock
+    Clock
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -203,111 +203,23 @@ export function QuizTakePage() {
         };
         const rank = getRank(percentage);
 
+        const performanceProp = {
+            score: percentage, // percentage is used as score in display
+            percentage: percentage,
+            rank: rank,
+            maxStreak: 0, // Not tracked yet, defaulting
+            duration: elapsedTime,
+            correctCount: stats.correct,
+            totalCount: stats.total
+        };
+
         return (
-            <div className="h-full overflow-y-auto p-6">
-                {percentage >= 70 && <Confetti recycle={false} numberOfPieces={300} />}
-
-                <div className="max-w-3xl mx-auto">
-                    {/* Header */}
-                    <motion.div
-                        initial={{ opacity: 0, y: -20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="text-center mb-8"
-                    >
-                        <Trophy size={48} className="mx-auto text-yellow-400 mb-4" />
-                        <h1 className="text-3xl font-bold text-white mb-2">Quiz Complete!</h1>
-                        <p className="text-slate-400">Here's how you did</p>
-                    </motion.div>
-
-                    {/* Score Card */}
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ delay: 0.1 }}
-                        className="synapse-panel p-6 mb-6"
-                    >
-                        <div className="grid grid-cols-4 gap-4 text-center">
-                            <div className={cn("p-4 rounded-xl", rank.bg)}>
-                                <div className={cn("text-3xl font-bold mb-1", rank.color)}>{rank.grade}</div>
-                                <div className="text-xs text-slate-500 uppercase">Grade</div>
-                            </div>
-                            <div className="p-4 rounded-xl bg-white/5">
-                                <div className="text-3xl font-bold text-white mb-1">{percentage}%</div>
-                                <div className="text-xs text-slate-500 uppercase">Score</div>
-                            </div>
-                            <div className="p-4 rounded-xl bg-white/5">
-                                <div className="text-3xl font-bold text-cyan-400 mb-1">{stats.correct}/{stats.total}</div>
-                                <div className="text-xs text-slate-500 uppercase">Correct</div>
-                            </div>
-                            <div className="p-4 rounded-xl bg-white/5">
-                                <div className="text-3xl font-bold text-purple-400 mb-1">{formatTime(elapsedTime)}</div>
-                                <div className="text-xs text-slate-500 uppercase">Time</div>
-                            </div>
-                        </div>
-                    </motion.div>
-
-                    {/* Answer Review */}
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: 0.2 }}
-                        className="space-y-4 mb-8"
-                    >
-                        <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-                            <BookOpen size={18} />
-                            Review Answers
-                        </h2>
-
-                        {results.answers?.map((answer: AnswerResult, idx: number) => (
-                            <div
-                                key={idx}
-                                className={cn(
-                                    "synapse-panel p-4 border-l-4",
-                                    answer.is_correct ? "border-l-emerald-500" : "border-l-red-500"
-                                )}
-                            >
-                                <div className="flex items-start gap-3">
-                                    {answer.is_correct ? (
-                                        <CheckCircle className="text-emerald-400 mt-1 flex-shrink-0" size={20} />
-                                    ) : (
-                                        <XCircle className="text-red-400 mt-1 flex-shrink-0" size={20} />
-                                    )}
-                                    <div className="flex-1">
-                                        <p className="text-white font-medium mb-2">{answer.question_text}</p>
-                                        <div className="space-y-1 text-sm">
-                                            <p className="text-slate-400">
-                                                Your answer: <span className={answer.is_correct ? "text-emerald-400" : "text-red-400"}>
-                                                    {answer.your_answer}
-                                                </span>
-                                            </p>
-                                            {!answer.is_correct && (
-                                                <p className="text-slate-400">
-                                                    Correct answer: <span className="text-emerald-400">{answer.correct_answer}</span>
-                                                </p>
-                                            )}
-                                            {answer.explanation && (
-                                                <p className="text-slate-500 mt-2 pt-2 border-t border-white/5">
-                                                    {answer.explanation}
-                                                </p>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-                    </motion.div>
-
-                    {/* Actions */}
-                    <div className="flex gap-4 justify-center">
-                        <button
-                            onClick={() => navigate('/quizzes')}
-                            className="synapse-button px-6"
-                        >
-                            Back to Quizzes
-                        </button>
-                    </div>
-                </div>
-            </div>
+            <QuizResultsView
+                performance={performanceProp}
+                attemptData={attemptData!}
+                results={results}
+                onReturn={() => navigate('/quizzes')}
+            />
         );
     }
 

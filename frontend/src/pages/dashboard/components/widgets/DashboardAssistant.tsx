@@ -257,6 +257,14 @@ export const DashboardAssistant: React.FC<DashboardAssistantProps> = ({ classNam
                     localStorage.setItem(STORAGE_KEY, data.session_id.toString());
                 }
 
+                // Generate title if this is first user message (excluding welcome)
+                const userMessagesCount = messages.filter(m => m.role === 'user').length;
+                if (userMessagesCount === 1 && sessionId) {
+                    // This is the first user message
+                    const title = await generateSessionTitle(userMsg.content);
+                    await updateSessionTitle(sessionId, title);
+                }
+
                 // Refresh sessions list
                 loadSessions();
             }
@@ -270,6 +278,75 @@ export const DashboardAssistant: React.FC<DashboardAssistantProps> = ({ classNam
             }]);
         } finally {
             setIsTyping(false);
+        }
+    };
+
+    // Generate title using AI
+    const generateSessionTitle = async (firstMessage: string): Promise<string> => {
+        try {
+            const response = await fetch('/api/v1/chat/sessions/dashboard/message', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    content: `Generate a concise 3-5 word title for this question: "${firstMessage}"
+
+Rules:
+- Be specific and descriptive
+- Remove filler words (help me, can you, etc.)
+- Focus on the main topic
+- Use title case
+
+Examples:
+"Create 10 flashcards on Linux CFS" → "Linux CFS Flashcards"
+"What are my weak areas?" → "Weak Areas Review"
+"Explain how photosynthesis works" → "Photosynthesis Explanation"
+
+Title:`
+                })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                let title = data.content?.trim().replace(/^["']|["']$/g, ''); // Remove quotes
+
+                // Fallback if response is too long or empty
+                if (!title || title.length > 60) {
+                    const words = firstMessage.split(' ').slice(0, 5);
+                    title = words.join(' ') + (firstMessage.split(' ').length > 5 ? '...' : '');
+                }
+
+                return title;
+            }
+        } catch (error) {
+            console.error('Failed to generate title:', error);
+        }
+
+        // Fallback: use first 5 words
+        const words = firstMessage.split(' ').slice(0, 5);
+        return words.join(' ') + (firstMessage.split(' ').length > 5 ? '...' : '');
+    };
+
+    // Update session title via API
+    const updateSessionTitle = async (sessionId: number, title: string) => {
+        try {
+            await fetch(`/api/v1/chat/sessions/${sessionId}`, {
+                method: 'PATCH',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ title })
+            });
+
+            // Update in local sessions list
+            setSessions(prev => prev.map(s =>
+                s.id === sessionId ? { ...s, title } : s
+            ));
+        } catch (error) {
+            console.error('Failed to update session title:', error);
         }
     };
 

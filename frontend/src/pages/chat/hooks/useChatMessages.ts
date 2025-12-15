@@ -9,6 +9,7 @@ import type {
   ChatMessageResponse,
 } from '@/api/generated';
 import { toast } from 'sonner';
+import { useAuthStore } from '@/stores/authStore';
 
 /**
  * Hook to fetch messages from a session
@@ -77,11 +78,80 @@ export const useSendMessage = (sessionId: number | undefined) => {
       }
       toast.error(error.message || 'Failed to send message');
     },
-    onSuccess: () => {
+    onSuccess: async (_response, content) => {
       // Invalidate to refetch from server
       queryClient.invalidateQueries({ queryKey: ['chat-messages', sessionId] });
       queryClient.invalidateQueries({ queryKey: ['chat-session', sessionId] });
       queryClient.invalidateQueries({ queryKey: ['chat-sessions'] });
+
+      // Generate title if this is first user message
+      try {
+        const messages = queryClient.getQueryData<ChatMessageResponse[]>(['chat-messages', sessionId]);
+        const userMessagesCount = messages?.filter(m => m.role === 'user').length || 0;
+
+        if (userMessagesCount === 1 && sessionId) {
+          // This is the first user message - generate title
+          const token = useAuthStore.getState().token;
+
+          if (token) {
+            try {
+              // Generate title using AI
+              const titleResponse = await fetch('/api/v1/chat/sessions/dashboard/message', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                  content: `Generate a concise 3-5 word title for this question: "${content}"
+
+Rules:
+- Be specific and descriptive
+- Remove filler words (help me, can you, etc.)
+- Focus on the main topic
+- Use title case
+
+Examples:
+"Create 10 flashcards on Linux CFS" → "Linux CFS Flashcards"
+"What are my weak areas?" → "Weak Areas Review"
+"Explain how photosynthesis works" → "Photosynthesis Explanation"
+
+Title:`
+                })
+              });
+
+              if (titleResponse.ok) {
+                const data = await titleResponse.json();
+                let title = data.content?.trim().replace(/^["']|["']$/g, ''); // Remove quotes
+
+                // Fallback if response is too long or empty
+                if (!title || title.length > 60) {
+                  const words = content.split(' ').slice(0, 5);
+                  title = words.join(' ') + (content.split(' ').length > 5 ? '...' : '');
+                }
+
+                // Update session title
+                await fetch(`/api/v1/chat/sessions/${sessionId}`, {
+                  method: 'PATCH',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                  },
+                  body: JSON.stringify({ title })
+                });
+
+                // Invalidate sessions to refresh sidebar
+                queryClient.invalidateQueries({ queryKey: ['chat-sessions'] });
+                queryClient.invalidateQueries({ queryKey: ['chat-session', sessionId] });
+              }
+            } catch (error) {
+              console.error('Failed to generate/update title:', error);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error in title generation:', error);
+      }
     },
   });
 };

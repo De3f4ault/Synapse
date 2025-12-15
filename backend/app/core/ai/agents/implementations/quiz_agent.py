@@ -406,7 +406,7 @@ def create_quiz_agent_config() -> AgentConfig:
             AgentCapability.PLANNING
         ],
         system_prompt="",  # Built dynamically
-        model="gemini-1.5-flash",  # Fast for generation
+        model="gemini-2.5-flash",  # Fast for generation
         temperature=0.5,  # Creative for varied questions
         max_iterations=5,  # Focused generation
         tools=[],  # Set by factory

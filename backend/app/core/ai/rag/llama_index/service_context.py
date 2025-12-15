@@ -45,7 +45,7 @@ def get_service_context() -> ServiceContext:
         # Configure LLM (Gemini Flash for efficiency)
         logger.debug("Initializing Gemini Flash LLM")
         llm = Gemini(
-            model="models/gemini-1.5-flash",
+            model="models/gemini-2.5-flash",
             api_key=settings.GEMINI_API_KEY,
             temperature=0.7,
         )

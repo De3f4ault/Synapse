@@ -178,7 +178,7 @@ Respond with ONLY valid JSON (no markdown):
 
         response = await llm.generate(
             prompt=prompt,
-            model="gemini-1.5-flash",
+            model="gemini-2.5-flash",
             temperature=0.0
         )
         

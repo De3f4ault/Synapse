@@ -6,9 +6,11 @@ Supports text generation, function calling, and streaming.
 """
 
 import asyncio
+import datetime
 from typing import Any, Dict, List, Optional, AsyncGenerator
 import structlog
 import google.generativeai as genai
+from google.generativeai import caching
 from google.generativeai.types import GenerationConfig as GeminiGenConfig
 from google.generativeai.types import FunctionDeclaration, Tool
 
@@ -51,20 +53,17 @@ class GeminiProvider(BaseProvider):
         print(response.text)
     """
 
-    # Model name mapping for backwards compatibility
-    MODEL_ALIASES = {
-        # Old names -> New names
-        "gemini-1.5-flash": "gemini-2.5-flash",
-        "gemini-1.5-pro": "gemini-2.5-pro",
-        "gemini-flash": "gemini-2.5-flash",
-        "gemini-pro": "gemini-2.5-pro",
-        "gemini-2.0-flash-001": "gemini-2.5-flash",
-    }
+    # Valid Gemini models (as of late 2025)
+    # Chat: gemini-2.5-flash
+    # Generation: gemini-2.5-pro
+    # Embeddings: text-embedding-005
+
+    MODEL_ALIASES = {}  # Removed old aliases to enforce explicit naming
 
     # Default models for different use cases
-    CHAT_MODEL = "gemini-2.5-flash"  # Fast responses for chat
-    GENERATION_MODEL = "gemini-2.5-pro"  # Complex reasoning/generation
-    EMBEDDING_MODEL = "text-embedding-005"  # Vector embeddings
+    CHAT_MODEL = "gemini-2.5-flash"
+    GENERATION_MODEL = "gemini-2.5-pro"
+    EMBEDDING_MODEL = "text-embedding-005"
 
     def __init__(self, api_key: Optional[str] = None):
         """
@@ -76,6 +75,51 @@ class GeminiProvider(BaseProvider):
         self.api_key = api_key or settings.GEMINI_API_KEY
         genai.configure(api_key=self.api_key)
         self.logger = logger.bind(provider="gemini")
+
+    async def create_context_cache(
+        self,
+        name: str,
+        content: Any,
+        model: str = "gemini-2.5-pro",
+        ttl_minutes: int = 60,
+    ) -> str:
+        """
+        Create a context cache for large content
+        
+        Args:
+            name: Unique name for the cache
+            content: Content to cache (file object, text, etc)
+            model: Model to use with cache
+            ttl_minutes: Time to live in minutes
+            
+        Returns:
+            Cache name/resource identifier
+        """
+        try:
+            # Run in executor
+            loop = asyncio.get_event_loop()
+            cache = await loop.run_in_executor(
+                None,
+                lambda: caching.CachedContent.create(
+                    model=model,
+                    display_name=name,
+                    system_instruction=None,
+                    contents=[content],
+                    ttl=datetime.timedelta(minutes=ttl_minutes),
+                )
+            )
+            
+            self.logger.info(
+                "context_cache_created",
+                name=cache.name,
+                model=model,
+                ttl=ttl_minutes
+            )
+            return cache.name
+            
+        except Exception as e:
+            self.logger.error("cache_creation_failed", error=str(e))
+            raise
 
     def _resolve_model_name(self, model_name: str) -> str:
         """Resolve model aliases to actual model names"""
@@ -115,6 +159,12 @@ class GeminiProvider(BaseProvider):
                 top_k=config.top_k,
                 stop_sequences=config.stop_sequences or None
             )
+
+            # Add thinking config if budget provided
+            if config.thinking_budget:
+                # Note: This is a hypothetical API for Gemini 2.5 thinking
+                # Adjust based on final API spec when released
+                gen_config.thinking_config = {"budget_tokens": config.thinking_budget}
 
             # Run in executor to avoid blocking
             loop = asyncio.get_event_loop()

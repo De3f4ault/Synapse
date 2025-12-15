@@ -70,9 +70,9 @@ class QuotaCheckMiddleware:
         self.max_wait_seconds = max_wait_seconds
         self.auto_downgrade = auto_downgrade
         self.fallback_chain = fallback_chain or [
-            "gemini-1.5-pro",
-            "gemini-1.5-flash",
-            "gemini-1.5-flash-8b"
+            "gemini-2.5-pro",
+            "gemini-2.5-flash",
+            "gemini-2.5-flash-8b"
         ]
         self.logger = logger.bind(middleware="quota_check")
 

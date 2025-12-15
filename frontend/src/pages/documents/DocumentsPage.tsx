@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { motion, AnimatePresence, useSpring } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Loader2, Grid, AlignLeft, Upload, X, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -47,10 +47,6 @@ export function DocumentsPage() {
         logAction,
     });
     const { selectedDocument, isViewerOpen, openViewer, closeViewer } = useDocumentViewer();
-
-    // Spring animations
-    const rotateX = useSpring(0);
-    const rotateY = useSpring(0);
 
     // Filter documents
     const filtered = documents.filter(
@@ -108,8 +104,6 @@ export function DocumentsPage() {
                         onSelect={openViewer}
                         onDelete={deleteDocument}
                         logAction={logAction}
-                        rotateX={rotateX}
-                        rotateY={rotateY}
                     />
                 ) : (
                     <DocumentTable

@@ -283,7 +283,8 @@ def create_dashboard_agent_config() -> AgentConfig:
             AgentCapability.FILE_ACCESS
         ],
         system_prompt="",  # Built dynamically with context
-        model="gemini-2.0-flash-exp",  # Use most capable model
+        model="gemini-2.5-flash",  # Use most capable model
+        thinking_budget=2048,  # Enable reasoning with 2k token budget
         temperature=0.4,  # Balanced between creative and consistent
         max_iterations=12,  # Allow complex multi-tool operations
         tools=[],  # ALL tools registered by factory

@@ -39,6 +39,11 @@ class ChatSessionCreate(BaseModel):
     )
 
 
+class ChatSessionUpdate(BaseModel):
+    """Chat session update."""
+    title: str = Field(..., min_length=1, max_length=200, description="Session title")
+
+
 class ChatSessionResponse(BaseModel):
     """Chat session response."""
     id: int
@@ -363,6 +368,60 @@ async def delete_session(
     logger.info(f"Chat session deleted: {session_id}")
 
     return {"message": "Session deleted successfully"}
+
+
+@router.patch(
+    "/sessions/{session_id}",
+    response_model=ChatSessionResponse,
+    summary="Update chat session",
+    description="Update session title"
+)
+async def update_session(
+    session_id: int,
+    session_update: ChatSessionUpdate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Update chat session title."""
+    result = await db.execute(
+        select(ChatSession).where(
+            and_(
+                ChatSession.id == session_id,
+                ChatSession.user_id == current_user.id,
+                ChatSession.deleted_at.is_(None)
+            )
+        )
+    )
+    session = result.scalar_one_or_none()
+
+    if not session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Session not found"
+        )
+
+    session.title = session_update.title
+    session.updated_at = datetime.utcnow()
+    await db.commit()
+    await db.refresh(session)
+
+    # Get message count
+    msg_count = await db.execute(
+        select(func.count(ChatMessage.id)).where(ChatMessage.session_id == session.id)
+    )
+    message_count = msg_count.scalar() or 0
+
+    logger.info(f"Chat session updated: {session_id}, new title: {session.title}")
+
+    return ChatSessionResponse(
+        id=session.id,
+        title=session.title,
+        document_id=session.document_id,
+        message_count=message_count,
+        total_tokens=session.total_tokens_used,
+        created_at=session.created_at,
+        updated_at=session.updated_at
+    )
 
 
 # ============================================================================
