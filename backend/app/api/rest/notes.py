@@ -288,7 +288,7 @@ async def search_notes(
 
     Note: This is a simple LIKE search. For production, implement:
     - PostgreSQL Full-Text Search (FTS) with ts_vector
-    - Vector semantic search with LanceDB
+    - Vector semantic search with Qdrant
     - Hybrid search combining both
     """
     # Simple LIKE search (case-insensitive)

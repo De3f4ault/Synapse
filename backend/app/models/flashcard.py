@@ -152,7 +152,7 @@ class Flashcard(Base, TimestampMixin, SoftDeleteMixin):
         String(255),
         nullable=True,
         default=None,
-        doc="Reference to vector embedding in LanceDB"
+        doc="Reference to vector embedding in Qdrant"
     )
 
     # Relationships

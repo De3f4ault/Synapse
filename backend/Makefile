@@ -2,7 +2,13 @@
 	migrate migrate-create migrate-down migrate-history init-db seed reset-db \
 	docker-up docker-down docker-logs docker-clean \
 	format lint ruff check test test-cov \
-	clean clean-all openapi openapi-serve logs ps
+	clean clean-all openapi openapi-serve logs ps \
+	nginx-install nginx-deploy nginx-reload nginx-test ssl-setup \
+	prod-start prod-stop prod-restart prod-status prod-build prod-install-service \
+	services-install services-start services-stop services-status services-restart \
+	qdrant-start qdrant-stop qdrant-status celery-start celery-stop celery-status \
+	health logs-backend logs-qdrant logs-celery logs-nginx logs-all
+
 
 # ============================================================================
 # HELP
@@ -18,7 +24,7 @@ help: ## Show this help message
 	@echo ''
 	@echo 'Available targets:'
 	@echo ''
-	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  %-20s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  %-25s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 	@echo ''
 
 # ============================================================================
@@ -227,3 +233,230 @@ ps: ## Show running processes
 	@echo ""
 	@echo "Docker containers:"
 	@docker ps --filter "name=synapse" || echo "No Docker containers found"
+
+# ============================================================================
+# NATIVE SERVICE MANAGEMENT (SystemD)
+# ============================================================================
+
+services-install: ## Install all systemd services
+	@echo "Installing systemd services..."
+	@echo "NOTE: This requires sudo privileges"
+	@sudo ./scripts/install-services.sh
+
+services-start: ## Start all native services (Qdrant, Backend, Celery)
+	@echo "Starting all services..."
+	@sudo systemctl start postgresql || echo "PostgreSQL already running or not installed via systemd"
+	@sudo systemctl start valkey || sudo systemctl start redis || echo "Valkey/Redis already running or not installed"
+	@sudo systemctl start qdrant
+	@sudo systemctl start synapse
+	@sudo systemctl start synapse-celery-worker
+	@sudo systemctl start synapse-celery-beat
+	@echo "✓ All services started"
+	@make services-status
+
+services-stop: ## Stop all native services
+	@echo "Stopping all services..."
+	@sudo systemctl stop synapse-celery-beat || true
+	@sudo systemctl stop synapse-celery-worker || true
+	@sudo systemctl stop synapse || true
+	@sudo systemctl stop qdrant || true
+	@echo "✓ All services stopped"
+
+services-restart: ## Restart all native services
+	@echo "Restarting all services..."
+	@make services-stop
+	@sleep 2
+	@make services-start
+
+services-status: ## Check status of all native services
+	@echo "========================================"
+	@echo "  Service Status"
+	@echo "========================================"
+	@echo ""
+	@echo "PostgreSQL:"
+	@systemctl is-active postgresql > /dev/null 2>&1 && echo "  ✓ Running" || echo "  ✗ Stopped"
+	@echo ""
+	@echo "Valkey/Redis:"
+	@systemctl is-active valkey > /dev/null 2>&1 && echo "  ✓ Valkey Running" || \
+		(systemctl is-active redis > /dev/null 2>&1 && echo "  ✓ Redis Running" || echo "  ✗ Stopped")
+	@echo ""
+	@echo "Qdrant:"
+	@systemctl is-active qdrant > /dev/null 2>&1 && echo "  ✓ Running" || echo "  ✗ Stopped"
+	@echo ""
+	@echo "Backend (Gunicorn):"
+	@systemctl is-active synapse > /dev/null 2>&1 && echo "  ✓ Running" || echo "  ✗ Stopped"
+	@echo ""
+	@echo "Celery Worker:"
+	@systemctl is-active synapse-celery-worker > /dev/null 2>&1 && echo "  ✓ Running" || echo "  ✗ Stopped"
+	@echo ""
+	@echo "Celery Beat:"
+	@systemctl is-active synapse-celery-beat > /dev/null 2>&1 && echo "  ✓ Running" || echo "  ✗ Stopped"
+	@echo ""
+	@echo "Nginx:"
+	@systemctl is-active nginx > /dev/null 2>&1 && echo "  ✓ Running" || echo "  ✗ Stopped"
+	@echo ""
+
+# ============================================================================
+# INDIVIDUAL SERVICE MANAGEMENT
+# ============================================================================
+
+qdrant-start: ## Start Qdrant vector database
+	@sudo systemctl start qdrant
+	@echo "✓ Qdrant started"
+
+qdrant-stop: ## Stop Qdrant
+	@sudo systemctl stop qdrant
+	@echo "✓ Qdrant stopped"
+
+qdrant-status: ## Check Qdrant status
+	@systemctl status qdrant
+
+celery-start: ## Start Celery worker and beat
+	@sudo systemctl start synapse-celery-worker
+	@sudo systemctl start synapse-celery-beat
+	@echo "✓ Celery services started"
+
+celery-stop: ## Stop Celery worker and beat
+	@sudo systemctl stop synapse-celery-beat
+	@sudo systemctl stop synapse-celery-worker
+	@echo "✓ Celery services stopped"
+
+celery-status: ## Check Celery status
+	@echo "Celery Worker:"
+	@systemctl status synapse-celery-worker --no-pager -l 0
+	@echo ""
+	@echo "Celery Beat:"
+	@systemctl status synapse-celery-beat --no-pager -l 0
+
+# ============================================================================
+# NGINX DEPLOYMENT & MANAGEMENT
+# ============================================================================
+
+nginx-install: ## Install and configure Nginx reverse proxy
+	@echo "Setting up Nginx..."
+	@if [ ! -f "config/nginx.conf" ]; then \
+		echo "ERROR: config/nginx.conf not found"; \
+		exit 1; \
+	fi
+	@echo "NOTE: This requires sudo privileges"
+	@sudo ./scripts/setup-nginx.sh
+
+nginx-deploy: ## Deploy nginx configuration
+	@echo "Deploying nginx configuration..."
+	@sudo ./scripts/deploy-nginx.sh
+
+nginx-reload: ## Reload nginx configuration
+	@sudo nginx -t && sudo systemctl reload nginx
+	@echo "✓ Nginx reloaded"
+
+nginx-test: ## Test nginx configuration
+	@sudo nginx -t
+
+ssl-setup: ## Generate self-signed SSL certificates for local dev
+	@echo "Generating SSL certificates..."
+	@echo "NOTE: This requires sudo privileges"
+	@sudo ./scripts/ssl-setup.sh
+
+# ============================================================================
+# PRODUCTION DEPLOYMENT
+# ============================================================================
+
+prod-build: ## Build frontend and install production dependencies
+	@echo "Building frontend..."
+	@cd ../frontend && npm run build:prod
+	@echo ""
+	@echo "Installing production dependencies..."
+	@pip install gunicorn
+	@echo ""
+	@echo "SUCCESS: Production build complete!"
+	@echo "Frontend built to: ../frontend/dist"
+
+prod-start: ## Start production server with Gunicorn
+	@echo "Starting production server..."
+	@./scripts/start-production.sh
+
+prod-stop: ## Stop production server
+	@echo "Stopping production server..."
+	@pkill -f "gunicorn.*app.main:app" || echo "No Gunicorn process found"
+	@echo "SUCCESS: Production server stopped"
+
+prod-restart: ## Restart production server
+	@echo "Restarting production server..."
+	@make prod-stop
+	@sleep 2
+	@make prod-start
+
+prod-status: ## Check production server status
+	@echo "========================================" 
+	@echo "  Production Server Status"
+	@echo "========================================"
+	@echo ""
+	@echo "Gunicorn processes:"
+	@ps aux | grep "gunicorn.*app.main:app" | grep -v grep || echo "  No Gunicorn processes running"
+	@echo ""
+	@echo "Nginx status:"
+	@systemctl is-active nginx > /dev/null 2>&1 && echo "  ✓ Nginx is running" || echo "  ✗ Nginx is not running"
+	@echo ""
+	@echo "PostgreSQL status:"
+	@systemctl is-active postgresql > /dev/null 2>&1 && echo "  ✓ PostgreSQL is running" || echo "  ✗ PostgreSQL is not running"
+	@echo ""
+	@echo "Redis/Valkey status:"
+	@systemctl is-active valkey > /dev/null 2>&1 && echo "  ✓ Valkey is running" || \
+		(systemctl is-active redis > /dev/null 2>&1 && echo "  ✓ Redis is running" || \
+		(docker ps --filter "name=synapse-redis" --format "{{.Status}}" 2>/dev/null | grep -q "Up" && echo "  ✓ Redis (Docker) is running" || echo "  ✗ Stopped"))
+	@echo ""
+
+prod-install-service: ## Install systemd service for auto-start
+	@echo "Installing systemd service..."
+	@if [ ! -f "config/synapse.service" ]; then \
+		echo "ERROR: config/synapse.service not found"; \
+		exit 1; \
+	fi
+	@echo "NOTE: This requires sudo privileges"
+	@sudo cp config/synapse.service /etc/systemd/system/
+	@sudo systemctl daemon-reload
+	@sudo systemctl enable synapse.service
+	@echo "SUCCESS: Systemd service installed"
+	@echo ""
+	@echo "Manage with:"
+	@echo "  sudo systemctl start synapse"
+	@echo "  sudo systemctl stop synapse"
+	@echo "  sudo systemctl restart synapse"
+	@echo "  sudo systemctl status synapse"
+
+# ============================================================================
+# HEALTH CHECK & MONITORING
+# ============================================================================
+
+health: ## Check health of all services
+	@echo "========================================"
+	@echo "  System Health Check"
+	@echo "========================================"
+	@echo ""
+	@make services-status
+	@echo ""
+	@echo "Testing backend health endpoint..."
+	@curl -f http://localhost:8000/api/v1/health 2>/dev/null && echo "  ✓ Backend health OK" || echo "  ✗ Backend not responding"
+	@echo ""
+	@echo "Testing Qdrant..."
+	@curl -f http://localhost:6333/healthz 2>/dev/null && echo "  ✓ Qdrant health OK" || echo "  ✗ Qdrant not responding"
+	@echo ""
+
+# ============================================================================
+# LOGGING
+# ============================================================================
+
+logs-backend: ## View backend logs
+	@journalctl -u synapse -f
+
+logs-qdrant: ## View Qdrant logs
+	@journalctl -u qdrant -f
+
+logs-celery: ## View Celery worker logs
+	@journalctl -u synapse-celery-worker -f
+
+logs-nginx: ## View nginx error logs
+	@sudo tail -f /var/log/nginx/synapse_error.log
+
+logs-all: ## View all service logs
+	@journalctl -u synapse -u qdrant -u synapse-celery-worker -u synapse-celery-beat -f

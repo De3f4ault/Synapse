@@ -50,6 +50,13 @@ class WebhookEvent(Base):
         index=True,
         doc="ID of the user who owns this webhook"
     )
+    
+    webhook_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("webhooks.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+        doc="ID of the webhook subscription (NULL for legacy/manual events)"
+    )
 
     # Webhook Configuration
     webhook_url: Mapped[str] = mapped_column(

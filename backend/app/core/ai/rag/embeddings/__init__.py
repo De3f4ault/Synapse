@@ -1,11 +1,9 @@
-"""Embeddings management package."""
+"""Embeddings package initialization."""
 
-from app.core.ai.rag.embeddings.manager import EmbeddingManager
-from app.core.ai.rag.embeddings.all_minilm import AllMiniLM
-from app.core.ai.rag.embeddings.cache import EmbeddingCache
+# from app.core.ai.rag.embeddings.manager import EmbeddingManager
+from app.core.ai.rag.embeddings.models.all_minilm import AllMiniLMEmbedder
 
 __all__ = [
-    "EmbeddingManager",
-    "AllMiniLM",
-    "EmbeddingCache",
+    # "EmbeddingManager",
+    "AllMiniLMEmbedder",
 ]

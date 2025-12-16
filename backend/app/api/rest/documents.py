@@ -186,32 +186,45 @@ async def trigger_document_processing(document_id: int) -> bool:
 
 async def cleanup_document_vectors(document_id: int, user_id: int) -> bool:
     """
-    Delete document embeddings from LanceDB vector store.
+    Delete document embeddings from Qdrant vector store.
 
     Args:
         document_id: ID of document
-        user_id: ID of user (for logging)
+        user_id: ID of user (for collection name)
 
     Returns:
         bool: True if cleanup successful
     """
     try:
-        from app.core.ai.rag.llama_index.storage_context import get_lancedb_client
+        from app.core.ai.rag.vector_store.qdrant.client import get_qdrant_client
+        from qdrant_client import models
 
-        db = get_lancedb_client()
-        table_name = f"document_{document_id}"
+        qdrant_client = get_qdrant_client()
+        client = qdrant_client.get_client()
 
-        # Check if table exists and delete
-        if table_name in db.table_names():
-            db.drop_table(table_name)
-            logger.info(f"Deleted vector embeddings from LanceDB for document {document_id}")
-            return True
-        else:
-            logger.debug(f"No vector table found for document {document_id}")
-            return True
+        # Get user's document collection name
+        collection_name = f"synapse_v2_user_{user_id}_documents"
+
+        # Delete points matching document_id
+        client.delete(
+            collection_name=collection_name,
+            points_selector=models.FilterSelector(
+                filter=models.Filter(
+                    must=[
+                        models.FieldCondition(
+                            key="metadata.document_id",
+                            match=models.MatchValue(value=str(document_id))
+                        )
+                    ]
+                )
+            )
+        )
+
+        logger.info(f"Deleted vector embeddings from Qdrant for document {document_id}")
+        return True
 
     except Exception as e:
-        logger.error(f"Error cleaning up LanceDB vectors for document {document_id}: {str(e)}")
+        logger.error(f"Error cleaning up Qdrant vectors for document {document_id}: {str(e)}")
         return False
 
 
@@ -493,7 +506,7 @@ async def delete_document(
 
     logger.info(f"Document soft-deleted: {document_id}")
 
-    # Clean up vector embeddings from LanceDB
+    # Clean up vector embeddings from Qdrant
     await cleanup_document_vectors(document_id, current_user.id)
 
     # Delete from Gemini Files API if applicable

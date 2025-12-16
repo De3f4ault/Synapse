@@ -58,7 +58,7 @@ def process_document_task(self, document_id: int) -> Dict[str, Any]:
     1. Extracts text from the document
     2. Chunks the text for embedding
     3. Generates embeddings for each chunk
-    4. Stores embeddings in LanceDB
+    4. Stores embeddings in Qdrant
     5. Updates document status and content
     6. Creates document chunks in database with embedding IDs
 

@@ -1,14 +1,7 @@
-"""Chunking strategies package."""
+"""Chunking package initialization."""
 
-from app.core.ai.rag.chunking.semantic import SemanticChunker
-from app.core.ai.rag.chunking.sentence import SentenceChunker
-from app.core.ai.rag.chunking.fixed import FixedChunker
-from app.core.ai.rag.chunking.factory import ChunkerFactory, create_chunker
+from app.core.ai.rag.chunking.strategies.semantic_chunker import SemanticChunker
 
 __all__ = [
     "SemanticChunker",
-    "SentenceChunker",
-    "FixedChunker",
-    "ChunkerFactory",
-    "create_chunker",
 ]

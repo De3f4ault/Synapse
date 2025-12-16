@@ -1,223 +1,227 @@
-"""
-RAG (Retrieval-Augmented Generation) schemas ().
-"""
+"""Pydantic schemas for RAG API - Production-ready validation."""
 
-from datetime import datetime
-from typing import Any, Dict, List, Optional
-from pydantic import BaseModel, Field
+from typing import List, Optional, Dict, Any
+from pydantic import BaseModel, Field, field_validator
+from enum import Enum
 
 
-class RAGSource(BaseModel):
-    """RAG source metadata schema."""
+class SourceType(str, Enum):
+    """Content source types."""
+    DOCUMENTS = "documents"
+    NOTES = "notes"
+    CODE = "code"
+    FLASHCARDS = "flashcards"
 
-    type: str = Field(description="Source type (note, document, flashcard)")
-    id: int = Field(description="Source content ID")
-    title: str = Field(description="Source title")
-    url: Optional[str] = Field(default=None, description="Source URL")
-    page: Optional[int] = Field(default=None, description="Page number (for documents)")
-    metadata: Optional[Dict[str, Any]] = Field(default=None, description="Additional metadata")
 
+class LLMEnhancementStrategy(str, Enum):
+    """LLM query enhancement strategies."""
+    REWRITE = "rewrite"
+    HYDE = "hyde"
+    MULTI_QUERY = "multi_query"
+    DECOMPOSE = "decompose"
+
+
+class TaskStatus(str, Enum):
+    """Background task status."""
+    PENDING = "pending"
+    PROCESSING = "processing"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+
+# ==================== REQUEST SCHEMAS ====================
+
+class DocumentIngestRequest(BaseModel):
+    """Request to ingest document into RAG."""
+    document_id: str = Field(
+        ...,
+        description="Unique document identifier",
+        min_length=1,
+        max_length=255
+    )
+    title: str = Field(
+        ...,
+        description="Document title",
+        min_length=1,
+        max_length=500
+    )
+    text: str = Field(
+        ...,
+        description="Document text content",
+        min_length=10  # Minimum 10 chars
+    )
+    source_type: SourceType = Field(
+        default=SourceType.DOCUMENTS,
+        description="Content source type"
+    )
+    
+    @field_validator("text")
+    @classmethod
+    def validate_text_length(cls, v: str) -> str:
+        """Validate text not too large (max 10MB)."""
+        max_size = 10 * 1024 * 1024  # 10MB
+        if len(v.encode('utf-8')) > max_size:
+            raise ValueError(f"Text too large (max {max_size} bytes)")
+        return v
+    
     class Config:
         json_schema_extra = {
             "example": {
-                "type": "document",
-                "id": 1,
-                "title": "Biology Textbook",
-                "url": "/documents/1",
-                "page": 42,
-                "metadata": {
-                    "chapter": "Cell Biology",
-                    "section": "Mitochondria"
-                }
+                "document_id": "bio_textbook_ch5",
+                "title": "Chapter 5: Cellular Processes",
+                "text": "Photosynthesis is the process...",
+                "source_type": "documents"
             }
         }
 
 
-class RAGChunk(BaseModel):
-    """RAG chunk schema (retrieved content)."""
-
-    text: str = Field(description="Chunk text content")
-    score: float = Field(ge=0.0, le=1.0, description="Relevance score")
-    source: RAGSource = Field(description="Source metadata")
-    chunk_index: Optional[int] = Field(default=None, description="Chunk index in source")
-    embedding_distance: Optional[float] = Field(default=None, description="Embedding distance")
-    highlighted: Optional[str] = Field(default=None, description="Highlighted text with query terms")
-
+class QueryRequest(BaseModel):
+    """Request to query RAG system."""
+    query: str = Field(
+        ...,
+        description="User query",
+        min_length=1,
+        max_length=1000
+    )
+    top_k: int = Field(
+        default=5,
+        ge=1,
+        le=50,
+        description="Number of results to return"
+    )
+    source_type: SourceType = Field(
+        default=SourceType.DOCUMENTS,
+        description="Content source to search"
+    )
+    enable_llm_enhancement: bool = Field(
+        default=True,
+        description="Enable LLM query enhancement (GPT-4/Claude)"
+    )
+    llm_strategy: LLMEnhancementStrategy = Field(
+        default=LLMEnhancementStrategy.REWRITE,
+        description="LLM enhancement strategy"
+    )
+    
     class Config:
         json_schema_extra = {
             "example": {
-                "text": "Mitochondria are the powerhouses of the cell, generating ATP through cellular respiration...",
-                "score": 0.95,
-                "source": {
-                    "type": "document",
-                    "id": 1,
-                    "title": "Biology Textbook",
-                    "page": 42
-                },
-                "chunk_index": 5,
-                "embedding_distance": 0.15,
-                "highlighted": "<mark>Mitochondria</mark> are the powerhouses..."
-            }
-        }
-
-
-class RAGQueryRequest(BaseModel):
-    """RAG query request schema."""
-
-    query: str = Field(min_length=1, max_length=10000, description="Search query")
-    user_id: int = Field(description="User ID for personalized context")
-    top_k: int = Field(default=5, ge=1, le=20, description="Number of results to return")
-    filters: Optional[Dict[str, Any]] = Field(default=None, description="Filters (source_type, modules, etc.)")
-    use_reranking: bool = Field(default=True, description="Use cross-encoder reranking")
-    use_synapse_boost: bool = Field(default=True, description="Boost weak areas")
-    include_sources: bool = Field(default=True, description="Include source metadata")
-
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "query": "What is the role of mitochondria in cellular respiration?",
-                "user_id": 1,
+                "query": "How does photosynthesis work?",
                 "top_k": 5,
-                "filters": {
-                    "source_types": ["document", "note"],
-                    "modules": ["documents", "notes"]
-                },
-                "use_reranking": True,
-                "use_synapse_boost": True,
-                "include_sources": True
+                "source_type": "documents",
+                "enable_llm_enhancement": True,
+                "llm_strategy": "rewrite"
             }
         }
 
 
-class RAGQueryResponse(BaseModel):
-    """RAG query response schema."""
-
-    query: str = Field(description="Original query")
-    chunks: List[RAGChunk] = Field(description="Retrieved chunks")
-    user_context: Optional[Dict[str, Any]] = Field(default=None, description="User context used")
-    weak_areas_coverage: Optional[Dict[str, float]] = Field(default=None, description="Coverage of weak areas")
-    metadata: Dict[str, Any] = Field(description="Query metadata")
-
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "query": "What is the role of mitochondria?",
-                "chunks": [
-                    {
-                        "text": "Mitochondria are the powerhouses of the cell...",
-                        "score": 0.95,
-                        "source": {
-                            "type": "document",
-                            "id": 1,
-                            "title": "Biology Textbook",
-                            "page": 42
-                        }
-                    }
-                ],
-                "user_context": {
-                    "weak_areas": ["Cellular Respiration"],
-                    "recent_topics": ["Photosynthesis"]
-                },
-                "weak_areas_coverage": {
-                    "Cellular Respiration": 0.80
-                },
-                "metadata": {
-                    "total_results": 15,
-                    "query_time_ms": 120,
-                    "reranked": True,
-                    "synapse_boost_applied": True
-                }
-            }
-        }
+class FeedbackRequest(BaseModel):
+    """User feedback on RAG query results."""
+    query: str = Field(..., description="Original query")
+    results: List[Dict[str, Any]] = Field(..., description="Query results")
+    clicked_indices: List[int] = Field(
+        ...,
+        description="Indices of clicked results",
+        min_length=0
+    )
+    time_spent_ms: float = Field(
+        ...,
+        ge=0,
+        description="Time spent reviewing results (milliseconds)"
+    )
+    helpful_rating: Optional[int] = Field(
+        default=None,
+        ge=1,
+        le=5,
+        description="User rating (1-5 stars)"
+    )
 
 
-class RAGIndexRequest(BaseModel):
-    """RAG indexing request schema."""
+# ==================== RESPONSE SCHEMAS ====================
 
-    user_id: int = Field(description="User ID")
-    content_type: str = Field(pattern="^(note|document|flashcard)$", description="Content type to index")
-    content_id: int = Field(description="Content ID")
-    force_reindex: bool = Field(default=False, description="Force reindexing even if already indexed")
-
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "user_id": 1,
-                "content_type": "document",
-                "content_id": 1,
-                "force_reindex": False
-            }
-        }
-
-
-class RAGIndexResponse(BaseModel):
-    """RAG indexing response schema."""
-
-    success: bool = Field(description="Whether indexing succeeded")
-    content_type: str = Field(description="Content type indexed")
-    content_id: int = Field(description="Content ID")
-    chunks_created: int = Field(description="Number of chunks created")
-    embeddings_generated: int = Field(description="Number of embeddings generated")
-    index_id: str = Field(description="Llama Index index ID")
-    message: str = Field(description="Status message")
-
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "success": True,
-                "content_type": "document",
-                "content_id": 1,
-                "chunks_created": 50,
-                "embeddings_generated": 50,
-                "index_id": "user_1",
-                "message": "Document indexed successfully"
-            }
-        }
+class DocumentIngestResponse(BaseModel):
+    """Response from document ingestion."""
+    document_id: str
+    status: TaskStatus
+    chunks: Optional[int] = Field(
+        default=None,
+        description="Number of chunks created (if completed)"
+    )
+    task_id: Optional[str] = Field(
+        default=None,
+        description="Celery task ID (if processing)"
+    )
+    message: Optional[str] = Field(
+        default=None,
+        description="Status message"
+    )
 
 
-class RAGContextBuildRequest(BaseModel):
-    """RAG context build request schema."""
-
-    query: str = Field(description="Query for context")
-    retrieved_chunks: List[RAGChunk] = Field(description="Retrieved chunks")
-    user_context: Dict[str, Any] = Field(description="User context")
-    max_tokens: int = Field(default=8000, ge=1000, le=20000, description="Maximum tokens")
-
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "query": "Explain mitochondria",
-                "retrieved_chunks": [...],
-                "user_context": {
-                    "weak_areas": ["Cellular Respiration"]
-                },
-                "max_tokens": 8000
-            }
-        }
+class QueryChunk(BaseModel):
+    """Single result chunk from RAG query."""
+    text: str = Field(description="Chunk text content")
+    score: float = Field(description="Relevance score")
+    metadata: Dict[str, Any] = Field(description="Chunk metadata")
 
 
-class RAGContextBuildResponse(BaseModel):
-    """RAG context build response schema."""
+class QueryResponse(BaseModel):
+    """Response from RAG query."""
+    query: str = Field(description="Enhanced query used")
+    original_query: str = Field(description="Original user query")
+    chunks: List[QueryChunk] = Field(description="Retrieved chunks")
+    count: int = Field(description="Number of chunks returned")
+    
+    # Feature flags
+    reranked: bool = Field(description="Cross-encoder reranking applied")
+    learning_aware: bool = Field(description="Learning-aware boosting applied")
+    query_enhanced: bool = Field(description="Query expansion applied")
+    llm_enhanced: bool = Field(description="LLM enhancement applied")
+    
+    # Metadata
+    processing_time_ms: Optional[float] = Field(
+        default=None,
+        description="Total processing time (ms)"
+    )
 
-    formatted_context: str = Field(description="Formatted context string for LLM")
-    tokens_used: int = Field(description="Tokens in context")
-    chunks_included: int = Field(description="Number of chunks included")
-    sources: List[RAGSource] = Field(description="Unique sources")
-    truncated: bool = Field(description="Whether context was truncated")
 
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "formatted_context": "User Learning Context:\n- Weak Areas: Cellular Respiration\n\nRelevant Information:\n1. [Document: Biology Textbook, Page 42]\nMitochondria are...",
-                "tokens_used": 7500,
-                "chunks_included": 5,
-                "sources": [
-                    {
-                        "type": "document",
-                        "id": 1,
-                        "title": "Biology Textbook"
-                    }
-                ],
-                "truncated": False
-            }
-        }
+class FeedbackResponse(BaseModel):
+    """Response from feedback submission."""
+    status: str = Field(description="Processing status")
+    topics_updated: int = Field(
+        default=0,
+        description="Number of topics updated"
+    )
+    message: Optional[str] = None
+
+
+#  ==================== BACKGROUND TASK SCHEMAS ====================
+
+class TaskStatusResponse(BaseModel):
+    """Status of background task."""
+    task_id: str
+    status: TaskStatus
+    result: Optional[Dict[str, Any]] = None
+    error: Optional[str] = None
+    progress: Optional[int] = Field(
+        default=None,
+        ge=0,
+        le=100,
+        description="Progress percentage (0-100)"
+    )
+
+
+class BatchIngestRequest(BaseModel):
+    """Batch ingest multiple documents."""
+    documents: List[DocumentIngestRequest] = Field(
+        ...,
+        min_length=1,
+        max_length=100,  # Max 100 docs per batch
+        description="Documents to ingest"
+    )
+
+
+class BatchIngestResponse(BaseModel):
+    """Response from batch ingestion."""
+    task_id: str = Field(description="Batch task ID")
+    document_count: int = Field(description="Number of documents")
+    status: TaskStatus
+    message: str

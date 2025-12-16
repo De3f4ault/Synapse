@@ -12,7 +12,6 @@ from .tasks import (
     cleanup_task,
 )
 from .celery_app import celery_app
-from .worker import BackgroundWorker
 from .webhook_handlers import handle_webhook_event
 
 __all__ = [
@@ -20,6 +19,6 @@ __all__ = [
     "send_email_task",
     "generate_report_task",
     "cleanup_task",
-    "BackgroundWorker",
+    "celery_app",
     "handle_webhook_event",
 ]

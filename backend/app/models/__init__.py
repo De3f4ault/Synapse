@@ -25,7 +25,8 @@ from .activity_log import ActivityLog, ActivityType, ModuleType
 from .tag import Tag
 from .ai_usage import AIUsage
 from .agent_metric import AgentMetric
-from .webhook_event import WebhookEvent
+from .webhook_event import WebhookEvent, WebhookStatus
+from .webhook import Webhook
 
 __all__ = [
     "Base",
@@ -50,4 +51,6 @@ __all__ = [
     "AIUsage",
     "AgentMetric",
     "WebhookEvent",
+    "WebhookStatus",
+    "Webhook",
 ]

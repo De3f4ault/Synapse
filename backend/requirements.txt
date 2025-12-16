@@ -1,6 +1,7 @@
 # Core Framework
 fastapi==0.120.4
 uvicorn[standard]==0.27.0
+gunicorn==23.0.0
 pydantic==2.12.5
 pydantic-settings==2.11.0
 
@@ -34,7 +35,7 @@ google-ai-generativelanguage==0.6.15
 llama-index==0.14.6
 llama-index-core==0.14.6
 llama-index-llms-openai==0.6.6
-llama-index-llms-gemini==0.4.3
+llama-index-llms-gemini==0.4.4  # Updated: 0.4.3 requires core<0.13, 0.4.4+ supports 0.14.x
 llama-index-embeddings-openai==0.5.1
 llama-index-embeddings-huggingface==0.6.1
 llama-index-vector-stores-chroma==0.5.3

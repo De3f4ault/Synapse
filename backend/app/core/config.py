@@ -121,6 +121,28 @@ class Settings(BaseSettings):
         description="Number of background worker threads"
     )
 
+    # Webhooks
+    WEBHOOK_ENCRYPTION_KEY: Optional[str] = Field(
+        default=None,
+        description="Fernet encryption key for webhook secrets (required in production)"
+    )
+    WEBHOOK_ENCRYPTION_ROTATION_KEYS: Optional[str] = Field(
+        default=None,
+        description="Comma-separated list of old encryption keys for rotation"
+    )
+    WEBHOOK_MAX_RETRIES: int = Field(
+        default=5,
+        description="Maximum webhook delivery retry attempts"
+    )
+    WEBHOOK_BACKOFF_MAX: int = Field(
+        default=3600,
+        description="Maximum backoff delay in seconds (default: 1 hour)"
+    )
+    WEBHOOK_TIMEOUT: int = Field(
+        default=10,
+        description="Webhook HTTP request timeout in seconds"
+    )
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
