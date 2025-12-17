@@ -11,9 +11,10 @@ import type { ModuleType } from './dashboard.types';
  */
 export interface IntelligenceInsight {
     id?: string;
-    type: 'urgency' | 'pattern' | 'suggestion' | 'context';
+    type: 'urgency' | 'pattern' | 'suggestion' | 'context' | 'streak_milestone' | 'warning' | 'challenge' | 'success' | 'progress' | 'achievement' | 'mastery';
     title: string;
-    message: string;
+    message?: string; // Legacy support
+    description?: string;
     confidence?: number; // 0-1
     actionable?: boolean;
     icon?: string;
@@ -21,6 +22,11 @@ export interface IntelligenceInsight {
         label: string;
         url?: string;
     };
+    actions?: Array<{
+        label: string;
+        action: string;
+        metadata?: Record<string, unknown>;
+    }>;
 }
 
 /**

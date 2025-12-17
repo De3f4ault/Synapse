@@ -82,13 +82,13 @@ export function transformNotesToNodes(notes: NoteResponse[] | undefined | null):
             title: note.title,
             contentLength: note.content?.length || 0,
             format: note.format,
-                parentId: note.parent_id,
-                childrenCount: note.children_count,
-                createdAt: note.created_at,
-                updatedAt: note.updated_at,
-                moduleId: note.id,
-                created: note.created_at,
-                connections: 0,
+            parentId: note.parent_id,
+            childrenCount: note.children_count,
+            createdAt: note.created_at,
+            updatedAt: note.updated_at,
+            moduleId: note.id,
+            created: note.created_at,
+            connections: 0,
         },
         x: 0,
         y: 0,
@@ -115,22 +115,22 @@ export function transformFlashcardsToNodes(cards: FlashcardResponse[] | undefine
                 accuracy: card.accuracy || 0,
                 learningState: card.learning_state,
             }),
-            color: getFlashcardColor(card.learning_state, card.accuracy || 0),
-                     metadata: {
-                         id: card.id,
-                         deckId: card.deck_id,
-                         frontText: card.front_text,
-                         timesReviewed: card.times_reviewed,
-                         accuracy: card.accuracy,
-                         learningState: card.learning_state,
-                         nextReview: card.next_review,
-                         moduleId: card.id,
-                         created: card.created_at || new Date().toISOString(),
-                     connections: 0,
-                     mastery: card.accuracy,
-                     },
-                     x: 0,
-                     y: 0,
+            color: getFlashcardColor(card.learning_state || 'new', card.accuracy || 0),
+            metadata: {
+                id: card.id,
+                deckId: card.deck_id,
+                frontText: card.front_text,
+                timesReviewed: card.times_reviewed,
+                accuracy: card.accuracy,
+                learningState: card.learning_state,
+                nextReview: card.next_review,
+                moduleId: card.id,
+                created: new Date().toISOString(),
+                connections: 0,
+                mastery: card.accuracy,
+            },
+            x: 0,
+            y: 0,
         };
     });
 }
@@ -201,7 +201,7 @@ export function transformQuizzesToNodes(quizzes: QuizResponse[] | undefined | nu
 }
 
 // Infer connections between nodes
-export function inferConnections(nodes: GraphNode[], data: DashboardData | undefined): GraphLink[] {
+export function inferConnections(_nodes: GraphNode[], data: DashboardData | undefined): GraphLink[] {
     if (!data) return [];
 
     const links: GraphLink[] = [];
@@ -285,7 +285,7 @@ export function inferConnections(nodes: GraphNode[], data: DashboardData | undef
     if (data.dueCards && Array.isArray(data.dueCards)) {
         const cardsByDeck = data.dueCards.reduce((acc, card) => {
             if (!acc[card.deck_id]) acc[card.deck_id] = [];
-            acc[card.deck_id].push(card);
+            acc[card.deck_id]!.push(card);
             return acc;
         }, {} as Record<number, FlashcardResponse[]>);
 
@@ -293,9 +293,9 @@ export function inferConnections(nodes: GraphNode[], data: DashboardData | undef
             // Connect first 3 cards in same deck
             for (let i = 0; i < Math.min(deckCards.length - 1, 2); i++) {
                 links.push({
-                    id: `card-${deckCards[i].id}-card-${deckCards[i + 1].id}`,
-                    source: `card-${deckCards[i].id}`,
-                    target: `card-${deckCards[i + 1].id}`,
+                    id: `card-${deckCards[i]!.id}-card-${deckCards[i + 1]!.id}`,
+                    source: `card-${deckCards[i]!.id}`,
+                    target: `card-${deckCards[i + 1]!.id}`,
                     type: 'related_to',
                     strength: 0.3,
                 });
@@ -305,11 +305,11 @@ export function inferConnections(nodes: GraphNode[], data: DashboardData | undef
 
     // Remove duplicate links
     const uniqueLinks = links.filter((link, index, self) =>
-    index === self.findIndex(l =>
-    l.source === link.source &&
-    l.target === link.target &&
-    l.type === link.type
-    )
+        index === self.findIndex(l =>
+            l.source === link.source &&
+            l.target === link.target &&
+            l.type === link.type
+        )
     );
 
     return uniqueLinks;
@@ -345,8 +345,8 @@ function calculateNodeSize(
         case 'quiz':
             const questionScore = Math.min((metrics.questionCount || 0) / 50, 0.7);
             const difficultyScore =
-            metrics.difficulty === 'hard' ? 0.3 :
-            metrics.difficulty === 'medium' ? 0.2 : 0.1;
+                metrics.difficulty === 'hard' ? 0.3 :
+                    metrics.difficulty === 'medium' ? 0.2 : 0.1;
             return baseSize + (maxSize - baseSize) * (questionScore + difficultyScore);
 
         default:

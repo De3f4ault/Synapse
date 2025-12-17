@@ -405,94 +405,126 @@ async def handle_chat_message(
         if context_db:
             await context_db.close()
 
-    # Generate AI response with streaming
+    # Generate AI response with TRUE token streaming
     try:
         agent = await create_agent("tutor")
-        result = await agent.execute(
+        
+        # Accumulate full response for saving
+        full_response = ""
+        total_tokens = 0
+        model_used = "gemini-2.5-flash"
+        tool_calls_made = []
+        grounding_sources = None
+
+        logger.info(
+            "starting_stream",
+            user_id=user_id,
+            session_id=session_id,
+            channel=channel
+        )
+
+        # Stream tokens as they arrive from the LLM
+        async for chunk in agent.execute_stream(
             user_id=user_id,
             input=content,
             context=context or {}
-        )
+        ):
+            chunk_type = chunk.get("type")
 
-        logger.info(
-            "agent_result_debug",
-            success=result.success,
-            output_length=len(result.output) if result.output else 0,
-            has_output=bool(result.output),
-            channel=channel,
-            user_id=user_id
-        )
-
-        model = result.metadata.get("model", "gemini-2.5-flash") if result.metadata else "gemini-2.5-flash"
-
-        # Stream thinking process if available
-        if result.metadata and result.metadata.get("thinking_process"):
-            thinking = result.metadata["thinking_process"]
-            chunk_size = 50
-            for i in range(0, len(thinking), chunk_size):
-                chunk = thinking[i:i+chunk_size]
-                await channel_manager.broadcast_to_user_channel(
-                    user_id=user_id,
-                    channel=channel,
-                    event="thinking",
-                    data={
-                        "text": chunk,
-                        "model": model,
-                        "streaming": True
-                    }
-                )
-
-        # Stream response tokens
-        if result.success and result.output:
-            words = result.output.split()
-            for i, word in enumerate(words):
-                token_text = word + (" " if i < len(words) - 1 else "")
+            if chunk_type == "token":
+                # Real-time token streaming
+                token_text = chunk.get("text", "")
+                full_response += token_text
                 await channel_manager.broadcast_to_user_channel(
                     user_id=user_id,
                     channel=channel,
                     event="token",
                     data={
                         "text": token_text,
-                        "model": model,
+                        "model": chunk.get("model", model_used),
                         "streaming": True
                     }
                 )
-        else:
-            error_msg = result.error or "Failed to generate response"
-            await channel_manager.broadcast_to_user_channel(
-                user_id=user_id,
-                channel=channel,
-                event="token",
-                data={
-                    "text": error_msg,
-                    "model": model,
-                    "streaming": True
-                }
-            )
 
-        # Send grounding sources if available
-        if result.metadata and result.metadata.get("grounding_sources"):
-            await channel_manager.broadcast_to_user_channel(
-                user_id=user_id,
-                channel=channel,
-                event="sources",
-                data={
-                    "sources": result.metadata["grounding_sources"]
-                }
-            )
+            elif chunk_type == "thinking":
+                # Thinking process from thinking models
+                await channel_manager.broadcast_to_user_channel(
+                    user_id=user_id,
+                    channel=channel,
+                    event="thinking",
+                    data={
+                        "text": chunk.get("text", ""),
+                        "model": chunk.get("model", model_used),
+                        "streaming": True
+                    }
+                )
 
-        # Send completion message
-        await channel_manager.broadcast_to_user_channel(
+            elif chunk_type == "tool_call":
+                # Tool being called
+                await channel_manager.broadcast_to_user_channel(
+                    user_id=user_id,
+                    channel=channel,
+                    event="tool_call",
+                    data={
+                        "name": chunk.get("name"),
+                        "args": chunk.get("args", {})
+                    }
+                )
+
+            elif chunk_type == "tool_result":
+                # Tool execution result
+                tool_calls_made.append({
+                    "name": chunk.get("name"),
+                    "result": chunk.get("result")
+                })
+                await channel_manager.broadcast_to_user_channel(
+                    user_id=user_id,
+                    channel=channel,
+                    event="tool_result",
+                    data={
+                        "name": chunk.get("name"),
+                        "result": chunk.get("result")
+                    }
+                )
+
+            elif chunk_type == "complete":
+                # Streaming complete
+                total_tokens = chunk.get("total_tokens", 0)
+                model_used = chunk.get("model", model_used)
+                grounding_sources = chunk.get("grounding_sources")
+
+                await channel_manager.broadcast_to_user_channel(
+                    user_id=user_id,
+                    channel=channel,
+                    event="complete",
+                    data={
+                        "total_tokens": total_tokens,
+                        "model_used": model_used,
+                        "success": chunk.get("success", True),
+                        "function_calls": tool_calls_made if tool_calls_made else None,
+                        "grounding_sources": grounding_sources
+                    }
+                )
+
+            elif chunk_type == "error":
+                # Error during streaming
+                await channel_manager.broadcast_to_user_channel(
+                    user_id=user_id,
+                    channel=channel,
+                    event="error",
+                    data={
+                        "code": "generation_error",
+                        "message": chunk.get("message", "Unknown error")
+                    }
+                )
+                return
+
+        logger.info(
+            "stream_complete",
             user_id=user_id,
-            channel=channel,
-            event="complete",
-            data={
-                "total_tokens": result.total_tokens,
-                "model_used": model,
-                "success": result.success,
-                "function_calls": result.metadata.get("function_calls") if result.metadata else None,
-                "grounding_sources": result.metadata.get("grounding_sources") if result.metadata else None
-            }
+            session_id=session_id,
+            response_length=len(full_response),
+            total_tokens=total_tokens
         )
 
         # Save assistant message
@@ -501,11 +533,11 @@ async def handle_chat_message(
                 assistant_message = ChatMessage(
                     session_id=session_id,
                     role=MessageRole.ASSISTANT,
-                    content=result.output or "",
-                    tokens=result.total_tokens or max(1, len(result.output or "") // 4),
-                    model_used=model,
-                    function_calls=result.metadata.get("function_calls") if result.metadata else None,
-                    grounding_sources=result.metadata.get("grounding_sources") if result.metadata else None
+                    content=full_response or "",
+                    tokens=total_tokens or max(1, len(full_response or "") // 4),
+                    model_used=model_used,
+                    function_calls={"calls": tool_calls_made} if tool_calls_made else None,
+                    grounding_sources=grounding_sources
                 )
                 db.add(assistant_message)
 

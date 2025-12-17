@@ -56,8 +56,8 @@ export function suggestOptimalStudyTime(): string {
  * Break session into study chunks with breaks
  * Returns array of {type: 'study' | 'break', duration: minutes}
  */
-export function createStudyChunks(totalMinutes: number): Array<{type: 'study' | 'break'; duration: number}> {
-    const chunks: Array<{type: 'study' | 'break'; duration: number}> = [];
+export function createStudyChunks(totalMinutes: number): Array<{ type: 'study' | 'break'; duration: number }> {
+    const chunks: Array<{ type: 'study' | 'break'; duration: number }> = [];
     let remaining = totalMinutes;
 
     while (remaining > 0) {
@@ -85,7 +85,7 @@ export function shuffleItems<T>(items: T[]): T[] {
     const shuffled = [...items];
     for (let i = shuffled.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
-        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        [shuffled[i], shuffled[j]] = [shuffled[j]!, shuffled[i]!];
     }
     return shuffled;
 }
@@ -113,7 +113,7 @@ export function interleaveByModule(items: StudyItem[]): StudyItem[] {
     for (let i = 0; i < maxLength; i++) {
         for (const moduleItems of moduleArrays) {
             if (i < moduleItems.length) {
-                interleaved.push(moduleItems[i]);
+                interleaved.push(moduleItems[i]!);
             }
         }
     }

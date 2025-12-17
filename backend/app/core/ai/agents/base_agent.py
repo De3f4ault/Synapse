@@ -293,6 +293,188 @@ class BaseAgent(ABC):
             )
 
     # ============================================================================
+    # Streaming Execution Method (True Token Streaming)
+    # ============================================================================
+
+    async def execute_stream(
+        self,
+        user_id: int,
+        input: str,
+        context: Optional[Dict[str, Any]] = None,
+        chat_history: Optional[List[Dict[str, Any]]] = None,
+        **kwargs
+    ):
+        """
+        Execute agent with streaming output (true token streaming).
+
+        Unlike execute(), this yields tokens as they arrive from the LLM,
+        providing real-time streaming to WebSocket clients.
+
+        Yields:
+            {"type": "thinking", "text": "..."}  - If model supports thinking
+            {"type": "token", "text": "..."}     - Streamed text tokens
+            {"type": "tool_call", "name": "...", "args": {...}}
+            {"type": "tool_result", "name": "...", "result": {...}}
+            {"type": "complete", "metadata": {...}}
+
+        Args:
+            user_id: User ID for context
+            input: User's input message
+            context: Additional context (optional)
+            chat_history: Previous messages for context
+            **kwargs: Additional arguments
+        """
+        from app.core.ai.providers.gemini import GeminiProvider
+        from typing import AsyncGenerator
+
+        state = AgentState()
+        context = context or {}
+
+        try:
+            self.logger.info(
+                "agent_stream_started",
+                user_id=user_id,
+                input_length=len(input)
+            )
+
+            # Build system prompt
+            system_prompt = await self._get_system_prompt(context)
+            state.add_message(SystemMessage(content=system_prompt))
+
+            # Inject chat history
+            if chat_history:
+                for msg in chat_history:
+                    role = msg.get("role", "").upper()
+                    content = msg.get("content", "")
+                    if role == "USER":
+                        state.add_message(HumanMessage(content=content))
+                    elif role == "ASSISTANT":
+                        state.add_message(AIMessage(content=content))
+
+            # Add current user message
+            state.add_message(HumanMessage(content=input))
+
+            # Initialize LLM provider
+            llm = GeminiProvider()
+
+            # Streaming ReAct loop
+            for iteration in range(self.config.max_iterations):
+                state.iterations = iteration + 1
+
+                # Format prompt
+                prompt = self._format_messages(state.messages)
+                tools = self._format_tools_for_gemini()
+
+                # Accumulate text for this iteration
+                iteration_text = ""
+                pending_tool_calls = []
+
+                # Stream from LLM
+                async for chunk in llm.stream_with_tools(
+                    prompt=prompt,
+                    tools=tools,
+                    model=self.config.model,
+                    temperature=self.config.temperature
+                ):
+                    chunk_type = chunk.get("type")
+
+                    if chunk_type == "text":
+                        text = chunk.get("content", "")
+                        iteration_text += text
+                        yield {
+                            "type": "token",
+                            "text": text,
+                            "model": self.config.model,
+                            "streaming": True
+                        }
+
+                    elif chunk_type == "tool_call":
+                        # Queue tool call for execution after streaming
+                        pending_tool_calls.append({
+                            "name": chunk.get("name"),
+                            "args": chunk.get("args", {})
+                        })
+                        yield {
+                            "type": "tool_call",
+                            "name": chunk.get("name"),
+                            "args": chunk.get("args", {})
+                        }
+
+                    elif chunk_type == "complete":
+                        # End of streaming for this iteration
+                        pass
+
+                    elif chunk_type == "error":
+                        yield {
+                            "type": "error",
+                            "message": chunk.get("message", "Unknown error")
+                        }
+                        return
+
+                # Add AI response to state
+                if iteration_text:
+                    state.add_message(AIMessage(content=iteration_text))
+
+                # If no tool calls, we're done
+                if not pending_tool_calls:
+                    break
+
+                # Execute pending tool calls
+                for tool_call in pending_tool_calls:
+                    tool_name = tool_call["name"]
+                    tool_args = tool_call["args"]
+
+                    if tool_name not in self.tools_dict:
+                        self.logger.warning("unknown_tool_called", tool=tool_name)
+                        continue
+
+                    # Execute tool
+                    tool_result = await self._execute_tool(tool_name, tool_args)
+
+                    # Track and yield tool result
+                    state.add_tool_call(tool_name, tool_args, tool_result)
+                    yield {
+                        "type": "tool_result",
+                        "name": tool_name,
+                        "result": tool_result
+                    }
+
+                    # Add to messages for next iteration
+                    state.add_message(ToolMessage(
+                        content=str(tool_result),
+                        tool_call_id=f"call_{len(state.tool_calls)}"
+                    ))
+
+            # Final completion message
+            yield {
+                "type": "complete",
+                "success": True,
+                "iterations": state.iterations,
+                "tool_calls": state.tool_calls,
+                "total_tokens": self._count_tokens(state.messages),
+                "execution_time_ms": state.get_execution_time_ms(),
+                "model": self.config.model
+            }
+
+            self.logger.info(
+                "agent_stream_completed",
+                user_id=user_id,
+                iterations=state.iterations,
+                tool_calls=len(state.tool_calls)
+            )
+
+        except Exception as e:
+            self.logger.error(
+                "agent_stream_failed",
+                user_id=user_id,
+                error=str(e)
+            )
+            yield {
+                "type": "error",
+                "message": str(e)
+            }
+
+    # ============================================================================
     # ReAct Loop Implementation
     # ============================================================================
 

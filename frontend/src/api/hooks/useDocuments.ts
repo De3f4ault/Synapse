@@ -1,21 +1,21 @@
 // Documents hooks using TanStack Query
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import {
-    uploadDocumentApiV1DocumentsUploadPost,
-    listDocumentsApiV1DocumentsGet,
-    getDocumentApiV1DocumentsDocumentIdGet,
-    deleteDocumentApiV1DocumentsDocumentIdDelete,
-    getDocumentChunksApiV1DocumentsDocumentIdChunksGet,
-    getProcessingStatusApiV1DocumentsDocumentIdStatusGet,
-    triggerProcessingApiV1DocumentsDocumentIdProcessPost,
-} from '../generated';
+import { DocumentsService } from '../generated';
 import type {
     DocumentResponse,
     DocumentChunkResponse,
     ProcessingStatusResponse,
     ProcessingStatus,
+    Body_upload_document_api_v1_documents_upload_post,
 } from '../generated';
-import { queryKeys } from '@/lib/queryKeys';
+
+const DOC_KEYS = {
+    all: ['documents'] as const,
+    list: () => [...DOC_KEYS.all, 'list'] as const,
+    detail: (id: number) => [...DOC_KEYS.all, 'detail', id] as const,
+    chunks: (id: number) => [...DOC_KEYS.all, 'chunks', id] as const,
+    status: (id: number) => [...DOC_KEYS.all, 'status', id] as const,
+};
 
 /**
  * Hook to list documents with optional filtering
@@ -26,8 +26,8 @@ export const useDocuments = (params?: {
     pageSize?: number;
 }) => {
     return useQuery<DocumentResponse[]>({
-        queryKey: queryKeys.documents.list(),  // ❗ corrected
-                                        queryFn: () => listDocumentsApiV1DocumentsGet(params || {}),
+        queryKey: DOC_KEYS.list(),
+        queryFn: () => DocumentsService.listDocumentsApiV1DocumentsGet(params?.statusFilter, params?.page, params?.pageSize),
     });
 };
 
@@ -36,44 +36,36 @@ export const useDocuments = (params?: {
  */
 export const useDocument = (documentId: number) => {
     return useQuery<DocumentResponse>({
-        queryKey: queryKeys.documents.detail(documentId),
-                                      queryFn: () => getDocumentApiV1DocumentsDocumentIdGet({ documentId }),
-                                      enabled: !!documentId,
+        queryKey: DOC_KEYS.detail(documentId),
+        queryFn: () => DocumentsService.getDocumentApiV1DocumentsDocumentIdGet(documentId),
+        enabled: !!documentId,
     });
 };
 
 /**
  * Hook to get document chunks
  */
-export const useDocumentChunks = (
-    documentId: number,
-    params?: { page?: number; pageSize?: number }
-) => {
+export const useDocumentChunks = (documentId: number, params?: { page?: number; pageSize?: number }) => {
     return useQuery<DocumentChunkResponse[]>({
-        queryKey: queryKeys.documents.chunks(documentId),  // ❗ corrected
-                                             queryFn: () =>
-                                             getDocumentChunksApiV1DocumentsDocumentIdChunksGet({
-                                                 documentId,
-                                                 ...params,
-                                             }),
-                                             enabled: !!documentId,
+        queryKey: DOC_KEYS.chunks(documentId),
+        queryFn: () => DocumentsService.getDocumentChunksApiV1DocumentsDocumentIdChunksGet(documentId, params?.page, params?.pageSize),
+        enabled: !!documentId,
     });
 };
 
 /**
  * Hook to get document processing status
- * Auto-polls every 2 seconds while processing
  */
 export const useDocumentStatus = (documentId: number) => {
     return useQuery<ProcessingStatusResponse>({
-        queryKey: queryKeys.documents.status(documentId),
-                                              queryFn: () =>
-                                              getProcessingStatusApiV1DocumentsDocumentIdStatusGet({ documentId }),
-                                              enabled: !!documentId,
-                                              refetchInterval: (data) => {
-                                                  if (!data) return false;
-                                                  return data.status === 'processing' ? 2000 : false;
-                                              },
+        queryKey: DOC_KEYS.status(documentId),
+        queryFn: () => DocumentsService.getProcessingStatusApiV1DocumentsDocumentIdStatusGet(documentId),
+        enabled: !!documentId,
+        refetchInterval: (query) => {
+            const data = query.state.data;
+            if (!data) return false;
+            return data.status === 'processing' ? 2000 : false;
+        },
     });
 };
 
@@ -85,11 +77,11 @@ export const useUploadDocument = () => {
 
     return useMutation({
         mutationFn: (file: File) => {
-            const formData = { file };
-            return uploadDocumentApiV1DocumentsUploadPost({ formData });
+            const formData: Body_upload_document_api_v1_documents_upload_post = { file };
+            return DocumentsService.uploadDocumentApiV1DocumentsUploadPost(formData);
         },
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: queryKeys.documents.list() }); // ❗ corrected
+            queryClient.invalidateQueries({ queryKey: DOC_KEYS.list() });
         },
     });
 };
@@ -101,17 +93,11 @@ export const useDeleteDocument = () => {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: ({
-            documentId,
-            deleteFile = false,
-        }: {
-            documentId: number;
-            deleteFile?: boolean;
-        }) =>
-        deleteDocumentApiV1DocumentsDocumentIdDelete({ documentId, deleteFile }),
-                       onSuccess: () => {
-                           queryClient.invalidateQueries({ queryKey: queryKeys.documents.list() }); // ❗ corrected
-                       },
+        mutationFn: ({ documentId, deleteFile = false }: { documentId: number; deleteFile?: boolean }) =>
+            DocumentsService.deleteDocumentApiV1DocumentsDocumentIdDelete(documentId, deleteFile),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: DOC_KEYS.list() });
+        },
     });
 };
 
@@ -122,15 +108,10 @@ export const useTriggerProcessing = () => {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: (documentId: number) =>
-        triggerProcessingApiV1DocumentsDocumentIdProcessPost({ documentId }),
-                       onSuccess: (_, documentId) => {
-                           queryClient.invalidateQueries({
-                               queryKey: queryKeys.documents.status(documentId),
-                           });
-                           queryClient.invalidateQueries({
-                               queryKey: queryKeys.documents.detail(documentId),
-                           });
-                       },
+        mutationFn: (documentId: number) => DocumentsService.triggerProcessingApiV1DocumentsDocumentIdProcessPost(documentId),
+        onSuccess: (_, documentId) => {
+            queryClient.invalidateQueries({ queryKey: DOC_KEYS.status(documentId) });
+            queryClient.invalidateQueries({ queryKey: DOC_KEYS.detail(documentId) });
+        },
     });
 };

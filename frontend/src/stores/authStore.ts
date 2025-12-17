@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { UserResponse } from '../api/generated/types.gen';
+import type { UserResponse } from '../api/generated';
 
 interface AuthState {
     token: string | null;
@@ -21,32 +21,32 @@ export const useAuthStore = create<AuthState>()(
             isAuthenticated: false,
 
             setAuth: (token, user) =>
-            set({
-                token,
-                user,
-                isAuthenticated: !!token,
-            }),
+                set({
+                    token,
+                    user,
+                    isAuthenticated: !!token,
+                }),
 
             setToken: (token) =>
-            set((state) => ({
-                token,
-                isAuthenticated: !!token,
-                user: state.user,
-            })),
+                set((state) => ({
+                    token,
+                    isAuthenticated: !!token,
+                    user: state.user,
+                })),
 
             setUser: (user) =>
-            set((state) => ({
-                user,
-                token: state.token,
-                isAuthenticated: state.isAuthenticated,
-            })),
+                set((state) => ({
+                    user,
+                    token: state.token,
+                    isAuthenticated: state.isAuthenticated,
+                })),
 
             clearAuth: () =>
-            set({
-                token: null,
-                user: null,
-                isAuthenticated: false,
-            }),
+                set({
+                    token: null,
+                    user: null,
+                    isAuthenticated: false,
+                }),
 
             /**
              * Initialize auth state from localStorage

@@ -377,6 +377,139 @@ class GeminiProvider(BaseProvider):
             )
             raise
 
+    async def stream_with_tools(
+        self,
+        prompt: str,
+        tools: List[Dict[str, Any]] = None,
+        model: str = None,
+        temperature: float = 0.0,
+        **kwargs
+    ) -> AsyncGenerator[Dict[str, Any], None]:
+        """
+        Stream responses with optional tool calling.
+
+        True token-level streaming for chat applications.
+        Yields chunks as they arrive from Gemini.
+
+        Args:
+            prompt: Input prompt
+            tools: Optional list of tool definitions
+            model: Model name (defaults to gemini-2.5-flash)
+            temperature: Sampling temperature
+            **kwargs: Additional options
+
+        Yields:
+            {"type": "text", "content": "chunk"}
+            {"type": "tool_call", "name": "...", "args": {...}}
+            {"type": "complete", "usage": {...}}
+        """
+        model_name = model or "gemini-2.5-flash"
+        model_name = self._resolve_model_name(model_name)
+
+        try:
+            gemini_model = self._get_model(model_name)
+            gemini_tools = self._convert_tools_to_gemini(tools) if tools else None
+
+            gen_config = GeminiGenConfig(
+                temperature=temperature,
+                max_output_tokens=8192
+            )
+
+            # Run streaming in executor
+            loop = asyncio.get_event_loop()
+            
+            if gemini_tools:
+                response = await loop.run_in_executor(
+                    None,
+                    lambda: gemini_model.generate_content(
+                        prompt,
+                        generation_config=gen_config,
+                        tools=gemini_tools,
+                        stream=True
+                    )
+                )
+            else:
+                response = await loop.run_in_executor(
+                    None,
+                    lambda: gemini_model.generate_content(
+                        prompt,
+                        generation_config=gen_config,
+                        stream=True
+                    )
+                )
+
+            # Track usage and tool calls
+            total_text = ""
+            tool_calls = []
+
+            # Stream chunks as they arrive
+            for chunk in response:
+                if not chunk.candidates:
+                    continue
+
+                candidate = chunk.candidates[0]
+                
+                # Handle content parts
+                if hasattr(candidate, 'content') and candidate.content:
+                    for part in candidate.content.parts:
+                        # Text chunk
+                        if hasattr(part, 'text') and part.text:
+                            total_text += part.text
+                            yield {
+                                "type": "text",
+                                "content": part.text
+                            }
+                        
+                        # Tool call
+                        elif hasattr(part, 'function_call'):
+                            fc = part.function_call
+                            tool_call = {
+                                "id": f"call_{len(tool_calls)}",
+                                "name": fc.name,
+                                "args": dict(fc.args) if fc.args else {}
+                            }
+                            tool_calls.append(tool_call)
+                            yield {
+                                "type": "tool_call",
+                                "name": fc.name,
+                                "args": tool_call["args"]
+                            }
+
+            # Final completion message with usage
+            usage = {}
+            if hasattr(response, 'usage_metadata'):
+                usage = {
+                    "prompt_tokens": getattr(response.usage_metadata, 'prompt_token_count', 0),
+                    "completion_tokens": getattr(response.usage_metadata, 'candidates_token_count', 0),
+                    "total_tokens": getattr(response.usage_metadata, 'total_token_count', 0)
+                }
+
+            yield {
+                "type": "complete",
+                "text": total_text,
+                "tool_calls": tool_calls,
+                "usage": usage,
+                "model": model_name
+            }
+
+            self.logger.info(
+                "stream_with_tools_completed",
+                model=model_name,
+                text_length=len(total_text),
+                tool_calls=len(tool_calls)
+            )
+
+        except Exception as e:
+            self.logger.error(
+                "stream_with_tools_failed",
+                model=model_name,
+                error=str(e)
+            )
+            yield {
+                "type": "error",
+                "message": str(e)
+            }
+
     def count_tokens(self, text: str) -> int:
         """
         Count tokens in text

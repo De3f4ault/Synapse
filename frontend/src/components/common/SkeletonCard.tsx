@@ -45,28 +45,28 @@ export function SkeletonCard({
     if (count > 1) {
         return (
             <>
-            {Array.from({ length: count }).map((_, index) => (
-                <SkeletonCard
-                key={index}
-                variant={variant}
-                showImage={showImage}
-                showActions={showActions}
-                className={className}
-                />
-            ))}
+                {Array.from({ length: count }).map((_, index) => (
+                    <SkeletonCard
+                        key={index}
+                        variant={variant}
+                        showImage={showImage}
+                        showActions={showActions}
+                        className={className}
+                    />
+                ))}
             </>
         );
     }
 
     return (
         <Card className={cn("overflow-hidden", className)} aria-busy="true" aria-label="Loading">
-        {variant === "compact" && <SkeletonCompact showImage={showImage} />}
-        {variant === "default" && (
-            <SkeletonDefault showImage={showImage} showActions={showActions} />
-        )}
-        {variant === "detailed" && (
-            <SkeletonDetailed showImage={showImage} showActions={showActions} />
-        )}
+            {variant === "compact" && <SkeletonCompact showImage={showImage} />}
+            {variant === "default" && (
+                <SkeletonDefault showImage={showImage} showActions={showActions} />
+            )}
+            {variant === "detailed" && (
+                <SkeletonDetailed showImage={showImage} showActions={showActions} />
+            )}
         </Card>
     );
 }
@@ -77,8 +77,8 @@ export function SkeletonCard({
 function SkeletonCompact({ showImage }: { showImage?: boolean }) {
     return (
         <CardHeader className="space-y-2 p-4">
-        {showImage && <Skeleton className="h-32 w-full rounded-md" />}
-        <Skeleton className="h-5 w-3/4" />
+            {showImage && <Skeleton className="h-32 w-full rounded-md" />}
+            <Skeleton className="h-5 w-3/4" />
         </CardHeader>
     );
 }
@@ -95,17 +95,17 @@ function SkeletonDefault({
 }) {
     return (
         <>
-        <CardHeader className="space-y-2">
-        {showImage && <Skeleton className="h-48 w-full rounded-md mb-4" />}
-        <Skeleton className="h-6 w-4/5" />
-        <Skeleton className="h-4 w-3/5" />
-        </CardHeader>
-        {showActions && (
-            <CardFooter className="gap-2">
-            <Skeleton className="h-9 w-20" />
-            <Skeleton className="h-9 w-20" />
-            </CardFooter>
-        )}
+            <CardHeader className="space-y-2">
+                {showImage && <Skeleton className="h-48 w-full rounded-md mb-4" />}
+                <Skeleton className="h-6 w-4/5" />
+                <Skeleton className="h-4 w-3/5" />
+            </CardHeader>
+            {showActions && (
+                <CardFooter className="gap-2">
+                    <Skeleton className="h-9 w-20" />
+                    <Skeleton className="h-9 w-20" />
+                </CardFooter>
+            )}
         </>
     );
 }
@@ -122,22 +122,22 @@ function SkeletonDetailed({
 }) {
     return (
         <>
-        <CardHeader className="space-y-2">
-        {showImage && <Skeleton className="h-48 w-full rounded-md mb-4" />}
-        <Skeleton className="h-6 w-4/5" />
-        <Skeleton className="h-4 w-3/5" />
-        </CardHeader>
-        <CardContent className="space-y-2">
-        <Skeleton className="h-4 w-full" />
-        <Skeleton className="h-4 w-full" />
-        <Skeleton className="h-4 w-4/5" />
-        </CardContent>
-        {showActions && (
-            <CardFooter className="gap-2">
-            <Skeleton className="h-9 w-24" />
-            <Skeleton className="h-9 w-24" />
-            </CardFooter>
-        )}
+            <CardHeader className="space-y-2">
+                {showImage && <Skeleton className="h-48 w-full rounded-md mb-4" />}
+                <Skeleton className="h-6 w-4/5" />
+                <Skeleton className="h-4 w-3/5" />
+            </CardHeader>
+            <CardContent className="space-y-2">
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-4/5" />
+            </CardContent>
+            {showActions && (
+                <CardFooter className="gap-2">
+                    <Skeleton className="h-9 w-24" />
+                    <Skeleton className="h-9 w-24" />
+                </CardFooter>
+            )}
         </>
     );
 }
@@ -154,11 +154,11 @@ function SkeletonDetailed({
 export function Skeleton({ className }: { className?: string }) {
     return (
         <div
-        className={cn(
-            "animate-shimmer bg-gradient-to-r from-muted via-muted/50 to-muted bg-[length:400%_100%] rounded",
-            className
-        )}
-        aria-hidden="true"
+            className={cn(
+                "animate-shimmer bg-gradient-to-r from-muted via-muted/50 to-muted bg-[length:400%_100%] rounded",
+                className
+            )}
+            aria-hidden="true"
         />
     );
 }
@@ -169,8 +169,19 @@ export function Skeleton({ className }: { className?: string }) {
 export function SkeletonPulse({ className }: { className?: string }) {
     return (
         <div
-        className={cn("animate-pulse bg-muted rounded", className)}
-        aria-hidden="true"
+            className={cn("animate-pulse bg-muted rounded", className)}
+            aria-hidden="true"
         />
+    );
+}
+
+/**
+ * Grid layout for skeleton cards
+ */
+export function SkeletonCardGrid({ count = 6, variant = "default", className }: SkeletonCardProps) {
+    return (
+        <div className={cn("grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4", className)}>
+            <SkeletonCard count={count} variant={variant} />
+        </div>
     );
 }

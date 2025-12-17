@@ -1,27 +1,27 @@
 // Study hooks using TanStack Query
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import {
-    getDueItemsApiV1StudyDueGet,
-    startSessionApiV1StudySessionsPost,
-    listSessionsApiV1StudySessionsGet,
-    getSessionApiV1StudySessionsSessionIdGet,
-    completeSessionApiV1StudySessionsSessionIdCompletePost,
-    getRecommendationsApiV1StudyRecommendationsGet,
-} from '../generated/services.gen';
+import { StudyService } from '../generated';
 import type {
     StudyItemResponse,
     StudySessionResponse,
     StudySessionCreate,
-} from '../generated/types.gen';
-import { queryKeys } from '@/lib/queryKeys';
+} from '../generated';
+
+const STUDY_KEYS = {
+    all: ['study'] as const,
+    due: () => [...STUDY_KEYS.all, 'due'] as const,
+    recommendations: () => [...STUDY_KEYS.all, 'recommendations'] as const,
+    sessions: () => [...STUDY_KEYS.all, 'sessions'] as const,
+    session: (id: number) => [...STUDY_KEYS.all, 'session', id] as const,
+};
 
 /**
  * Hook to get due items across modules
  */
 export const useDueItems = (params?: { modules?: string; limit?: number }) => {
     return useQuery<StudyItemResponse[]>({
-        queryKey: queryKeys.study.due(),
-                                         queryFn: () => getDueItemsApiV1StudyDueGet(params || {}),
+        queryKey: STUDY_KEYS.due(),
+        queryFn: () => StudyService.getDueItemsApiV1StudyDueGet(params?.modules, params?.limit),
     });
 };
 
@@ -30,21 +30,18 @@ export const useDueItems = (params?: { modules?: string; limit?: number }) => {
  */
 export const useStudyRecommendations = (limit?: number) => {
     return useQuery<StudyItemResponse[]>({
-        queryKey: queryKeys.study.recommendations(),
-                                         queryFn: () => getRecommendationsApiV1StudyRecommendationsGet({ limit }),
+        queryKey: STUDY_KEYS.recommendations(),
+        queryFn: () => StudyService.getRecommendationsApiV1StudyRecommendationsGet(limit),
     });
 };
 
 /**
  * Hook to list study sessions
  */
-export const useStudySessions = (params?: {
-    page?: number;
-    pageSize?: number;
-}) => {
+export const useStudySessions = (params?: { page?: number; pageSize?: number }) => {
     return useQuery<StudySessionResponse[]>({
-        queryKey: queryKeys.study.sessions(),
-                                            queryFn: () => listSessionsApiV1StudySessionsGet(params || {}),
+        queryKey: STUDY_KEYS.sessions(),
+        queryFn: () => StudyService.listSessionsApiV1StudySessionsGet(params?.page, params?.pageSize),
     });
 };
 
@@ -53,9 +50,9 @@ export const useStudySessions = (params?: {
  */
 export const useStudySession = (sessionId: number) => {
     return useQuery<StudySessionResponse>({
-        queryKey: queryKeys.study.session(sessionId),
-                                          queryFn: () => getSessionApiV1StudySessionsSessionIdGet({ sessionId }),
-                                          enabled: !!sessionId,
+        queryKey: STUDY_KEYS.session(sessionId),
+        queryFn: () => StudyService.getSessionApiV1StudySessionsSessionIdGet(sessionId),
+        enabled: !!sessionId,
     });
 };
 
@@ -66,11 +63,10 @@ export const useStartStudySession = () => {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: (data: StudySessionCreate) =>
-        startSessionApiV1StudySessionsPost({ requestBody: data }),
-                       onSuccess: () => {
-                           queryClient.invalidateQueries({ queryKey: queryKeys.study.sessions() });
-                       },
+        mutationFn: (data: StudySessionCreate) => StudyService.startSessionApiV1StudySessionsPost(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: STUDY_KEYS.sessions() });
+        },
     });
 };
 
@@ -81,14 +77,11 @@ export const useCompleteStudySession = () => {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: (sessionId: number) =>
-        completeSessionApiV1StudySessionsSessionIdCompletePost({ sessionId }),
-                       onSuccess: (_, sessionId) => {
-                           queryClient.invalidateQueries({ queryKey: queryKeys.study.sessions() });
-                           queryClient.invalidateQueries({
-                               queryKey: queryKeys.study.session(sessionId),
-                           });
-                           queryClient.invalidateQueries({ queryKey: queryKeys.analytics.all });
-                       },
+        mutationFn: (sessionId: number) => StudyService.completeSessionApiV1StudySessionsSessionIdCompletePost(sessionId),
+        onSuccess: (_, sessionId) => {
+            queryClient.invalidateQueries({ queryKey: STUDY_KEYS.sessions() });
+            queryClient.invalidateQueries({ queryKey: STUDY_KEYS.session(sessionId) });
+            queryClient.invalidateQueries({ queryKey: STUDY_KEYS.all });
+        },
     });
 };

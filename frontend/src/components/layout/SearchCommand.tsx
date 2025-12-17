@@ -12,7 +12,6 @@ import {
 } from '@/components/ui/command';
 import { useUIStore } from '@/stores/uiStore';
 import {
-    FileText,
     BookOpen,
     MessageSquare,
     FileQuestion,
@@ -26,12 +25,12 @@ import {
     Target,
 } from 'lucide-react';
 
-// API imports
+// API Service imports
 import {
-    listDocumentsApiV1DocumentsGet,
-    listNotesApiV1NotesGet,
-    listDecksApiV1FlashcardsDecksGet,
-    listQuizzesApiV1QuizzesGet,
+    DocumentsService,
+    NotesService,
+    FlashcardsService,
+    QuizzesService,
 } from '@/api/generated';
 import type {
     DocumentResponse,
@@ -69,28 +68,28 @@ export function SearchCommand() {
     // Fetch resources (only when command palette is open)
     const { data: documents } = useQuery({
         queryKey: ['documents'],
-        queryFn: () => listDocumentsApiV1DocumentsGet({ pageSize: 100 }),
+        queryFn: () => DocumentsService.listDocumentsApiV1DocumentsGet(undefined, 1, 100),
         enabled: commandPaletteOpen,
         staleTime: 1000 * 60 * 5,
     });
 
     const { data: notes } = useQuery({
         queryKey: ['notes'],
-        queryFn: () => listNotesApiV1NotesGet({ pageSize: 100 }),
+        queryFn: () => NotesService.listNotesApiV1NotesGet(undefined, undefined, 1, 100),
         enabled: commandPaletteOpen,
         staleTime: 1000 * 60 * 5,
     });
 
     const { data: decks } = useQuery({
         queryKey: ['decks'],
-        queryFn: () => listDecksApiV1FlashcardsDecksGet({ pageSize: 100 }),
+        queryFn: () => FlashcardsService.listDecksApiV1DecksGet(undefined, undefined, 1, 100),
         enabled: commandPaletteOpen,
         staleTime: 1000 * 60 * 5,
     });
 
     const { data: quizzes } = useQuery({
         queryKey: ['quizzes'],
-        queryFn: () => listQuizzesApiV1QuizzesGet({ pageSize: 100 }),
+        queryFn: () => QuizzesService.listQuizzesApiV1QuizzesGet(1, 100),
         enabled: commandPaletteOpen,
         staleTime: 1000 * 60 * 5,
     });

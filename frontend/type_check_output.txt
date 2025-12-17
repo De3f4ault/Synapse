@@ -1,0 +1,426 @@
+
+> synapse-web@1.0.0 type-check
+> tsc --noEmit
+
+src/api/hooks/index.ts(10,1): error TS2308: Module './useFlashcards' has already exported a member named 'useGenerateFlashcards'. Consider explicitly re-exporting to resolve the ambiguity.
+src/api/hooks/useAnalytics.ts(9,8): error TS2307: Cannot find module '../generated/services.gen' or its corresponding type declarations.
+src/api/hooks/useAnalytics.ts(16,8): error TS2307: Cannot find module '../generated/types.gen' or its corresponding type declarations.
+src/api/hooks/useAuth.ts(3,5): error TS2305: Module '"@/api/generated"' has no exported member 'loginApiV1AuthLoginPost'.
+src/api/hooks/useAuth.ts(4,5): error TS2305: Module '"@/api/generated"' has no exported member 'registerApiV1AuthRegisterPost'.
+src/api/hooks/useAuth.ts(5,5): error TS2305: Module '"@/api/generated"' has no exported member 'logoutApiV1AuthLogoutPost'.
+src/api/hooks/useAuth.ts(6,5): error TS2305: Module '"@/api/generated"' has no exported member 'getCurrentUserProfileApiV1AuthMeGet'.
+src/api/hooks/useAuth.ts(21,51): error TS18046: 'data' is of type 'unknown'.
+src/api/hooks/useAuth.ts(31,54): error TS18046: 'data' is of type 'unknown'.
+src/api/hooks/useChat.ts(4,5): error TS2305: Module '"../generated"' has no exported member 'listSessionsApiV1ChatSessionsGet'.
+src/api/hooks/useChat.ts(5,5): error TS2305: Module '"../generated"' has no exported member 'createSessionApiV1ChatSessionsPost'.
+src/api/hooks/useChat.ts(6,5): error TS2305: Module '"../generated"' has no exported member 'getSessionApiV1ChatSessionsSessionIdGet'.
+src/api/hooks/useChat.ts(7,5): error TS2305: Module '"../generated"' has no exported member 'deleteSessionApiV1ChatSessionsSessionIdDelete'.
+src/api/hooks/useChat.ts(8,5): error TS2305: Module '"../generated"' has no exported member 'getMessagesApiV1ChatSessionsSessionIdMessagesGet'.
+src/api/hooks/useChat.ts(9,5): error TS2305: Module '"../generated"' has no exported member 'sendMessageApiV1ChatSessionsSessionIdMessagesPost'.
+src/api/hooks/useChat.ts(15,5): error TS6196: 'ChatMessageCreate' is declared but never used.
+src/api/hooks/useDocuments.ts(4,5): error TS2724: '"../generated"' has no exported member named 'uploadDocumentApiV1DocumentsUploadPost'. Did you mean 'Body_upload_document_api_v1_documents_upload_post'?
+src/api/hooks/useDocuments.ts(5,5): error TS2305: Module '"../generated"' has no exported member 'listDocumentsApiV1DocumentsGet'.
+src/api/hooks/useDocuments.ts(6,5): error TS2305: Module '"../generated"' has no exported member 'getDocumentApiV1DocumentsDocumentIdGet'.
+src/api/hooks/useDocuments.ts(7,5): error TS2305: Module '"../generated"' has no exported member 'deleteDocumentApiV1DocumentsDocumentIdDelete'.
+src/api/hooks/useDocuments.ts(8,5): error TS2305: Module '"../generated"' has no exported member 'getDocumentChunksApiV1DocumentsDocumentIdChunksGet'.
+src/api/hooks/useDocuments.ts(9,5): error TS2305: Module '"../generated"' has no exported member 'getProcessingStatusApiV1DocumentsDocumentIdStatusGet'.
+src/api/hooks/useDocuments.ts(10,5): error TS2305: Module '"../generated"' has no exported member 'triggerProcessingApiV1DocumentsDocumentIdProcessPost'.
+src/api/hooks/useDocuments.ts(75,63): error TS2339: Property 'status' does not exist on type 'Query<ProcessingStatusResponse, Error, ProcessingStatusResponse, readonly unknown[]>'.
+src/api/hooks/useNotes.ts(4,5): error TS2305: Module '"../generated"' has no exported member 'listNotesApiV1NotesGet'.
+src/api/hooks/useNotes.ts(5,5): error TS2305: Module '"../generated"' has no exported member 'createNoteApiV1NotesPost'.
+src/api/hooks/useNotes.ts(6,5): error TS2305: Module '"../generated"' has no exported member 'getNoteTreeApiV1NotesTreeGet'.
+src/api/hooks/useNotes.ts(7,5): error TS2305: Module '"../generated"' has no exported member 'searchNotesApiV1NotesSearchGet'.
+src/api/hooks/useNotes.ts(8,5): error TS2305: Module '"../generated"' has no exported member 'getNoteApiV1NotesNoteIdGet'.
+src/api/hooks/useNotes.ts(9,5): error TS2305: Module '"../generated"' has no exported member 'updateNoteApiV1NotesNoteIdPut'.
+src/api/hooks/useNotes.ts(10,5): error TS2305: Module '"../generated"' has no exported member 'deleteNoteApiV1NotesNoteIdDelete'.
+src/api/hooks/useNotes.ts(11,5): error TS2305: Module '"../generated"' has no exported member 'getNoteVersionsApiV1NotesNoteIdVersionsGet'.
+src/api/hooks/useNotes.ts(43,40): error TS2554: Expected 0 arguments, but got 1.
+src/api/hooks/useNotes.ts(53,49): error TS2554: Expected 1 arguments, but got 2.
+src/api/hooks/useQuizzes.ts(4,5): error TS2305: Module '"../generated"' has no exported member 'createQuizApiV1QuizzesPost'.
+src/api/hooks/useQuizzes.ts(5,5): error TS2305: Module '"../generated"' has no exported member 'listQuizzesApiV1QuizzesGet'.
+src/api/hooks/useQuizzes.ts(6,5): error TS2305: Module '"../generated"' has no exported member 'startQuizAttemptApiV1QuizzesQuizIdStartPost'.
+src/api/hooks/useQuizzes.ts(7,5): error TS2305: Module '"../generated"' has no exported member 'submitQuizAttemptApiV1QuizzesAttemptsAttemptIdSubmitPost'.
+src/api/hooks/useStudy.ts(10,8): error TS2307: Cannot find module '../generated/services.gen' or its corresponding type declarations.
+src/api/hooks/useStudy.ts(15,8): error TS2307: Cannot find module '../generated/types.gen' or its corresponding type declarations.
+src/api/websocket/chat.ts(19,13): error TS6133: 'sessionId' is declared but its value is never read.
+src/api/websocket/manager.ts(6,5): error TS6196: 'WebSocketMessage' is declared but never used.
+src/api/websocket/manager.ts(46,22): error TS6133: 'connectionTimeout' is declared but its value is never read.
+src/api/websocket/study.ts(18,13): error TS6133: 'sessionId' is declared but its value is never read.
+src/components/auth/AuthProvider.tsx(11,13): error TS2339: Property 'useCurrentUser' does not exist on type '{ login: UseMutateFunction<unknown, Error, { requestBody: UserLogin; }, unknown>; register: UseMutateFunction<unknown, Error, { requestBody: UserRegister; }, unknown>; ... 4 more ...; error: Error | null; }'.
+src/components/common/AnimatedCounter.tsx(66,47): error TS2769: No overload matches this call.
+  The last overload gave the following error.
+    Type 'number' has no properties in common with type 'ObjectTarget<MotionValue<number>>'.
+src/components/common/ErrorBoundary.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+src/components/common/QuickActions.tsx(23,58): error TS6133: 'resourceTitle' is declared but its value is never read.
+src/components/common/QuickActions.tsx(97,13): error TS2322: Type '{ trigger: Element; items: { label: string; icon: Element; onClick: () => void | Promise<void>; }[] | { label: string; icon: Element; onClick: () => void | Promise<...>; }[] | { ...; }[] | { ...; }[]; }' is not assignable to type 'IntrinsicAttributes & SimpleDropdownMenuProps'.
+  Property 'trigger' does not exist on type 'IntrinsicAttributes & SimpleDropdownMenuProps'.
+src/components/common/RetryBoundary.tsx(59,15): error TS7030: Not all code paths return a value.
+src/components/common/SkeletonList.tsx(175,43): error TS2322: Type '{ className: string; style: { width: string; }; }' is not assignable to type 'IntrinsicAttributes & { className?: string | undefined; }'.
+  Property 'style' does not exist on type 'IntrinsicAttributes & { className?: string | undefined; }'.
+src/components/common/SkeletonTable.tsx(62,17): error TS2322: Type '{ className: string; style: { width: string; }; }' is not assignable to type 'IntrinsicAttributes & { className?: string | undefined; }'.
+  Property 'style' does not exist on type 'IntrinsicAttributes & { className?: string | undefined; }'.
+src/components/common/SkeletonTable.tsx(79,17): error TS2322: Type '{ className: string; style: { width: string; }; }' is not assignable to type 'IntrinsicAttributes & { className?: string | undefined; }'.
+  Property 'style' does not exist on type 'IntrinsicAttributes & { className?: string | undefined; }'.
+src/components/common/SkeletonTable.tsx(81,25): error TS2532: Object is possibly 'undefined'.
+src/components/common/StatCard.tsx(56,15): error TS6133: 'numValue' is declared but its value is never read.
+src/components/custom/SimpleDialog.tsx(6,1): error TS6133: 'X' is declared but its value is never read.
+src/components/layout/Breadcrumbs.tsx(39,11): error TS6133: 'visibleItems' is declared but its value is never read.
+src/components/layout/LoadingScreen.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
+src/components/layout/NotificationCenter.tsx(10,1): error TS6133: 'Separator' is declared but its value is never read.
+src/components/layout/SearchCommand.tsx(15,5): error TS6133: 'FileText' is declared but its value is never read.
+src/components/layout/SearchCommand.tsx(31,5): error TS2305: Module '"@/api/generated"' has no exported member 'listDocumentsApiV1DocumentsGet'.
+src/components/layout/SearchCommand.tsx(32,5): error TS2305: Module '"@/api/generated"' has no exported member 'listNotesApiV1NotesGet'.
+src/components/layout/SearchCommand.tsx(33,5): error TS2305: Module '"@/api/generated"' has no exported member 'listDecksApiV1FlashcardsDecksGet'.
+src/components/layout/SearchCommand.tsx(34,5): error TS2305: Module '"@/api/generated"' has no exported member 'listQuizzesApiV1QuizzesGet'.
+src/components/layout/UserMenu.tsx(4,1): error TS6133: 'Separator' is declared but its value is never read.
+src/components/layout/UserMenu.tsx(50,16): error TS2532: Object is possibly 'undefined'.
+src/components/layout/UserMenu.tsx(59,11): error TS6133: 'getThemeIcon' is declared but its value is never read.
+src/components/layout/index.ts(10,25): error TS2307: Cannot find module './Sidebar' or its corresponding type declarations.
+src/components/ui/collapsible.tsx(3,39): error TS2307: Cannot find module '@radix-ui/react-collapsible' or its corresponding type declarations.
+src/components/ui/sidebar.tsx(8,29): error TS2307: Cannot find module '@/hooks/use-mobile' or its corresponding type declarations.
+src/modules/documents/components/ChunkExplorer.tsx(4,11): error TS2305: Module '"@/api/generated"' has no exported member 'getDocumentChunksApiV1DocumentsDocumentIdChunksGet'.
+src/modules/documents/components/ChunkExplorer.tsx(4,64): error TS6133: 'DocumentsService' is declared but its value is never read.
+src/modules/documents/components/ChunkExplorer.tsx(140,50): error TS2345: Argument of type 'string' is not assignable to parameter of type 'number'.
+src/modules/documents/components/ChunkExplorer.tsx(150,44): error TS7006: Parameter 'chunk' implicitly has an 'any' type.
+src/modules/documents/components/ChunkExplorer.tsx(156,41): error TS7006: Parameter 'c' implicitly has an 'any' type.
+src/modules/documents/components/ChunkExplorer.tsx(239,31): error TS7006: Parameter 'chunk' implicitly has an 'any' type.
+src/modules/documents/components/ChunkExplorer.tsx(239,38): error TS7006: Parameter 'index' implicitly has an 'any' type.
+src/modules/documents/components/DocumentUploader.tsx(72,24): error TS2345: Argument of type 'File | undefined' is not assignable to parameter of type 'File'.
+  Type 'undefined' is not assignable to type 'File'.
+src/modules/documents/components/DocumentViewer.tsx(7,10): error TS6133: 'cn' is declared but its value is never read.
+src/modules/documents/hooks/useDocumentUpload.ts(4,5): error TS2724: '"@/api/generated"' has no exported member named 'uploadDocumentApiV1DocumentsUploadPost'. Did you mean 'Body_upload_document_api_v1_documents_upload_post'?
+src/modules/documents/hooks/useDocumentUpload.ts(5,5): error TS2305: Module '"@/api/generated"' has no exported member 'getProcessingStatusApiV1DocumentsDocumentIdStatusGet'.
+src/modules/documents/hooks/useDocumentUpload.ts(77,19): error TS2339: Property 'success' does not exist on type '({ ...props }: Toast) => { id: string; dismiss: () => void; update: (props: ToasterToast) => void; }'.
+src/modules/documents/hooks/useDocumentUpload.ts(83,19): error TS2339: Property 'error' does not exist on type '({ ...props }: Toast) => { id: string; dismiss: () => void; update: (props: ToasterToast) => void; }'.
+src/modules/flashcards/components/DeckList.tsx(13,10): error TS2724: '"@/components/common/SkeletonCard"' has no exported member named 'SkeletonCardGrid'. Did you mean 'SkeletonCard'?
+src/modules/flashcards/components/DeckStats.tsx(4,20): error TS2724: '"@/components/common/StatCard"' has no exported member named 'StatCardGrid'. Did you mean 'StatCard'?
+src/modules/flashcards/components/DeckStats.tsx(52,13): error TS2322: Type '{ value: number; label: string; isPositive: true; } | undefined' is not assignable to type 'TrendData | undefined'.
+  Object literal may only specify known properties, and 'isPositive' does not exist in type 'TrendData'.
+src/modules/flashcards/components/DeckStats.tsx(63,9): error TS2322: Type '{ title: string; value: number; icon: ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>; variant: string; loading: boolean | undefined; action: { ...; } | undefined; }' is not assignable to type 'IntrinsicAttributes & StatCardProps'.
+  Property 'variant' does not exist on type 'IntrinsicAttributes & StatCardProps'.
+src/modules/flashcards/components/DeckStats.tsx(96,13): error TS2353: Object literal may only specify known properties, and 'isPositive' does not exist in type 'TrendData'.
+src/modules/flashcards/components/DeckStats.tsx(113,13): error TS2353: Object literal may only specify known properties, and 'isPositive' does not exist in type 'TrendData'.
+src/modules/flashcards/components/DeckStats.tsx(309,34): error TS18048: 'card.accuracy' is possibly 'undefined'.
+src/modules/flashcards/components/DeckStats.tsx(322,49): error TS18048: 'card.accuracy' is possibly 'undefined'.
+src/modules/flashcards/components/FlashcardEditor.tsx(13,11): error TS2305: Module '"@/api/generated"' has no exported member 'createCardApiV1CardsPost'.
+src/modules/flashcards/components/FlashcardEditor.tsx(13,38): error TS6133: 'FlashcardsService' is declared but its value is never read.
+src/modules/flashcards/components/FlashcardEditor.tsx(19,5): error TS6133: 'EyeOff' is declared but its value is never read.
+src/modules/flashcards/components/FlashcardEditor.tsx(52,5): error TS6133: 'mode' is declared but its value is never read.
+src/modules/flashcards/components/FlashcardEditor.tsx(477,11): error TS6133: 'percentage' is declared but its value is never read.
+src/modules/flashcards/components/FlashcardEditorUpdate.tsx(13,11): error TS2305: Module '"@/api/generated"' has no exported member 'updateCardApiV1CardsCardIdPut'.
+src/modules/flashcards/components/FlashcardEditorUpdate.tsx(13,43): error TS6133: 'FlashcardsService' is declared but its value is never read.
+src/modules/flashcards/components/FlashcardEditorUpdate.tsx(56,5): error TS6133: 'mode' is declared but its value is never read.
+src/modules/flashcards/components/FlashcardEditorUpdate.tsx(108,54): error TS2339: Property 'detail' does not exist on type '(deckId: number) => readonly ["flashcards", "deck", number, "cards"]'.
+src/modules/flashcards/components/FlashcardEditorUpdate.tsx(494,11): error TS6133: 'percentage' is declared but its value is never read.
+src/modules/flashcards/components/ReviewSession/CardFlip.tsx(85,60): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/modules/flashcards/components/ReviewSession/CardFlip.tsx(161,24): error TS2345: Argument of type 'number | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/modules/flashcards/components/ReviewSession/CardFlip.tsx(163,22): error TS2345: Argument of type 'number | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/modules/flashcards/components/ReviewSession/CardFlip.tsx(168,21): error TS2345: Argument of type 'number | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/modules/flashcards/components/ReviewSession/CardFlip.tsx(170,18): error TS2345: Argument of type 'number | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/modules/flashcards/components/ReviewSession/CardFlip.tsx(235,9): error TS18048: 'card.accuracy' is possibly 'undefined'.
+src/modules/flashcards/components/ReviewSession/CardFlip.tsx(237,7): error TS18048: 'card.accuracy' is possibly 'undefined'.
+src/modules/flashcards/components/ReviewSession/CardFlip.tsx(242,7): error TS18048: 'card.accuracy' is possibly 'undefined'.
+src/modules/flashcards/components/ReviewSession/CardFlip.tsx(251,20): error TS2345: Argument of type 'number | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/modules/flashcards/components/ReviewSession/CardFlip.tsx(253,18): error TS2345: Argument of type 'number | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/modules/flashcards/components/ReviewSession/FlashcardEditorUpdate.tsx(1,1): error TS2304: Cannot find name 'd'.
+src/modules/flashcards/components/ReviewSession/index.tsx(101,15): error TS7030: Not all code paths return a value.
+src/modules/flashcards/hooks/useReviewSession.ts(2,11): error TS2305: Module '"@/api/generated"' has no exported member 'reviewCardApiV1CardsCardIdReviewPost'.
+src/modules/flashcards/hooks/useReviewSession.ts(2,50): error TS6133: 'FlashcardsService' is declared but its value is never read.
+src/modules/flashcards/hooks/useReviewSession.ts(41,39): error TS2339: Property 'FLASHCARDS' does not exist on type '{ readonly AUTH: { readonly USER: readonly ["auth", "user"]; }; readonly DECKS: { readonly ALL: readonly ["decks"]; readonly DETAIL: (id: number) => (string | number)[]; }; readonly CARDS: { readonly DUE: (deckId?: number | undefined) => (string | ... 1 more ... | undefined)[]; readonly DETAIL: (id: number) => (stri...'.
+src/modules/flashcards/hooks/useReviewSession.ts(44,39): error TS2339: Property 'FLASHCARDS' does not exist on type '{ readonly AUTH: { readonly USER: readonly ["auth", "user"]; }; readonly DECKS: { readonly ALL: readonly ["decks"]; readonly DETAIL: (id: number) => (string | number)[]; }; readonly CARDS: { readonly DUE: (deckId?: number | undefined) => (string | ... 1 more ... | undefined)[]; readonly DETAIL: (id: number) => (stri...'.
+src/modules/notes/components/NoteEditor.tsx(24,11): error TS2305: Module '"@/api/generated"' has no exported member 'createNoteApiV1NotesPost'.
+src/modules/notes/components/NoteEditor.tsx(24,37): error TS2305: Module '"@/api/generated"' has no exported member 'updateNoteApiV1NotesNoteIdPut'.
+src/modules/notes/components/NoteEditor.tsx(24,69): error TS6133: 'NotesService' is declared but its value is never read.
+src/modules/notes/components/NoteEditor.tsx(58,54): error TS2339: Property 'tags' does not exist on type 'NoteResponse'.
+src/modules/notes/components/NoteEditor.tsx(69,9): error TS6133: 'reset' is declared but its value is never read.
+src/modules/notes/components/NoteEditor.tsx(101,61): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'NoteResponse'.
+src/modules/notes/components/NoteEditor.tsx(128,22): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'NoteResponse'.
+src/modules/notes/components/NoteSearch.tsx(10,11): error TS2305: Module '"@/api/generated"' has no exported member 'searchNotesApiV1NotesSearchGet'.
+src/modules/notes/components/NoteSearch.tsx(10,44): error TS6133: 'NotesService' is declared but its value is never read.
+src/modules/notes/components/NoteSearch.tsx(115,31): error TS7006: Parameter 'result' implicitly has an 'any' type.
+src/modules/notes/components/NoteTree.tsx(9,5): error TS6133: 'ChevronDown' is declared but its value is never read.
+src/modules/notes/components/NoteTree.tsx(72,11): error TS6133: 'expandToNode' is declared but its value is never read.
+src/modules/notes/components/NoteTree.tsx(141,20): error TS7006: Parameter 'node' implicitly has an 'any' type.
+src/modules/notes/components/NoteTree.tsx(141,26): error TS7006: Parameter 'index' implicitly has an 'any' type.
+src/modules/notes/components/VersionHistory.tsx(9,11): error TS2305: Module '"@/api/generated"' has no exported member 'getNoteVersionsApiV1NotesNoteIdVersionsGet'.
+src/modules/notes/components/VersionHistory.tsx(9,56): error TS6133: 'NotesService' is declared but its value is never read.
+src/modules/notes/hooks/useNoteTree.ts(2,11): error TS2305: Module '"@/api/generated"' has no exported member 'getNoteTreeApiV1NotesTreeGet'.
+src/modules/notes/hooks/useNoteTree.ts(2,42): error TS6133: 'NotesService' is declared but its value is never read.
+src/modules/quizzes/components/QuestionCard.tsx(43,5): error TS6133: 'onFlag' is declared but its value is never read.
+src/modules/quizzes/components/QuizBuilder.tsx(10,10): error TS6133: 'motion' is declared but its value is never read.
+src/modules/quizzes/components/QuizBuilder.tsx(11,1): error TS6133: 'cn' is declared but its value is never read.
+src/modules/quizzes/components/QuizBuilder.tsx(76,37): error TS18046: 'result' is of type 'unknown'.
+src/modules/quizzes/components/QuizBuilder.tsx(78,29): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'QuizResponse'.
+src/modules/quizzes/components/QuizBuilder.tsx(328,26): error TS7006: Parameter 'q' implicitly has an 'any' type.
+src/modules/quizzes/components/QuizBuilder.tsx(328,29): error TS7006: Parameter 'i' implicitly has an 'any' type.
+src/modules/quizzes/components/QuizBuilder.tsx(341,27): error TS2322: Type '{}' is not assignable to type 'ReactNode'.
+src/modules/quizzes/components/QuizBuilder.tsx(357,34): error TS6133: 'field' is declared but its value is never read.
+src/modules/quizzes/components/QuizTaker.tsx(248,9): error TS2322: Type 'QuestionResponse | undefined' is not assignable to type 'QuestionResponse'.
+  Type 'undefined' is not assignable to type 'QuestionResponse'.
+src/modules/quizzes/components/QuizTaker.tsx(250,26): error TS18048: 'currentQuestion' is possibly 'undefined'.
+src/modules/quizzes/components/QuizTaker.tsx(251,40): error TS18048: 'currentQuestion' is possibly 'undefined'.
+src/modules/quizzes/components/QuizTaker.tsx(252,41): error TS18048: 'currentQuestion' is possibly 'undefined'.
+src/modules/quizzes/components/QuizTaker.tsx(253,34): error TS18048: 'currentQuestion' is possibly 'undefined'.
+src/modules/quizzes/components/QuizTaker.tsx(276,35): error TS18048: 'currentQuestion' is possibly 'undefined'.
+src/modules/quizzes/components/QuizTaker.tsx(281,34): error TS18048: 'currentQuestion' is possibly 'undefined'.
+src/modules/quizzes/components/QuizTaker.tsx(373,9): error TS2322: Type '{ open: boolean; onOpenChange: Dispatch<SetStateAction<boolean>>; onConfirm: () => void; title: string; description: string; confirmText: string; cancelText: string; }' is not assignable to type 'IntrinsicAttributes & ConfirmationModalProps'.
+  Property 'confirmText' does not exist on type 'IntrinsicAttributes & ConfirmationModalProps'.
+src/modules/quizzes/components/QuizTaker.tsx(387,9): error TS2322: Type '{ open: boolean; onOpenChange: Dispatch<SetStateAction<boolean>>; onConfirm: () => void; title: string; description: string; confirmText: string; cancelText: string; }' is not assignable to type 'IntrinsicAttributes & ConfirmationModalProps'.
+  Property 'confirmText' does not exist on type 'IntrinsicAttributes & ConfirmationModalProps'.
+src/modules/quizzes/hooks/useQuizAttempt.ts(4,5): error TS2305: Module '"@/api/generated"' has no exported member 'startQuizAttemptApiV1QuizzesQuizIdStartPost'.
+src/modules/quizzes/hooks/useQuizAttempt.ts(5,5): error TS2305: Module '"@/api/generated"' has no exported member 'submitQuizAttemptApiV1QuizzesAttemptsAttemptIdSubmitPost'.
+src/modules/quizzes/hooks/useQuizAttempt.ts(32,85): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'SetStateAction<QuizAttemptStart | null>'.
+src/modules/quizzes/hooks/useQuizAttempt.ts(37,94): error TS18046: 'result' is of type 'unknown'.
+src/modules/quizzes/hooks/useQuizAttempt.ts(69,40): error TS18046: 'result' is of type 'unknown'.
+src/modules/quizzes/hooks/useQuizAttempt.ts(72,26): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'QuizResultResponse'.
+src/modules/quizzes/schemas/index.ts(29,8): error TS2306: File '/home/de3f4ault/Desktop/Projects/synapse/frontend/src/modules/quizzes/schemas/quizSchema.ts' is not a module.
+src/modules/study/components/DueItems.tsx(1,29): error TS6133: 'CardHeader' is declared but its value is never read.
+src/modules/study/components/DueItems.tsx(1,41): error TS6133: 'CardTitle' is declared but its value is never read.
+src/modules/study/components/DueItems.tsx(56,18): error TS2322: Type 'ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>' is not assignable to type 'ReactNode'.
+  Type 'ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>' is missing the following properties from type 'ReactPortal': children, type, props, key
+src/modules/study/components/DueItems.tsx(59,13): error TS2739: Type 'ReactElement<any, any>' is missing the following properties from type '{ label: string; onClick: () => void; }': label, onClick
+src/modules/study/components/Recommendations.tsx(7,11): error TS2305: Module '"@/api/generated"' has no exported member 'getRecommendationsApiV1StudyRecommendationsGet'.
+src/modules/study/components/Recommendations.tsx(7,60): error TS6133: 'StudyService' is declared but its value is never read.
+src/modules/study/components/Recommendations.tsx(79,31): error TS7006: Parameter 'item' implicitly has an 'any' type.
+src/modules/study/components/Recommendations.tsx(79,37): error TS7006: Parameter 'index' implicitly has an 'any' type.
+src/modules/study/components/StudySession.tsx(50,56): error TS6133: 'isCompleting' is declared but its value is never read.
+src/modules/study/components/StudySession.tsx(59,17): error TS2322: Type '"flashcard_review" | "quiz" | "mixed"' is not assignable to type 'StudySessionType'.
+  Type '"flashcard_review"' is not assignable to type 'StudySessionType'.
+src/modules/study/components/StudySession.tsx(64,34): error TS18046: 'result' is of type 'unknown'.
+src/modules/study/components/StudySession.tsx(75,21): error TS18048: 'currentItem' is possibly 'undefined'.
+src/modules/study/components/StudySession.tsx(282,10): error TS18048: 'currentItem' is possibly 'undefined'.
+src/modules/study/components/StudySession.tsx(306,10): error TS18048: 'currentItem' is possibly 'undefined'.
+src/modules/study/components/StudySession.tsx(316,18): error TS18048: 'currentItem' is possibly 'undefined'.
+src/modules/study/components/StudySession.tsx(316,49): error TS18048: 'currentItem' is possibly 'undefined'.
+src/modules/study/components/StudySession.tsx(318,18): error TS18048: 'currentItem' is possibly 'undefined'.
+src/modules/study/components/StudySession.tsx(319,47): error TS18048: 'currentItem' is possibly 'undefined'.
+src/modules/study/components/StudySession.tsx(333,18): error TS18048: 'currentItem' is possibly 'undefined'.
+src/modules/study/components/StudySession.tsx(342,14): error TS18048: 'currentItem' is possibly 'undefined'.
+src/modules/study/components/StudySession.tsx(343,17): error TS18048: 'currentItem' is possibly 'undefined'.
+src/modules/study/components/StudySession.tsx(344,17): error TS18048: 'currentItem' is possibly 'undefined'.
+src/modules/study/components/StudySession.tsx(347,18): error TS18048: 'currentItem' is possibly 'undefined'.
+src/modules/study/components/StudySession.tsx(348,47): error TS18048: 'currentItem' is possibly 'undefined'.
+src/modules/study/components/StudySession.tsx(356,10): error TS18048: 'currentItem' is possibly 'undefined'.
+src/modules/study/components/StudySession.tsx(422,9): error TS2322: Type '{ open: boolean; onOpenChange: Dispatch<SetStateAction<boolean>>; onConfirm: () => void; title: string; description: string; confirmText: string; cancelText: string; }' is not assignable to type 'IntrinsicAttributes & ConfirmationModalProps'.
+  Property 'confirmText' does not exist on type 'IntrinsicAttributes & ConfirmationModalProps'.
+src/modules/study/hooks/useStudySession.ts(3,5): error TS2305: Module '"@/api/generated"' has no exported member 'startSessionApiV1StudySessionsPost'.
+src/modules/study/hooks/useStudySession.ts(4,5): error TS2305: Module '"@/api/generated"' has no exported member 'completeSessionApiV1StudySessionsSessionIdCompletePost'.
+src/modules/study/hooks/useStudySession.ts(30,97): error TS18046: 'result' is of type 'unknown'.
+src/modules/study/hooks/useStudySession.ts(49,109): error TS18046: 'result' is of type 'unknown'.
+src/modules/study/hooks/useStudySession.ts(50,100): error TS18046: 'result' is of type 'unknown'.
+src/modules/study/hooks/useStudySession.ts(54,102): error TS18046: 'result' is of type 'unknown'.
+src/modules/study/hooks/useStudySession.ts(57,103): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'StudySessionResponse'.
+src/pages/chat/index.ts(6,15): error TS2307: Cannot find module './types' or its corresponding type declarations.
+src/pages/chat/index.ts(7,15): error TS2307: Cannot find module './constants' or its corresponding type declarations.
+src/pages/dashboard/components/activity/ActivityHeatmap.tsx(3,17): error TS6133: 'TrendingUp' is declared but its value is never read.
+src/pages/dashboard/components/activity/ActivityHeatmap.tsx(66,84): error TS2769: No overload matches this call.
+  Overload 1 of 4, '(value: string | number | Date): Date', gave the following error.
+    Argument of type 'string | undefined' is not assignable to parameter of type 'string | number | Date'.
+      Type 'undefined' is not assignable to type 'string | number | Date'.
+  Overload 2 of 4, '(value: string | number): Date', gave the following error.
+    Argument of type 'string | undefined' is not assignable to parameter of type 'string | number'.
+      Type 'undefined' is not assignable to type 'string | number'.
+src/pages/dashboard/components/activity/ActivitySparkline.tsx(2,10): error TS6133: 'TrendingUp' is declared but its value is never read.
+src/pages/dashboard/components/activity/ActivitySparkline.tsx(99,28): error TS2532: Object is possibly 'undefined'.
+src/pages/dashboard/components/analytics/MasteryOverview.tsx(6,18): error TS6133: 'TrendingUp' is declared but its value is never read.
+src/pages/dashboard/components/analytics/StudyHeatmap.tsx(30,17): error TS2345: Argument of type '{ date: string | undefined; activity_count: number; }' is not assignable to parameter of type 'HeatmapData'.
+  Types of property 'date' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+src/pages/dashboard/components/hero/QuickStats.tsx(14,47): error TS2339: Property 'mastery_score' does not exist on type 'DashboardOverview'.
+src/pages/dashboard/components/hero/QuickStats.tsx(16,54): error TS2339: Property 'minutes_studied_today' does not exist on type 'DashboardOverview'.
+src/pages/dashboard/components/intelligence/ContextCard.tsx(2,1): error TS6192: All imports in import declaration are unused.
+src/pages/dashboard/components/intelligence/ContextCard.tsx(3,10): error TS6133: 'Lightbulb' is declared but its value is never read.
+src/pages/dashboard/components/intelligence/ContextCard.tsx(4,1): error TS6133: 'cn' is declared but its value is never read.
+src/pages/dashboard/components/intelligence/MilestoneCard.tsx(3,1): error TS6133: 'Badge' is declared but its value is never read.
+src/pages/dashboard/components/intelligence/MilestoneCard.tsx(4,18): error TS6133: 'Share2' is declared but its value is never read.
+src/pages/dashboard/components/intelligence/MilestoneCard.tsx(4,36): error TS6133: 'Star' is declared but its value is never read.
+src/pages/dashboard/components/intelligence/MilestoneCard.tsx(5,1): error TS6192: All imports in import declaration are unused.
+src/pages/dashboard/components/intelligence/MilestoneCard.tsx(11,44): error TS6133: 'onShare' is declared but its value is never read.
+src/pages/dashboard/components/intelligence/NextActionCard.tsx(3,1): error TS6133: 'Badge' is declared but its value is never read.
+src/pages/dashboard/components/intelligence/NextActionCard.tsx(4,1): error TS6133: 'Progress' is declared but its value is never read.
+src/pages/dashboard/components/intelligence/WeakAreaCard.tsx(6,23): error TS6133: 'TrendingDown' is declared but its value is never read.
+src/pages/dashboard/components/intelligence/WeakAreaCard.tsx(6,37): error TS6133: 'Target' is declared but its value is never read.
+src/pages/dashboard/components/main-area/FocusQueue.tsx(62,13): error TS2322: Type '{ section: PrioritySection; onItemClick: (itemId: any) => void; onDismiss: (itemId: string) => void; defaultExpanded: boolean; }' is not assignable to type 'IntrinsicAttributes & QueueSectionProps'.
+  Property 'onItemClick' does not exist on type 'IntrinsicAttributes & QueueSectionProps'.
+src/pages/dashboard/components/main-area/FocusQueue.tsx(62,27): error TS7006: Parameter 'itemId' implicitly has an 'any' type.
+src/pages/dashboard/components/main-area/IntelligencePanel.tsx(84,53): error TS6133: 'index' is declared but its value is never read.
+src/pages/dashboard/components/main-area/KnowledgeGraph.tsx(3,1): error TS6192: All imports in import declaration are unused.
+src/pages/dashboard/components/main-area/KnowledgeGraph.tsx(4,1): error TS6133: 'Button' is declared but its value is never read.
+src/pages/dashboard/components/main-area/KnowledgeGraph.tsx(7,29): error TS2307: Cannot find module '../graph/GraphCanvas' or its corresponding type declarations.
+src/pages/dashboard/components/main-area/KnowledgeGraph.tsx(8,31): error TS2307: Cannot find module '../graph/GraphControls' or its corresponding type declarations.
+src/pages/dashboard/components/main-area/KnowledgeGraph.tsx(9,33): error TS2307: Cannot find module '../graph/NodeDetailModal' or its corresponding type declarations.
+src/pages/dashboard/components/main-area/KnowledgeGraph.tsx(22,12): error TS6133: 'isFullscreen' is declared but its value is never read.
+src/pages/dashboard/components/main-area/KnowledgeGraph.tsx(22,26): error TS6133: 'setIsFullscreen' is declared but its value is never read.
+src/pages/dashboard/components/pathways/LearningPath.tsx(7,10): error TS6133: 'CheckCircle2' is declared but its value is never read.
+src/pages/dashboard/components/pathways/LearningPath.tsx(7,32): error TS6133: 'Lock' is declared but its value is never read.
+src/pages/dashboard/components/pathways/LearningPath.tsx(7,38): error TS6133: 'AlertCircle' is declared but its value is never read.
+src/pages/dashboard/components/pathways/LearningPath.tsx(8,1): error TS6133: 'cn' is declared but its value is never read.
+src/pages/dashboard/components/pathways/LearningPath.tsx(72,21): error TS2322: Type '{ key: string; topic: { id: string; title: string; status: string; completionPercentage: number; accuracy: number; reviewCount: any; prerequisites: never[]; deckId: any; }; index: number; }' is not assignable to type 'IntrinsicAttributes'.
+  Property 'topic' does not exist on type 'IntrinsicAttributes'.
+src/pages/dashboard/components/priority/QueueItem.tsx(8,49): error TS2307: Cannot find module '../../types/queue.types' or its corresponding type declarations.
+src/pages/dashboard/components/priority/QueueItem.tsx(85,49): error TS2322: Type '{ priority: any; showIcon: boolean; className: string; }' is not assignable to type 'IntrinsicAttributes & PriorityBadgeProps'.
+  Property 'showIcon' does not exist on type 'IntrinsicAttributes & PriorityBadgeProps'.
+src/pages/dashboard/components/shared/StatCard.tsx(1,1): error TS6133: 'React' is declared but its value is never read.
+src/pages/dashboard/components/shared/StatCard.tsx(2,1): error TS6133: 'motion' is declared but its value is never read.
+src/pages/dashboard/components/shared/StatCard.tsx(47,9): error TS6133: 'variant' is declared but its value is never read.
+src/pages/dashboard/components/shared/StatCard.tsx(79,14): error TS2604: JSX element type 'TrendIcon' does not have any construct or call signatures.
+src/pages/dashboard/components/shared/StatCard.tsx(79,14): error TS2786: 'TrendIcon' cannot be used as a JSX component.
+  Its type 'ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>> | undefined' is not a valid JSX element type.
+    Type 'undefined' is not assignable to type 'ElementType'.
+src/pages/dashboard/hooks/useActivityData.ts(4,28): error TS6196: 'PerformanceTrend' is declared but never used.
+src/pages/dashboard/hooks/useActivityData.ts(140,34): error TS18048: 'dayData' is possibly 'undefined'.
+src/pages/dashboard/hooks/useActivityData.ts(145,17): error TS18048: 'dayData' is possibly 'undefined'.
+src/pages/dashboard/hooks/useActivityData.ts(197,21): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/pages/dashboard/hooks/useActivityData.ts(197,43): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/pages/dashboard/hooks/useFocusQueue.ts(3,15): error TS2305: Module '"../types/priority.types"' has no exported member 'PriorityItem'.
+src/pages/dashboard/hooks/useFocusQueue.ts(3,29): error TS2305: Module '"../types/priority.types"' has no exported member 'PrioritySection'.
+src/pages/dashboard/hooks/useFocusQueue.ts(5,1): error TS6133: 'formatDueDate' is declared but its value is never read.
+src/pages/dashboard/hooks/useIntelligence.ts(10,1): error TS6133: 'formatRelativeTime' is declared but its value is never read.
+src/pages/dashboard/hooks/useIntelligence.ts(102,37): error TS2532: Object is possibly 'undefined'.
+src/pages/dashboard/hooks/useIntelligence.ts(106,36): error TS18048: 'worstArea' is possibly 'undefined'.
+src/pages/dashboard/hooks/useIntelligence.ts(107,46): error TS18048: 'worstArea' is possibly 'undefined'.
+src/pages/dashboard/hooks/useIntelligence.ts(108,27): error TS18048: 'worstArea' is possibly 'undefined'.
+src/pages/dashboard/hooks/useIntelligence.ts(111,38): error TS18048: 'worstArea' is possibly 'undefined'.
+src/pages/dashboard/hooks/useIntelligence.ts(111,65): error TS18048: 'worstArea' is possibly 'undefined'.
+src/pages/dashboard/hooks/useIntelligence.ts(127,32): error TS2532: Object is possibly 'undefined'.
+src/pages/dashboard/hooks/useIntelligence.ts(134,35): error TS2532: Object is possibly 'undefined'.
+src/pages/dashboard/hooks/useIntelligence.ts(139,43): error TS2532: Object is possibly 'undefined'.
+src/pages/dashboard/hooks/useIntelligence.ts(152,42): error TS2532: Object is possibly 'undefined'.
+src/pages/dashboard/hooks/useIntelligence.ts(158,39): error TS2532: Object is possibly 'undefined'.
+src/pages/dashboard/hooks/useIntelligence.ts(168,38): error TS18048: 'pendingQuiz' is possibly 'undefined'.
+src/pages/dashboard/hooks/useIntelligence.ts(169,60): error TS18048: 'pendingQuiz' is possibly 'undefined'.
+src/pages/dashboard/hooks/useIntelligence.ts(171,35): error TS18048: 'pendingQuiz' is possibly 'undefined'.
+src/pages/dashboard/hooks/useIntelligence.ts(173,39): error TS18048: 'pendingQuiz' is possibly 'undefined'.
+src/pages/dashboard/hooks/useIntelligence.ts(183,19): error TS18048: 'bestAction' is possibly 'undefined'.
+src/pages/dashboard/hooks/useIntelligence.ts(184,20): error TS18048: 'bestAction' is possibly 'undefined'.
+src/pages/dashboard/hooks/useIntelligence.ts(185,26): error TS18048: 'bestAction' is possibly 'undefined'.
+src/pages/dashboard/hooks/useIntelligence.ts(186,23): error TS18048: 'bestAction' is possibly 'undefined'.
+src/pages/dashboard/hooks/useIntelligence.ts(188,31): error TS18048: 'bestAction' is possibly 'undefined'.
+src/pages/dashboard/hooks/useIntelligence.ts(190,24): error TS18048: 'bestAction' is possibly 'undefined'.
+src/pages/dashboard/hooks/useIntelligence.ts(191,13): error TS2322: Type 'string' is not assignable to type 'ModuleType'.
+src/pages/dashboard/hooks/useIntelligence.ts(191,25): error TS18048: 'bestAction' is possibly 'undefined'.
+src/pages/dashboard/hooks/useIntelligence.ts(193,25): error TS18048: 'bestAction' is possibly 'undefined'.
+src/pages/dashboard/hooks/useIntelligence.ts(245,22): error TS2339: Property 'total_reviews' does not exist on type 'DashboardOverview'.
+src/pages/dashboard/hooks/useIntelligence.ts(245,48): error TS2339: Property 'total_reviews' does not exist on type 'DashboardOverview'.
+src/pages/dashboard/hooks/useIntelligence.ts(249,46): error TS2339: Property 'total_reviews' does not exist on type 'DashboardOverview'.
+src/pages/dashboard/hooks/useIntelligence.ts(260,37): error TS2339: Property 'total_reviews' does not exist on type 'DashboardOverview'.
+src/pages/dashboard/hooks/useIntelligence.ts(261,56): error TS2339: Property 'total_reviews' does not exist on type 'DashboardOverview'.
+src/pages/dashboard/hooks/useIntelligence.ts(356,48): error TS6133: 'data' is declared but its value is never read.
+src/pages/dashboard/hooks/useIntelligence.ts(378,43): error TS6133: 'data' is declared but its value is never read.
+src/pages/dashboard/hooks/useIntelligence.ts(385,41): error TS6133: 'data' is declared but its value is never read.
+src/pages/dashboard/hooks/useKnowledgeGraph.ts(3,37): error TS6196: 'GraphLink' is declared but never used.
+src/pages/dashboard/hooks/useKnowledgeGraph.ts(3,48): error TS2724: '"../types/graph.types"' has no exported member named 'GraphFilters'. Did you mean 'GraphFilter'?
+src/pages/dashboard/hooks/useKnowledgeGraph.ts(84,20): error TS7006: Parameter 'prev' implicitly has an 'any' type.
+src/pages/dashboard/hooks/useKnowledgeGraph.ts(91,20): error TS7006: Parameter 'prev' implicitly has an 'any' type.
+src/pages/dashboard/hooks/useLearningPath.ts(84,3): error TS2322: Type 'LearningPathway | null | undefined' is not assignable to type 'LearningPathway | null'.
+  Type 'undefined' is not assignable to type 'LearningPathway | null'.
+src/pages/dashboard/hooks/useSessionTracking.ts(45,11): error TS6133: 'wsRef' is declared but its value is never read.
+src/pages/dashboard/hooks/useSessionTracking.ts(186,31): error TS2345: Argument of type 'DetectedSession | undefined' is not assignable to parameter of type 'SetStateAction<DetectedSession | null>'.
+  Type 'undefined' is not assignable to type 'SetStateAction<DetectedSession | null>'.
+src/pages/dashboard/utils/dateFormatters.ts(69,5): error TS2322: Type 'string | undefined' is not assignable to type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/pages/dashboard/utils/graphTransformers.ts(118,38): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/pages/dashboard/utils/graphTransformers.ts(128,40): error TS2339: Property 'created_at' does not exist on type 'FlashcardResponse'.
+src/pages/dashboard/utils/graphTransformers.ts(204,34): error TS6133: 'nodes' is declared but its value is never read.
+src/pages/dashboard/utils/graphTransformers.ts(214,41): error TS2532: Object is possibly 'undefined'.
+src/pages/dashboard/utils/graphTransformers.ts(288,13): error TS2532: Object is possibly 'undefined'.
+src/pages/dashboard/utils/graphTransformers.ts(296,33): error TS2532: Object is possibly 'undefined'.
+src/pages/dashboard/utils/graphTransformers.ts(296,57): error TS2532: Object is possibly 'undefined'.
+src/pages/dashboard/utils/graphTransformers.ts(297,37): error TS2532: Object is possibly 'undefined'.
+src/pages/dashboard/utils/graphTransformers.ts(298,37): error TS2532: Object is possibly 'undefined'.
+src/pages/dashboard/utils/insightGenerator.ts(164,5): error TS6133: 'config' is declared but its value is never read.
+src/pages/dashboard/utils/insightGenerator.ts(238,5): error TS6133: 'config' is declared but its value is never read.
+src/pages/dashboard/utils/insightGenerator.ts(269,40): error TS2532: Object is possibly 'undefined'.
+src/pages/dashboard/utils/insightGenerator.ts(284,38): error TS2532: Object is possibly 'undefined'.
+src/pages/dashboard/utils/insightGenerator.ts(291,40): error TS2532: Object is possibly 'undefined'.
+src/pages/dashboard/utils/pathwayGenerator.ts(72,9): error TS6133: 'inProgressCards' is declared but its value is never read.
+src/pages/dashboard/utils/sessionDetector.ts(117,39): error TS18048: 'lastActivity' is possibly 'undefined'.
+src/pages/dashboard/utils/sessionDetector.ts(164,30): error TS2532: Object is possibly 'undefined'.
+src/pages/dashboard/utils/sessionDetector.ts(221,38): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/pages/dashboard/utils/sessionDetector.ts(223,21): error TS2345: Argument of type 'string | undefined' is not assignable to parameter of type 'string'.
+  Type 'undefined' is not assignable to type 'string'.
+src/pages/documents/components/list/DocumentCard.tsx(42,13): error TS6133: 'index' is declared but its value is never read.
+src/pages/documents/components/list/DocumentGrid.tsx(2,10): error TS6133: 'motion' is declared but its value is never read.
+src/pages/documents/components/list/DocumentGrid.tsx(4,1): error TS6133: 'cn' is declared but its value is never read.
+src/pages/documents/components/list/DocumentGrid.tsx(38,29): error TS2322: Type '{ key: number; doc: EnhancedDocument; index: number; onSelect: (doc: EnhancedDocument) => void; onDelete: () => void; logAction: (msg: string) => void; }' is not assignable to type 'IntrinsicAttributes & DocumentCardProps & RefAttributes<HTMLDivElement>'.
+  Property 'onDelete' does not exist on type 'IntrinsicAttributes & DocumentCardProps & RefAttributes<HTMLDivElement>'.
+src/pages/documents/components/viewer/ChunkExplorer.tsx(16,71): error TS6133: 'documentId' is declared but its value is never read.
+src/pages/flashcards/DeckDetailPage.tsx(158,37): error TS2322: Type 'FlashcardResponse[]' is not assignable to type 'Flashcard[]'.
+  Type 'FlashcardResponse' is missing the following properties from type 'Flashcard': easiness_factor, next_review_date, created_at, updated_at
+src/pages/flashcards/components/card/FlashcardEditor.tsx(7,20): error TS6133: 'Save' is declared but its value is never read.
+src/pages/flashcards/components/card/FlashcardEditor.tsx(26,5): error TS6133: 'mode' is declared but its value is never read.
+src/pages/flashcards/components/deck/DeckList.tsx(46,5): error TS2322: Type 'DeckColor | undefined' is not assignable to type 'DeckColor'.
+  Type 'undefined' is not assignable to type 'DeckColor'.
+src/pages/flashcards/hooks/useCards.ts(93,32): error TS6133: 'variables' is declared but its value is never read.
+src/pages/flashcards/hooks/useCards.ts(186,10): error TS7006: Parameter 'acc' implicitly has an 'any' type.
+src/pages/flashcards/hooks/useCards.ts(186,15): error TS7006: Parameter 'card' implicitly has an 'any' type.
+src/pages/notes/components/editor/EditorToolbar.tsx(9,43): error TS6133: 'Bot' is declared but its value is never read.
+src/pages/notes/components/editor/MarkdownPreview.tsx(18,26): error TS2339: Property 'inline' does not exist on type 'ClassAttributes<HTMLElement> & HTMLAttributes<HTMLElement> & ExtraProps'.
+src/pages/notes/components/editor/MarkdownPreview.tsx(22,21): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(props: SyntaxHighlighterProps): SyntaxHighlighter', gave the following error.
+    Type 'CSSProperties | { [key: string]: CSSProperties; }' is not assignable to type '{ [key: string]: CSSProperties; } | undefined'.
+      Type 'CSSProperties' is not assignable to type '{ [key: string]: CSSProperties; }'.
+        Index signature for type 'string' is missing in type 'Properties<string | number, string & {}>'.
+  Overload 2 of 2, '(props: SyntaxHighlighterProps, context: any): SyntaxHighlighter', gave the following error.
+    Type 'CSSProperties | { [key: string]: CSSProperties; }' is not assignable to type '{ [key: string]: CSSProperties; } | undefined'.
+      Type 'CSSProperties' is not assignable to type '{ [key: string]: CSSProperties; }'.
+        Index signature for type 'string' is missing in type 'Properties<string | number, string & {}>'.
+src/pages/notes/components/list/NoteSearch.tsx(25,15): error TS7030: Not all code paths return a value.
+src/pages/notes/hooks/useNoteEditor.ts(25,28): error TS2339: Property 'tags' does not exist on type 'NoteResponse'.
+src/pages/notes/utils/markdown.ts(122,20): error TS2532: Object is possibly 'undefined'.
+src/pages/notes/utils/markdown.ts(123,19): error TS2532: Object is possibly 'undefined'.
+src/pages/notes/utils/noteOrganizer.ts(84,18): error TS2339: Property 'tags' does not exist on type 'NoteResponse'.
+src/pages/notes/utils/noteOrganizer.ts(84,31): error TS2339: Property 'tags' does not exist on type 'NoteResponse'.
+src/pages/notes/utils/noteOrganizer.ts(85,18): error TS2339: Property 'tags' does not exist on type 'NoteResponse'.
+src/pages/notes/utils/noteOrganizer.ts(85,32): error TS7006: Parameter 'tag' implicitly has an 'any' type.
+src/pages/notes/utils/noteOrganizer.ts(110,15): error TS2339: Property 'tags' does not exist on type 'NoteResponse'.
+src/pages/notes/utils/noteOrganizer.ts(110,28): error TS2339: Property 'tags' does not exist on type 'NoteResponse'.
+src/pages/notes/utils/noteOrganizer.ts(114,35): error TS2339: Property 'tags' does not exist on type 'NoteResponse'.
+src/pages/notes/utils/noteOrganizer.ts(119,31): error TS2339: Property 'tags' does not exist on type 'NoteResponse'.
+src/pages/notes/utils/noteOrganizer.ts(119,51): error TS7006: Parameter 'tag' implicitly has an 'any' type.
+src/pages/notes/utils/noteOrganizer.ts(135,18): error TS2339: Property 'tags' does not exist on type 'NoteResponse'.
+src/pages/notes/utils/noteOrganizer.ts(136,18): error TS2339: Property 'tags' does not exist on type 'NoteResponse'.
+src/pages/notes/utils/noteOrganizer.ts(136,32): error TS7006: Parameter 'tag' implicitly has an 'any' type.
+src/pages/notes/utils/noteOrganizer.ts(149,18): error TS2339: Property 'tags' does not exist on type 'NoteResponse'.
+src/pages/notes/utils/noteOrganizer.ts(150,18): error TS2339: Property 'tags' does not exist on type 'NoteResponse'.
+src/pages/notes/utils/noteOrganizer.ts(150,32): error TS7006: Parameter 'tag' implicitly has an 'any' type.
+src/pages/notes/utils/noteOrganizer.ts(206,9): error TS2322: Type 'number | null' is not assignable to type 'number | undefined'.
+  Type 'null' is not assignable to type 'number | undefined'.
+src/pages/quizzes/QuizTakePage.tsx(8,47): error TS6196: 'AnswerResult' is declared but never used.
+src/pages/quizzes/components/list/QuizCard.tsx(6,15): error TS2305: Module '"../../types/quizzes.types"' has no exported member 'DifficultyColors'.
+src/pages/quizzes/components/results/QuizResultsView.tsx(7,15): error TS2305: Module '"../../types/quizzes.types"' has no exported member 'QuizPerformance'.
+src/pages/quizzes/components/results/ResultsSummary.tsx(5,15): error TS2305: Module '"../../types/quizzes.types"' has no exported member 'QuizPerformance'.
+src/pages/quizzes/components/shared/QuizStats.tsx(4,15): error TS2305: Module '"../../types/quizzes.types"' has no exported member 'QuizStatistics'.
+src/pages/quizzes/components/taker/QuestionCard.tsx(4,15): error TS2305: Module '"../../types/quizzes.types"' has no exported member 'ParsedQuestion'.
+src/pages/quizzes/hooks/useQuizAttempt.ts(5,5): error TS2305: Module '"@/api/generated"' has no exported member 'startQuizAttemptApiV1QuizzesQuizIdStartPost'.
+src/pages/quizzes/hooks/useQuizAttempt.ts(6,5): error TS2305: Module '"@/api/generated"' has no exported member 'submitQuizAttemptApiV1QuizzesAttemptsAttemptIdSubmitPost'.
+src/pages/quizzes/hooks/useQuizAttempt.ts(10,15): error TS2305: Module '"../types/quizzes.types"' has no exported member 'GameState'.
+src/pages/quizzes/hooks/useQuizAttempt.ts(10,26): error TS2305: Module '"../types/quizzes.types"' has no exported member 'QuizAttemptState'.
+src/pages/quizzes/hooks/useQuizAttempt.ts(32,15): error TS7030: Not all code paths return a value.
+src/pages/quizzes/hooks/useQuizAttempt.ts(35,27): error TS7006: Parameter 'prev' implicitly has an 'any' type.
+src/pages/quizzes/hooks/useQuizAttempt.ts(48,64): error TS7006: Parameter 'prev' implicitly has an 'any' type.
+src/pages/quizzes/hooks/useQuizAttempt.ts(63,17): error TS2345: Argument of type '([qId, ans]: [any, any]) => { question_id: any; answer: any; }' is not assignable to parameter of type '(value: unknown, index: number, array: unknown[]) => { question_id: any; answer: any; }'.
+  Types of parameters '__0' and 'value' are incompatible.
+    Type 'unknown' is not assignable to type '[any, any]'.
+src/pages/quizzes/hooks/useQuizAttempt.ts(93,23): error TS7006: Parameter 'prev' implicitly has an 'any' type.
+src/pages/quizzes/hooks/useQuizAttempt.ts(113,23): error TS7006: Parameter 'prev' implicitly has an 'any' type.
+src/pages/quizzes/hooks/useQuizBuilder.ts(2,45): error TS2307: Cannot find module '@tantml:react-query' or its corresponding type declarations.
+src/pages/quizzes/hooks/useQuizBuilder.ts(4,10): error TS2305: Module '"@/api/generated"' has no exported member 'createQuizApiV1QuizzesPost'.
+src/pages/quizzes/hooks/useQuizBuilder.ts(4,38): error TS6133: 'QuizzesService' is declared but its value is never read.
+src/pages/study/StudyPage.tsx(3,28): error TS6133: 'BookOpen' is declared but its value is never read.
+src/pages/study/StudyPage.tsx(12,10): error TS6133: 'AuthenticationService' is declared but its value is never read.
+src/pages/study/StudyPage.tsx(51,36): error TS6133: 'session' is declared but its value is never read.
+src/pages/study/components/queue/PriorityIndicator.tsx(13,10): error TS6133: 'getPriorityColor' is declared but its value is never read.
+src/pages/study/components/session/StudySession.tsx(9,48): error TS6196: 'StudySessionType' is declared but never used.

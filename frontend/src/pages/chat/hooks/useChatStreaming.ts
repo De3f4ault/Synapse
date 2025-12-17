@@ -17,13 +17,14 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { getWebSocketManager } from '@/api/websocket/manager';
 import type { ChatMessageResponse } from '@/api/generated';
+import { MessageRole } from '@/api/generated';
 
 // ==================== TYPES ====================
 
 export type WebSocketState = 'connecting' | 'connected' | 'disconnected' | 'error';
 
 interface ChatWSMessage {
-    type: 'subscribed' | 'thinking' | 'token' | 'sources' | 'complete' | 'error';
+    type: 'subscribed' | 'thinking' | 'token' | 'sources' | 'complete' | 'error' | 'tool_call' | 'tool_result';
     channel?: string;
     data?: any;
     event?: string;
@@ -73,7 +74,7 @@ export const useChatStreaming = ({
      * Clear all streaming state
      */
     const clearStreamingState = useCallback(() => {
-        console.log('[Chat] 🧹 Clearing streaming state');
+        console.log('[Chat] Clearing streaming state');
         setIsStreaming(false);
         setStreamingContent('');
         setStreamingThinking('');
@@ -87,14 +88,14 @@ export const useChatStreaming = ({
         const eventType = message.type || message.event;
         const eventData = message.data || message;
 
-        console.log('[Chat] 📨 Received:', eventType, message);
+        console.log('[Chat] Received:', eventType, message);
 
         // Call external handler if provided
         onMessage?.(message);
 
         switch (eventType) {
             case 'subscribed':
-                console.log('[Chat] ✅ Subscribed to channel:', message.channel);
+                console.log('[Chat] Subscribed to channel:', message.channel);
                 break;
 
             case 'thinking':
@@ -116,7 +117,7 @@ export const useChatStreaming = ({
                 break;
 
             case 'complete':
-                console.log('[Chat] ✅ Stream complete:', {
+                console.log('[Chat] Stream complete:', {
                     total_tokens: eventData.total_tokens,
                     model: eventData.model_used,
                 });
@@ -133,7 +134,7 @@ export const useChatStreaming = ({
                  * - Avoids stale data and race conditions
                  */
                 if (sessionId) {
-                    console.log('[Chat] 🔄 Invalidating queries to fetch final message');
+                    console.log('[Chat] Invalidating queries to fetch final message');
                     queryClient.invalidateQueries({
                         queryKey: ['chat-messages', sessionId],
                         exact: true,
@@ -145,32 +146,42 @@ export const useChatStreaming = ({
                 break;
 
             case 'error':
-                console.error('[Chat] ❌ Server error:', eventData.message);
+                console.error('[Chat] Server error:', eventData.message);
                 clearStreamingState();
                 break;
 
+            case 'tool_call':
+                // AI is calling a tool (e.g., search, plan)
+                console.log('[Chat] Tool call:', eventData.name, eventData.args);
+                break;
+
+            case 'tool_result':
+                // Tool execution completed
+                console.log('[Chat] Tool result:', eventData.name, eventData.result);
+                break;
+
             default:
-                console.warn('[Chat] ⚠️ Unknown message type:', eventType);
+                console.warn('[Chat] Unknown message type:', eventType);
         }
     }, [onMessage, sessionId, queryClient, clearStreamingState, streamingModel]);
 
     // ==================== CONNECTION & SUBSCRIPTION ====================
 
-    const subscribeToChannel = useCallback((channel: string) => {
+    const subscribeToChannel = useCallback((channel: string): void => {
         if (subscribedChannelRef.current === channel) {
-            console.log('[Chat] ℹ️ Already subscribed to:', channel);
+            console.log('[Chat] Already subscribed to:', channel);
             return;
         }
 
         // Unsubscribe from previous channel
         if (unsubscribeRef.current) {
-            console.log('[Chat] 🔌 Unsubscribing from old channel:', subscribedChannelRef.current);
+            console.log('[Chat] Unsubscribing from old channel:', subscribedChannelRef.current);
             unsubscribeRef.current();
             unsubscribeRef.current = null;
             subscribedChannelRef.current = null;
         }
 
-        console.log('[Chat] 🔌 Subscribing to channel:', channel);
+        console.log('[Chat] Subscribing to channel:', channel);
 
         // Frontend-side subscription
         const unsub = manager.subscribe(channel, handleMessage);
@@ -180,7 +191,7 @@ export const useChatStreaming = ({
         // Send subscription to backend
         const sendSubscribe = () => {
             if (manager.isConnected() && manager.getConnectionState() === 'connected') {
-                console.log('[Chat] 📡 Sending subscribe to backend:', channel);
+                console.log('[Chat] Sending subscribe to backend:', channel);
                 manager.send({
                     type: 'subscribe',
                     channel,
@@ -192,27 +203,27 @@ export const useChatStreaming = ({
 
         // Try immediately, retry if needed
         if (!sendSubscribe()) {
-            console.log('[Chat] ⏳ Connection not ready, will retry...');
-            const retryTimer = setTimeout(() => {
+            console.log('[Chat] Connection not ready, will retry...');
+            setTimeout(() => {
                 if (subscribedChannelRef.current === channel) {
                     if (sendSubscribe()) {
-                        console.log('[Chat] ✅ Subscribe sent after retry');
+                        console.log('[Chat] Subscribe sent after retry');
                     } else {
-                        console.error('[Chat] ❌ Failed to send subscribe');
+                        console.error('[Chat] Failed to send subscribe');
                     }
                 }
             }, 100);
-            return () => clearTimeout(retryTimer);
+            // Note: Timer self-cleans with channel check above
         }
     }, [manager, handleMessage]);
 
     const unsubscribeFromChannel = useCallback(() => {
         if (unsubscribeRef.current) {
-            console.log('[Chat] 🔌 Unsubscribing from:', subscribedChannelRef.current);
+            console.log('[Chat] Unsubscribing from:', subscribedChannelRef.current);
 
             // Send unsubscribe to server
             if (subscribedChannelRef.current && manager.isConnected()) {
-                console.log('[Chat] 📡 Sending unsubscribe to backend');
+                console.log('[Chat] Sending unsubscribe to backend');
                 manager.send({
                     type: 'unsubscribe',
                     channel: subscribedChannelRef.current,
@@ -228,11 +239,11 @@ export const useChatStreaming = ({
     // ==================== SEND MESSAGE ====================
 
     const sendMessage = useCallback((content: string) => {
-        console.log('[Chat] 📤 sendMessage:', {
+        console.log('[Chat] sendMessage:', {
             contentLength: content.length,
             isConnected: manager.isConnected(),
-                    sessionId,
-                    subscribedTo: subscribedChannelRef.current,
+            sessionId,
+            subscribedTo: subscribedChannelRef.current,
         });
 
         if (!manager.isConnected()) {
@@ -261,17 +272,17 @@ export const useChatStreaming = ({
              */
             const optimisticUserMessage: ChatMessageResponse = {
                 id: -Date.now(), // Negative ID indicates optimistic
-                                    session_id: sessionId,
-                                    role: 'user',
-                                    content,
-                                    tokens: Math.ceil(content.length / 4),
-                                    model_used: null,
-                                    function_calls: null,
-                                    grounding_sources: null,
-                                    created_at: new Date().toISOString(),
+                session_id: sessionId,
+                role: MessageRole.USER,
+                content,
+                tokens: Math.ceil(content.length / 4),
+                model_used: null,
+                function_calls: null,
+                grounding_sources: null,
+                created_at: new Date().toISOString(),
             };
 
-            console.log('[Chat] 🔮 Adding optimistic user message');
+            console.log('[Chat] Adding optimistic user message');
             queryClient.setQueryData<ChatMessageResponse[]>(
                 ['chat-messages', sessionId],
                 (old = []) => [...old, optimisticUserMessage]
@@ -284,14 +295,14 @@ export const useChatStreaming = ({
                 content,
             });
 
-            console.log('[Chat] ✅ Message sent');
+            console.log('[Chat] Message sent');
 
             // Clear any previous streaming state
             clearStreamingState();
 
             return true;
         } catch (error) {
-            console.error('[Chat] ❌ Failed to send:', error);
+            console.error('[Chat] Failed to send:', error);
             throw error;
         }
     }, [manager, sessionId, queryClient, clearStreamingState, getChannel]);
@@ -311,18 +322,18 @@ export const useChatStreaming = ({
     // Auto-connect manager if not connected
     useEffect(() => {
         if (autoConnect && !manager.isConnected()) {
-            console.log('[Chat] 🔌 Auto-connecting WebSocketManager');
+            console.log('[Chat] Auto-connecting WebSocketManager');
             manager.connect();
         }
     }, [manager, autoConnect]);
 
     // Subscribe/unsubscribe based on sessionId
     useEffect(() => {
-        console.log('[Chat] 🔄 Effect triggered:', {
+        console.log('[Chat] Effect triggered:', {
             sessionId,
             autoConnect,
             isConnected: manager.isConnected(),
-                    currentChannel: subscribedChannelRef.current,
+            currentChannel: subscribedChannelRef.current,
         });
 
         isMountedRef.current = true;
@@ -339,7 +350,7 @@ export const useChatStreaming = ({
             subscribeToChannel(channel);
         } else {
             // Wait for connection
-            console.log('[Chat] ⏳ Waiting for WebSocket connection...');
+            console.log('[Chat] Waiting for WebSocket connection...');
             const unsub = manager.onStateChange((state) => {
                 if (state === 'connected' && isMountedRef.current) {
                     subscribeToChannel(channel);
@@ -360,7 +371,7 @@ export const useChatStreaming = ({
     // Cleanup on unmount
     useEffect(() => {
         return () => {
-            console.log('[Chat] 🧹 Component unmounting');
+            console.log('[Chat] Component unmounting');
             isMountedRef.current = false;
         };
     }, []);

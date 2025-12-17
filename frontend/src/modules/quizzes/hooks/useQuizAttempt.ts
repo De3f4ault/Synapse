@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-    startQuizAttemptApiV1QuizzesQuizIdStartPost,
-    submitQuizAttemptApiV1QuizzesAttemptsAttemptIdSubmitPost,
+    QuizzesService,
 } from '@/api/generated';
 import { QUERY_KEYS } from '@/lib/constants';
 import { useToast } from '@/hooks/use-toast';
@@ -27,23 +26,24 @@ export function useQuizAttempt({ quizId, onComplete }: UseQuizAttemptOptions) {
 
     // Start quiz mutation
     const { mutate: startQuiz, isPending: isStarting } = useMutation({
-        mutationFn: () => startQuizAttemptApiV1QuizzesQuizIdStartPost({ quizId }),
-                                                                     onSuccess: (result) => {
-                                                                         setAttempt(result);
-                                                                         setStartTime(Date.now());
-                                                                         setAnswers(new Map());
-                                                                         toast({
-                                                                             title: 'Quiz Started',
-                                                                             description: `${result.questions.length} questions to answer`,
-                                                                         });
-                                                                     },
-                                                                     onError: (error) => {
-                                                                         toast({
-                                                                             title: 'Failed to Start Quiz',
-                                                                             description: error instanceof Error ? error.message : 'An error occurred',
-                                                                             variant: 'destructive',
-                                                                         });
-                                                                     },
+
+        mutationFn: () => QuizzesService.startQuizAttemptApiV1QuizzesQuizIdStartPost(quizId),
+        onSuccess: (result) => {
+            setAttempt(result);
+            setStartTime(Date.now());
+            setAnswers(new Map());
+            toast({
+                title: 'Quiz Started',
+                description: `${result.questions.length} questions to answer`,
+            });
+        },
+        onError: (error) => {
+            toast({
+                title: 'Failed to Start Quiz',
+                description: error instanceof Error ? error.message : 'An error occurred',
+                variant: 'destructive',
+            });
+        },
     });
 
     // Submit quiz mutation
@@ -58,10 +58,10 @@ export function useQuizAttempt({ quizId, onComplete }: UseQuizAttemptOptions) {
                 })
             );
 
-            return submitQuizAttemptApiV1QuizzesAttemptsAttemptIdSubmitPost({
-                attemptId: attempt.attempt_id,
-                requestBody: answersList,
-            });
+            return QuizzesService.submitQuizAttemptApiV1QuizzesAttemptsAttemptIdSubmitPost(
+                attempt.attempt_id,
+                answersList
+            );
         },
         onSuccess: (result) => {
             toast({

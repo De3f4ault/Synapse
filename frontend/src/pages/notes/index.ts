@@ -52,13 +52,13 @@ export {
 export {
     sortNotes,
     groupNotesByDate,
-    groupNotesByTag,
-    findRelatedNotes,
-    getAllTags,
-    getTagStats,
-    flattenTree,
-    getNoteDepth,
-    getNotePath,
+    //  groupNotesByTag,
+    //  findRelatedNotes,
+    //  getAllTags,
+    //  getTagStats,
+    //  flattenTree,
+    //  getNoteDepth,
+    //  getNotePath,
 } from './utils/noteOrganizer';
 
 // Types

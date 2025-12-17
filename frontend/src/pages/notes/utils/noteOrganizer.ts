@@ -24,11 +24,11 @@ export function sortNotes(
                 break;
             case 'created':
                 comparison =
-                new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+                    new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
                 break;
             case 'updated':
                 comparison =
-                new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime();
+                    new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime();
                 break;
             case 'size':
                 comparison = (a.content?.length || 0) - (b.content?.length || 0);
@@ -74,137 +74,36 @@ export function groupNotesByDate(notes: NoteResponse[]): Map<string, NoteRespons
     return groups;
 }
 
-/**
- * Group notes by tags
- */
+// Tag functions removed as tags are not supported in NoteResponse
+/*
 export function groupNotesByTag(notes: NoteResponse[]): Map<string, NoteResponse[]> {
-    const groups = new Map<string, NoteResponse[]>();
-
-    notes.forEach((note) => {
-        if (note.tags && note.tags.length > 0) {
-            note.tags.forEach((tag) => {
-                if (!groups.has(tag)) {
-                    groups.set(tag, []);
-                }
-                groups.get(tag)!.push(note);
-            });
-        } else {
-            if (!groups.has('Untagged')) {
-                groups.set('Untagged', []);
-            }
-            groups.get('Untagged')!.push(note);
-        }
-    });
-
-    return groups;
+    // ...
 }
 
-/**
- * Find notes related to a given note (by tags)
- */
-export function findRelatedNotes(
-    note: NoteResponse,
-    allNotes: NoteResponse[],
-    limit: number = 5
-): NoteResponse[] {
-    if (!note.tags || note.tags.length === 0) {
-        return [];
-    }
-
-    const noteTags = new Set(note.tags);
-
-    const scored = allNotes
-    .filter((n) => n.id !== note.id)
-    .map((n) => {
-        const commonTags = (n.tags || []).filter((tag) => noteTags.has(tag)).length;
-        return { note: n, score: commonTags };
-    })
-    .filter((item) => item.score > 0)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, limit);
-
-    return scored.map((item) => item.note);
+export function findRelatedNotes(...): NoteResponse[] {
+    // ...
 }
 
-/**
- * Get all unique tags from notes
- */
-export function getAllTags(notes: NoteResponse[]): string[] {
-    const tagSet = new Set<string>();
-    notes.forEach((note) => {
-        if (note.tags) {
-            note.tags.forEach((tag) => tagSet.add(tag));
-        }
-    });
-    return Array.from(tagSet).sort();
+export function getAllTags(...): string[] {
+    // ...
 }
 
-/**
- * Get tag usage statistics
- */
-export function getTagStats(notes: NoteResponse[]): Map<string, number> {
-    const tagCounts = new Map<string, number>();
-
-    notes.forEach((note) => {
-        if (note.tags) {
-            note.tags.forEach((tag) => {
-                tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1);
-            });
-        }
-    });
-
-    return new Map([...tagCounts.entries()].sort((a, b) => b[1] - a[1]));
+export function getTagStats(...): Map<string, number> {
+    // ...
 }
+*/
 
-/**
- * Flatten tree structure to array
- */
+// Tree functions removed as NoteResponse does not support parent_id/children
+/*
 export function flattenTree(tree: NoteTreeItem[]): NoteResponse[] {
-    const result: NoteResponse[] = [];
-
-    const traverse = (items: NoteTreeItem[]) => {
-        items.forEach((item) => {
-            result.push(item);
-            if (item.children && item.children.length > 0) {
-                traverse(item.children);
-            }
-        });
-    };
-
-    traverse(tree);
-    return result;
+    // ...
 }
 
-/**
- * Get note depth in tree
- */
 export function getNoteDepth(noteId: number, notes: NoteResponse[]): number {
-    let depth = 0;
-    let currentId: number | undefined = noteId;
-
-    while (currentId) {
-        const note = notes.find((n) => n.id === currentId);
-        if (!note || !note.parent_id) break;
-        depth++;
-        currentId = note.parent_id;
-    }
-
-    return depth;
+    // ...
 }
 
-/**
- * Get breadcrumb path for a note
- */
 export function getNotePath(noteId: number, notes: NoteResponse[]): NoteResponse[] {
-    const path: NoteResponse[] = [];
-    let currentId: number | undefined = noteId;
-
-    while (currentId) {
-        const note = notes.find((n) => n.id === currentId);
-        if (!note) break;
-        path.unshift(note);
-        currentId = note.parent_id;
-    }
-
-    return path;
+    // ...
 }
+*/
