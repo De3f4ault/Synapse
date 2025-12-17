@@ -47,9 +47,15 @@ class QdrantVectorRetriever(BaseRetriever):
         self.searcher = VectorSearch(self.qdrant_client)
         self.top_k = top_k
         
-        logger.info("qdrant_retriever_initialized", top_k=top_k)
-    
     def _retrieve(self, query_bundle: QueryBundle) -> List[NodeWithScore]:
+        """
+        Synchronous retrieve implementation.
+        Required by BaseRetriever abstract base class.
+        """
+        import asyncio
+        return asyncio.run(self._aretrieve(query_bundle))
+
+    async def _aretrieve(self, query_bundle: QueryBundle) -> List[NodeWithScore]:
         """
         Retrieve nodes from Qdrant.
         

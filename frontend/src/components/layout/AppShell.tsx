@@ -8,7 +8,7 @@
 import React from 'react';
 import { Outlet } from 'react-router-dom';
 import { Header } from './Header';
-import { cn } from '@/lib/utils';
+
 import { GridPattern } from '@/components/ui/grid-pattern';
 
 /**

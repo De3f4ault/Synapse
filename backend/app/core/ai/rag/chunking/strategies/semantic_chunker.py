@@ -2,7 +2,7 @@
 
 from typing import List, Dict
 import re
-import struct log
+import structlog
 
 logger = structlog.get_logger(__name__)
 

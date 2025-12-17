@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 import { Logo } from "@/components/ui/logo";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+
 import type { ChatMessageResponse } from "@/api/generated";
 
 interface ChatMessageProps {

@@ -100,58 +100,57 @@ app/
 
 ## Production Deployment
 
-For production deployment with Nginx reverse proxy, SSL/HTTPS, and Gunicorn:
+Synapse uses **Supervisor** for process management in production.
 
-**Quick Start:**
-
-```bash
-# Build frontend and install dependencies
-make prod-build
-
-# Install and configure Nginx
-sudo make nginx-install
-
-# Generate SSL certificates (self-signed for local dev)
-sudo make ssl-setup
-
-# Start production server
-make prod-start
-```
-
-**Using Systemd (recommended):**
+### Quick Start
 
 ```bash
-# Install systemd service
-sudo make prod-install-service
+# Build frontend
+cd ../frontend && npm run build
 
-# Manage service
-sudo systemctl start synapse
-sudo systemctl status synapse
-sudo systemctl enable synapse  # Auto-start on boot
+# Start all services with Supervisor
+make supervisor-start
 ```
 
-**Available Production Commands:**
+### Service Management
 
-- `make prod-build` - Build frontend and install Gunicorn
-- `make nginx-install` - Install and configure Nginx
-- `make ssl-setup` - Generate SSL certificates
-- `make prod-start` - Start production server
-- `make prod-stop` - Stop production server
-- `make prod-restart` - Restart production server
-- `make prod-status` - Check service status
-- `make prod-install-service` - Install systemd service
+```bash
+make supervisor-status   # Check service status
+make supervisor-restart  # Restart all services
+make supervisor-stop     # Stop all services
+make logs                # View service logs
+```
 
-📖 **For detailed deployment instructions, see [DEPLOYMENT.md](./DEPLOYMENT.md)**
+### Services Managed
+
+- **synapse-api**: FastAPI backend (Gunicorn + Uvicorn)
+- **celery-worker**: Background task processing
+- **celery-beat**: Periodic task scheduler
+- **qdrant**: Vector database
+
+### Configuration
+
+- Supervisor config: `config/supervisord.conf`
+- Gunicorn config: `config/gunicorn.conf.py`
+- Logs directory: `logs/`
+
+### Documentation
+
+See the `docs/` folder for detailed guides:
+
+- [Deployment Guide](docs/DEPLOYMENT.md) - Full production deployment instructions
+- [Celery Quickstart](docs/CELERY_QUICKSTART.md) - Getting started with background tasks
+- [Celery Deployment](docs/CELERY_DEPLOYMENT.md) - Production Celery setup
+- [Multi-Distro Support](docs/MULTI_DISTRO_SUPPORT.md) - Linux distribution compatibility
 
 ## Makefile Commands
 
 Use `make help` to see all available commands:
 
 ```bash
-make help           # Show all available commands
-make dev            # Run development server
-make migrate        # Run database migrations
-make docker-up      # Start PostgreSQL/Redis containers
-make docker-down    # Stop Docker containers
-make prod-start     # Start production server
+make help              # Show all available commands
+make dev               # Run development server
+make migrate           # Run database migrations
+make supervisor-start  # Start production server
+make health            # Check service health
 ```

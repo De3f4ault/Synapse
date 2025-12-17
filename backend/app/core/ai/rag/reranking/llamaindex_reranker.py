@@ -1,8 +1,9 @@
 """LlamaIndex cross-encoder reranker integration."""
 
-from typing import List, Optional
-from llama_index.core.postprocessor import BaseNodePostprocessor
+from typing import List, Optional, Any
+from llama_index.core.postprocessor.types import BaseNodePostprocessor
 from llama_index.core.schema import NodeWithScore, QueryBundle
+from pydantic import PrivateAttr, Field
 import structlog
 
 from app.core.ai.rag.reranking.models.cross_encoder import CrossEncoderReranker
@@ -22,6 +23,8 @@ class CrossEncoderNodeReranker(BaseNodePostprocessor):
         pipeline.add_modules({"reranker": reranker})
         pipeline.add_link("retriever", "reranker")
     """
+    top_k: int = Field(default=5, description="Number of top results to return")
+    _reranker: Any = PrivateAttr()
     
     def __init__(
         self,
@@ -37,13 +40,11 @@ class CrossEncoderNodeReranker(BaseNodePostprocessor):
             config: Model configuration
             **kwargs: Additional BaseNodePostprocessor arguments
         """
-        super().__init__(**kwargs)
-        
-        self.top_k = top_k
+        super().__init__(top_k=top_k, **kwargs)
         
         # Initialize cross-encoder
         from app.core.ai.rag.reranking.models.cross_encoder import get_cross_encoder_reranker
-        self.reranker = get_cross_encoder_reranker(config=config)
+        self._reranker = get_cross_encoder_reranker(config=config)
         
         logger.info("cross_encoder_node_reranker_initialized", top_k=top_k)
     
@@ -81,7 +82,7 @@ class CrossEncoderNodeReranker(BaseNodePostprocessor):
         documents = [node.node.get_content() for node in nodes]
         
         # Rerank using cross-encoder
-        ranked_indices_scores = self.reranker.rerank(
+        ranked_indices_scores = self._reranker.rerank(
             query=query,
             documents=documents,
             top_k=self.top_k

@@ -5,7 +5,7 @@ import structlog
 from qdrant_client.http import models
 
 from app.core.ai.rag.config.rag_config import RAGConfig
-from app.core.ai.rag.embeddings.manager import EmbeddingManager
+from app.core.ai.rag.embeddings.models.all_minilm import AllMiniLMEmbedder
 from app.core.ai.rag.chunking.strategies.semantic_chunker import SemanticChunker
 from app.core.ai.rag.chunking.strategies.advanced_semantic_chunker import get_semantic_chunker
 from app.core.ai.rag.vector_store.qdrant.client import QdrantClientWrapper
@@ -39,7 +39,7 @@ class RAGPipeline:
     def __init__(
         self,
         config: Optional[RAGConfig] = None,
-        embedding_manager: Optional[EmbeddingManager] = None,
+        embedding_manager: Optional[AllMiniLMEmbedder] = None,
         qdrant_client: Optional[QdrantClientWrapper] = None,
         collection_manager: Optional[CollectionManager] = None,
         enable_reranking: Optional[bool] = None,
@@ -67,10 +67,11 @@ class RAGPipeline:
         self.config = config
         
         # Initialize components
+        # Initialize embedding manager
         if embedding_manager is None:
-            from app.core.ai.rag.embeddings.manager import get_embedding_manager
-            embedding_manager = get_embedding_manager()
-        self.embedder = embedding_manager
+            self.embedder = AllMiniLMEmbedder()
+        else:
+            self.embedder = embedding_manager
         
         if qdrant_client is None:
             from app.core.ai.rag.vector_store.qdrant.client import get_qdrant_client
@@ -211,10 +212,13 @@ class RAGPipeline:
         
         # 2. Embed (batch)
         chunk_texts = [chunk["text"] for chunk in chunks]
-        embeddings = await self.embedder.generate_embeddings_batch(
+        # 2. Embed (batch)
+        chunk_texts = [chunk["text"] for chunk in chunks]
+        # Use sync encode, convert to list for Qdrant
+        embeddings = self.embedder.encode(
             chunk_texts,
-            use_cache=False  # Skip cache for batch ingestion
-        )
+            normalize=True
+        ).tolist()
         logger.debug("embedding_complete", embeddings=len(embeddings))
                 # Prepare payloads with metadata (Phase 2)
         payloads = []

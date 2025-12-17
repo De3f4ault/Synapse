@@ -1,6 +1,6 @@
 """Vector upsert operations."""
 
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 import numpy as np
 from qdrant_client import QdrantClient
 from qdrant_client.http import models

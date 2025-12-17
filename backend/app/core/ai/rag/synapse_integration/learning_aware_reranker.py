@@ -1,8 +1,9 @@
 """Learning-Aware Reranker - Boosts weak areas for personalized learning."""
 
-from typing import List, Optional, Dict
-from llama_index.core.postprocessor import BaseNodePostprocessor
+from typing import List, Optional, Dict, Any
+from llama_index.core.postprocessor.types import BaseNodePostprocessor
 from llama_index.core.schema import NodeWithScore, QueryBundle
+from pydantic import PrivateAttr, Field
 import structlog
 
 from app.core.ai.rag.synapse_integration.context_bridge import SynapseContextBridge, get_synapse_bridge
@@ -24,6 +25,11 @@ class LearningAwareReranker(BaseNodePostprocessor):
     Use after cross-encoder reranking for best results:
     Query → Retrieval → Cross-Encoder → Learning-Aware → Top-K
     """
+    top_k: int = Field(default=5, description="Number of results to return")
+    weak_area_boost: float = Field(default=1.5, description="Multiplier for weak area content")
+    recent_topic_boost: float = Field(default=1.2, description="Multiplier for recently studied topics")
+    mastery_penalty: float = Field(default=0.8, description="Multiplier for mastered topics")
+    _synapse: Any = PrivateAttr()
     
     def __init__(
         self,
@@ -45,15 +51,16 @@ class LearningAwareReranker(BaseNodePostprocessor):
             use_mock: Use mock SYNAPSE data
             **kwargs: Additional BaseNodePostprocessor arguments
         """
-        super().__init__(**kwargs)
-        
-        self.top_k = top_k
-        self.weak_area_boost = weak_area_boost
-        self.recent_topic_boost = recent_topic_boost
-        self.mastery_penalty = mastery_penalty
+        super().__init__(
+            top_k=top_k,
+            weak_area_boost=weak_area_boost,
+            recent_topic_boost=recent_topic_boost,
+            mastery_penalty=mastery_penalty,
+            **kwargs
+        )
         
         # Get SYNAPSE bridge
-        self.synapse = get_synapse_bridge(use_mock=use_mock)
+        self._synapse = get_synapse_bridge(use_mock=use_mock)
         
         logger.info(
             "learning_aware_reranker_initialized",
@@ -96,7 +103,7 @@ class LearningAwareReranker(BaseNodePostprocessor):
         )
         
         # Get user learning context
-        context = self.synapse.get_user_context(user_id)
+        context = self._synapse.get_user_context(user_id)
         weak_topics = set(
             topic.lower()
             for topic, score in context["mastery_scores"].items()
