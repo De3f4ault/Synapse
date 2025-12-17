@@ -105,19 +105,18 @@ class WebhookHandler:
         Triggers document processing task.
 
         Args:
-            event_data: Event data containing document_id, user_id
+            event_data: Event data containing document_id
         """
         from .tasks import process_document_task
 
         document_id = event_data.get("document_id")
-        user_id = event_data.get("user_id")
 
-        if not document_id or not user_id:
-            logger.error("Missing document_id or user_id in event data")
+        if not document_id:
+            logger.error("Missing document_id in event data")
             return
 
         # Trigger async processing
-        process_document_task.delay(document_id, user_id)
+        process_document_task.delay(document_id)
         logger.info(f"Triggered document processing for {document_id}")
 
     def _handle_document_updated(self, event_data: Dict[str, Any]) -> None:
@@ -130,50 +129,101 @@ class WebhookHandler:
             event_data: Event data containing document_id
         """
         from .tasks import process_document_task
-        from ...services.cache.invalidation import CacheInvalidator
 
         document_id = event_data.get("document_id")
-        user_id = event_data.get("user_id", "system")
 
         if not document_id:
             logger.error("Missing document_id in event data")
             return
 
-        # Invalidate document cache
-        # cache_invalidator = CacheInvalidator(...)
-        # cache_invalidator.invalidate_document_cache(document_id)
-
         # Re-process document
-        process_document_task.delay(document_id, user_id)
+        process_document_task.delay(document_id)
         logger.info(f"Triggered document re-indexing for {document_id}")
 
     def _handle_document_deleted(self, event_data: Dict[str, Any]) -> None:
         """
         Handle document deleted event.
 
-        Triggers cleanup tasks.
+        Triggers cache invalidation via event system and cleans up vector store.
 
         Args:
-            event_data: Event data containing document_id
+            event_data: Event data containing document_id and user_id
         """
-        from ...services.cache.invalidation import CacheInvalidator
-        from ...services.vector_store.operations import VectorOperations
-
         document_id = event_data.get("document_id")
+        user_id = event_data.get("user_id")
 
         if not document_id:
             logger.error("Missing document_id in event data")
             return
 
-        # Invalidate caches
-        # cache_invalidator = CacheInvalidator(...)
-        # cache_invalidator.invalidate_document_cache(document_id)
+        # Import here to avoid circular imports
+        import asyncio
+        from app.core.events.dispatcher import EventDispatcher
+        from app.core.events.triggers import Event, EventType
 
-        # Remove from vector store
-        # vector_ops = VectorOperations(...)
-        # vector_ops.delete(f"document_id = '{document_id}'")
+        # Create deletion event for cache invalidation
+        # This will automatically trigger the CacheInvalidationSubscriber
+        deletion_event = Event(
+            type=EventType.DOCUMENT_DELETED,
+            user_id=user_id,
+            data={"document_id": document_id},
+            source="webhook_handler"
+        )
 
-        logger.info(f"Cleaned up after document deletion: {document_id}")
+        # Emit event asynchronously (cache invalidator will handle it)
+        try:
+            dispatcher = EventDispatcher()
+            asyncio.create_task(dispatcher.emit(deletion_event))
+            logger.info(f"Emitted DOCUMENT_DELETED event for document {document_id}")
+        except Exception as e:
+            logger.error(f"Failed to emit deletion event: {e}")
+
+        # Clean up vector store (if user_id is available)
+        if user_id:
+            try:
+                from app.core.ai.rag.vector_store.qdrant.client import get_qdrant_client
+                from qdrant_client import models
+                
+                # Get Qdrant client
+                qdrant_client = get_qdrant_client()
+                client = qdrant_client.get_client()
+                
+                # Get user's document collection name
+                collection_name = f"synapse_v2_user_{user_id}_documents"
+                
+                try:
+                    # Delete points matching document_id using Qdrant filter
+                    client.delete(
+                        collection_name=collection_name,
+                        points_selector=models.FilterSelector(
+                            filter=models.Filter(
+                                must=[
+                                    models.FieldCondition(
+                                        key="metadata.document_id",
+                                        match=models.MatchValue(value=str(document_id))
+                                    )
+                                ]
+                            )
+                        )
+                    )
+                    
+                    logger.info(
+                        f"Vector store cleanup completed for document {document_id}. "
+                        f"Deleted embeddings from Qdrant collection {collection_name}"
+                    )
+                    
+                except Exception as qdrant_error:
+                    # Collection might not exist yet
+                    logger.warning(
+                        f"Could not delete from Qdrant collection {collection_name}: {qdrant_error}. "
+                        f"This is normal if document was never processed."
+                    )
+
+            except Exception as e:
+                logger.error(f"Failed to cleanup vector store: {e}", exc_info=True)
+
+
+        logger.info(f"Document deletion handling completed for {document_id}")
 
     def _handle_user_registered(self, event_data: Dict[str, Any]) -> None:
         """

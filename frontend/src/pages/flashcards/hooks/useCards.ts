@@ -8,12 +8,8 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-    getDueCardsApiV1CardsDueGet,
-    getCardApiV1CardsCardIdGet,
-    createCardApiV1CardsPost,
-    updateCardApiV1CardsCardIdPut,
-    deleteCardApiV1CardsCardIdDelete,
-} from '@/api/generated/services.gen';
+    FlashcardsService,
+} from '@/api/generated';
 import { queryKeys } from '@/lib/queryKeys';
 import { toast } from 'sonner';
 import type { FlashcardCreateInput, FlashcardUpdateInput } from '../types/flashcards.types';
@@ -25,7 +21,7 @@ export function useDeckCards(deckId: number) {
     return useQuery({
         queryKey: queryKeys.decks.cards(deckId),
         queryFn: async () => {
-            const response = await getDueCardsApiV1CardsDueGet({ query: { deck_id: deckId } });
+            const response = await FlashcardsService.getDueCardsApiV1CardsDueGet(deckId);
             return (response as any).data ?? response;
         },
         enabled: !!deckId,
@@ -39,9 +35,7 @@ export function useDueCards(deckId?: number) {
     return useQuery({
         queryKey: deckId ? queryKeys.decks.cards(deckId) : queryKeys.flashcards.due(),
         queryFn: async () => {
-            const response = await getDueCardsApiV1CardsDueGet({
-                query: { deck_id: deckId || undefined },
-            });
+            const response = await FlashcardsService.getDueCardsApiV1CardsDueGet(deckId);
             return (response as any).data ?? response;
         },
     });
@@ -54,7 +48,7 @@ export function useCard(cardId: number) {
     return useQuery({
         queryKey: queryKeys.flashcards.detail(cardId),
         queryFn: async () => {
-            const response = await getCardApiV1CardsCardIdGet({ path: { card_id: cardId } });
+            const response = await FlashcardsService.getCardApiV1CardsCardIdGet(cardId);
             return (response as any).data ?? response;
         },
         enabled: !!cardId,
@@ -69,7 +63,7 @@ export function useCreateCard() {
 
     return useMutation({
         mutationFn: async (data: FlashcardCreateInput) => {
-            const response = await createCardApiV1CardsPost({ body: data });
+            const response = await FlashcardsService.createCardApiV1CardsPost(data);
             return (response as any).data ?? response;
         },
         onSuccess: (_, variables) => {
@@ -93,10 +87,7 @@ export function useUpdateCard() {
 
     return useMutation({
         mutationFn: async ({ cardId, data }: { cardId: number; data: FlashcardUpdateInput }) => {
-            const response = await updateCardApiV1CardsCardIdPut({
-                path: { card_id: cardId },
-                body: data,
-            });
+            const response = await FlashcardsService.updateCardApiV1CardsCardIdPut(cardId, data);
             return (response as any).data ?? response;
         },
         onSuccess: (card: any, variables) => {
@@ -120,7 +111,7 @@ export function useDeleteCard() {
 
     return useMutation({
         mutationFn: async (cardId: number) => {
-            const response = await deleteCardApiV1CardsCardIdDelete({ path: { card_id: cardId } });
+            const response = await FlashcardsService.deleteCardApiV1CardsCardIdDelete(cardId);
             return (response as any).data ?? response;
         },
         onSuccess: () => {
@@ -145,7 +136,7 @@ export function useBatchCreateCards() {
     return useMutation({
         mutationFn: async (cards: FlashcardCreateInput[]) => {
             const results = await Promise.allSettled(
-                cards.map((card) => createCardApiV1CardsPost({ body: card }))
+                cards.map((card) => FlashcardsService.createCardApiV1CardsPost(card))
             );
 
             const successful = results.filter((r) => r.status === 'fulfilled').length;

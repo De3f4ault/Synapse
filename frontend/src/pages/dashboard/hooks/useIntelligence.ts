@@ -7,7 +7,6 @@ import type {
     MilestoneAchievement
 } from '../types/intelligence.types';
 import { calculatePriority } from '../utils/priorityCalculator';
-import { formatRelativeTime } from '@/lib/utils';
 
 /**
  * useIntelligence Hook
@@ -70,7 +69,7 @@ export function useIntelligence(data: DashboardData | undefined) {
             priority: number;
             estimatedMinutes: number;
             itemCount?: number;
-            moduleType: string;
+            moduleType: 'flashcards' | 'documents' | 'notes' | 'quizzes'; // ModuleType
             actionData: any;
         }> = [];
 
@@ -86,83 +85,83 @@ export function useIntelligence(data: DashboardData | undefined) {
                 description: `${dueCount} card${dueCount > 1 ? 's are' : ' is'} due for review`,
                 priority: calculatePriority({
                     dueDate: new Date().toISOString(),
-                                            isWeakArea: avgAccuracy < 0.7,
-                                            accuracy: avgAccuracy,
-                                            hasPrerequisites: false,
-                                            lastAccessed: null,
+                    isWeakArea: avgAccuracy < 0.7,
+                    accuracy: avgAccuracy,
+                    hasPrerequisites: false,
+                    lastAccessed: null,
                 }),
                 estimatedMinutes: Math.ceil(dueCount * 1.5), // ~90 seconds per card
-                            itemCount: dueCount,
-                            moduleType: 'flashcards',
-                            actionData: { deckId: null, cardCount: dueCount },
+                itemCount: dueCount,
+                moduleType: 'flashcards',
+                actionData: { deckId: null, cardCount: dueCount },
             });
         }
 
         // 2. Weak areas that need attention
-        if (weakAreas.length > 0 && weakAreas[0].severity !== 'low') {
-            const worstArea = weakAreas[0];
+        if (weakAreas.length > 0 && weakAreas[0] && weakAreas[0].severity !== 'low') {
+            const worstArea = weakAreas[0]!;
             candidates.push({
                 type: 'practice_weak_area',
                 title: `Practice ${worstArea.topic}`,
                 description: `Accuracy is ${(worstArea.accuracy * 100).toFixed(0)}% - needs improvement`,
-                            priority: worstArea.priority,
-                            estimatedMinutes: 15,
-                            moduleType: 'flashcards',
-                            actionData: { topic: worstArea.topic, accuracy: worstArea.accuracy },
+                priority: worstArea.priority,
+                estimatedMinutes: 15,
+                moduleType: 'flashcards',
+                actionData: { topic: worstArea.topic, accuracy: worstArea.accuracy },
             });
         }
 
         // 3. Unread documents
         // FIXED: Check if documents is an array
         const unreadDocs = (data.documents && Array.isArray(data.documents))
-        ? data.documents.filter(doc =>
-        doc.processing_status === 'completed' &&
-        !doc.user_id // Simple heuristic: no user_id means unprocessed
-        )
-        : [];
+            ? data.documents.filter(doc =>
+                doc.processing_status === 'completed' &&
+                !doc.user_id // Simple heuristic: no user_id means unprocessed
+            )
+            : [];
 
         if (unreadDocs.length > 0) {
             candidates.push({
                 type: 'read_document',
-                title: `Read ${unreadDocs[0].filename || 'Untitled Document'}`,
+                title: `Read ${unreadDocs[0]!.filename || 'Untitled Document'}`,
                 description: `${unreadDocs.length} document${unreadDocs.length > 1 ? 's' : ''} waiting to be processed`,
                 priority: calculatePriority({
                     dueDate: null,
                     isWeakArea: false,
                     accuracy: 1,
                     hasPrerequisites: false,
-                    lastAccessed: unreadDocs[0].created_at,
+                    lastAccessed: unreadDocs[0]!.created_at,
                 }),
                 estimatedMinutes: 20,
                 itemCount: unreadDocs.length,
                 moduleType: 'documents',
-                actionData: { documentId: unreadDocs[0].id },
+                actionData: { documentId: unreadDocs[0]!.id },
             });
         }
 
         // 4. Incomplete notes (notes without much content)
         // FIXED: Check if notes is an array
         const incompleteNotes = (data.notes && Array.isArray(data.notes))
-        ? data.notes.filter(note => (note.content?.length || 0) < 200)
-        : [];
+            ? data.notes.filter(note => (note.content?.length || 0) < 200)
+            : [];
 
         if (incompleteNotes.length > 0) {
             candidates.push({
                 type: 'complete_note',
-                title: `Complete note: ${incompleteNotes[0].title || 'Untitled Note'}`,
+                title: `Complete note: ${incompleteNotes[0]!.title || 'Untitled Note'}`,
                 description: `${incompleteNotes.length} note${incompleteNotes.length > 1 ? 's need' : ' needs'} expansion`,
                 priority: 0.5,
                 estimatedMinutes: 10,
                 itemCount: incompleteNotes.length,
                 moduleType: 'notes',
-                actionData: { noteId: incompleteNotes[0].id },
+                actionData: { noteId: incompleteNotes[0]!.id },
             });
         }
 
         // 5. Pending quizzes
         // FIXED: Check if quizzes is an array
         if (data.quizzes && Array.isArray(data.quizzes) && data.quizzes.length > 0) {
-            const pendingQuiz = data.quizzes[0];
+            const pendingQuiz = data.quizzes[0]!;
             candidates.push({
                 type: 'take_quiz',
                 title: `Take quiz: ${pendingQuiz.title || 'Untitled Quiz'}`,
@@ -179,18 +178,20 @@ export function useIntelligence(data: DashboardData | undefined) {
 
         const bestAction = candidates.sort((a, b) => b.priority - a.priority)[0];
 
+        if (!bestAction) return null;
+
         return {
             type: bestAction.type,
             title: bestAction.title,
             description: bestAction.description,
             priority: bestAction.priority,
             confidence: calculateConfidence(bestAction, data),
-                               estimatedMinutes: bestAction.estimatedMinutes,
-                               reasoning: generateReasoning(bestAction, data),
-                               itemCount: bestAction.itemCount,
-                               moduleType: bestAction.moduleType,
-                               actionUrl: generateActionUrl(bestAction),
-                               actionData: bestAction.actionData,
+            estimatedMinutes: bestAction.estimatedMinutes,
+            reasoning: generateReasoning(bestAction, data),
+            itemCount: bestAction.itemCount,
+            moduleType: bestAction.moduleType,
+            actionUrl: generateActionUrl(bestAction),
+            actionData: bestAction.actionData,
         };
     }, [data, weakAreas]);
 
@@ -206,22 +207,22 @@ export function useIntelligence(data: DashboardData | undefined) {
         if ((overview.study_streak_days || 0) >= 7) {
             const streakDays = overview.study_streak_days || 0;
             const level =
-            streakDays >= 365 ? 'legendary' :
-            streakDays >= 100 ? 'epic' :
-            streakDays >= 30 ? 'rare' :
-            'common';
+                streakDays >= 365 ? 'legendary' :
+                    streakDays >= 100 ? 'epic' :
+                        streakDays >= 30 ? 'rare' :
+                            'common';
 
-    achievements.push({
-        id: 'streak',
-        type: 'streak',
-        title: `${streakDays}-Day Streak!`,
-        description: `You've studied for ${streakDays} consecutive days`,
-        icon: '🔥',
-        level,
-        timestamp: new Date().toISOString(),
-                      value: streakDays,
-                      metadata: { streakDays },
-    });
+            achievements.push({
+                id: 'streak',
+                type: 'streak',
+                title: `${streakDays}-Day Streak!`,
+                description: `You've studied for ${streakDays} consecutive days`,
+                icon: '',
+                level,
+                timestamp: new Date().toISOString(),
+                value: streakDays,
+                metadata: { streakDays },
+            });
         }
 
         // Mastery milestone (high accuracy)
@@ -233,35 +234,16 @@ export function useIntelligence(data: DashboardData | undefined) {
                 type: 'mastery',
                 title: 'Mastery Achieved!',
                 description: `${(accuracy * 100).toFixed(0)}% overall accuracy`,
-                              icon: '🎓',
-                              level: accuracy >= 0.95 ? 'epic' : 'rare',
-                              timestamp: new Date().toISOString(),
-                              value: accuracy,
-                              metadata: { accuracy },
+                icon: '',
+                level: accuracy >= 0.95 ? 'epic' : 'rare',
+                timestamp: new Date().toISOString(),
+                value: accuracy,
+                metadata: { accuracy },
             });
         }
 
         // Volume milestone (cards reviewed)
-        if (overview.total_reviews && overview.total_reviews >= 100) {
-            const milestoneThresholds = [100, 500, 1000, 5000, 10000];
-            const reachedMilestone = milestoneThresholds
-            .reverse()
-            .find(threshold => (overview.total_reviews || 0) >= threshold);
-
-            if (reachedMilestone) {
-                achievements.push({
-                    id: 'volume',
-                    type: 'volume',
-                    title: `${reachedMilestone.toLocaleString()} Reviews!`,
-                                  description: 'Your dedication is paying off',
-                                  icon: '📚',
-                                  level: reachedMilestone >= 5000 ? 'legendary' : reachedMilestone >= 1000 ? 'epic' : 'rare',
-                                  timestamp: new Date().toISOString(),
-                                  value: overview.total_reviews,
-                                  metadata: { totalReviews: overview.total_reviews },
-                });
-            }
-        }
+        // Removed as total_reviews is not available in DashboardOverview
 
         // Productivity milestone (cards reviewed today)
         // FIXED: Add default value for cards_reviewed_today
@@ -272,11 +254,11 @@ export function useIntelligence(data: DashboardData | undefined) {
                 type: 'productivity',
                 title: 'Productive Day!',
                 description: `${reviewsToday} cards reviewed today`,
-                icon: '⚡',
+                icon: '',
                 level: reviewsToday >= 50 ? 'rare' : 'common',
                 timestamp: new Date().toISOString(),
-                              value: reviewsToday,
-                              metadata: { reviewsToday },
+                value: reviewsToday,
+                metadata: { reviewsToday },
             });
         }
 
@@ -298,7 +280,7 @@ export function useIntelligence(data: DashboardData | undefined) {
                 message: `You're on a ${data.overview.study_streak_days}-day streak. Keep it up!`,
                 confidence: 0.9,
                 actionable: false,
-                icon: '📈',
+                icon: '',
             });
         }
 
@@ -311,7 +293,7 @@ export function useIntelligence(data: DashboardData | undefined) {
                 message: `${data.dueCards.length} cards are waiting for review`,
                 confidence: 1.0,
                 actionable: true,
-                icon: '⏰',
+                icon: '',
                 action: {
                     label: 'Start Review',
                     url: '/flashcards/review',
@@ -319,6 +301,37 @@ export function useIntelligence(data: DashboardData | undefined) {
             });
         }
 
+        // Daily goal check
+        const reviewsToday = data.overview?.cards_reviewed_today || 0;
+        if (reviewsToday < 10) {
+            insights.push({
+                type: 'challenge',
+                title: 'Daily Goal Check',
+                description: `You've reviewed ${reviewsToday} cards. Goal: 10.`,
+                action: {
+                    label: 'Review Due Cards',
+                    url: '/flashcards'
+                },
+                icon: ''
+            });
+        }
+
+        // 1. Weakest Area Strategy
+        const weakest = weakAreas[0];
+        if (weakest && weakest.topic && (weakest.accuracy || 0) < 0.6) {
+            const topic = weakest.topic;
+
+            insights.push({
+                type: 'warning',
+                title: `Struggling with ${topic}`,
+                description: `Your accuracy is ${(weakest.accuracy * 100).toFixed(0)}%. Review to improve.`,
+                action: {
+                    label: 'Practice Topic',
+                    url: `/study/practice?topic=${encodeURIComponent(topic)}`
+                },
+                icon: '', // Clean no-emoji interface
+            });
+        }
         // Content creation suggestion
         // FIXED: Add default values and array checks
         const docCount = (data.documents && Array.isArray(data.documents)) ? data.documents.length : 0;
@@ -331,7 +344,7 @@ export function useIntelligence(data: DashboardData | undefined) {
                 message: `You have ${docCount} documents but only ${noteCount} notes. Consider taking notes to improve retention.`,
                 confidence: 0.7,
                 actionable: true,
-                icon: '📝',
+                icon: '',
                 action: {
                     label: 'Create Note',
                     url: '/notes/new',
@@ -353,7 +366,7 @@ export function useIntelligence(data: DashboardData | undefined) {
 
 // Helper functions
 
-function generateWeakAreaSuggestion(area: any, data: DashboardData | undefined): string {
+function generateWeakAreaSuggestion(area: any, _data: DashboardData | undefined): string {
     const accuracy = area.accuracy || 0;
     if (accuracy < 0.4) {
         return 'Critical: Review fundamentals with focused study session';
@@ -375,14 +388,14 @@ function detectTrend(area: any): 'improving' | 'declining' | 'stable' {
     return 'stable';
 }
 
-function calculateConfidence(action: any, data: DashboardData | undefined): number {
+function calculateConfidence(action: any, _data: DashboardData | undefined): number {
     // Confidence based on data quality and action type
     if (action.type === 'review_flashcards' && action.itemCount > 0) return 1.0;
     if (action.type === 'practice_weak_area') return 0.85;
     return 0.7;
 }
 
-function generateReasoning(action: any, data: DashboardData | undefined): string {
+function generateReasoning(action: any, _data: DashboardData | undefined): string {
     switch (action.type) {
         case 'review_flashcards':
             return 'These cards are due for review based on spaced repetition schedule';

@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { getDueItemsApiV1StudyDueGet } from '@/api/generated/services.gen';
-import type { StudyItemResponse } from '@/api/generated/types.gen';
+import { StudyService } from '@/api/generated';
+import type { StudyItemResponse } from '@/api/generated';
 import { QUERY_KEYS } from '@/lib/constants';
 import type { StudyItem, StudyItemType, StudyPriority } from '../types/study.types';
 
@@ -14,10 +14,7 @@ export function useDueItems(modules?: string, limit: number = 20) {
     return useQuery({
         queryKey: [...QUERY_KEYS.STUDY.DUE, modules, limit],
         queryFn: async () => {
-            const response = await getDueItemsApiV1StudyDueGet({
-                modules,
-                limit,
-            });
+            const response = await StudyService.getDueItemsApiV1StudyDueGet(modules, limit);
 
             // Transform API response to internal StudyItem format
             return response.map(transformStudyItem);

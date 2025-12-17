@@ -43,10 +43,19 @@ class DeckUpdate(BaseModel):
 # ---------------------------------------------------------------------------
 
 class FlashcardGenerateRequest(BaseModel):
-    """Flashcard generation request."""
+    """Flashcard generation from document request."""
     document_id: int = Field(..., description="Document to generate from")
     deck_name: str = Field(..., min_length=1, max_length=255, description="Name for the new deck")
     num_cards: int = Field(10, ge=1, le=50, description="Number of flashcards to generate")
+    difficulty: str = Field("medium", description="Difficulty level: easy, medium, hard")
+    tags: Optional[List[str]] = None
+
+
+class FlashcardGenerateFromTopicRequest(BaseModel):
+    """Flashcard generation from topic request (like quiz generation)."""
+    topic: str = Field(..., min_length=3, max_length=500, description="Topic to generate flashcards about")
+    deck_name: Optional[str] = Field(None, max_length=255, description="Optional deck name (defaults to topic)")
+    num_cards: int = Field(10, ge=5, le=50, description="Number of flashcards to generate")
     difficulty: str = Field("medium", description="Difficulty level: easy, medium, hard")
     tags: Optional[List[str]] = None
 
@@ -473,6 +482,163 @@ Output JSON:
         )
 
     except Exception as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to generate flashcards: {str(e)}"
+        )
+
+
+# ============================================================================
+# Topic-Based Flashcard Generation (Like Quiz Generation)
+# ============================================================================
+
+@router.post(
+    "/generate-from-topic",
+    response_model=FlashcardGenerateResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Generate flashcards from topic",
+    description="Use AI to generate flashcards from any topic"
+)
+async def generate_flashcards_from_topic(
+    request_data: FlashcardGenerateFromTopicRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Generate flashcards from a topic using AI.
+    Similar to quiz generation but creates flashcards instead.
+    """
+    from app.modules.flashcards.service import FlashcardService
+    import structlog
+    import json
+    import re
+    
+    logger = structlog.get_logger(__name__)
+    
+    try:
+        from app.core.ai.orchestrator import get_orchestrator
+        
+        # Build generation prompt
+        difficulty_desc = {
+            "easy": "simple, beginner-level concepts",
+            "medium": "intermediate, moderate complexity",
+            "hard": "challenging, advanced concepts"
+        }
+        
+        prompt = f"""Generate flashcards about: {request_data.topic}
+
+Requirements:
+- Generate exactly {request_data.num_cards} high-quality flashcards
+- Difficulty: {difficulty_desc.get(request_data.difficulty, 'intermediate')}
+- Each flashcard should have a clear question/term on front and answer/definition on back
+- Cover key concepts comprehensively
+- Make them educational and useful for studying
+
+Return ONLY valid JSON in this exact format:
+{{
+  "flashcards": [
+    {{
+      "front": "Question or term",
+      "back": "Answer or definition"
+    }}
+  ]
+}}
+"""
+        
+        # Get orchestrator and generate
+        orchestrator = get_orchestrator()
+        result = await orchestrator.handle_message(
+            user_id=current_user.id,
+            session_id=0,  # No session for generation
+            message=prompt,
+            context={"intent": "flashcard_generation"}
+        )
+        
+        if not result.success:
+            raise Exception(result.error or "AI generation failed")
+        
+        # Parse AI response
+        response_text = result.output
+        
+        # Extract JSON from response
+        json_match = re.search(r'```(?:json)?\s*([\s\S]*?)\s*```', response_text)
+        if json_match:
+            json_str = json_match.group(1)
+        else:
+            json_start = response_text.find('{')
+            json_end = response_text.rfind('}') + 1
+            if json_start >= 0 and json_end > json_start:
+                json_str = response_text[json_start:json_end]
+            else:
+                raise ValueError("Could not extract JSON from response")
+        
+        flashcard_data = json.loads(json_str)
+        flashcards = flashcard_data.get("flashcards", [])
+        
+        if not flashcards:
+            raise ValueError("No flashcards in response")
+        
+        # Create deck
+        deck_name = request_data.deck_name or f"Flashcards: {request_data.topic}"
+        service = FlashcardService(db)
+        
+        deck_data = {
+            "name": deck_name,
+            "description": f"AI-generated flashcards about {request_data.topic}",
+            "tags": request_data.tags or ["ai-generated", request_data.topic.lower().replace(" ", "-")[:30]],
+            "is_public": False,
+            "ai_generated": True,
+            "ai_metadata": {
+                "source_topic": request_data.topic,
+                "generation_params": {
+                    "num_cards": request_data.num_cards,
+                    "difficulty": request_data.difficulty
+                }
+            }
+        }
+        
+        deck = await service.create_deck(user_id=current_user.id, data=deck_data)
+        
+        # Create flashcards
+        cards_created = 0
+        for fc in flashcards[:request_data.num_cards]:
+            if "front" in fc and "back" in fc:
+                await service.create_card(
+                    user_id=current_user.id,
+                    data={
+                        "deck_id": deck["id"],
+                        "front_text": fc["front"],
+                        "back_text": fc["back"]
+                    }
+                )
+                cards_created += 1
+        
+        await db.commit()
+        
+        logger.info(
+            "flashcards_generated_from_topic",
+            topic=request_data.topic,
+            deck_id=deck["id"],
+            cards_created=cards_created
+        )
+        
+        return FlashcardGenerateResponse(
+            deck_id=deck["id"],
+            deck_name=deck["name"],
+            cards_generated=cards_created,
+            status="success",
+            message=f"Successfully generated {cards_created} flashcards about {request_data.topic}"
+        )
+        
+    except json.JSONDecodeError as e:
+        logger.error("flashcard_generation_json_error", error=str(e))
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to parse AI response"
+        )
+    except Exception as e:
+        logger.error("flashcard_generation_failed", error=str(e))
         await db.rollback()
         raise HTTPException(
             status_code=500,

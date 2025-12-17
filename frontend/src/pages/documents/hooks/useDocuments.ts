@@ -1,11 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import {
-    listDocumentsApiV1DocumentsGet,
-    deleteDocumentApiV1DocumentsDocumentIdDelete,
-} from '@/api/generated/services.gen';
+import { DocumentsService } from '@/api/generated';
 import { queryKeys } from '@/lib/queryKeys';
-import type { DocumentResponse } from '@/api/generated/types.gen';
+import type { DocumentResponse } from '@/api/generated';
 import type { EnhancedDocument } from '../types/documents.types';
 
 /**
@@ -35,18 +32,12 @@ export function useDocuments() {
         refetch,
     } = useQuery({
         queryKey: queryKeys.documents.list(),
-        queryFn: async () => {
-            const response = await listDocumentsApiV1DocumentsGet();
-            return (response as any).data ?? response;
-        },
+        queryFn: () => DocumentsService.listDocumentsApiV1DocumentsGet(),
     });
 
     // Delete mutation
     const deleteMutation = useMutation({
-        mutationFn: async (id: number) => {
-            const response = await deleteDocumentApiV1DocumentsDocumentIdDelete({ path: { document_id: id } });
-            return (response as any).data ?? response;
-        },
+        mutationFn: (id: number) => DocumentsService.deleteDocumentApiV1DocumentsDocumentIdDelete(id),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.documents.all });
             toast.success('Document deleted successfully');

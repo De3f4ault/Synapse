@@ -1,7 +1,7 @@
 import React from 'react';
 import { FileText, CheckCircle2, Loader2, AlertCircle } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
-import type { DocumentResponse } from '@/api/generated/types.gen';
+import type { DocumentResponse } from '@/api/generated';
 
 interface DocumentStatsProps {
     documents: DocumentResponse[];

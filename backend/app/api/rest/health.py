@@ -5,7 +5,7 @@ System health and service status monitoring endpoints.
 Complete implementation with all 5 service checks:
 - PostgreSQL database
 - Redis cache
-- LanceDB vector store
+- Qdrant vector store
 - DuckDB analytics
 - Gemini API
 """
@@ -113,45 +113,55 @@ async def check_redis() -> ServiceStatus:
     except Exception as e:
         logger.error(f"Redis health check failed: {str(e)}")
         return ServiceStatus(
-            status="unhealthy",
+            service="redis",
+            healthy=False,
             message=f"Redis connection failed: {str(e)}",
             details={"error": str(e), "url": settings.REDIS_URL}
         )
 
 
-async def check_lancedb() -> ServiceStatus:
+async def check_qdrant() -> ServiceStatus:
     """
-    Check LanceDB vector store connectivity.
-
+    Check Qdrant vector store connectivity.
+    
     Returns:
-        ServiceStatus with health status
+        ServiceStatus with Qdrant health information
     """
     import time
+    
     start = time.time()
-
+    
     try:
-        import lancedb
-
-        db = lancedb.connect(str(settings.LANCEDB_PATH))
-        tables = db.table_names()
-        latency = (time.time() - start) * 1000
-
+        from app.core.ai.rag.vector_store.qdrant.client import get_qdrant_client
+        
+        qdrant_client = get_qdrant_client()
+        client = qdrant_client.get_client()
+        
+        # Test connection by getting collections
+        collections = client.get_collections()
+        
+        latency_ms = int((time.time() - start) * 1000)
+        
         return ServiceStatus(
-            status="healthy",
-            message="Connected to LanceDB",
-            latency_ms=latency,
+            service="qdrant",
+            healthy=True,
+            message="Connected to Qdrant",
+            latency_ms=latency_ms,
             details={
-                "path": str(settings.LANCEDB_PATH),
-                "tables": len(tables),
-                "table_names": tables[:10]  # First 10 table names
+                "collections_count": len(collections.collections),
+                "host": qdrant_client.config.host,
+                "port": qdrant_client.config.port
             }
         )
     except Exception as e:
-        logger.error(f"LanceDB health check failed: {str(e)}")
+        latency_ms = int((time.time() - start) * 1000)
+        logger.error(f"Qdrant health check failed: {str(e)}")
         return ServiceStatus(
-            status="unhealthy",
-            message=f"LanceDB connection failed: {str(e)}",
-            details={"error": str(e), "path": str(settings.LANCEDB_PATH)}
+            service="qdrant",
+            healthy=False,
+            message=f"Qdrant connection failed: {str(e)}",
+            latency_ms=latency_ms,
+            details={"error": str(e)}
         )
 
 
@@ -256,7 +266,7 @@ async def health_check(db: AsyncSession = Depends(get_db)):
     Verifies connectivity and basic functionality of:
     - PostgreSQL database
     - Redis cache
-    - LanceDB vector store
+    - Qdrant vector store
     - DuckDB analytics database
     - Gemini API
 
@@ -271,8 +281,8 @@ async def health_check(db: AsyncSession = Depends(get_db)):
     # Check Redis (important)
     services["redis"] = await check_redis()
 
-    # Check LanceDB (important)
-    services["lancedb"] = await check_lancedb()
+    # Check Qdrant (important)
+    services["qdrant"] = await check_qdrant()
 
     # Check DuckDB (important)
     services["duckdb"] = await check_duckdb()

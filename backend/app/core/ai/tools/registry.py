@@ -210,7 +210,7 @@ class ToolRegistry:
             >>> declarations = registry.generate_function_declarations()
             >>>
             >>> model = genai.GenerativeModel(
-            ...     "gemini-1.5-flash",
+            ...     "gemini-2.5-flash",
             ...     tools=declarations
             ... )
         """

@@ -315,3 +315,9 @@ export interface StudyPreferences {
     enableReminders: boolean;
     reminders: StudyReminder[];
 }
+
+/**
+ * Study session status
+ */
+export type SessionStatus = 'active' | 'paused' | 'completed' | 'abandoned';
+

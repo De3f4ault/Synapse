@@ -2,7 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Cpu, FileQuestion, Trophy, Play } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { QuizResponse } from '@/api/generated/types.gen';
+import type { QuizResponse } from '@/api/generated';
 import type { DifficultyColors } from '../../types/quizzes.types';
 
 interface QuizCardProps {

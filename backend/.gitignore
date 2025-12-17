@@ -41,6 +41,7 @@ ENV/
 
 # Data Directories
 data/
+.model_cache/
 logs/
 *.log
 
@@ -60,6 +61,14 @@ alembic/versions/*.pyc
 .pytest_cache/
 .coverage
 htmlcov/
+
+# Celery
+celerybeat-schedule
+celerybeat-schedule.db
+celerybeat.pid
+
+# OpenAPI (auto-generated)
+openapi.json
 
 # Misc
 .mypy_cache/

@@ -1,8 +1,14 @@
 """
-Celery application configuration for SYNAPSE.
+Celery application configuration for SYNAPSE - OPTIMIZED.
 
 This module creates and configures the Celery app instance
 that will be used for all background task processing.
+
+Optimizations applied:
+- Reduced prefetch_multiplier to prevent task hogging
+- Added memory limits to prevent worker bloat
+- Optimized Redis connection pooling
+- Reduced visibility timeout for faster task recovery
 """
 
 import os
@@ -39,9 +45,15 @@ celery_app.conf.update(
     result_expires=3600,
     result_persistent=True,
 
-    # Worker
-    worker_prefetch_multiplier=4,
-    worker_max_tasks_per_child=1000,
+    # Redis broker optimization
+    broker_pool_limit=10,  # Max connections per worker
+    broker_connection_retry_on_startup=True,
+    broker_visibility_timeout=900,  # 15 min (was 3600), faster task recovery
+
+    # Worker - OPTIMIZED FOR CPU-BOUND TASKS
+    worker_prefetch_multiplier=1,  # Prevent task hogging (was 4)
+    worker_max_tasks_per_child=50,  # Recycle workers frequently (was 1000)
+    worker_max_memory_per_child=500000,  # 500MB limit, kill if exceeded
 
     # Task tracking
     task_track_started=True,
@@ -52,6 +64,11 @@ celery_app.conf.update(
         "app.services.background.tasks.process_document_task": {"queue": "documents"},
         "app.services.background.tasks.send_email_task": {"queue": "emails"},
         "app.services.background.tasks.generate_report_task": {"queue": "reports"},
+        # RAG tasks - dedicated queue
+        "rag.ingest_document": {"queue": "rag"},
+        "rag.batch_ingest": {"queue": "rag"},
+        "rag.heavy_query": {"queue": "rag"},
+        "rag.rebuild_index": {"queue": "rag"},
     },
 
     # Queues
@@ -60,6 +77,8 @@ celery_app.conf.update(
         Queue("documents", Exchange("documents"), routing_key="documents", priority=5),
         Queue("emails", Exchange("emails"), routing_key="emails", priority=9),
         Queue("reports", Exchange("reports"), routing_key="reports", priority=3),
+        # RAG queue - high priority for document ingestion
+        Queue("rag", Exchange("rag"), routing_key="rag", priority=7),
     ),
 
     # Beat schedule for periodic tasks

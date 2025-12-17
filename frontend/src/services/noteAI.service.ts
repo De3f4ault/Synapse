@@ -6,9 +6,8 @@
  */
 
 import {
-    createSessionApiV1ChatSessionsPost,
-    sendMessageApiV1ChatSessionsSessionIdMessagesPost
-} from '@/api/generated/services.gen';
+    ChatService,
+} from '@/api/generated';
 
 /**
  * AI Note Operations using Chat API
@@ -19,15 +18,13 @@ export class NoteAIService {
     /**
      * Ensure we have an AI session for notes
      */
-    private static async ensureSession(): Promise<number> {
+    private static async ensureSession(params?: { title?: string; documentId?: number }): Promise<number> {
         if (this.sessionId) return this.sessionId;
 
         try {
-            const session = await createSessionApiV1ChatSessionsPost({
-                requestBody: {
-                    title: 'Note AI Assistant',
-                    context_modules: ['notes']
-                }
+            const session = await ChatService.createSessionApiV1ChatSessionsPost({
+                title: params?.title || 'Note AI Chat',
+                document_id: params?.documentId,
             });
 
             this.sessionId = session.id;
@@ -45,9 +42,8 @@ export class NoteAIService {
         try {
             const sessionId = await this.ensureSession();
 
-            const response = await sendMessageApiV1ChatSessionsSessionIdMessagesPost({
-                sessionId,
-                requestBody: { content: prompt }
+            const response = await ChatService.sendMessageApiV1ChatSessionsSessionIdMessagesPost(sessionId, {
+                content: prompt,
             });
 
             return response.content;
@@ -96,10 +92,10 @@ export class NoteAIService {
 
         // Parse and clean tags
         return response
-        .split(',')
-        .map(tag => tag.trim().toLowerCase())
-        .filter(tag => tag.length > 0 && tag.length < 30)
-        .slice(0, 7);
+            .split(',')
+            .map(tag => tag.trim().toLowerCase())
+            .filter(tag => tag.length > 0 && tag.length < 30)
+            .slice(0, 7);
     }
 
     /**

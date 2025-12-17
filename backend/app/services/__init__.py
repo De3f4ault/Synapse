@@ -2,7 +2,7 @@
 Services layer for shared application services.
 
 This module provides access to all shared services including:
-- Vector store (LanceDB)
+- Vector store (Qdrant)
 - Analytics (DuckDB)
 - Cache (Redis)
 - Storage (Local filesystem)

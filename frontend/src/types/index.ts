@@ -5,7 +5,7 @@
  */
 
 // Re-export all generated types
-export * from '@/api/generated/types.gen';
+export * from '@/api/generated';
 
 // Custom route params
 export interface RouteParams {

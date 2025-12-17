@@ -3,6 +3,7 @@
  * Holographic deck pod with glassmorphic design
  */
 
+import React from 'react';
 import { motion } from 'framer-motion';
 import { Play, MoreVertical, Edit, Trash2, Layers } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -87,7 +88,7 @@ const colorClasses = {
     },
 };
 
-export function DeckCard({
+export const DeckCard = React.memo(function DeckCard({
     deck,
     color,
     masteryPercent,
@@ -202,4 +203,4 @@ export function DeckCard({
             </div>
         </motion.div>
     );
-}
+});

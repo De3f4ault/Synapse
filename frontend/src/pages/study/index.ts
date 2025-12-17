@@ -44,11 +44,11 @@ export { SuggestedTopics } from './components/recommendations/SuggestedTopics';
 // ============================================================================
 export {
     StudyStats,
-    SessionStatsDisplay
+    StudyStats as SessionStatsDisplay
 } from './components/shared/StudyStats';
 export {
     StreakIndicator,
-    StreakBadge
+    StreakIndicator as StreakBadge
 } from './components/shared/StreakIndicator';
 
 // ============================================================================
@@ -89,9 +89,9 @@ export {
     interleaveByModule,
     calculateBreakTime,
     formatDuration,
-        formatTimeRemaining,
-            isTimeForReview,
-            calculateNextReview,
+    formatTimeRemaining,
+    isTimeForReview,
+    calculateNextReview,
 } from './utils/sessionScheduler';
 
 // ============================================================================
@@ -104,14 +104,9 @@ export type * from './types/study.types';
 // Explicitly export commonly used types for better IDE autocomplete
 export type {
     StudyItem,
-    DueItem,
     RecommendedItem,
     StudySessionState,
-    SessionStats,
     StudyStreak,
-    LearningPath,
-    StudyRecommendation,
-    StudyItemResponse,
     StudySessionResponse,
     StudyPriority,
     StudyItemType,

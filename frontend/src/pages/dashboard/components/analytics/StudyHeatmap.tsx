@@ -7,7 +7,7 @@ import { useState } from 'react';
 import { Calendar } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import GlassCard from '../shared/GlassCard';
-import type { HeatmapData } from '@/api/generated/types.gen';
+import type { HeatmapData } from '@/api/generated';
 
 interface StudyHeatmapProps {
   data: HeatmapData[];

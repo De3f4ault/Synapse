@@ -3,7 +3,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { RotateCcw, MousePointerClick, Keyboard } from 'lucide-react';
-import type { FlashcardResponse } from '@/api/generated/types.gen';
+import type { FlashcardResponse } from '@/api/generated';
 
 /**
  * Enhanced 3D Card Flip Component

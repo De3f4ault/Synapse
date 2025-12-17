@@ -2,7 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { FileQuestion, Wand2 } from 'lucide-react';
 import { QuizCard } from './QuizCard';
-import type { QuizResponse } from '@/api/generated/types.gen';
+import type { QuizResponse } from '@/api/generated';
 
 interface QuizGridProps {
     quizzes: QuizResponse[];

@@ -317,7 +317,7 @@ class NoteService:
 
     async def _vector_search(self, user_id: int, query: str, limit: int = 20) -> List[Dict]:
         """
-        Perform vector search using LanceDB.
+        Perform vector search using Qdrant.
 
         Args:
             user_id: User ID

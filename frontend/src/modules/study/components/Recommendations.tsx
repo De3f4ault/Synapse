@@ -4,9 +4,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Sparkles, TrendingDown, Target, PlayCircle } from 'lucide-react';
-import { getRecommendationsApiV1StudyRecommendationsGet } from '@/api/generated/services.gen';
+import {  getRecommendationsApiV1StudyRecommendationsGet , StudyService } from '@/api/generated';
 import { QUERY_KEYS } from '@/lib/constants';
-import type { StudyItemResponse } from '@/api/generated/types.gen';
+import type { StudyItemResponse } from '@/api/generated';
 
 /**
  * Recommendations Component

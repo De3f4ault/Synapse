@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { FlashcardResponse } from '@/api/generated/types.gen';
+import type { FlashcardResponse } from '@/api/generated';
 
 /**
  * Review session state store (Zustand)

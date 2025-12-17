@@ -164,7 +164,7 @@ class AgentFactory:
             description=base_config.get("description", ""),
             capabilities=base_config.get("capabilities", []),
             system_prompt=base_config.get("system_prompt", ""),
-            model=base_config.get("model", "gemini-1.5-flash"),
+            model=base_config.get("model", "gemini-2.5-flash"),
             temperature=base_config.get("temperature", 0.0),
             max_iterations=base_config.get("max_iterations", 10),
             max_tokens=base_config.get("max_tokens", 8000),
@@ -196,7 +196,7 @@ class AgentFactory:
                     AgentCapability.TOOL_USE,
                     AgentCapability.MEMORY
                 ],
-                "model": "gemini-1.5-flash",
+                "model": "gemini-2.5-flash",
                 "temperature": 0.3,  # Slightly creative for teaching
                 "max_iterations": 8,
             },
@@ -208,7 +208,7 @@ class AgentFactory:
                     AgentCapability.TOOL_USE,
                     AgentCapability.FILE_ACCESS
                 ],
-                "model": "gemini-1.5-pro",  # Use Pro for complex analysis
+                "model": "gemini-2.5-pro",  # Use Pro for complex analysis
                 "temperature": 0.0,
                 "max_iterations": 5,
             },
@@ -219,9 +219,23 @@ class AgentFactory:
                     AgentCapability.CHAT,
                     AgentCapability.TOOL_USE
                 ],
-                "model": "gemini-1.5-flash",
+                "model": "gemini-2.5-flash",
                 "temperature": 0.5,  # Creative for varied questions
                 "max_iterations": 5,
+            },
+            "dashboard": {
+                "display_name": "Dashboard Orchestrator",
+                "description": "All-knowing AI assistant with full system access",
+                "capabilities": [
+                    AgentCapability.CHAT,
+                    AgentCapability.TOOL_USE,
+                    AgentCapability.MEMORY,
+                    AgentCapability.PLANNING,
+                    AgentCapability.FILE_ACCESS
+                ],
+                "model": "gemini-2.5-flash",  # Latest model for best performance
+                "temperature": 0.4,  # Balanced creativity
+                "max_iterations": 12,  # Allow complex operations
             }
         }
 
@@ -290,7 +304,7 @@ async def create_agent(
         agent = await create_agent(
             "tutor",
             tools=["create_flashcard", "search_flashcards"],
-            model="gemini-1.5-pro"
+            model="gemini-2.5-pro"
         )
     """
     factory = get_agent_factory()

@@ -78,7 +78,7 @@ class DocumentChunk(Base, TimestampMixin):
         String(255),
         nullable=True,
         default=None,
-        doc="Reference to vector embedding in LanceDB"
+        doc="Reference to vector embedding in Qdrant"
     )
 
     # Metadata

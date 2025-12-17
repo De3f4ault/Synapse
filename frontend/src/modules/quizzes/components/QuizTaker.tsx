@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils';
 import { QuestionCard } from './QuestionCard';
 import { useQuizAttempt } from '../hooks/useQuizAttempt';
 import { ConfirmationModal } from '@/components/feedback/ConfirmationModal';
-import type { QuizResponse, QuizResultResponse } from '@/api/generated/types.gen';
+import type { QuizResponse, QuizResultResponse } from '@/api/generated';
 
 /**
  * Quiz Taker Component - ENHANCED

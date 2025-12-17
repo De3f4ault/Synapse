@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { useMutation, useQueryClient } from '@tantml:react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { createQuizApiV1QuizzesPost } from '@/api/generated/services.gen';
+import { QuizzesService } from '@/api/generated';
 import { queryKeys } from '@/lib/queryKeys';
 
 // TODO: Move to src/api/services/gemini.ts
@@ -22,13 +22,17 @@ export function useQuizBuilder() {
     const queryClient = useQueryClient();
     const [isGenerating, setIsGenerating] = useState(false);
 
-    const createMutation = useMutation({
-        mutationFn: createQuizApiV1QuizzesPost,
+    // Create quiz mutation
+    const createQuizMutation = useMutation({
+        mutationFn: async (data: Parameters<typeof QuizzesService.createQuizApiV1QuizzesPost>[0]) => {
+            const response = await QuizzesService.createQuizApiV1QuizzesPost(data);
+            return response;
+        },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.quizzes.all });
             toast.success('SIMULATION CONSTRUCTED SUCCESSFULLY');
         },
-        onError: (error) => {
+        onError: (error: unknown) => {
             toast.error('CONSTRUCTION FAILED', {
                 description: error instanceof Error ? error.message : 'Neural link failure',
             });

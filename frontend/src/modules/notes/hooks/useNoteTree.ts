@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
-import { getNoteTreeApiV1NotesTreeGet } from '@/api/generated/services.gen';
+import {  getNoteTreeApiV1NotesTreeGet , NotesService } from '@/api/generated';
 import { QUERY_KEYS } from '@/lib/constants';
-import type { NoteTreeNode } from '@/api/generated/types.gen';
+import type { NoteTreeNode } from '@/api/generated';
 
 /**
  * Hook for managing hierarchical note tree

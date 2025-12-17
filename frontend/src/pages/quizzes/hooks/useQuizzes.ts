@@ -1,10 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import {
-    listQuizzesApiV1QuizzesGet,
-    createQuizApiV1QuizzesPost,
-    deleteQuizApiV1QuizzesQuizIdDelete,
-} from '@/api/generated/services.gen';
+import { QuizzesService } from '@/api/generated';
 import { queryKeys } from '@/lib/queryKeys';
 
 /**
@@ -25,16 +21,16 @@ export function useQuizzes() {
     } = useQuery({
         queryKey: queryKeys.quizzes.list(),
         queryFn: async () => {
-            const response = await listQuizzesApiV1QuizzesGet();
-            return (response as any).data ?? response;
+            const response = await QuizzesService.listQuizzesApiV1QuizzesGet();
+            return response;
         },
     });
 
     // Create quiz mutation
     const createQuizMutation = useMutation({
         mutationFn: async (data: any) => {
-            const response = await createQuizApiV1QuizzesPost({ body: data });
-            return (response as any).data ?? response;
+            const response = await QuizzesService.createQuizApiV1QuizzesPost(data);
+            return response;
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.quizzes.all });
@@ -47,11 +43,13 @@ export function useQuizzes() {
         },
     });
 
-    // Delete quiz mutation
+    /*
+    // Delete quiz mutation - API endpoint missing in generated client
     const deleteQuizMutation = useMutation({
         mutationFn: async (quizId: number) => {
-            const response = await deleteQuizApiV1QuizzesQuizIdDelete({ path: { quiz_id: quizId } });
-            return (response as any).data ?? response;
+            // const response = await deleteQuizApiV1QuizzesQuizIdDelete({ path: { quiz_id: quizId } });
+            // return (response as any).data ?? response;
+            throw new Error('Not implemented');
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.quizzes.all });
@@ -63,6 +61,7 @@ export function useQuizzes() {
             });
         },
     });
+    */
 
     return {
         quizzes,
@@ -70,9 +69,9 @@ export function useQuizzes() {
         error,
         refetch,
         createQuiz: createQuizMutation.mutate,
-        deleteQuiz: deleteQuizMutation.mutate,
+        // deleteQuiz: deleteQuizMutation.mutate,
         isCreating: createQuizMutation.isPending,
-        isDeleting: deleteQuizMutation.isPending,
+        // isDeleting: deleteQuizMutation.isPending,
     };
 }
 

@@ -1,42 +1,50 @@
 """
 Webhook management endpoints.
 
-CRUD operations for webhook registrations.
-
+CRUD operations for webhook registrations with database storage.
+UPDATED: Full implementation with encryption and database integration.
 """
 
-from typing import List
+from typing import List, Optional
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_
-from pydantic import BaseModel, HttpUrl
-import secrets
+from sqlalchemy import select, and_, func
+from pydantic import BaseModel, HttpUrl, Field
+import structlog
 
 from app.api.deps import get_db, get_current_user
 from app.models.user import User
+from app.models.webhook import Webhook
 from app.models.webhook_event import WebhookEvent, WebhookStatus
+from app.services.security.encryption import (
+    encrypt_webhook_secret,
+    decrypt_webhook_secret, 
+    generate_webhook_secret,
+)
+from app.core.events.webhooks.sender import test_webhook
 
+logger = structlog.get_logger(__name__)
 router = APIRouter()
 
 
 # ============================================================================
-# Schemas (Note: These overlap with webhooks.py, consolidate in production)
+# Schemas
 # ============================================================================
 
 class WebhookCreate(BaseModel):
     """Webhook creation request."""
     url: HttpUrl
-    events: List[str]
-    description: str = ""
+    events: List[str] = Field(min_length=1, description="Event types to subscribe to")
+    description: str = Field(default="", max_length=500)
 
 
 class WebhookUpdate(BaseModel):
     """Webhook update request."""
-    url: HttpUrl = None
-    events: List[str] = None
-    description: str = None
-    is_active: bool = None
+    url: Optional[HttpUrl] = None
+    events: Optional[List[str]] = None
+    description: Optional[str] = None
+    is_active: Optional[bool] = None
 
 
 class WebhookResponse(BaseModel):
@@ -45,9 +53,18 @@ class WebhookResponse(BaseModel):
     url: str
     events: List[str]
     description: str
-    secret: str
+    secret_masked: str = Field(description="Masked version of secret for display")
     is_active: bool
     created_at: datetime
+    updated_at: datetime
+    last_triggered_at: Optional[datetime]
+    total_deliveries: int
+    successful_deliveries: int
+    failed_deliveries: int
+    success_rate: float
+
+    class Config:
+        from_attributes = True
 
 
 class WebhookDeliveryLog(BaseModel):
@@ -56,9 +73,12 @@ class WebhookDeliveryLog(BaseModel):
     event_type: str
     status: WebhookStatus
     attempts: int
-    response_code: int = None
+    response_code: Optional[int]
     created_at: datetime
-    sent_at: datetime = None
+    sent_at: Optional[datetime]
+
+    class Config:
+        from_attributes = True
 
 
 # ============================================================================
@@ -92,11 +112,6 @@ AVAILABLE_EVENTS = [
 # Helper Functions
 # ============================================================================
 
-def generate_webhook_secret() -> str:
-    """Generate a secure random webhook secret."""
-    return secrets.token_urlsafe(32)
-
-
 def validate_events(events: List[str]) -> tuple[bool, str]:
     """
     Validate event names.
@@ -104,14 +119,40 @@ def validate_events(events: List[str]) -> tuple[bool, str]:
     Returns:
         (is_valid, error_message)
     """
+    if not events:
+        return False, "At least one event must be specified"
+    
     for event in events:
         if event not in AVAILABLE_EVENTS:
             return False, f"Invalid event: {event}. Available events: {', '.join(AVAILABLE_EVENTS)}"
 
-    if not events:
-        return False, "At least one event must be specified"
-
     return True, ""
+
+
+def mask_secret(secret: str) -> str:
+    """Mask secret for display (show first 4 and last 4 chars)."""
+    if len(secret) <= 8:
+        return "****"
+    return f"{secret[:4]}{'*' * (len(secret) - 8)}{secret[-4:]}"
+
+
+def webhook_to_response(webhook: Webhook) -> WebhookResponse:
+    """Convert Webhook model to response schema."""
+    return WebhookResponse(
+        id=webhook.id,
+        url=webhook.url,
+        events=webhook.events,
+        description=webhook.description or "",
+        secret_masked=mask_secret(decrypt_webhook_secret(webhook.secret_encrypted)),
+        is_active=webhook.is_active,
+        created_at=webhook.created_at,
+        updated_at=webhook.updated_at,
+        last_triggered_at=webhook.last_triggered_at,
+        total_deliveries=webhook.total_deliveries,
+        successful_deliveries=webhook.successful_deliveries,
+        failed_deliveries=webhook.failed_deliveries,
+        success_rate=webhook.success_rate
+    )
 
 
 # ============================================================================
@@ -124,19 +165,14 @@ async def list_webhooks(
     db: AsyncSession = Depends(get_db)
 ):
     """List all webhooks for the authenticated user."""
+    query = select(Webhook).where(
+        Webhook.user_id == current_user.id
+    ).order_by(Webhook.created_at.desc())
 
-    # NOTE: In production, add a webhooks table to store webhook configurations
-    # For now, return empty list as placeholder
+    result = await db.execute(query)
+    webhooks = result.scalars().all()
 
-    # Example query (once webhooks table exists):
-    # query = select(Webhook).where(
-    #     Webhook.user_id == current_user.id
-    # ).order_by(Webhook.created_at.desc())
-    #
-    # result = await db.execute(query)
-    # webhooks = result.scalars().all()
-
-    return []
+    return [webhook_to_response(w) for w in webhooks]
 
 
 @router.post("", response_model=WebhookResponse, status_code=status.HTTP_201_CREATED)
@@ -159,32 +195,32 @@ async def create_webhook(
             detail=error_msg
         )
 
-    # Generate secret
+    # Generate and encrypt secret
     secret = generate_webhook_secret()
+    encrypted_secret = encrypt_webhook_secret(secret)
 
-    # NOTE: In production, create webhook record in database
-    # new_webhook = Webhook(
-    #     user_id=current_user.id,
-    #     url=str(webhook_data.url),
-    #     events=webhook_data.events,
-    #     description=webhook_data.description,
-    #     secret=secret,  # Store encrypted in production!
-    #     is_active=True
-    # )
-    # db.add(new_webhook)
-    # await db.commit()
-    # await db.refresh(new_webhook)
-
-    # Placeholder response
-    return WebhookResponse(
-        id=1,
+    # Create webhook
+    new_webhook = Webhook(
+        user_id=current_user.id,
         url=str(webhook_data.url),
+        secret_encrypted=encrypted_secret,
         events=webhook_data.events,
         description=webhook_data.description,
-        secret=secret,
-        is_active=True,
-        created_at=datetime.utcnow()
+        is_active=True
     )
+
+    db.add(new_webhook)
+    await db.commit()
+    await db.refresh(new_webhook)
+
+    logger.info(
+        "webhook_created",
+        webhook_id=new_webhook.id,
+        user_id=current_user.id,
+        events=webhook_data.events
+    )
+
+    return webhook_to_response(new_webhook)
 
 
 @router.get("/{webhook_id}", response_model=WebhookResponse)
@@ -194,30 +230,23 @@ async def get_webhook(
     db: AsyncSession = Depends(get_db)
 ):
     """Get details of a specific webhook."""
-
-    # NOTE: In production, query webhook from database
-    # result = await db.execute(
-    #     select(Webhook).where(
-    #         and_(
-    #             Webhook.id == webhook_id,
-    #             Webhook.user_id == current_user.id
-    #         )
-    #     )
-    # )
-    # webhook = result.scalar_one_or_none()
-    #
-    # if not webhook:
-    #     raise HTTPException(
-    #         status_code=status.HTTP_404_NOT_FOUND,
-    #         detail="Webhook not found"
-    #     )
-    #
-    # return webhook
-
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="Webhook storage not yet implemented. Add webhooks table to database."
+    result = await db.execute(
+        select(Webhook).where(
+            and_(
+                Webhook.id == webhook_id,
+                Webhook.user_id == current_user.id
+            )
+        )
     )
+    webhook = result.scalar_one_or_none()
+
+    if not webhook:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Webhook not found"
+        )
+
+    return webhook_to_response(webhook)
 
 
 @router.put("/{webhook_id}", response_model=WebhookResponse)
@@ -228,6 +257,22 @@ async def update_webhook(
     db: AsyncSession = Depends(get_db)
 ):
     """Update a webhook configuration."""
+    # Fetch webhook
+    result = await db.execute(
+        select(Webhook).where(
+            and_(
+                Webhook.id == webhook_id,
+                Webhook.user_id == current_user.id
+            )
+        )
+    )
+    webhook = result.scalar_one_or_none()
+
+    if not webhook:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Webhook not found"
+        )
 
     # Validate events if provided
     if webhook_data.events:
@@ -238,30 +283,96 @@ async def update_webhook(
                 detail=error_msg
             )
 
-    # NOTE: In production, update webhook in database
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="Webhook storage not yet implemented"
-    )
+    # Update fields
+    if webhook_data.url is not None:
+        webhook.url = str(webhook_data.url)
+    if webhook_data.events is not None:
+        webhook.events = webhook_data.events
+    if webhook_data.description is not None:
+        webhook.description = webhook_data.description
+    if webhook_data.is_active is not None:
+        webhook.is_active = webhook_data.is_active
+
+    webhook.updated_at = datetime.utcnow()
+
+    await db.commit()
+    await db.refresh(webhook)
+
+    logger.info("webhook_updated", webhook_id=webhook_id, user_id=current_user.id)
+
+    return webhook_to_response(webhook)
 
 
-@router.delete("/{webhook_id}")
+@router.delete("/{webhook_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_webhook(
     webhook_id: int,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """Delete a webhook registration."""
-
-    # NOTE: In production, delete webhook from database
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="Webhook storage not yet implemented"
+    result = await db.execute(
+        select(Webhook).where(
+            and_(
+                Webhook.id == webhook_id,
+                Webhook.user_id == current_user.id
+            )
+        )
     )
+    webhook = result.scalar_one_or_none()
+
+    if not webhook:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Webhook not found"
+        )
+
+    await db.delete(webhook)
+    await db.commit()
+
+    logger.info("webhook_deleted", webhook_id=webhook_id, user_id=current_user.id)
 
 
-@router.post("/{webhook_id}/test")
-async def test_webhook(
+@router.post("/{webhook_id}/regenerate-secret", response_model=dict)
+async def regenerate_secret(
+    webhook_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Regenerate webhook secret (invalidates old secret)."""
+    result = await db.execute(
+        select(Webhook).where(
+            and_(
+                Webhook.id == webhook_id,
+                Webhook.user_id == current_user.id
+            )
+        )
+    )
+    webhook = result.scalar_one_or_none()
+
+    if not webhook:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Webhook not found"
+        )
+
+    # Generate new secret
+    new_secret = generate_webhook_secret()
+    webhook.secret_encrypted = encrypt_webhook_secret(new_secret)
+    webhook.updated_at = datetime.utcnow()
+
+    await db.commit()
+
+    logger.info("webhook_secret_regenerated", webhook_id=webhook_id, user_id=current_user.id)
+
+    return {
+        "message": "Secret regenerated successfully",
+        "secret": new_secret,  # Return once for user to save
+        "webhook_id": webhook_id
+    }
+
+
+@router.post("/{webhook_id}/test", response_model=dict)
+async def test_webhook_endpoint(
     webhook_id: int,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
@@ -271,25 +382,39 @@ async def test_webhook(
 
     Useful for verifying webhook configuration and endpoint availability.
     """
-    # NOTE: In production:
-    # 1. Get webhook from database
-    # 2. Create test event payload
-    # 3. Send HTTP POST to webhook URL with signature
-    # 4. Return delivery status
+    result = await db.execute(
+        select(Webhook).where(
+            and_(
+                Webhook.id == webhook_id,
+                Webhook.user_id == current_user.id
+            )
+        )
+    )
+    webhook = result.scalar_one_or_none()
 
-    test_payload = {
-        "event": "test.webhook",
-        "timestamp": datetime.utcnow().isoformat(),
-        "data": {
-            "message": "This is a test webhook delivery",
-            "user_id": current_user.id
-        }
-    }
+    if not webhook:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Webhook not found"
+        )
+
+    # Decrypt secret for test
+    secret = decrypt_webhook_secret(webhook.secret_encrypted)
+
+    # Send test webhook
+    test_result = await test_webhook(webhook.url, secret)
+
+    logger.info(
+        "webhook_test_sent",
+        webhook_id=webhook_id,
+        success=test_result.get("success"),
+        status_code=test_result.get("status_code")
+    )
 
     return {
-        "message": "Test webhook would be sent here",
-        "payload": test_payload,
-        "note": "Implement webhook sending logic with HMAC signature"
+        "success": test_result.get("success"),
+        "status_code": test_result.get("status_code"),
+        "message": "Test webhook sent" if test_result.get("success") else "Test webhook failed"
     }
 
 
@@ -305,12 +430,27 @@ async def get_webhook_logs(
 
     Shows recent webhook delivery attempts with status and response details.
     """
-    # Query webhook_events table for this webhook
-    # NOTE: In production, filter by webhook_id once webhooks table exists
+    # Verify webhook ownership
+    result = await db.execute(
+        select(Webhook).where(
+            and_(
+                Webhook.id == webhook_id,
+                Webhook.user_id == current_user.id
+            )
+        )
+    )
+    webhook = result.scalar_one_or_none()
 
+    if not webhook:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Webhook not found"
+        )
+
+    # Query delivery logs
     result = await db.execute(
         select(WebhookEvent).where(
-            WebhookEvent.user_id == current_user.id
+            WebhookEvent.webhook_id == webhook_id
         ).order_by(
             WebhookEvent.created_at.desc()
         ).limit(limit)
@@ -329,3 +469,17 @@ async def get_webhook_logs(
         )
         for event in events
     ]
+
+
+@router.get("/events/available", response_model=dict)
+async def list_available_events():
+    """List all available webhook event types."""
+    return {
+        "events": [
+            {
+                "name": event,
+                "category": event.split(".")[0]
+            }
+            for event in AVAILABLE_EVENTS
+        ]
+    }

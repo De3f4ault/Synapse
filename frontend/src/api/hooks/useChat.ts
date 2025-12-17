@@ -1,32 +1,26 @@
 // Chat hooks using TanStack Query
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import {
-    listSessionsApiV1ChatSessionsGet,
-    createSessionApiV1ChatSessionsPost,
-    getSessionApiV1ChatSessionsSessionIdGet,
-    deleteSessionApiV1ChatSessionsSessionIdDelete,
-    getMessagesApiV1ChatSessionsSessionIdMessagesGet,
-    sendMessageApiV1ChatSessionsSessionIdMessagesPost,
-} from '../generated';
+import { ChatService } from '../generated';
 import type {
     ChatSessionResponse,
     ChatSessionCreate,
     ChatMessageResponse,
     ChatMessageCreate,
 } from '../generated';
-import { queryKeys } from '@/lib/queryKeys';
+
+const CHAT_KEYS = {
+    sessions: () => ['chat', 'sessions'] as const,
+    session: (id: number) => ['chat', 'session', id] as const,
+    messages: (sessionId: number) => ['chat', 'messages', sessionId] as const,
+};
 
 /**
  * Hook to list chat sessions
  */
-export const useChatSessions = (params?: {
-    page?: number;
-    pageSize?: number;
-}) => {
+export const useChatSessions = (params?: { page?: number; pageSize?: number }) => {
     return useQuery<ChatSessionResponse[]>({
-        // FIX 5: renamed sessionsList -> sessions
-        queryKey: queryKeys.chat.sessions(),
-                                           queryFn: () => listSessionsApiV1ChatSessionsGet(params || {}),
+        queryKey: CHAT_KEYS.sessions(),
+        queryFn: () => ChatService.listSessionsApiV1ChatSessionsGet(params?.page, params?.pageSize),
     });
 };
 
@@ -35,9 +29,9 @@ export const useChatSessions = (params?: {
  */
 export const useChatSession = (sessionId: number) => {
     return useQuery<ChatSessionResponse>({
-        queryKey: queryKeys.chat.session(sessionId),
-                                         queryFn: () => getSessionApiV1ChatSessionsSessionIdGet({ sessionId }),
-                                         enabled: !!sessionId,
+        queryKey: CHAT_KEYS.session(sessionId),
+        queryFn: () => ChatService.getSessionApiV1ChatSessionsSessionIdGet(sessionId),
+        enabled: !!sessionId,
     });
 };
 
@@ -46,10 +40,9 @@ export const useChatSession = (sessionId: number) => {
  */
 export const useChatMessages = (sessionId: number, limit?: number) => {
     return useQuery<ChatMessageResponse[]>({
-        queryKey: queryKeys.chat.messages(sessionId),
-                                           queryFn: () =>
-                                           getMessagesApiV1ChatSessionsSessionIdMessagesGet({ sessionId, limit }),
-                                           enabled: !!sessionId,
+        queryKey: CHAT_KEYS.messages(sessionId),
+        queryFn: () => ChatService.getMessagesApiV1ChatSessionsSessionIdMessagesGet(sessionId, limit),
+        enabled: !!sessionId,
     });
 };
 
@@ -60,11 +53,10 @@ export const useCreateChatSession = () => {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: (data: ChatSessionCreate) =>
-        createSessionApiV1ChatSessionsPost({ requestBody: data }),
-                       onSuccess: () => {
-                           queryClient.invalidateQueries({ queryKey: queryKeys.chat.sessions() });
-                       },
+        mutationFn: (data: ChatSessionCreate) => ChatService.createSessionApiV1ChatSessionsPost(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: CHAT_KEYS.sessions() });
+        },
     });
 };
 
@@ -74,25 +66,12 @@ export const useCreateChatSession = () => {
 export const useSendMessage = () => {
     const queryClient = useQueryClient();
 
-    return useMutation<
-    ChatMessageResponse,
-    Error,
-    { sessionId: number; content: string }
-    >({
+    return useMutation<ChatMessageResponse, Error, { sessionId: number; content: string }>({
         mutationFn: ({ sessionId, content }) =>
-        sendMessageApiV1ChatSessionsSessionIdMessagesPost({
-            sessionId,
-            requestBody: { content },
-        }),
+            ChatService.sendMessageApiV1ChatSessionsSessionIdMessagesPost(sessionId, { content } as ChatMessageCreate),
         onSuccess: (_, variables) => {
-            // Invalidate messages for this session
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.chat.messages(variables.sessionId),
-            });
-            // Invalidate session to update message count
-            queryClient.invalidateQueries({
-                queryKey: queryKeys.chat.session(variables.sessionId),
-            });
+            queryClient.invalidateQueries({ queryKey: CHAT_KEYS.messages(variables.sessionId) });
+            queryClient.invalidateQueries({ queryKey: CHAT_KEYS.session(variables.sessionId) });
         },
     });
 };
@@ -104,10 +83,14 @@ export const useDeleteChatSession = () => {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: (sessionId: number) =>
-        deleteSessionApiV1ChatSessionsSessionIdDelete({ sessionId }),
-                       onSuccess: () => {
-                           queryClient.invalidateQueries({ queryKey: queryKeys.chat.sessions() });
-                       },
+        mutationFn: (sessionId: number) => ChatService.deleteSessionApiV1ChatSessionsSessionIdDelete(sessionId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: CHAT_KEYS.sessions() });
+        },
     });
 };
+
+// Empty useChat for compatibility
+export function useChat() {
+    return {};
+}

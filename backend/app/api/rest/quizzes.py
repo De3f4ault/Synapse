@@ -46,13 +46,16 @@ class QuizCreate(BaseModel):
 
 
 class QuestionResponse(BaseModel):
-    """Question response (without correct answer)."""
+    """Question response with answers for learning mode."""
     id: int
     question_text: str
     question_type: QuestionType
     options: Optional[dict]
     points: int
     order: int
+    # Include correct answer and explanation for real-time feedback
+    correct_answer: str
+    explanation: Optional[str] = None
 
 
 class QuizResponse(BaseModel):
@@ -100,6 +103,25 @@ class QuizResultResponse(BaseModel):
     percentage: float
     time_taken_seconds: int
     answers: List[AnswerResult]
+
+
+class QuizGenerateRequest(BaseModel):
+    """AI quiz generation request."""
+    topic: str = Field(..., min_length=3, max_length=500, description="Topic to generate quiz about")
+    document_id: Optional[int] = Field(None, description="Optional document to base quiz on")
+    num_questions: int = Field(10, ge=5, le=30, description="Number of questions to generate")
+    difficulty: QuizDifficulty = Field(QuizDifficulty.MEDIUM, description="Quiz difficulty level")
+
+
+class QuizGenerateResponse(BaseModel):
+    """AI quiz generation response."""
+    quiz_id: int
+    title: str
+    description: Optional[str]
+    difficulty: QuizDifficulty
+    question_count: int
+    status: str
+    message: str
 
 
 # ============================================================================
@@ -158,6 +180,166 @@ async def create_quiz(
         user_id=new_quiz.user_id,
         created_at=new_quiz.created_at
     )
+
+
+@router.post(
+    "/generate",
+    response_model=QuizGenerateResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Generate quiz with AI",
+    description="Use AI to generate a quiz from a topic or document"
+)
+async def generate_quiz(
+    request_data: QuizGenerateRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Generate a quiz using AI.
+    
+    Steps:
+    1. Build prompt with topic and difficulty
+    2. Use QuizAgent to generate questions
+    3. Parse structured output
+    4. Create quiz and questions in database
+    """
+    import json
+    import re
+    import structlog
+    
+    logger = structlog.get_logger(__name__)
+    
+    try:
+        from app.core.ai.orchestrator import get_orchestrator
+        
+        # Build generation prompt
+        difficulty_desc = {
+            QuizDifficulty.EASY: "simple, beginner-level",
+            QuizDifficulty.MEDIUM: "intermediate, moderate difficulty",
+            QuizDifficulty.HARD: "challenging, advanced"
+        }
+        
+        prompt = f"""Generate a quiz about: {request_data.topic}
+
+Requirements:
+- Generate exactly {request_data.num_questions} multiple-choice questions
+- Difficulty: {difficulty_desc.get(request_data.difficulty, 'intermediate')}
+- Each question must have 4 options (A, B, C, D)
+- Include the correct answer and a brief explanation
+
+Return ONLY valid JSON in this exact format:
+{{
+  "title": "Quiz title",
+  "description": "Brief description",
+  "questions": [
+    {{
+      "question": "The question text",
+      "options": {{"A": "Option A", "B": "Option B", "C": "Option C", "D": "Option D"}},
+      "correct_answer": "A",
+      "explanation": "Why this is correct"
+    }}
+  ]
+}}"""
+
+        # Call orchestrator (will route to quiz agent or tutor)
+        orchestrator = get_orchestrator()
+        result = await orchestrator.handle_message(
+            message=prompt,
+            user_id=current_user.id,
+            session_id=0,  # No session needed
+            context={"document_id": request_data.document_id},
+            chat_history=[]
+        )
+        
+        if not result.success:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"AI generation failed: {result.output}"
+            )
+        
+        # Parse AI response
+        response_text = result.output
+        
+        # Extract JSON from response (handle markdown code blocks)
+        json_match = re.search(r'```(?:json)?\s*([\s\S]*?)\s*```', response_text)
+        if json_match:
+            json_str = json_match.group(1)
+        else:
+            # Try to find raw JSON
+            json_start = response_text.find('{')
+            json_end = response_text.rfind('}') + 1
+            if json_start >= 0 and json_end > json_start:
+                json_str = response_text[json_start:json_end]
+            else:
+                raise ValueError("Could not extract JSON from response")
+        
+        quiz_data = json.loads(json_str)
+        
+        # Validate structure
+        if not quiz_data.get("questions"):
+            raise ValueError("No questions in response")
+        
+        # Create quiz
+        new_quiz = Quiz(
+            user_id=current_user.id,
+            title=quiz_data.get("title", f"Quiz: {request_data.topic}"),
+            description=quiz_data.get("description", f"AI-generated quiz about {request_data.topic}"),
+            source_type=QuizSourceType.AI_GENERATED,
+            difficulty=request_data.difficulty,
+            time_limit_minutes=max(5, request_data.num_questions * 2)  # 2 min per question
+        )
+        db.add(new_quiz)
+        await db.flush()
+        
+        # Create questions
+        questions_created = 0
+        for idx, q_data in enumerate(quiz_data["questions"]):
+            question = QuizQuestion(
+                quiz_id=new_quiz.id,
+                question_text=q_data.get("question", ""),
+                question_type=QuestionType.MULTIPLE_CHOICE,
+                options=q_data.get("options", {}),
+                correct_answer=q_data.get("correct_answer", "A"),
+                explanation=q_data.get("explanation"),
+                points=1,
+                order=idx
+            )
+            db.add(question)
+            questions_created += 1
+        
+        await db.commit()
+        await db.refresh(new_quiz)
+        
+        logger.info(
+            "quiz_generated",
+            user_id=current_user.id,
+            quiz_id=new_quiz.id,
+            questions=questions_created,
+            topic=request_data.topic
+        )
+        
+        return QuizGenerateResponse(
+            quiz_id=new_quiz.id,
+            title=new_quiz.title,
+            description=new_quiz.description,
+            difficulty=new_quiz.difficulty,
+            question_count=questions_created,
+            status="success",
+            message=f"Successfully generated {questions_created} questions"
+        )
+        
+    except json.JSONDecodeError as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to parse AI response as JSON: {str(e)}"
+        )
+    except Exception as e:
+        await db.rollback()
+        logger.error("quiz_generation_failed", error=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to generate quiz: {str(e)}"
+        )
 
 
 @router.get("", response_model=List[QuizResponse])
@@ -251,7 +433,9 @@ async def start_quiz_attempt(
                 question_type=q.question_type,
                 options=q.options,
                 points=q.points,
-                order=q.order
+                order=q.order,
+                correct_answer=q.correct_answer,
+                explanation=q.explanation
             )
             for q in questions
         ]
@@ -289,10 +473,11 @@ async def submit_quiz_attempt(
     )
     questions = {q.id: q for q in questions_result.scalars().all()}
 
-    # Grade answers
+    # Separate lists: db_answers for JSON storage, answer_results for response
     total_score = Decimal("0")
     answer_results = []
-
+    db_answers = []
+    
     for answer_submit in answers:
         question = questions.get(answer_submit.question_id)
         if not question:
@@ -302,13 +487,18 @@ async def submit_quiz_attempt(
         points_earned = question.points if is_correct else 0
         total_score += points_earned
 
-        answer_results.append({
+        # Dict for database storage
+        db_answers.append({
             "question_id": question.id,
-            "answer": answer_submit.answer,
+            "question_text": question.question_text,
+            "your_answer": answer_submit.answer,
+            "correct_answer": question.correct_answer,
             "is_correct": is_correct,
-            "points": points_earned
+            "explanation": question.explanation,
+            "points_earned": points_earned
         })
 
+        # AnswerResult for response
         answer_results.append(AnswerResult(
             question_id=question.id,
             question_text=question.question_text,
@@ -319,11 +509,25 @@ async def submit_quiz_attempt(
             points_earned=points_earned
         ))
 
-    # Update attempt
-    attempt.completed_at = datetime.utcnow()
+    # Update attempt - handle both timezone-aware and naive datetimes
+    from datetime import timezone
+    now = datetime.now(timezone.utc)
+    attempt.completed_at = now
     attempt.score = total_score
-    attempt.time_taken_seconds = int((attempt.completed_at - attempt.started_at).total_seconds())
-    attempt.answers = {"answers": answer_results}
+    
+    # Handle timezone awareness mismatch
+    started = attempt.started_at
+    if started.tzinfo is None:
+        # Database has naive datetime, make completed_at naive too
+        completed = attempt.completed_at.replace(tzinfo=None)
+    else:
+        completed = attempt.completed_at
+        if completed.tzinfo is None:
+            from datetime import timezone
+            completed = completed.replace(tzinfo=timezone.utc)
+    
+    attempt.time_taken_seconds = int((completed - started).total_seconds())
+    attempt.answers = {"answers": db_answers}  # Store dicts, not AnswerResult objects
 
     await db.commit()
 
@@ -333,5 +537,5 @@ async def submit_quiz_attempt(
         max_score=attempt.max_score,
         percentage=float(attempt.percentage),
         time_taken_seconds=attempt.time_taken_seconds,
-        answers=answer_results
+        answers=answer_results  # Return AnswerResult objects
     )

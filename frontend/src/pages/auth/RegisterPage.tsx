@@ -4,7 +4,7 @@ import { useMutation } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mail, Key, User, Shield } from 'lucide-react';
 
-import { registerApiV1AuthRegisterPost } from '@/api/generated/services.gen';
+import { AuthenticationService } from '@/api/generated';
 import { useAuthStore } from '@/stores/authStore';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -28,7 +28,7 @@ export function RegisterPage() {
     const [confirmPassword, setConfirmPassword] = useState('');
 
     const registerMutation = useMutation({
-        mutationFn: registerApiV1AuthRegisterPost,
+        mutationFn: (data: any) => AuthenticationService.registerApiV1AuthRegisterPost(data.requestBody),
         onSuccess: async (data) => {
             setStatus('success');
             setTimeout(() => {

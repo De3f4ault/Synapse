@@ -1,11 +1,6 @@
 // Quizzes hooks using TanStack Query
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import {
-    createQuizApiV1QuizzesPost,
-    listQuizzesApiV1QuizzesGet,
-    startQuizAttemptApiV1QuizzesQuizIdStartPost,
-    submitQuizAttemptApiV1QuizzesAttemptsAttemptIdSubmitPost,
-} from '../generated';
+import { QuizzesService } from '../generated';
 import type {
     QuizResponse,
     QuizCreate,
@@ -13,15 +8,21 @@ import type {
     QuizResultResponse,
     AnswerSubmit,
 } from '../generated';
-import { queryKeys } from '@/lib/queryKeys';
+
+const QUIZ_KEYS = {
+    all: ['quizzes'] as const,
+    lists: () => [...QUIZ_KEYS.all, 'list'] as const,
+    list: (params?: unknown) => [...QUIZ_KEYS.lists(), params] as const,
+    detail: (id: number) => [...QUIZ_KEYS.all, 'detail', id] as const,
+};
 
 /**
  * Hook to list quizzes
  */
 export const useQuizzes = (params?: { page?: number; pageSize?: number }) => {
     return useQuery<QuizResponse[]>({
-        queryKey: queryKeys.quizzes.list(params),
-                                    queryFn: () => listQuizzesApiV1QuizzesGet(params || {}),
+        queryKey: QUIZ_KEYS.list(params),
+        queryFn: () => QuizzesService.listQuizzesApiV1QuizzesGet(params?.page, params?.pageSize),
     });
 };
 
@@ -31,10 +32,10 @@ export const useQuizzes = (params?: { page?: number; pageSize?: number }) => {
 export const useCreateQuiz = () => {
     const queryClient = useQueryClient();
     return useMutation({
-        mutationFn: (data: QuizCreate) => createQuizApiV1QuizzesPost({ requestBody: data }),
-                       onSuccess: () => {
-                           queryClient.invalidateQueries({ queryKey: queryKeys.quizzes.lists() });
-                       },
+        mutationFn: (data: QuizCreate) => QuizzesService.createQuizApiV1QuizzesPost(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: QUIZ_KEYS.lists() });
+        },
     });
 };
 
@@ -43,7 +44,7 @@ export const useCreateQuiz = () => {
  */
 export const useStartQuizAttempt = () => {
     return useMutation<QuizAttemptStart, Error, number>({
-        mutationFn: (quizId: number) => startQuizAttemptApiV1QuizzesQuizIdStartPost({ quizId }),
+        mutationFn: (quizId: number) => QuizzesService.startQuizAttemptApiV1QuizzesQuizIdStartPost(quizId),
     });
 };
 
@@ -54,14 +55,9 @@ export const useSubmitQuizAttempt = () => {
     const queryClient = useQueryClient();
     return useMutation<QuizResultResponse, Error, { attemptId: number; answers: AnswerSubmit[] }>({
         mutationFn: ({ attemptId, answers }) =>
-        submitQuizAttemptApiV1QuizzesAttemptsAttemptIdSubmitPost({
-            attemptId,
-            requestBody: answers,
-        }),
+            QuizzesService.submitQuizAttemptApiV1QuizzesAttemptsAttemptIdSubmitPost(attemptId, answers),
         onSuccess: () => {
-            // Invalidate analytics and study data after quiz completion
-            queryClient.invalidateQueries({ queryKey: queryKeys.analytics.all });
-            queryClient.invalidateQueries({ queryKey: queryKeys.study.all });
+            queryClient.invalidateQueries({ queryKey: QUIZ_KEYS.all });
         },
     });
 };

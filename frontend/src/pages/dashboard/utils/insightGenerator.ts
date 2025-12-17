@@ -91,8 +91,8 @@ export function generateInsights(
 
     // Sort by confidence (descending) and take top 5
     return insights
-    .sort((a, b) => (b.confidence || 0) - (a.confidence || 0))
-    .slice(0, 5);
+        .sort((a, b) => (b.confidence || 0) - (a.confidence || 0))
+        .slice(0, 5);
 }
 
 /**
@@ -109,7 +109,7 @@ function generateStreakInsights(
         insights.push({
             id: `streak-milestone-${stats.currentStreak}`,
             type: 'streak_milestone',
-            title: `🔥 ${stats.currentStreak}-Day Streak!`,
+            title: `${stats.currentStreak}-Day Streak!`,
             description: `You've maintained a ${stats.currentStreak}-day learning streak. Keep the momentum going!`,
             confidence: 1.0,
             actionable: true,
@@ -127,7 +127,7 @@ function generateStreakInsights(
         insights.push({
             id: 'streak-warning',
             type: 'warning',
-            title: '⚠️ Streak at Risk',
+            title: 'Streak at Risk',
             description: `Your ${stats.currentStreak}-day streak needs attention. Complete at least one activity today!`,
             confidence: 0.9,
             actionable: true,
@@ -146,7 +146,7 @@ function generateStreakInsights(
         insights.push({
             id: 'longest-streak-challenge',
             type: 'challenge',
-            title: '🎯 Beat Your Record',
+            title: 'Beat Your Record',
             description: `Your longest streak was ${stats.longestStreak} days. Only ${difference} more days to match it!`,
             confidence: 0.7,
             actionable: true,
@@ -177,7 +177,7 @@ function generateProgressInsights(
             insights.push({
                 id: 'daily-goal-complete',
                 type: 'success',
-                title: '✅ Daily Goal Complete!',
+                title: 'Daily Goal Complete!',
                 description: `Reviewed all ${cards_reviewed_today} due cards today. Outstanding work!`,
                 confidence: 1.0,
                 actionable: false,
@@ -186,7 +186,7 @@ function generateProgressInsights(
             insights.push({
                 id: 'daily-progress',
                 type: 'progress',
-                title: '📊 Good Progress',
+                title: 'Good Progress',
                 description: `You've reviewed ${percentage}% of today's cards. Keep going!`,
                 confidence: 0.8,
                 actionable: true,
@@ -205,25 +205,25 @@ function generateProgressInsights(
         insights.push({
             id: 'high-accuracy',
             type: 'success',
-            title: '🎯 Excellent Accuracy',
+            title: 'Excellent Accuracy',
             description: `${Math.round(overall_accuracy * 100)}% overall accuracy! You're mastering the material.`,
-                      confidence: 0.9,
-                      actionable: false,
+            confidence: 0.9,
+            actionable: false,
         });
     } else if (overall_accuracy < 0.7 && overall_accuracy > 0) {
         insights.push({
             id: 'accuracy-improvement',
             type: 'suggestion',
-            title: '💡 Focus on Weak Areas',
+            title: 'Focus on Weak Areas',
             description: `Your accuracy is ${Math.round(overall_accuracy * 100)}%. Review weak areas to improve retention.`,
-                      confidence: 0.8,
-                      actionable: true,
-                      actions: [
-                          {
-                              label: 'View Weak Areas',
-                              action: 'view_weak_areas',
-                          },
-                      ],
+            confidence: 0.8,
+            actionable: true,
+            actions: [
+                {
+                    label: 'View Weak Areas',
+                    action: 'view_weak_areas',
+                },
+            ],
         });
     }
 
@@ -244,7 +244,7 @@ function generateMasteryInsights(
         insights.push({
             id: 'mastery-achieved',
             type: 'success',
-            title: '🏆 Mastery Achieved',
+            title: 'Mastery Achieved',
             description: 'No weak areas detected! You\'re performing excellently across all topics.',
             confidence: 1.0,
             actionable: false,
@@ -258,7 +258,7 @@ function generateMasteryInsights(
         insights.push({
             id: 'critical-weak-areas',
             type: 'warning',
-            title: '🚨 Critical Areas Need Attention',
+            title: 'Critical Areas Need Attention',
             description: `${criticalAreas.length} topics need immediate review to prevent knowledge loss.`,
             confidence: 0.95,
             actionable: true,
@@ -280,7 +280,7 @@ function generateMasteryInsights(
         insights.push({
             id: 'improvement-opportunity',
             type: 'suggestion',
-            title: '📈 Improvement Opportunity',
+            title: 'Improvement Opportunity',
             description: `Focus on ${improvableAreas[0].topic} - it has the highest potential for accuracy gain.`,
             confidence: 0.85,
             actionable: true,
@@ -313,14 +313,14 @@ function generateVolumeInsights(
     // Check for review milestones
     const nextMilestone = config.reviewMilestones.find((m) => m > totalReviews);
     const previousMilestone = config.reviewMilestones
-    .reverse()
-    .find((m) => m <= totalReviews);
+        .reverse()
+        .find((m) => m <= totalReviews);
 
     if (previousMilestone && config.reviewMilestones.includes(previousMilestone)) {
         insights.push({
             id: `volume-milestone-${previousMilestone}`,
             type: 'achievement',
-            title: `🎉 ${previousMilestone} Reviews Complete!`,
+            title: `${previousMilestone} Reviews Complete!`,
             description: `You've completed ${previousMilestone} reviews. Your dedication is paying off!`,
             confidence: 1.0,
             actionable: false,
@@ -332,7 +332,7 @@ function generateVolumeInsights(
         insights.push({
             id: `next-milestone-${nextMilestone}`,
             type: 'progress',
-            title: `🎯 ${remaining} to ${nextMilestone}`,
+            title: `${remaining} to ${nextMilestone}`,
             description: `You're ${remaining} reviews away from your next milestone!`,
             confidence: 0.7,
             actionable: true,
@@ -359,7 +359,7 @@ function generateBehavioralSuggestions(
         insights.push({
             id: 'create-more-cards',
             type: 'suggestion',
-            title: '💡 Expand Your Decks',
+            title: 'Expand Your Decks',
             description: 'Your decks have few cards. Consider adding more content for better learning.',
             confidence: 0.6,
             actionable: true,
@@ -377,7 +377,7 @@ function generateBehavioralSuggestions(
         insights.push({
             id: 'upload-documents',
             type: 'suggestion',
-            title: '📄 Upload Study Materials',
+            title: 'Upload Study Materials',
             description: 'Upload documents to generate flashcards automatically with AI.',
             confidence: 0.7,
             actionable: true,
@@ -395,7 +395,7 @@ function generateBehavioralSuggestions(
         insights.push({
             id: 'create-notes',
             type: 'suggestion',
-            title: '📝 Start Taking Notes',
+            title: 'Start Taking Notes',
             description: 'Create notes to organize your learning and connect concepts.',
             confidence: 0.65,
             actionable: true,
@@ -413,7 +413,7 @@ function generateBehavioralSuggestions(
         insights.push({
             id: 'consistency-suggestion',
             type: 'suggestion',
-            title: '📅 Build Consistency',
+            title: 'Build Consistency',
             description: 'Study for a few minutes every day to build a strong learning habit.',
             confidence: 0.75,
             actionable: true,

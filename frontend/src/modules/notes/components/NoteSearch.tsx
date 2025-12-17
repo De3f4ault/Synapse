@@ -7,11 +7,11 @@ import { SkeletonCard } from '@/components/common/SkeletonCard';
 import { EmptyState } from '@/components/common/EmptyState';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, FileText, X, Sparkles, TrendingUp } from 'lucide-react';
-import { searchNotesApiV1NotesSearchGet } from '@/api/generated/services.gen';
+import {  searchNotesApiV1NotesSearchGet , NotesService } from '@/api/generated';
 import { QUERY_KEYS } from '@/lib/constants';
 import { useDebounce } from '@/hooks/useDebounce';
 import { cn } from '@/lib/utils';
-import type { NoteSearchResult } from '@/api/generated/types.gen';
+import type { NoteSearchResult } from '@/api/generated';
 
 /**
  * Enhanced Note Search Component

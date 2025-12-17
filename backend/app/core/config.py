@@ -68,8 +68,12 @@ class Settings(BaseSettings):
     CORS_ORIGINS: List[str] = Field(
         default=[
             "http://localhost:3000",
+            "http://localhost:3001",
+            "http://localhost:3002",
             "http://localhost:8000",
             "http://127.0.0.1:3000",
+            "http://127.0.0.1:3001",
+            "http://127.0.0.1:3002",
             "http://127.0.0.1:8000",
             "http://localhost:5173",
             "http://127.0.0.1:5173",
@@ -115,6 +119,28 @@ class Settings(BaseSettings):
     BACKGROUND_WORKERS: int = Field(
         default=4,
         description="Number of background worker threads"
+    )
+
+    # Webhooks
+    WEBHOOK_ENCRYPTION_KEY: Optional[str] = Field(
+        default=None,
+        description="Fernet encryption key for webhook secrets (required in production)"
+    )
+    WEBHOOK_ENCRYPTION_ROTATION_KEYS: Optional[str] = Field(
+        default=None,
+        description="Comma-separated list of old encryption keys for rotation"
+    )
+    WEBHOOK_MAX_RETRIES: int = Field(
+        default=5,
+        description="Maximum webhook delivery retry attempts"
+    )
+    WEBHOOK_BACKOFF_MAX: int = Field(
+        default=3600,
+        description="Maximum backoff delay in seconds (default: 1 hour)"
+    )
+    WEBHOOK_TIMEOUT: int = Field(
+        default=10,
+        description="Webhook HTTP request timeout in seconds"
     )
 
     model_config = SettingsConfigDict(

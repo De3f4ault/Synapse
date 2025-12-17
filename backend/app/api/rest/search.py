@@ -3,7 +3,7 @@ Cross-module search REST API endpoints - ENHANCED.
 
 Unified search with:
 - PostgreSQL Full-Text Search (FTS)
-- Semantic search (LanceDB)
+- Semantic search (Qdrant)
 - Hybrid ranking
 """
 

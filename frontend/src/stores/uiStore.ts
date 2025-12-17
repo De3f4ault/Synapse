@@ -82,32 +82,32 @@ export const useUIStore = create<UIState>((set) => ({
 
     // Sidebar actions
     toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
-                                                    setSidebarOpen: (open) => set({ sidebarOpen: open }),
-                                                    toggleSidebarCollapse: () =>
-                                                    set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
+    setSidebarOpen: (open) => set({ sidebarOpen: open }),
+    toggleSidebarCollapse: () =>
+        set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
 
-                                                    // Modal actions
-                                                    openModal: (modalId, data = null) =>
-                                                    set({ activeModal: modalId, modalData: data }),
-                                                    closeModal: () => set({ activeModal: null, modalData: null }),
+    // Modal actions
+    openModal: (modalId, data = null) =>
+        set({ activeModal: modalId, modalData: data }),
+    closeModal: () => set({ activeModal: null, modalData: null }),
 
-                                                    // Command palette actions
-                                                    setCommandPaletteOpen: (open) => set({ commandPaletteOpen: open }),
-                                                    toggleCommandPalette: () =>
-                                                    set((state) => ({ commandPaletteOpen: !state.commandPaletteOpen })),
+    // Command palette actions
+    setCommandPaletteOpen: (open) => set({ commandPaletteOpen: open }),
+    toggleCommandPalette: () =>
+        set((state) => ({ commandPaletteOpen: !state.commandPaletteOpen })),
 
-                                                    // Global loading actions
-                                                    setGlobalLoading: (loading, message = null) =>
-                                                    set({ globalLoading: loading, loadingMessage: message }),
+    // Global loading actions
+    setGlobalLoading: (loading, message = undefined) =>
+        set({ globalLoading: loading, loadingMessage: message }),
 
-                                                    // Breadcrumb actions
-                                                    setBreadcrumbs: (breadcrumbs) => set({ breadcrumbs }),
-                                                    addBreadcrumb: (breadcrumb) =>
-                                                    set((state) => ({ breadcrumbs: [...state.breadcrumbs, breadcrumb] })),
-                                                    clearBreadcrumbs: () => set({ breadcrumbs: [] }),
+    // Breadcrumb actions
+    setBreadcrumbs: (breadcrumbs) => set({ breadcrumbs }),
+    addBreadcrumb: (breadcrumb) =>
+        set((state) => ({ breadcrumbs: [...state.breadcrumbs, breadcrumb] })),
+    clearBreadcrumbs: () => set({ breadcrumbs: [] }),
 
-                                                    // Search actions
-                                                    setSearchQuery: (query) => set({ searchQuery: query }),
-                                                    setSearchFilters: (filters) => set({ searchFilters: filters }),
-                                                    clearSearch: () => set({ searchQuery: '', searchFilters: {} }),
+    // Search actions
+    setSearchQuery: (query) => set({ searchQuery: query }),
+    setSearchFilters: (filters) => set({ searchFilters: filters }),
+    clearSearch: () => set({ searchQuery: '', searchFilters: {} }),
 }));

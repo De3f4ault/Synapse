@@ -41,47 +41,47 @@ export function StatCard({
     suffix = '',
     decimals = 0,
     formatter,
-        trend,
-        icon: Icon,
-        iconColor = 'text-cyan-400',
-        variant = 'default',
-        className,
-        onClick,
+    trend,
+    icon: Icon,
+    iconColor = 'text-cyan-400',
+    variant = 'default',
+    className,
+    onClick,
 }: StatCardProps) {
     const trendInfo = trend ? getTrendInfo(trend.value) : null;
     const TrendIcon = trendInfo?.icon;
 
     return (
         <GlassCard
-        hover={!!onClick}
-        onClick={onClick}
-        className={cn('p-4 flex flex-col justify-between h-full', className)}
+            hover={!!onClick}
+            onClick={onClick}
+            className={cn('p-4 flex flex-col justify-between h-full', className)}
         >
-        <div className="flex justify-between items-start mb-2">
-        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{label}</span>
-        {Icon && <Icon className={cn("w-3 h-3 opacity-70", iconColor)} />}
-        </div>
-
-        <div className="flex items-end gap-2">
-        <AnimatedCounter
-        value={value}
-        prefix={prefix}
-        suffix={suffix}
-        decimals={decimals}
-        formatter={formatter}
-        className="text-2xl font-bold text-white leading-none font-mono tracking-tight"
-        />
-        </div>
-
-        {trend && trendInfo && (
-            <div className="flex items-center gap-1.5 mt-2">
-            <div className={cn("flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold", trendInfo.bg, trendInfo.color)}>
-            <TrendIcon className="w-2.5 h-2.5" />
-            <span>{Math.abs(trend.value)}%</span>
+            <div className="flex justify-between items-start mb-2">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{label}</span>
+                {Icon && <Icon className={cn("w-3 h-3 opacity-70", iconColor)} />}
             </div>
-            {trend.label && <span className="text-[9px] text-slate-600 truncate">{trend.label}</span>}
+
+            <div className="flex items-end gap-2">
+                <AnimatedCounter
+                    value={value}
+                    prefix={prefix}
+                    suffix={suffix}
+                    decimals={decimals}
+                    formatter={formatter}
+                    className="text-2xl font-bold text-white leading-none font-mono tracking-tight"
+                />
             </div>
-        )}
+
+            {trend && trendInfo && (
+                <div className="flex items-center gap-1.5 mt-2">
+                    <div className={cn("flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold", trendInfo.bg, trendInfo.color)}>
+                        <TrendIcon className="w-2.5 h-2.5" />
+                        <span>{Math.abs(trend.value)}%</span>
+                    </div>
+                    {trend.label && <span className="text-[9px] text-slate-600 truncate">{trend.label}</span>}
+                </div>
+            )}
         </GlassCard>
     );
 }
@@ -103,6 +103,15 @@ export function StudyTimeCard({ value, trend, className, onClick }: CommonStatPr
 
 export function StreakCard({ value, trend, className, onClick }: CommonStatProps) {
     return <StatCard label="Streak" value={value} suffix="d" trend={trend} icon={TrendingUp} iconColor="text-amber-400" className={className} onClick={onClick} />;
+}
+
+
+export function StatCardGrid({ children, columns = 4, className }: { children: React.ReactNode; columns?: number; className?: string }) {
+    return (
+        <div className={cn(`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-${columns} gap-4`, className)}>
+            {children}
+        </div>
+    );
 }
 
 export default StatCard;

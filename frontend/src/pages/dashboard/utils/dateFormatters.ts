@@ -59,7 +59,7 @@ export function formatDueDate(date: string | Date): string {
 export function formatStreak(days: number): string {
     if (days === 0) return 'No streak';
     if (days === 1) return '1-day streak';
-    return `${days}-day streak 🔥`;
+    return `${days}-day streak`;
 }
 
 /**

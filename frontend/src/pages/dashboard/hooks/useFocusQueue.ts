@@ -1,8 +1,7 @@
 import { useMemo, useCallback } from 'react';
 import type { DashboardData } from '../types/dashboard.types';
-import type { PriorityItem, PrioritySection } from '../types/priority.types';
+import type { QueueItem } from '../types/priority.types';
 import { calculatePriority } from '../utils/priorityCalculator';
-import { formatDueDate } from '../utils/dateFormatters';
 
 /**
  * useFocusQueue Hook
@@ -17,10 +16,10 @@ import { formatDueDate } from '../utils/dateFormatters';
  */
 export function useFocusQueue(data: DashboardData | undefined) {
     // Build complete queue from all sources
-    const allPriorityItems = useMemo((): PriorityItem[] => {
+    const allQueueItems = useMemo((): QueueItem[] => {
         if (!data) return [];
 
-        const items: PriorityItem[] = [];
+        const items: QueueItem[] = [];
 
         // 1. Due flashcards (highest urgency)
         // FIXED: Check if dueCards is an array before using forEach
@@ -29,9 +28,9 @@ export function useFocusQueue(data: DashboardData | undefined) {
                 const priority = calculatePriority({
                     dueDate: card.next_review,
                     isWeakArea: (card.accuracy || 0) < 0.7,
-                                                   accuracy: card.accuracy || 0,
-                                                   hasPrerequisites: false,
-                                                   lastAccessed: null,
+                    accuracy: card.accuracy || 0,
+                    hasPrerequisites: false,
+                    lastAccessed: null,
                 });
 
                 items.push({
@@ -58,64 +57,64 @@ export function useFocusQueue(data: DashboardData | undefined) {
         // FIXED: Check if notes is an array
         if (data.notes && Array.isArray(data.notes)) {
             data.notes
-            .filter(note => (note.content?.length || 0) < 200)
-            .forEach(note => {
-                const priority = calculatePriority({
-                    dueDate: null,
-                    isWeakArea: false,
-                    accuracy: 1,
-                    hasPrerequisites: false,
-                    lastAccessed: note.updated_at,
-                });
+                .filter(note => (note.content?.length || 0) < 200)
+                .forEach(note => {
+                    const priority = calculatePriority({
+                        dueDate: null,
+                        isWeakArea: false,
+                        accuracy: 1,
+                        hasPrerequisites: false,
+                        lastAccessed: note.updated_at,
+                    });
 
-                items.push({
-                    id: `note-${note.id}`,
-                    type: 'note',
-                    moduleType: 'notes',
-                    title: note.title || 'Untitled Note',
-                    description: `Expand note • ${note.content?.length || 0} characters`,
-                    priority,
-                    estimatedMinutes: 10,
-                    metadata: {
-                        noteId: note.id,
-                        contentLength: note.content?.length || 0,
-                        format: note.format,
-                    },
-                    actionUrl: `/notes/${note.id}`,
+                    items.push({
+                        id: `note-${note.id}`,
+                        type: 'note',
+                        moduleType: 'notes',
+                        title: note.title || 'Untitled Note',
+                        description: `Expand note • ${note.content?.length || 0} characters`,
+                        priority,
+                        estimatedMinutes: 10,
+                        metadata: {
+                            noteId: note.id,
+                            contentLength: note.content?.length || 0,
+                            format: note.format,
+                        },
+                        actionUrl: `/notes/${note.id}`,
+                    });
                 });
-            });
         }
 
         // 3. Unprocessed documents
         // FIXED: Check if documents is an array
         if (data.documents && Array.isArray(data.documents)) {
             data.documents
-            .filter(doc => doc.processing_status === 'completed' && !doc.gemini_file_uri)
-            .forEach(doc => {
-                const priority = calculatePriority({
-                    dueDate: null,
-                    isWeakArea: false,
-                    accuracy: 1,
-                    hasPrerequisites: false,
-                    lastAccessed: doc.created_at,
-                });
+                .filter(doc => doc.processing_status === 'completed' && !doc.gemini_file_uri)
+                .forEach(doc => {
+                    const priority = calculatePriority({
+                        dueDate: null,
+                        isWeakArea: false,
+                        accuracy: 1,
+                        hasPrerequisites: false,
+                        lastAccessed: doc.created_at,
+                    });
 
-                items.push({
-                    id: `doc-${doc.id}`,
-                    type: 'document',
-                    moduleType: 'documents',
-                    title: doc.filename || 'Untitled Document',
-                    description: `Process document • ${doc.page_count || 0} pages`,
-                    priority,
-                    estimatedMinutes: 15,
-                    metadata: {
-                        documentId: doc.id,
-                        fileType: doc.file_type,
-                        pageCount: doc.page_count,
-                    },
-                    actionUrl: `/documents/${doc.id}`,
+                    items.push({
+                        id: `doc-${doc.id}`,
+                        type: 'document',
+                        moduleType: 'documents',
+                        title: doc.filename || 'Untitled Document',
+                        description: `Process document • ${doc.page_count || 0} pages`,
+                        priority,
+                        estimatedMinutes: 15,
+                        metadata: {
+                            documentId: doc.id,
+                            fileType: doc.file_type,
+                            pageCount: doc.page_count,
+                        },
+                        actionUrl: `/documents/${doc.id}`,
+                    });
                 });
-            });
         }
 
         // 4. Pending quizzes
@@ -147,38 +146,38 @@ export function useFocusQueue(data: DashboardData | undefined) {
     }, [data]);
 
     // Group items into sections
-    const sections = useMemo((): PrioritySection[] => {
+    const sections = useMemo(() => {
         const now = new Date();
         const todayEnd = new Date(now);
         todayEnd.setHours(23, 59, 59, 999);
 
         // Due Today section (items due within today)
-        const dueToday = allPriorityItems.filter(item => {
+        const dueToday = allQueueItems.filter(item => {
             if (!item.dueDate) return false;
             const dueDate = new Date(item.dueDate);
             return dueDate <= todayEnd;
         });
 
         // High Priority section (priority > 0.7, not due today)
-        const highPriority = allPriorityItems.filter(item =>
-        item.priority > 0.7 &&
-        !dueToday.some(d => d.id === item.id)
+        const highPriority = allQueueItems.filter(item =>
+            item.priority > 0.7 &&
+            !dueToday.some(d => d.id === item.id)
         );
 
         // Recommended section (priority 0.4-0.7)
-        const recommended = allPriorityItems.filter(item =>
-        item.priority >= 0.4 &&
-        item.priority <= 0.7 &&
-        !dueToday.some(d => d.id === item.id) &&
-        !highPriority.some(h => h.id === item.id)
+        const recommended = allQueueItems.filter(item =>
+            item.priority >= 0.4 &&
+            item.priority <= 0.7 &&
+            !dueToday.some(d => d.id === item.id) &&
+            !highPriority.some(h => h.id === item.id)
         );
 
         // Later section (priority < 0.4)
-        const later = allPriorityItems.filter(item =>
-        item.priority < 0.4 &&
-        !dueToday.some(d => d.id === item.id) &&
-        !highPriority.some(h => h.id === item.id) &&
-        !recommended.some(r => r.id === item.id)
+        const later = allQueueItems.filter(item =>
+            item.priority < 0.4 &&
+            !dueToday.some(d => d.id === item.id) &&
+            !highPriority.some(h => h.id === item.id) &&
+            !recommended.some(r => r.id === item.id)
         );
 
         return [
@@ -211,25 +210,25 @@ export function useFocusQueue(data: DashboardData | undefined) {
                 priority: 1,
             },
         ].filter(section => section.items.length > 0); // Only show non-empty sections
-    }, [allPriorityItems]);
+    }, [allQueueItems]);
 
     // Queue statistics
     const stats = useMemo(() => {
         return {
-            totalItems: allPriorityItems.length,
+            totalItems: allQueueItems.length,
             dueToday: sections.find(s => s.id === 'due-today')?.items.length || 0,
-                          highPriority: sections.find(s => s.id === 'high-priority')?.items.length || 0,
-                          estimatedTotalMinutes: allPriorityItems.reduce((sum, item) =>
-                          sum + (item.estimatedMinutes || 0), 0
-                          ),
-                          byModule: {
-                              flashcards: allPriorityItems.filter(i => i.moduleType === 'flashcards').length,
-                          notes: allPriorityItems.filter(i => i.moduleType === 'notes').length,
-                          documents: allPriorityItems.filter(i => i.moduleType === 'documents').length,
-                          quizzes: allPriorityItems.filter(i => i.moduleType === 'quizzes').length,
-                          },
+            highPriority: sections.find(s => s.id === 'high-priority')?.items.length || 0,
+            estimatedTotalMinutes: allQueueItems.reduce((sum, item) =>
+                sum + (item.estimatedMinutes || 0), 0
+            ),
+            byModule: {
+                flashcards: allQueueItems.filter(i => i.moduleType === 'flashcards').length,
+                notes: allQueueItems.filter(i => i.moduleType === 'notes').length,
+                documents: allQueueItems.filter(i => i.moduleType === 'documents').length,
+                quizzes: allQueueItems.filter(i => i.moduleType === 'quizzes').length,
+            },
         };
-    }, [allPriorityItems, sections]);
+    }, [allQueueItems, sections]);
 
     // Actions
     const dismissItem = useCallback((itemId: string) => {
@@ -244,11 +243,11 @@ export function useFocusQueue(data: DashboardData | undefined) {
 
     return {
         sections,
-        allItems: allPriorityItems,
+        allItems: allQueueItems,
         stats,
         dismissItem,
         snoozeItem,
         isLoading: !data,
-        isEmpty: allPriorityItems.length === 0,
+        isEmpty: allQueueItems.length === 0,
     };
 }

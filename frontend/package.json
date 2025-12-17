@@ -6,10 +6,11 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "build:prod": "vite build",
     "preview": "vite preview",
     "lint": "eslint src --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "format": "prettier --write \"src/**/*.{ts,tsx,js,jsx,json,css,md}\"",
-    "generate:api": "openapi-ts -c openapi-ts.config.ts",
+    "generate:api": "openapi --input ./openapi.json --output ./src/api/generated --client axios",
     "type-check": "tsc --noEmit",
     "clean": "rm -rf node_modules/.vite"
   },
@@ -39,7 +40,6 @@
     "@radix-ui/react-toast": "^1.2.15",
     "@radix-ui/react-tooltip": "^1.2.8",
     "@tanstack/react-query": "^5.62.2",
-    "@tanstack/react-router": "^1.85.1",
     "axios": "^1.13.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -61,12 +61,12 @@
     "socket.io-client": "^4.8.1",
     "sonner": "^1.7.1",
     "tailwind-merge": "^2.6.0",
+    "vaul": "^1.1.2",
     "zod": "^3.23.8",
     "zustand": "^5.0.8"
   },
   "devDependencies": {
-    "@hey-api/openapi-ts": "^0.52.0",
-    "@types/node": "^22.10.2",
+    "@types/node": "^22.19.3",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
     "@types/react-syntax-highlighter": "^15.5.13",
@@ -77,6 +77,7 @@
     "eslint": "^9.18.0",
     "eslint-plugin-react-hooks": "^5.0.0",
     "eslint-plugin-react-refresh": "^0.4.16",
+    "openapi-typescript-codegen": "^0.29.0",
     "postcss": "^8.4.49",
     "prettier": "^3.4.2",
     "tailwindcss": "^3.4.17",

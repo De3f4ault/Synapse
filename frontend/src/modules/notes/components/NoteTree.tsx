@@ -23,7 +23,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import { useNoteTree } from '../hooks/useNoteTree';
-import type { NoteTreeNode } from '@/api/generated/types.gen';
+import type { NoteTreeNode } from '@/api/generated';
 
 /**
  * Enhanced Note Tree Component

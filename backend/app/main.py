@@ -52,13 +52,15 @@ async def lifespan(app: FastAPI):
             except Exception as e:
                 logger.warning("redis_init_failed", error=str(e))
 
-        # Initialize LanceDB vector store
+        # Initialize Qdrant vector store
         try:
-            from app.core.ai.rag.llama_index.storage_context import init_lancedb
-            await init_lancedb()
-            logger.info("lancedb_initialized")
+            from app.core.ai.rag.vector_store.qdrant.client import get_qdrant_client
+            qdrant_client = get_qdrant_client()
+            # Test connection
+            qdrant_client.get_client().get_collections()
+            logger.info("qdrant_initialized")
         except Exception as e:
-            logger.warning("lancedb_init_failed", error=str(e))
+            logger.warning("qdrant_init_failed", error=str(e))
 
         # Initialize DuckDB analytics
         try:
@@ -98,6 +100,38 @@ async def lifespan(app: FastAPI):
             logger.info("agents_registered", agents=["tutor", "document", "quiz"])
         except Exception as e:
             logger.warning("agent_registration_failed", error=str(e))
+
+        # Initialize Agent Orchestrator
+        try:
+            from app.core.ai.orchestrator import get_orchestrator
+            orchestrator = get_orchestrator()
+            await orchestrator.initialize()
+            logger.info("orchestrator_initialized")
+        except Exception as e:
+            logger.warning("orchestrator_init_failed", error=str(e))
+
+        # ==================== INITIALIZE RAG SYSTEM ====================
+        try:
+            from app.services.rag import get_rag_service
+            
+            # Initialize RAG service (triggers pipeline init)
+            rag_service = get_rag_service()
+            
+            # Store in app state for access in routes
+            app.state.rag_service = rag_service
+            
+            logger.info("rag_system_initialized",
+                features=[
+                    "advanced_chunking",
+                    "llm_enhancement",
+                    "learning_aware_reranking",
+                    "feedback_loops"
+                ]
+            )
+        except Exception as e:
+            logger.error("rag_init_failed", error=str(e), exc_info=True)
+            # Non-critical for now, continue startup
+
 
         logger.info(
             "application_started",

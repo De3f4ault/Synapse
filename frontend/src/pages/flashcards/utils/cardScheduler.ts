@@ -64,7 +64,11 @@ export function sortCardsByPriority(cards: Flashcard[]): Flashcard[] {
 export function groupCardsByState(cards: Flashcard[]): Record<LearningState, Flashcard[]> {
     return cards.reduce(
         (acc, card) => {
-            acc[card.learning_state].push(card);
+            const state = card.learning_state || 'new'; // Fallback to 'new' if undefined
+            if (!acc[state]) {
+                acc[state] = [];
+            }
+            acc[state].push(card);
             return acc;
         },
         {
@@ -114,8 +118,8 @@ export function createBalancedSession(
     const remaining = sessionLength - result.length;
     if (remaining > 0) {
         const additionalDue = sortCardsByPriority(dueCards)
-        .filter((c) => !result.includes(c))
-        .slice(0, remaining);
+            .filter((c) => !result.includes(c))
+            .slice(0, remaining);
         result.push(...additionalDue);
     }
 
@@ -130,17 +134,17 @@ function shuffleWithBias(cards: Flashcard[]): Flashcard[] {
     const withPriority = cards.map((card, index) => ({
         card,
         priority: calculateCardPriority(card),
-                                                     originalIndex: index,
+        originalIndex: index,
     }));
 
     // Sort by priority with some randomness
     return withPriority
-    .sort((a, b) => {
-        const priorityDiff = b.priority - a.priority;
-        const randomFactor = (Math.random() - 0.5) * 20; // Add randomness
-        return priorityDiff + randomFactor;
-    })
-    .map((item) => item.card);
+        .sort((a, b) => {
+            const priorityDiff = b.priority - a.priority;
+            const randomFactor = (Math.random() - 0.5) * 20; // Add randomness
+            return priorityDiff + randomFactor;
+        })
+        .map((item) => item.card);
 }
 
 /**
@@ -148,7 +152,7 @@ function shuffleWithBias(cards: Flashcard[]): Flashcard[] {
  */
 export function calculateSessionStats(
     cards: Flashcard[],
-    timeSpent: number
+    _timeSpent: number
 ): {
     avgAccuracy: number;
     avgInterval: number;
@@ -183,12 +187,12 @@ export function calculateSessionStats(
  */
 export function getNextReviewTime(cards: Flashcard[]): string | null {
     const dueCards = cards
-    .filter((c) => !isCardDue(c.next_review_date))
-    .sort((a, b) => {
-        return new Date(a.next_review_date).getTime() - new Date(b.next_review_date).getTime();
-    });
+        .filter((c) => !isCardDue(c.next_review_date))
+        .sort((a, b) => {
+            return new Date(a.next_review_date).getTime() - new Date(b.next_review_date).getTime();
+        });
 
-    if (dueCards.length === 0) return null;
+    if (dueCards.length === 0 || !dueCards[0]) return null;
 
     const nextDate = new Date(dueCards[0].next_review_date);
     const now = new Date();

@@ -21,14 +21,14 @@ export const queryKeys = {
         all: ['flashcards'] as const,
         lists: () => [...queryKeys.flashcards.all, 'list'] as const,
         list: (filters?: Record<string, unknown>) =>
-        [...queryKeys.flashcards.lists(), filters] as const,
+            [...queryKeys.flashcards.lists(), filters] as const,
         details: () => [...queryKeys.flashcards.all, 'detail'] as const,
         detail: (id: number) => [...queryKeys.flashcards.details(), id] as const,
-        due: () => [...queryKeys.flashcards.all, 'due'] as const,
+        due: (filters?: Record<string, unknown>) => [...queryKeys.flashcards.all, 'due', filters] as const,
 
         // ✅ ADDED FROM FIX 4
         cards: (deckId: number) =>
-        [...queryKeys.flashcards.all, 'deck', deckId, 'cards'] as const,
+            [...queryKeys.flashcards.all, 'deck', deckId, 'cards'] as const,
     },
 
     // Decks
@@ -36,11 +36,11 @@ export const queryKeys = {
         all: ['decks'] as const,
         lists: () => [...queryKeys.decks.all, 'list'] as const,
         list: (filters?: Record<string, unknown>) =>
-        [...queryKeys.decks.lists(), filters] as const,
+            [...queryKeys.decks.lists(), filters] as const,
         details: () => [...queryKeys.decks.all, 'detail'] as const,
         detail: (id: number) => [...queryKeys.decks.details(), id] as const,
         cards: (deckId: number) =>
-        [...queryKeys.decks.detail(deckId), 'cards'] as const,
+            [...queryKeys.decks.detail(deckId), 'cards'] as const,
     },
 
     // Notes
@@ -48,14 +48,14 @@ export const queryKeys = {
         all: ['notes'] as const,
         lists: () => [...queryKeys.notes.all, 'list'] as const,
         list: (filters?: Record<string, unknown>) =>
-        [...queryKeys.notes.lists(), filters] as const,
+            [...queryKeys.notes.lists(), filters] as const,
         details: () => [...queryKeys.notes.all, 'detail'] as const,
         detail: (id: number) => [...queryKeys.notes.details(), id] as const,
         tree: () => [...queryKeys.notes.all, 'tree'] as const,
         search: (query: string) =>
-        [...queryKeys.notes.all, 'search', query] as const,
+            [...queryKeys.notes.all, 'search', query] as const,
         versions: (noteId: number) =>
-        [...queryKeys.notes.detail(noteId), 'versions'] as const,
+            [...queryKeys.notes.detail(noteId), 'versions'] as const,
     },
 
     // Documents
@@ -63,13 +63,13 @@ export const queryKeys = {
         all: ['documents'] as const,
         lists: () => [...queryKeys.documents.all, 'list'] as const,
         list: (filters?: Record<string, unknown>) =>
-        [...queryKeys.documents.lists(), filters] as const,
+            [...queryKeys.documents.lists(), filters] as const,
         details: () => [...queryKeys.documents.all, 'detail'] as const,
         detail: (id: number) => [...queryKeys.documents.details(), id] as const,
         chunks: (docId: number) =>
-        [...queryKeys.documents.detail(docId), 'chunks'] as const,
+            [...queryKeys.documents.detail(docId), 'chunks'] as const,
         status: (docId: number) =>
-        [...queryKeys.documents.detail(docId), 'status'] as const,
+            [...queryKeys.documents.detail(docId), 'status'] as const,
     },
 
     // Chat
@@ -77,9 +77,9 @@ export const queryKeys = {
         all: ['chat'] as const,
         sessions: () => [...queryKeys.chat.all, 'sessions'] as const,
         session: (id: number) =>
-        [...queryKeys.chat.sessions(), id] as const,
+            [...queryKeys.chat.sessions(), id] as const,
         messages: (sessionId: number) =>
-        [...queryKeys.chat.session(sessionId), 'messages'] as const,
+            [...queryKeys.chat.session(sessionId), 'messages'] as const,
     },
 
     // Quizzes
@@ -87,11 +87,11 @@ export const queryKeys = {
         all: ['quizzes'] as const,
         lists: () => [...queryKeys.quizzes.all, 'list'] as const,
         list: (filters?: Record<string, unknown>) =>
-        [...queryKeys.quizzes.lists(), filters] as const,
+            [...queryKeys.quizzes.lists(), filters] as const,
         details: () => [...queryKeys.quizzes.all, 'detail'] as const,
         detail: (id: number) => [...queryKeys.quizzes.details(), id] as const,
         attempt: (attemptId: number) =>
-        [...queryKeys.quizzes.all, 'attempt', attemptId] as const,
+            [...queryKeys.quizzes.all, 'attempt', attemptId] as const,
     },
 
     // Analytics
@@ -100,9 +100,9 @@ export const queryKeys = {
         overview: () => [...queryKeys.analytics.all, 'overview'] as const,
         weakAreas: () => [...queryKeys.analytics.all, 'weak-areas'] as const,
         performance: (days: number) =>
-        [...queryKeys.analytics.all, 'performance', days] as const,
+            [...queryKeys.analytics.all, 'performance', days] as const,
         heatmap: (days: number) =>
-        [...queryKeys.analytics.all, 'heatmap', days] as const,
+            [...queryKeys.analytics.all, 'heatmap', days] as const,
         topics: () => [...queryKeys.analytics.all, 'topics'] as const,
     },
 
@@ -111,19 +111,19 @@ export const queryKeys = {
         all: ['study'] as const,
         due: () => [...queryKeys.study.all, 'due'] as const,
         recommendations: () =>
-        [...queryKeys.study.all, 'recommendations'] as const,
+            [...queryKeys.study.all, 'recommendations'] as const,
         sessions: () => [...queryKeys.study.all, 'sessions'] as const,
         session: (id: number) =>
-        [...queryKeys.study.sessions(), id] as const,
+            [...queryKeys.study.sessions(), id] as const,
     },
 
     // Search
     search: {
         all: ['search'] as const,
         results: (query: string, filters?: Record<string, unknown>) =>
-        [...queryKeys.search.all, 'results', query, filters] as const,
+            [...queryKeys.search.all, 'results', query, filters] as const,
         suggestions: (query: string) =>
-        [...queryKeys.search.all, 'suggestions', query] as const,
+            [...queryKeys.search.all, 'suggestions', query] as const,
     },
 } as const;
 

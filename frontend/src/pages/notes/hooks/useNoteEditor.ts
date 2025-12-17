@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import type { NoteResponse } from '@/api/generated/types.gen';
+import type { NoteResponse } from '@/api/generated';
 import type { LocalNoteState, EditorMode, AIProcessingStatus } from '../types/notes.types';
 
 interface UseNoteEditorOptions {
@@ -22,7 +22,8 @@ export function useNoteEditor({ note, onSave }: UseNoteEditorOptions) {
             setLocalNote({
                 title: note.title,
                 content: note.content || '',
-                tags: note.tags || [],
+                // NoteResponse does not support tags currently
+                tags: [],
             });
             setHasUnsavedChanges(false);
         }
@@ -32,7 +33,7 @@ export function useNoteEditor({ note, onSave }: UseNoteEditorOptions) {
     useEffect(() => {
         if (note && localNote) {
             const changed =
-            localNote.title !== note.title || localNote.content !== (note.content || '');
+                localNote.title !== note.title || localNote.content !== (note.content || '');
             setHasUnsavedChanges(changed);
         }
     }, [localNote, note]);
@@ -45,31 +46,7 @@ export function useNoteEditor({ note, onSave }: UseNoteEditorOptions) {
         setLocalNote((prev) => (prev ? { ...prev, content } : null));
     }, []);
 
-    const updateTags = useCallback((tags: string[]) => {
-        setLocalNote((prev) => (prev ? { ...prev, tags } : null));
-    }, []);
-
-    const removeTag = useCallback((tagToRemove: string) => {
-        setLocalNote((prev) =>
-        prev
-        ? {
-            ...prev,
-            tags: prev.tags?.filter((t) => t !== tagToRemove) || [],
-        }
-        : null
-        );
-    }, []);
-
-    const addTag = useCallback((tag: string) => {
-        setLocalNote((prev) =>
-        prev
-        ? {
-            ...prev,
-            tags: [...new Set([...(prev.tags || []), tag])],
-        }
-        : null
-        );
-    }, []);
+    // Tag functions removed as tags are not supported defined in NoteResponse
 
     const toggleMode = useCallback(() => {
         setMode((prev) => (prev === 'edit' ? 'view' : 'edit'));
@@ -96,9 +73,6 @@ export function useNoteEditor({ note, onSave }: UseNoteEditorOptions) {
         aiStatus,
         updateTitle,
         updateContent,
-        updateTags,
-        removeTag,
-        addTag,
         toggleMode,
         save,
         startAIProcessing,

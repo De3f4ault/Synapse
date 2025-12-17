@@ -36,7 +36,7 @@ export class WebSocketManager {
     private stateHandlers = new Set<(state: ConnectionState) => void>();
     private nextSubscriptionId = 0;
 
-    // ✅ NEW: Queue for messages sent before connection is fully ready
+    // NEW: Queue for messages sent before connection is fully ready
     private messageQueue: any[] = [];
 
     // Configuration
@@ -91,7 +91,7 @@ export class WebSocketManager {
                 this.updateState('connected');
                 this.startHeartbeat();
 
-                // ✅ NEW: Flush message queue
+                // NEW: Flush message queue
                 this.flushMessageQueue();
             };
 
@@ -147,7 +147,7 @@ export class WebSocketManager {
             this.ws = null;
         }
 
-        // ✅ NEW: Clear message queue on disconnect
+        // NEW: Clear message queue on disconnect
         this.messageQueue = [];
 
         this.updateState('disconnected');
@@ -220,10 +220,10 @@ export class WebSocketManager {
 
     /**
      * Send a message to the server
-     * ✅ FIXED: Queue messages if connection is in progress
+     * FIXED: Queue messages if connection is in progress
      */
     send(message: any): void {
-        // ✅ NEW: If connecting, queue the message
+        // NEW: If connecting, queue the message
         if (this.connectionState === 'connecting') {
             console.log('[WS Manager] Queueing message (connecting):', message.type);
             this.messageQueue.push(message);
@@ -232,7 +232,7 @@ export class WebSocketManager {
 
         // ✅ IMPROVED: Better error logging
         if (!this.isConnected()) {
-            console.error('[WS Manager] ❌ Cannot send - not connected', {
+            console.error('[WS Manager] Cannot send - not connected', {
                 connectionState: this.connectionState,
                 wsReadyState: this.ws?.readyState,
                 message: message
@@ -241,7 +241,7 @@ export class WebSocketManager {
         }
 
         try {
-            console.log('[WS Manager] 📤 Sending:', message.type, message);
+            console.log('[WS Manager] Sending:', message.type, message);
             this.ws!.send(JSON.stringify(message));
         } catch (error) {
             console.error('[WS Manager] Failed to send message:', error);
@@ -251,18 +251,18 @@ export class WebSocketManager {
     // ==================== PRIVATE METHODS ====================
 
     /**
-     * ✅ NEW: Flush queued messages when connection is ready
+     * NEW: Flush queued messages when connection is ready
      */
     private flushMessageQueue(): void {
         if (this.messageQueue.length === 0) return;
 
-        console.log('[WS Manager] 📦 Flushing', this.messageQueue.length, 'queued messages');
+        console.log('[WS Manager] Flushing', this.messageQueue.length, 'queued messages');
 
         const queue = [...this.messageQueue];
         this.messageQueue = [];
 
         queue.forEach(message => {
-            console.log('[WS Manager] 📤 Sending queued:', message.type);
+            console.log('[WS Manager] Sending queued:', message.type);
             this.send(message);
         });
     }
@@ -285,11 +285,11 @@ export class WebSocketManager {
             return;
         }
 
-        // ✅ FIXED: Route subscription confirmations to subscribers!
+        // FIXED: Route subscription confirmations to subscribers!
         // Subscribers need to know when they're successfully subscribed
         if (message.type === 'subscribed' || message.type === 'unsubscribed') {
             console.log('[WS Manager] Subscription update:', message);
-            // ✅ CHANGED: Route these to subscribers instead of stopping
+            // CHANGED: Route these to subscribers instead of stopping
             this.routeToSubscribers(message);
             return;
         }
@@ -338,7 +338,7 @@ export class WebSocketManager {
     private scheduleReconnect(): void {
         const delay = Math.min(
             this.reconnectBaseDelay * Math.pow(2, this.reconnectAttempts),
-                               30000
+            30000
         );
 
         console.log(

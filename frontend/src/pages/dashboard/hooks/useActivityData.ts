@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/queryKeys';
 import { useActivityHeatmap, usePerformanceTrends } from '@/api/hooks/useAnalytics';
-import type { HeatmapData, PerformanceTrend } from '@/api/generated/types.gen';
+import type { HeatmapData, PerformanceTrend } from '@/api/generated';
 
 /**
  * Activity statistics aggregated from heatmap data

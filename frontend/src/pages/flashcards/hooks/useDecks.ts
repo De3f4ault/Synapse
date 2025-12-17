@@ -7,14 +7,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import {
-    listDecksApiV1DecksGet,
-    getDeckApiV1DecksDeckIdGet,
-    createDeckApiV1DecksPost,
-    updateDeckApiV1DecksDeckIdPut,
-    deleteDeckApiV1DecksDeckIdDelete,
-    getDueCardsApiV1CardsDueGet,
-} from '@/api/generated/services.gen';
+import { FlashcardsService } from '@/api/generated';
 import { queryKeys } from '@/lib/queryKeys';
 import { toast } from 'sonner';
 import type { DeckCreateInput, DeckUpdateInput } from '../types/flashcards.types';
@@ -25,10 +18,7 @@ import type { DeckCreateInput, DeckUpdateInput } from '../types/flashcards.types
 export function useDecks() {
     return useQuery({
         queryKey: queryKeys.decks.list(),
-        queryFn: async () => {
-            const response = await listDecksApiV1DecksGet();
-            return (response as any).data ?? response;
-        },
+        queryFn: () => FlashcardsService.listDecksApiV1DecksGet(),
         staleTime: 5 * 60 * 1000, // 5 minutes
     });
 }
@@ -39,10 +29,7 @@ export function useDecks() {
 export function useDeck(deckId: number) {
     return useQuery({
         queryKey: queryKeys.decks.detail(deckId),
-        queryFn: async () => {
-            const response = await getDeckApiV1DecksDeckIdGet({ path: { deck_id: deckId } });
-            return (response as any).data ?? response;
-        },
+        queryFn: () => FlashcardsService.getDeckApiV1DecksDeckIdGet(deckId),
         enabled: !!deckId,
     });
 }
@@ -54,10 +41,7 @@ export function useCreateDeck() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: async (data: DeckCreateInput) => {
-            const response = await createDeckApiV1DecksPost({ body: data });
-            return (response as any).data ?? response;
-        },
+        mutationFn: (data: DeckCreateInput) => FlashcardsService.createDeckApiV1DecksPost(data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.decks.all });
             toast.success('Memory core constructed successfully');
@@ -77,13 +61,8 @@ export function useUpdateDeck() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: async ({ deckId, data }: { deckId: number; data: DeckUpdateInput }) => {
-            const response = await updateDeckApiV1DecksDeckIdPut({
-                path: { deck_id: deckId },
-                body: data,
-            });
-            return (response as any).data ?? response;
-        },
+        mutationFn: ({ deckId, data }: { deckId: number; data: DeckUpdateInput }) =>
+            FlashcardsService.updateDeckApiV1DecksDeckIdPut(deckId, data),
         onSuccess: (_, variables) => {
             queryClient.invalidateQueries({ queryKey: queryKeys.decks.detail(variables.deckId) });
             queryClient.invalidateQueries({ queryKey: queryKeys.decks.list() });
@@ -104,10 +83,7 @@ export function useDeleteDeck() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: async (deckId: number) => {
-            const response = await deleteDeckApiV1DecksDeckIdDelete({ path: { deck_id: deckId } });
-            return (response as any).data ?? response;
-        },
+        mutationFn: (deckId: number) => FlashcardsService.deleteDeckApiV1DecksDeckIdDelete(deckId),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.decks.all });
             toast.success('Memory core purged successfully');
@@ -127,10 +103,7 @@ export function useDeckStats(deckId: number) {
     const { data: deck } = useDeck(deckId);
     const { data: cards } = useQuery({
         queryKey: queryKeys.decks.cards(deckId),
-        queryFn: async () => {
-            const response = await getDueCardsApiV1CardsDueGet({ query: { deck_id: deckId } });
-            return (response as any).data ?? response;
-        },
+        queryFn: () => FlashcardsService.getDueCardsApiV1CardsDueGet(deckId),
         enabled: !!deckId,
     });
 
@@ -144,18 +117,21 @@ export function useDeckStats(deckId: number) {
     if (cards && cards.length > 0) {
         const now = new Date();
         const dueCards = cards.filter(
-            (card) => new Date(card.next_review_date) <= now
+            (card) => card.next_review && new Date(card.next_review) <= now
         ).length;
 
         const stateGroups = cards.reduce(
             (acc, card) => {
-                acc[card.learning_state]++;
+                const state = card.learning_state || 'new';
+                if (state in acc) {
+                    acc[state as keyof typeof acc]++;
+                }
                 return acc;
             },
             { new: 0, learning: 0, review: 0, mastered: 0 }
         );
 
-        const totalAccuracy = cards.reduce((sum, card) => sum + card.accuracy, 0);
+        const totalAccuracy = cards.reduce((sum, card) => sum + (card.accuracy || 0), 0);
         const averageAccuracy = cards.length > 0 ? totalAccuracy / cards.length : 0;
 
         const masteryPercent =

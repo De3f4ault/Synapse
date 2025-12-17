@@ -45,7 +45,7 @@ const MAX_NOTIFICATIONS = 50;
 
 export const useNotificationStore = create<NotificationState>()(
     persist(
-        (set, get) => ({
+        (set) => ({
             // Initial state
             notifications: [],
             unreadCount: 0,
@@ -55,8 +55,8 @@ export const useNotificationStore = create<NotificationState>()(
                 const newNotification: Notification = {
                     ...notification,
                     id: `notif-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-                       timestamp: Date.now(),
-                       read: false,
+                    timestamp: Date.now(),
+                    read: false,
                 };
 
                 set((state) => {
@@ -77,7 +77,7 @@ export const useNotificationStore = create<NotificationState>()(
             markAsRead: (id) => {
                 set((state) => {
                     const notifications = state.notifications.map(n =>
-                    n.id === id ? { ...n, read: true } : n
+                        n.id === id ? { ...n, read: true } : n
                     );
                     const unreadCount = notifications.filter(n => !n.read).length;
 
@@ -89,7 +89,7 @@ export const useNotificationStore = create<NotificationState>()(
             markAllAsRead: () => {
                 set((state) => ({
                     notifications: state.notifications.map(n => ({ ...n, read: true })),
-                                unreadCount: 0,
+                    unreadCount: 0,
                 }));
             },
 

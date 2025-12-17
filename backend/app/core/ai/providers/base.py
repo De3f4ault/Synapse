@@ -13,12 +13,13 @@ from dataclasses import dataclass, field
 @dataclass
 class GenerationConfig:
     """Configuration for text generation"""
-    model: str = "gemini-1.5-flash"
+    model: str = "gemini-2.5-flash"
     temperature: float = 0.0
     max_tokens: int = 8192
     top_p: float = 0.95
     top_k: int = 40
     stop_sequences: List[str] = field(default_factory=list)
+    thinking_budget: Optional[int] = None
 
 
 @dataclass

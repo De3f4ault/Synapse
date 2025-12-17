@@ -28,7 +28,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
-import type { DeckResponse } from '@/api/generated/types.gen';
+import type { DeckResponse } from '@/api/generated';
 
 /**
  * Enhanced Deck List Component

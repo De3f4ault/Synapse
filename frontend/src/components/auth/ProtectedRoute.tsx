@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
-import { useNavigate } from '@tanstack/react-router';
+import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
-import { useAuthHooks } from '@/api/hooks/useAuth';
+import { useAuth } from '@/api/hooks/useAuth';
 import { Loader2 } from 'lucide-react';
 
 interface ProtectedRouteProps {
@@ -10,16 +10,13 @@ interface ProtectedRouteProps {
 
 export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     const navigate = useNavigate();
-    const { token, isAuthenticated } = useAuthStore();
-    const { useCurrentUser } = useAuthHooks();
-
-    // Only enable query if we have a token
-    const { isLoading, isError } = useCurrentUser(!!token);
+    const { token } = useAuthStore();
+    const { isLoading, isError } = useAuth();
 
     useEffect(() => {
         if (!token) {
             // No token, redirect to login
-            navigate({ to: '/login' });
+            navigate('/login');
             return;
         }
 
@@ -27,7 +24,7 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
             // Error fetching user, token is invalid
             useAuthStore.setState({ token: null, isAuthenticated: false });
             localStorage.removeItem('auth_token');
-            navigate({ to: '/login' });
+            navigate('/login');
         }
     }, [token, isError, navigate]);
 
@@ -38,7 +35,7 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
     if (isLoading) {
         return (
             <div className="min-h-screen flex items-center justify-center">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
         );
     }

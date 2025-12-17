@@ -6,7 +6,7 @@
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { TrendingUp } from 'lucide-react';
 import GlassCard from '../shared/GlassCard';
-import type { PerformanceTrend } from '@/api/generated/types.gen';
+import type { PerformanceTrend } from '@/api/generated';
 
 interface PerformanceChartProps {
   data: PerformanceTrend[];

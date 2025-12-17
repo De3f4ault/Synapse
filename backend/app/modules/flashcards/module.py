@@ -174,7 +174,7 @@ class FlashcardModule:
         """
         Search flashcards using vector similarity.
 
-        This would use LanceDB for semantic search across card content.
+        This would use Qdrant for semantic search across card content.
 
         Args:
             user_id: User ID
@@ -184,7 +184,7 @@ class FlashcardModule:
         Returns:
             List of matching cards with similarity scores
         """
-        # Placeholder - would implement vector search via LanceDB
+        # Placeholder - would implement vector search via Qdrant
         # For now, return empty list
         return []
 

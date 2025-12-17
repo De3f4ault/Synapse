@@ -44,10 +44,10 @@ export const DocumentCard = React.forwardRef<HTMLDivElement, DocumentCardProps>(
             <motion.div
                 ref={ref}
                 layoutId={`monolith-${doc.id}`}
-                initial={{ opacity: 0, y: 100, scale: 0.8 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.5 }}
-                transition={{ type: 'spring', damping: 20, delay: index * 0.05 }}
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ duration: 0.2 }}
                 onClick={() => {
                     onSelect(doc);
                     logAction(`FOCUS LOCK: ${doc.filename}`);

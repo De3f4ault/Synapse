@@ -2,11 +2,10 @@ import { useState, useEffect, useCallback } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import {
-    startQuizAttemptApiV1QuizzesQuizIdStartPost,
-    submitQuizAttemptApiV1QuizzesAttemptsAttemptIdSubmitPost,
-} from '@/api/generated/services.gen';
+    QuizzesService,
+} from '@/api/generated';
 import { queryKeys } from '@/lib/queryKeys';
-import type { AnswerSubmit } from '@/api/generated/types.gen';
+import type { AnswerSubmit } from '@/api/generated';
 import type { GameState, QuizAttemptState } from '../types/quizzes.types';
 
 /**
@@ -19,10 +18,10 @@ export function useQuizAttempt(quizId: number) {
         attemptData: null,
         currentIdx: 0,
         answers: new Map(),
-                                                         streak: 0,
-                                                         maxStreak: 0,
-                                                         startTime: Date.now(),
-                                                         elapsedTime: 0,
+        streak: 0,
+        maxStreak: 0,
+        startTime: Date.now(),
+        elapsedTime: 0,
     });
 
     const [gameState, setGameState] = useState<GameState>('LOADING');
@@ -43,21 +42,24 @@ export function useQuizAttempt(quizId: number) {
 
     // Start attempt
     const { mutate: startAttempt } = useMutation({
-        mutationFn: () => startQuizAttemptApiV1QuizzesQuizIdStartPost({ quizId }),
-                                                 onSuccess: (data) => {
-                                                     setState((prev) => ({ ...prev, attemptData: data }));
-                                                     setGameState('ACTIVE');
-                                                 },
-                                                 onError: (error) => {
-                                                     toast.error('CONNECTION SEVERED: UNABLE TO START SIMULATION', {
-                                                         description: error instanceof Error ? error.message : 'Unknown error',
-                                                     });
-                                                 },
+        mutationFn: async () => {
+            const response = await QuizzesService.startQuizAttemptApiV1QuizzesQuizIdStartPost(quizId);
+            return response;
+        },
+        onSuccess: (data) => {
+            setState((prev) => ({ ...prev, attemptData: data }));
+            setGameState('ACTIVE');
+        },
+        onError: (error) => {
+            toast.error('CONNECTION SEVERED: UNABLE TO START SIMULATION', {
+                description: error instanceof Error ? error.message : 'Unknown error',
+            });
+        },
     });
 
     // Submit quiz
     const { mutate: submitQuiz, data: results } = useMutation({
-        mutationFn: () => {
+        mutationFn: async () => {
             if (!state.attemptData) throw new Error('No attempt data');
             const answersArray: AnswerSubmit[] = Array.from(state.answers.entries()).map(
                 ([qId, ans]) => ({
@@ -65,10 +67,11 @@ export function useQuizAttempt(quizId: number) {
                     answer: ans,
                 })
             );
-            return submitQuizAttemptApiV1QuizzesAttemptsAttemptIdSubmitPost({
-                attemptId: state.attemptData.attempt_id,
-                requestBody: answersArray,
-            });
+            const response = await QuizzesService.submitQuizAttemptApiV1QuizzesAttemptsAttemptIdSubmitPost(
+                state.attemptData.attempt_id,
+                answersArray,
+            );
+            return response;
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: queryKeys.quizzes.all });
@@ -93,8 +96,8 @@ export function useQuizAttempt(quizId: number) {
             setState((prev) => ({
                 ...prev,
                 answers: new Map(prev.answers).set(currentQ.id, option),
-                                streak: prev.streak + 1,
-                                maxStreak: Math.max(prev.maxStreak, prev.streak + 1),
+                streak: prev.streak + 1,
+                maxStreak: Math.max(prev.maxStreak, prev.streak + 1),
             }));
 
             // Move to review state

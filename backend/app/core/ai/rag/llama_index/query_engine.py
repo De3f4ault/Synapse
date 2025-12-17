@@ -1,193 +1,206 @@
-"""Query engine for RAG retrieval operations."""
+"""
+LlamaIndex Query Engine for RAG retrieval.
 
-import logging
-from typing import Dict, List, Optional
+This module provides a query engine interface that wraps the RAG pipeline
+for use in vector search operations (e.g., note search).
+"""
 
-from llama_index.core import VectorStoreIndex
-from llama_index.core.schema import NodeWithScore
+from typing import Optional, List, Any
+from dataclasses import dataclass, field
+import structlog
 
-from app.core.ai.rag.llama_index.index_manager import IndexManager
-from app.core.ai.rag.llama_index.service_context import get_service_context
+logger = structlog.get_logger(__name__)
 
-logger = logging.getLogger(__name__)
+
+@dataclass
+class NodeMetadata:
+    """Metadata for a retrieved node."""
+    note_id: int = 0
+    title: str = ""
+    source_type: str = "notes"
+    chunk_index: int = 0
+    
+    def get(self, key: str, default: Any = None) -> Any:
+        """Dict-like get for compatibility."""
+        return getattr(self, key, default)
+
+
+@dataclass
+class TextNode:
+    """Represents a text node from retrieval."""
+    text: str
+    metadata: NodeMetadata = field(default_factory=NodeMetadata)
+    
+    def get_content(self) -> str:
+        """Get the text content."""
+        return self.text
+
+
+@dataclass
+class NodeWithScore:
+    """A node with its relevance score."""
+    node: TextNode
+    score: float = 0.0
+
+
+@dataclass 
+class QueryResponse:
+    """Response from a query operation."""
+    source_nodes: List[NodeWithScore] = field(default_factory=list)
+    response: str = ""
 
 
 class QueryEngine:
     """
-    Query interface for retrieving relevant documents via RAG.
-
-    Handles:
-    - Vector search in LanceDB
-    - Score normalization
-    - Metadata extraction
-    - Result formatting
+    Query engine for RAG-based retrieval.
+    
+    Wraps the RAG pipeline to provide a simple query interface
+    compatible with the notes service vector search.
     """
-
-    def __init__(self):
-        """Initialize query engine."""
-        self.index_manager = IndexManager()
-        self.service_context = get_service_context()
-        logger.debug("QueryEngine initialized")
-
-    async def query(
+    
+    def __init__(
         self,
-        user_id: int,
-        query: str,
+        collection_name: str,
         top_k: int = 5,
-        filters: Optional[Dict] = None,
-    ) -> List[Dict]:
+        user_id: Optional[int] = None
+    ):
         """
-        Retrieve relevant documents for a query.
-
+        Initialize query engine.
+        
         Args:
-            user_id: User ID
-            query: Search query
+            collection_name: Name of the Qdrant collection
             top_k: Number of results to return
-            filters: Optional metadata filters
-
-        Returns:
-            List[Dict]: Ranked results with scores
-
-        Example:
-            results = await query_engine.query(
-                user_id=1,
-                query="What is photosynthesis?",
-                top_k=5
-            )
-            # Returns: [
-            #   {
-            #     "text": "Photosynthesis is...",
-            #     "score": 0.85,
-            #     "metadata": {"source": "note_id", "page": 1}
-            #   },
-            #   ...
-            # ]
+            user_id: User ID (extracted from collection_name if not provided)
         """
-        logger.info(f"Querying for user {user_id}: '{query}'")
-
-        try:
-            # Load user's index
-            index = await self.index_manager.load_index(user_id)
-            if index is None:
-                logger.warning(f"No index found for user {user_id}")
-                return []
-
-            # Create query engine from index
-            query_engine = index.as_query_engine(
-                similarity_top_k=top_k,
-                streaming=False,
-            )
-
-            # Execute query
-            logger.debug(f"Executing query with top_k={top_k}")
-            response = query_engine.query(query)
-
-            # Format results
-            results = self._format_results(response, top_k)
-
-            logger.info(f"✅ Retrieved {len(results)} results for user {user_id}")
-            return results
-
-        except Exception as e:
-            logger.error(f"❌ Query failed for user {user_id}: {str(e)}")
-            return []
-
-    async def query_with_context(
-        self,
-        user_id: int,
-        query: str,
-        context: Optional[str] = None,
-        top_k: int = 5,
-    ) -> List[Dict]:
-        """
-        Query with additional context for better retrieval.
-
-        Args:
-            user_id: User ID
-            query: Search query
-            context: Additional context to enhance search
-            top_k: Number of results
-
-        Returns:
-            List[Dict]: Ranked results
-        """
-        # Enhance query with context
-        if context:
-            enhanced_query = f"{query}\n\nContext: {context}"
-            logger.debug(f"Enhanced query with context")
-        else:
-            enhanced_query = query
-
-        return await self.query(user_id, enhanced_query, top_k)
-
-    def _format_results(
-        self,
-        response: NodeWithScore,
-        top_k: int,
-    ) -> List[Dict]:
-        """
-        Format query response into structured results.
-
-        Args:
-            response: LLama Index response object
-            top_k: Expected number of results
-
-        Returns:
-            List[Dict]: Formatted results
-        """
-        results = []
-
-        # Extract source nodes from response
-        source_nodes = response.source_nodes if hasattr(response, 'source_nodes') else []
-
-        for i, node in enumerate(source_nodes[:top_k]):
+        self.collection_name = collection_name
+        self.top_k = top_k
+        
+        # Extract user_id from collection_name if needed
+        # Format: notes_user_{user_id}
+        if user_id is None and "user_" in collection_name:
             try:
-                result = {
-                    "text": node.get_content(),
-                    "score": float(node.score) if hasattr(node, 'score') else 1.0 - (i * 0.1),
-                    "metadata": {
-                        "node_id": str(node.node_id),
-                        **(node.metadata or {})
-                    }
-                }
-                results.append(result)
-
-            except Exception as e:
-                logger.warning(f"Failed to format result {i}: {str(e)}")
-                continue
-
-        return results
-
-    async def retrieve_nodes(
-        self,
-        user_id: int,
-        query: str,
-        top_k: int = 10,
-    ) -> List[NodeWithScore]:
+                self.user_id = int(collection_name.split("user_")[1])
+            except (ValueError, IndexError):
+                self.user_id = 0
+        else:
+            self.user_id = user_id or 0
+        
+        self._pipeline = None
+        logger.debug(
+            "query_engine_initialized",
+            collection=collection_name,
+            top_k=top_k,
+            user_id=self.user_id
+        )
+    
+    async def _get_pipeline(self):
+        """Lazy-load the RAG pipeline."""
+        if self._pipeline is None:
+            from app.core.ai.rag.pipeline.rag_pipeline import RAGPipeline
+            self._pipeline = RAGPipeline()
+        return self._pipeline
+    
+    async def query(self, query_str: str) -> QueryResponse:
         """
-        Retrieve raw nodes for advanced processing.
-
+        Execute a query against the RAG system.
+        
         Args:
-            user_id: User ID
-            query: Search query
-            top_k: Number of results
-
+            query_str: The search query
+            
         Returns:
-            List[NodeWithScore]: Raw Llama Index nodes
+            QueryResponse with source nodes
         """
-        logger.debug(f"Retrieving raw nodes for user {user_id}")
-
+        logger.debug(
+            "query_engine_query",
+            query=query_str[:50],
+            user_id=self.user_id,
+            top_k=self.top_k
+        )
+        
         try:
-            index = await self.index_manager.load_index(user_id)
-            if index is None:
-                return []
-
-            retriever = index.as_retriever(similarity_top_k=top_k)
-            nodes = retriever.retrieve(query)
-
-            logger.debug(f"Retrieved {len(nodes)} raw nodes")
-            return nodes
-
+            pipeline = await self._get_pipeline()
+            
+            # Determine source type from collection name
+            source_type = "notes"
+            if "documents" in self.collection_name:
+                source_type = "documents"
+            elif "code" in self.collection_name:
+                source_type = "code"
+            
+            # Query the RAG pipeline
+            result = await pipeline.query(
+                user_id=self.user_id,
+                query=query_str,
+                top_k=self.top_k,
+                source_type=source_type
+            )
+            
+            # Convert to QueryResponse format
+            source_nodes = []
+            for chunk in result.get("chunks", []):
+                metadata = chunk.get("metadata", {})
+                
+                node = TextNode(
+                    text=chunk.get("text", ""),
+                    metadata=NodeMetadata(
+                        note_id=metadata.get("source_id", 0),
+                        title=metadata.get("title", ""),
+                        source_type=metadata.get("source_type", source_type),
+                        chunk_index=metadata.get("chunk_index", 0)
+                    )
+                )
+                
+                source_nodes.append(NodeWithScore(
+                    node=node,
+                    score=chunk.get("score", 0.0)
+                ))
+            
+            logger.debug(
+                "query_engine_results",
+                results=len(source_nodes)
+            )
+            
+            return QueryResponse(source_nodes=source_nodes)
+            
         except Exception as e:
-            logger.error(f"Failed to retrieve raw nodes: {str(e)}")
-            return []
+            logger.error(
+                "query_engine_error",
+                error=str(e),
+                query=query_str[:50]
+            )
+            # Return empty response on error
+            return QueryResponse(source_nodes=[])
+
+
+# Singleton cache for query engines
+_query_engines: dict = {}
+
+
+async def get_query_engine(
+    collection_name: str,
+    top_k: int = 5
+) -> QueryEngine:
+    """
+    Get or create a query engine for the specified collection.
+    
+    Args:
+        collection_name: Qdrant collection name (e.g., "notes_user_123")
+        top_k: Number of results to return
+        
+    Returns:
+        QueryEngine instance
+    """
+    cache_key = f"{collection_name}_{top_k}"
+    
+    if cache_key not in _query_engines:
+        _query_engines[cache_key] = QueryEngine(
+            collection_name=collection_name,
+            top_k=top_k
+        )
+        logger.debug(
+            "query_engine_created",
+            collection=collection_name,
+            top_k=top_k
+        )
+    
+    return _query_engines[cache_key]

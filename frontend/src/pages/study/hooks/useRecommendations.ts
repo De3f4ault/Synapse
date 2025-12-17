@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { getRecommendationsApiV1StudyRecommendationsGet } from '@/api/generated/services.gen';
-import type { StudyItemResponse } from '@/api/generated/types.gen';
+import { StudyService } from '@/api/generated';
+import type { StudyItemResponse } from '@/api/generated';
 import { QUERY_KEYS } from '@/lib/constants';
 import type {
     RecommendedItem,
@@ -21,9 +21,7 @@ export function useRecommendations(limit: number = 10) {
     return useQuery({
         queryKey: [...QUERY_KEYS.STUDY.RECOMMENDATIONS, limit],
         queryFn: async () => {
-            const response = await getRecommendationsApiV1StudyRecommendationsGet({
-                limit,
-            });
+            const response = await StudyService.getRecommendationsApiV1StudyRecommendationsGet(limit);
 
             return response.map(transformRecommendation);
         },
