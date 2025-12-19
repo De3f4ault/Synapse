@@ -7,19 +7,31 @@ import type { Flashcard, LearningState } from '../types/flashcards.types';
 import { isCardDue } from './spacedRepetition';
 
 /**
+ * Get days a card is overdue
+ */
+export function getDaysOverdue(nextReview?: string | null): number {
+    if (!nextReview) return 0; // New cards without next_review are not counted as overdue
+    const now = new Date();
+    const reviewDate = new Date(nextReview);
+    const diffTime = now.getTime() - reviewDate.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return Math.max(0, diffDays);
+}
+
+/**
  * Priority scoring system for card review order
  */
 export function calculateCardPriority(card: Flashcard): number {
     let score = 0;
 
     // 1. Overdue cards get highest priority
-    const daysOverdue = getDaysOverdue(card.next_review_date);
+    const daysOverdue = getDaysOverdue(card.next_review);
     if (daysOverdue > 0) {
         score += daysOverdue * 10; // 10 points per day overdue
     }
 
     // 2. Lower accuracy = higher priority
-    score += (1 - card.accuracy) * 20; // Up to 20 points
+    score += (1 - (card.accuracy ?? 0) / 100) * 20; // Up to 20 points (accuracy is now percentage)
 
     // 3. Learning state matters
     const stateScores: Record<LearningState, number> = {
@@ -28,23 +40,12 @@ export function calculateCardPriority(card: Flashcard): number {
         review: 5,
         mastered: 0,
     };
-    score += stateScores[card.learning_state];
+    score += stateScores[card.learning_state ?? 'new'];
 
     // 4. Lower easiness = needs more attention
-    score += (2.5 - card.easiness_factor) * 5;
+    score += (2.5 - (card.ease_factor ?? 2.5)) * 5;
 
     return Math.round(score);
-}
-
-/**
- * Get days a card is overdue
- */
-export function getDaysOverdue(nextReviewDate: string): number {
-    const now = new Date();
-    const reviewDate = new Date(nextReviewDate);
-    const diffTime = now.getTime() - reviewDate.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return Math.max(0, diffDays);
 }
 
 /**
@@ -64,7 +65,7 @@ export function sortCardsByPriority(cards: Flashcard[]): Flashcard[] {
 export function groupCardsByState(cards: Flashcard[]): Record<LearningState, Flashcard[]> {
     return cards.reduce(
         (acc, card) => {
-            const state = card.learning_state || 'new'; // Fallback to 'new' if undefined
+            const state = card.learning_state ?? 'new'; // Fallback to 'new' if undefined
             if (!acc[state]) {
                 acc[state] = [];
             }
@@ -81,6 +82,26 @@ export function groupCardsByState(cards: Flashcard[]): Record<LearningState, Fla
 }
 
 /**
+ * Shuffle cards with bias toward high-priority cards appearing earlier
+ */
+function shuffleWithBias(cards: Flashcard[]): Flashcard[] {
+    const withPriority = cards.map((card, index) => ({
+        card,
+        priority: calculateCardPriority(card),
+        originalIndex: index,
+    }));
+
+    // Sort by priority with some randomness
+    return withPriority
+        .sort((a, b) => {
+            const priorityDiff = b.priority - a.priority;
+            const randomFactor = (Math.random() - 0.5) * 20; // Add randomness
+            return priorityDiff + randomFactor;
+        })
+        .map((item) => item.card);
+}
+
+/**
  * Create a balanced review session
  * Mixes card types for optimal learning
  */
@@ -92,7 +113,7 @@ export function createBalancedSession(
     const result: Flashcard[] = [];
 
     // Calculate proportions (prioritize due cards)
-    const dueCards = cards.filter((c) => isCardDue(c.next_review_date));
+    const dueCards = cards.filter((c) => isCardDue(c.next_review));
     const proportions = {
         new: Math.min(grouped.new.length, Math.ceil(sessionLength * 0.2)),
         learning: Math.min(grouped.learning.length, Math.ceil(sessionLength * 0.3)),
@@ -128,26 +149,6 @@ export function createBalancedSession(
 }
 
 /**
- * Shuffle cards with bias toward high-priority cards appearing earlier
- */
-function shuffleWithBias(cards: Flashcard[]): Flashcard[] {
-    const withPriority = cards.map((card, index) => ({
-        card,
-        priority: calculateCardPriority(card),
-        originalIndex: index,
-    }));
-
-    // Sort by priority with some randomness
-    return withPriority
-        .sort((a, b) => {
-            const priorityDiff = b.priority - a.priority;
-            const randomFactor = (Math.random() - 0.5) * 20; // Add randomness
-            return priorityDiff + randomFactor;
-        })
-        .map((item) => item.card);
-}
-
-/**
  * Calculate session statistics
  */
 export function calculateSessionStats(
@@ -160,12 +161,20 @@ export function calculateSessionStats(
     estimatedDuration: number;
 } {
     const totalCards = cards.length;
-    const avgAccuracy = cards.reduce((sum, c) => sum + c.accuracy, 0) / totalCards;
-    const avgInterval = cards.reduce((sum, c) => sum + c.interval, 0) / totalCards;
+    if (totalCards === 0) {
+        return {
+            avgAccuracy: 0,
+            avgInterval: 0,
+            stateBreakdown: { new: 0, learning: 0, review: 0, mastered: 0 },
+            estimatedDuration: 0,
+        };
+    }
+    const avgAccuracy = cards.reduce((sum, c) => sum + (c.accuracy ?? 0), 0) / totalCards;
+    const avgInterval = cards.reduce((sum, c) => sum + (c.interval ?? 0), 0) / totalCards;
 
     const stateBreakdown = cards.reduce(
         (acc, card) => {
-            acc[card.learning_state]++;
+            acc[card.learning_state ?? 'new']++;
             return acc;
         },
         { new: 0, learning: 0, review: 0, mastered: 0 } as Record<LearningState, number>
@@ -187,14 +196,19 @@ export function calculateSessionStats(
  */
 export function getNextReviewTime(cards: Flashcard[]): string | null {
     const dueCards = cards
-        .filter((c) => !isCardDue(c.next_review_date))
+        .filter((c) => !isCardDue(c.next_review))
         .sort((a, b) => {
-            return new Date(a.next_review_date).getTime() - new Date(b.next_review_date).getTime();
+            const aTime = a.next_review ? new Date(a.next_review).getTime() : 0;
+            const bTime = b.next_review ? new Date(b.next_review).getTime() : 0;
+            return aTime - bTime;
         });
 
     if (dueCards.length === 0 || !dueCards[0]) return null;
 
-    const nextDate = new Date(dueCards[0].next_review_date);
+    const nextCard = dueCards[0];
+    if (!nextCard.next_review) return null;
+
+    const nextDate = new Date(nextCard.next_review);
     const now = new Date();
     const diffHours = Math.round((nextDate.getTime() - now.getTime()) / (1000 * 60 * 60));
 
@@ -211,7 +225,7 @@ export function filterByLearningState(
     cards: Flashcard[],
     states: LearningState[]
 ): Flashcard[] {
-    return cards.filter((card) => states.includes(card.learning_state));
+    return cards.filter((card) => states.includes(card.learning_state ?? 'new'));
 }
 
 /**
@@ -222,7 +236,8 @@ export function getCardsDueToday(cards: Flashcard[]): Flashcard[] {
     today.setHours(23, 59, 59, 999); // End of today
 
     return cards.filter((card) => {
-        const reviewDate = new Date(card.next_review_date);
+        if (!card.next_review) return true; // New cards are due
+        const reviewDate = new Date(card.next_review);
         return reviewDate <= today;
     });
 }
@@ -239,13 +254,16 @@ export function calculateWeeklyProgress(cards: Flashcard[]): {
     oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
 
     const recentCards = cards.filter((card) => {
-        const updatedAt = new Date(card.updated_at);
-        return updatedAt >= oneWeekAgo;
+        if (!card.created_at) return false;
+        const createdAt = new Date(card.created_at);
+        return createdAt >= oneWeekAgo;
     });
 
     return {
         cardsReviewed: recentCards.length,
-        averageAccuracy: recentCards.reduce((sum, c) => sum + c.accuracy, 0) / recentCards.length || 0,
+        averageAccuracy: recentCards.length > 0
+            ? recentCards.reduce((sum, c) => sum + (c.accuracy ?? 0), 0) / recentCards.length
+            : 0,
         newCardsMastered: recentCards.filter((c) => c.learning_state === 'mastered').length,
     };
 }

@@ -2,7 +2,7 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-import type { app__api__rest__documents__MessageResponse } from '../models/app__api__rest__documents__MessageResponse';
+import type { app__api__rest__links__MessageResponse } from '../models/app__api__rest__links__MessageResponse';
 import type { PasswordChange } from '../models/PasswordChange';
 import type { UserStatistics } from '../models/UserStatistics';
 import type { UserUpdate } from '../models/UserUpdate';
@@ -45,10 +45,10 @@ export class UsersService {
     /**
      * Delete account
      * Delete authenticated user's account (soft delete)
-     * @returns app__api__rest__documents__MessageResponse Successful Response
+     * @returns app__api__rest__links__MessageResponse Successful Response
      * @throws ApiError
      */
-    public static deleteAccountApiV1UsersMeDelete(): CancelablePromise<app__api__rest__documents__MessageResponse> {
+    public static deleteAccountApiV1UsersMeDelete(): CancelablePromise<app__api__rest__links__MessageResponse> {
         return __request(OpenAPI, {
             method: 'DELETE',
             url: '/api/v1/users/me',
@@ -58,12 +58,12 @@ export class UsersService {
      * Change password
      * Change authenticated user's password
      * @param requestBody
-     * @returns app__api__rest__documents__MessageResponse Successful Response
+     * @returns app__api__rest__links__MessageResponse Successful Response
      * @throws ApiError
      */
     public static changePasswordApiV1UsersMePasswordPut(
         requestBody: PasswordChange,
-    ): CancelablePromise<app__api__rest__documents__MessageResponse> {
+    ): CancelablePromise<app__api__rest__links__MessageResponse> {
         return __request(OpenAPI, {
             method: 'PUT',
             url: '/api/v1/users/me/password',

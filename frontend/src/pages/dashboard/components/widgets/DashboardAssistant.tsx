@@ -1,9 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { NeumorphicCard, NeumorphicButton } from '@/components/neumorphic';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Bot, Send, Sparkles, Minimize2, Zap, Target, Lightbulb, Loader2, ChevronLeft, ChevronRight, Plus, Trash2, MessageSquare } from 'lucide-react';
+import { Bot, Send, Sparkles, Minimize2, Zap, Target, Lightbulb, Loader2, ChevronLeft, ChevronRight, Plus, Trash2, MessageSquare, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ActionsList } from './ActionResultCard';
 import { useAuthStore } from '@/stores/authStore';
@@ -186,7 +185,8 @@ export const DashboardAssistant: React.FC<DashboardAssistantProps> = ({ classNam
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (isOpen && !isMinimized && wrapperRef.current && !wrapperRef.current.contains(event.target as Node)) {
-                setIsOpen(false);
+                // Check if click is on the trigger button (handled separately)
+                // setIsOpen(false); 
             }
         };
 
@@ -373,101 +373,98 @@ Title:`
     // Minimized state
     if (isMinimized) {
         return (
-            <Button
-                className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg z-50 animate-in fade-in zoom-in"
+            <NeumorphicButton
+                variant="primary"
+                className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg z-50 animate-in fade-in zoom-in p-0 flex items-center justify-center"
                 onClick={() => setIsMinimized(false)}
             >
                 <Bot className="h-6 w-6" />
-            </Button>
+            </NeumorphicButton>
         );
     }
 
     // Closed state
     if (!isOpen) {
         return (
-            <Button
-                className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg z-50 animate-in fade-in zoom-in"
+            <NeumorphicButton
+                variant="primary"
+                className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-lg z-50 animate-in fade-in zoom-in p-0 flex items-center justify-center"
                 onClick={() => setIsOpen(true)}
             >
                 <Bot className="h-6 w-6" />
-            </Button>
+            </NeumorphicButton>
         );
     }
 
     return (
         <>
             {/* Backdrop */}
-            <div className="fixed inset-0 bg-black/5 backdrop-blur-[1px] z-40 animate-in fade-in duration-200" />
+            <div className="fixed inset-0 bg-black/40 backdrop-blur-[2px] z-40 animate-in fade-in duration-200" onClick={() => setIsOpen(false)} />
 
-            <Card
-                ref={wrapperRef}
+            <NeumorphicCard
                 className={cn(
-                    "fixed bottom-6 right-6 shadow-2xl border-primary/20 z-50 flex flex-col transition-all duration-300 ease-in-out",
-                    "h-[680px] flex flex-col overflow-hidden bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60",
+                    "fixed bottom-6 right-6 z-50 flex flex-col transition-all duration-300 ease-in-out p-0 border-0 overflow-hidden",
+                    "h-[680px] bg-[#0a0a0f]/95 backdrop-blur-xl border border-white/10",
                     "animate-in slide-in-from-bottom-4 fade-in duration-300",
                     showSidebar ? "w-[600px]" : "w-[420px]",
                     className
                 )}
             >
                 {/* Header */}
-                <CardHeader className="bg-gradient-to-r from-primary/10 via-primary/5 to-transparent py-4 px-4 flex flex-row items-center justify-between space-y-0 border-b">
+                <div className="bg-gradient-to-r from-purple-500/10 via-cyan-500/5 to-transparent py-4 px-4 flex flex-row items-center justify-between border-b border-white/5">
                     <div className="flex items-center gap-3">
-                        <Button
+                        <NeumorphicButton
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 hover:bg-primary/10 rounded-lg"
+                            className="h-8 w-8"
                             onClick={toggleSidebar}
                         >
-                            {showSidebar ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                        </Button>
-                        <div className="bg-primary/20 p-2 rounded-lg ring-1 ring-primary/20 shadow-[0_0_10px_rgba(var(--primary),0.3)]">
-                            <Sparkles className="h-4 w-4 text-primary fill-primary/20" />
+                            {showSidebar ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+                        </NeumorphicButton>
+                        <div className="w-8 h-8 rounded-lg nm-inset flex items-center justify-center text-cyan-400">
+                            <Bot className="h-4 w-4" />
                         </div>
                         <div>
-                            <CardTitle className="text-sm font-bold tracking-tight">Synapse Assistant</CardTitle>
-                            <p className="text-[10px] text-muted-foreground flex items-center gap-1.5 font-medium mt-0.5">
-                                <span className="relative flex h-2 w-2">
-                                    {isInitializing ? (
-                                        <span className="relative inline-flex rounded-full h-2 w-2 bg-yellow-500 animate-pulse"></span>
-                                    ) : (
-                                        <>
-                                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-500 opacity-75"></span>
-                                            <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]"></span>
-                                        </>
-                                    )}
+                            <h3 className="text-sm font-bold text-white tracking-tight">Synapse Assistant</h3>
+                            <div className="flex items-center gap-1.5">
+                                <span className={cn(
+                                    "w-1.5 h-1.5 rounded-full",
+                                    isInitializing ? "bg-amber-400 animate-pulse" : "bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]"
+                                )} />
+                                <span className="text-[10px] text-slate-400 font-mono uppercase tracking-wider">
+                                    {isInitializing ? 'INITIALIZING...' : 'ONLINE'}
                                 </span>
-                                {isInitializing ? 'Establishing Link...' : 'System Online'}
-                            </p>
+                            </div>
                         </div>
                     </div>
-                    <Button
+                    <NeumorphicButton
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 hover:bg-primary/10 hover:text-primary transition-colors rounded-full"
+                        className="h-8 w-8 hover:text-white"
                         onClick={() => setIsOpen(false)}
                     >
                         <Minimize2 className="h-4 w-4" />
-                    </Button>
-                </CardHeader>
+                    </NeumorphicButton>
+                </div>
 
                 <div className="flex flex-1 overflow-hidden">
                     {/* Sidebar */}
                     <div className={cn(
-                        "border-r bg-muted/30 transition-all duration-300 overflow-hidden flex flex-col",
+                        "border-r border-white/5 bg-[#050508]/50 transition-all duration-300 overflow-hidden flex flex-col",
                         showSidebar ? "w-[180px]" : "w-0"
                     )}>
                         {/* New Chat Button */}
-                        <div className="p-2 border-b">
-                            <Button
-                                variant="outline"
+                        <div className="p-3 border-b border-white/5">
+                            <NeumorphicButton
+                                variant="ghost"
                                 size="sm"
-                                className="w-full h-8 text-xs gap-1.5 hover:bg-primary/10 hover:text-primary transition-colors"
+                                className="w-full text-xs justify-start px-2"
                                 onClick={createNewSession}
                                 disabled={isInitializing}
                             >
-                                <Plus className="h-3 w-3" />
-                                New Chat
-                            </Button>
+                                <Plus className="h-3 w-3 mr-2" />
+                                New Session
+                            </NeumorphicButton>
                         </div>
 
                         {/* Session List */}
@@ -477,30 +474,28 @@ Title:`
                                     <div
                                         key={session.id}
                                         className={cn(
-                                            "group relative p-2 rounded-lg cursor-pointer transition-colors text-xs",
-                                            "hover:bg-muted",
-                                            session.id === sessionId && "bg-primary/10 border border-primary/20"
+                                            "group relative p-2 rounded-lg cursor-pointer transition-all text-xs border border-transparent",
+                                            "hover:bg-white/5",
+                                            session.id === sessionId ? "bg-white/5 border-white/10 shadow-inner" : ""
                                         )}
                                         onClick={() => switchSession(session.id)}
                                     >
                                         <div className="flex items-start gap-2">
-                                            <MessageSquare className="h-3 w-3 mt-0.5 shrink-0 text-muted-foreground" />
+                                            <MessageSquare className="h-3 w-3 mt-0.5 shrink-0 text-slate-500" />
                                             <div className="flex-1 min-w-0">
-                                                <div className="font-medium truncate">
+                                                <div className="font-medium truncate text-slate-200">
                                                     {session.title}
                                                 </div>
-                                                <div className="text-[10px] text-muted-foreground">
+                                                <div className="text-[10px] text-slate-500 font-mono mt-0.5">
                                                     {formatSessionDate(session.updated_at)}
                                                 </div>
                                             </div>
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                className="h-5 w-5 opacity-0 group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive rounded"
+                                            <button
+                                                className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-500/20 hover:text-red-400 rounded transition-all"
                                                 onClick={(e) => deleteSession(session.id, e)}
                                             >
                                                 <Trash2 className="h-3 w-3" />
-                                            </Button>
+                                            </button>
                                         </div>
                                     </div>
                                 ))}
@@ -509,45 +504,32 @@ Title:`
                     </div>
 
                     {/* Main Chat Area */}
-                    <div className="flex-1 flex flex-col overflow-hidden">
+                    <div className="flex-1 flex flex-col overflow-hidden bg-[#0a0a0f]/50">
                         {/* Quick Actions Bar */}
-                        <div className="px-3 py-2 border-b bg-muted/30 flex gap-2 overflow-x-auto scrollbar-hide">
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-7 text-xs gap-1.5 hover:bg-primary/10 hover:text-primary transition-colors shrink-0"
-                                onClick={() => handleQuickAction("Create flashcards for my weak areas")}
-                                disabled={isTyping || isInitializing}
-                            >
-                                <Zap className="h-3 w-3" />
-                                Flashcards
-                            </Button>
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-7 text-xs gap-1.5 hover:bg-primary/10 hover:text-primary transition-colors shrink-0"
-                                onClick={() => handleQuickAction("What are my weak areas?")}
-                                disabled={isTyping || isInitializing}
-                            >
-                                <Target className="h-3 w-3" />
-                                Weak Areas
-                            </Button>
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-7 text-xs gap-1.5 hover:bg-primary/10 hover:text-primary transition-colors shrink-0"
-                                onClick={() => handleQuickAction("Suggest topics to study next")}
-                                disabled={isTyping || isInitializing}
-                            >
-                                <Lightbulb className="h-3 w-3" />
-                                Study Tips
-                            </Button>
+                        <div className="px-3 py-3 border-b border-white/5 flex gap-2 overflow-x-auto scrollbar-hide">
+                            {[
+                                { icon: Zap, label: "Flashcards", prompt: "Create flashcards for my weak areas" },
+                                { icon: Target, label: "Weak Areas", prompt: "What are my weak areas?" },
+                                { icon: Lightbulb, label: "Tips", prompt: "Suggest topics to study next" }
+                            ].map((action, i) => (
+                                <NeumorphicButton
+                                    key={i}
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 text-xs px-3 shrink-0 whitespace-nowrap"
+                                    onClick={() => handleQuickAction(action.prompt)}
+                                    disabled={isTyping || isInitializing}
+                                >
+                                    <action.icon className="h-3 w-3 mr-1.5 text-cyan-400" />
+                                    {action.label}
+                                </NeumorphicButton>
+                            ))}
                         </div>
 
                         {/* Messages */}
-                        <CardContent className="flex-1 flex flex-col p-0 overflow-hidden relative">
+                        <div className="flex-1 flex flex-col p-0 overflow-hidden relative">
                             <ScrollArea className="flex-1 p-4 pr-5 h-full w-full">
-                                <div className="space-y-6 pb-2">
+                                <div className="space-y-6 pb-20">
                                     {messages.map((msg) => (
                                         <div
                                             key={msg.id}
@@ -557,34 +539,34 @@ Title:`
                                             )}
                                         >
                                             <div className={cn(
-                                                "h-8 w-8 rounded-full flex items-center justify-center shrink-0 border shadow-sm",
-                                                msg.role === 'user' ? "bg-primary/10 border-primary/20" : "bg-card border-border"
+                                                "h-8 w-8 rounded-lg nm-inset flex items-center justify-center shrink-0",
+                                                msg.role === 'user' ? "text-slate-400" : "text-cyan-400"
                                             )}>
                                                 {msg.role === 'user' ? (
-                                                    <div className="h-4 w-4 rounded-full bg-primary/50" />
+                                                    <div className="h-2 w-2 rounded-full bg-slate-500" />
                                                 ) : (
-                                                    <Bot className="h-4 w-4 text-primary" />
+                                                    <Bot className="h-4 w-4" />
                                                 )}
                                             </div>
 
                                             <div className={cn(
-                                                "flex flex-col gap-1 max-w-[80%]",
+                                                "flex flex-col gap-1 max-w-[85%]",
                                                 msg.role === 'user' ? "items-end" : "items-start"
                                             )}>
                                                 <div className={cn(
-                                                    "rounded-2xl px-4 py-3 text-sm shadow-sm border",
+                                                    "rounded-2xl px-4 py-3 text-sm shadow-sm",
                                                     msg.role === 'user'
-                                                        ? "bg-primary/10 border-primary/20 text-foreground rounded-tr-sm"
-                                                        : "bg-card border-border/50 text-foreground/90 rounded-tl-sm"
+                                                        ? "bg-gradient-to-br from-purple-600/20 to-indigo-600/20 border border-purple-500/20 text-slate-100 rounded-tr-sm"
+                                                        : "bg-white/[0.03] border border-white/[0.05] text-slate-300 rounded-tl-sm"
                                                 )}>
                                                     {msg.content}
                                                 </div>
-                                                <span className="text-[10px] text-muted-foreground px-1 opacity-50">
+                                                <span className="text-[10px] text-slate-600 font-mono px-1">
                                                     {msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now'}
                                                 </span>
 
                                                 {msg.role === 'assistant' && msg.actions && msg.actions.length > 0 && (
-                                                    <ActionsList actions={msg.actions} className="mt-2" />
+                                                    <ActionsList actions={msg.actions} className="mt-2 w-full" />
                                                 )}
                                             </div>
                                         </div>
@@ -592,13 +574,13 @@ Title:`
 
                                     {isTyping && (
                                         <div className="flex w-full gap-3 animate-in fade-in slide-in-from-bottom-2">
-                                            <div className="h-8 w-8 rounded-full bg-card border flex items-center justify-center shrink-0 shadow-sm">
-                                                <Bot className="h-4 w-4 text-primary" />
+                                            <div className="h-8 w-8 rounded-lg nm-inset flex items-center justify-center shrink-0 text-cyan-400">
+                                                <Bot className="h-4 w-4" />
                                             </div>
-                                            <div className="bg-card border border-border/50 rounded-2xl rounded-tl-sm px-4 py-3 flex items-center gap-1 shadow-sm h-[46px]">
-                                                <span className="w-1.5 h-1.5 bg-primary/50 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
-                                                <span className="w-1.5 h-1.5 bg-primary/50 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
-                                                <span className="w-1.5 h-1.5 bg-primary/50 rounded-full animate-bounce"></span>
+                                            <div className="bg-white/[0.03] border border-white/[0.05] rounded-2xl rounded-tl-sm px-4 py-3 flex items-center gap-1 h-[46px]">
+                                                <span className="w-1.5 h-1.5 bg-cyan-500/50 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
+                                                <span className="w-1.5 h-1.5 bg-cyan-500/50 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
+                                                <span className="w-1.5 h-1.5 bg-cyan-500/50 rounded-full animate-bounce"></span>
                                             </div>
                                         </div>
                                     )}
@@ -606,10 +588,11 @@ Title:`
                                 </div>
                             </ScrollArea>
 
-                            <div className="absolute bottom-[69px] left-0 right-0 h-12 bg-gradient-to-t from-background to-transparent pointer-events-none" />
+                            {/* Gradient Fade */}
+                            <div className="absolute bottom-[72px] left-0 right-0 h-16 bg-gradient-to-t from-[#0a0a0f] to-transparent pointer-events-none" />
 
                             {/* Input Area */}
-                            <div className="p-3 border-t bg-background/80 backdrop-blur pb-4">
+                            <div className="p-4 bg-[#0a0a0f] border-t border-white/5 relative z-10">
                                 <form
                                     onSubmit={(e) => { e.preventDefault(); handleSend(); }}
                                     className="flex gap-2 relative"
@@ -618,26 +601,27 @@ Title:`
                                         placeholder="Ask about your progress..."
                                         value={input}
                                         onChange={(e) => setInput(e.target.value)}
-                                        className="h-11 rounded-full pl-5 pr-12 bg-muted/50 border-transparent focus-visible:bg-background focus-visible:border-primary/30 focus-visible:ring-4 focus-visible:ring-primary/10 transition-all shadow-inner"
+                                        className="h-11 rounded-xl pl-4 pr-12 bg-white/5 border-white/5 text-white placeholder:text-slate-600 focus-visible:bg-white/10 focus-visible:border-cyan-500/50 focus-visible:ring-1 focus-visible:ring-cyan-500/30 transition-all font-light"
                                         disabled={isInitializing}
                                     />
-                                    <Button
+                                    <NeumorphicButton
                                         type="submit"
                                         size="icon"
                                         className={cn(
-                                            "absolute right-1.5 top-1.5 h-8 w-8 rounded-full shadow-sm transition-all duration-300",
-                                            input.trim() ? "bg-primary text-primary-foreground scale-100" : "bg-muted text-muted-foreground scale-90 hover:bg-muted"
+                                            "absolute right-1.5 top-1.5 h-8 w-8 rounded-lg transition-all duration-300",
+                                            input.trim() ? "text-cyan-400 hover:text-cyan-300" : "text-slate-600"
                                         )}
+                                        variant="ghost"
                                         disabled={isTyping || isInitializing || !sessionId || !input.trim()}
                                     >
-                                        {isTyping ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5 ml-0.5" />}
-                                    </Button>
+                                        {isTyping ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                                    </NeumorphicButton>
                                 </form>
                             </div>
-                        </CardContent>
+                        </div>
                     </div>
                 </div>
-            </Card>
+            </NeumorphicCard>
         </>
     );
 };

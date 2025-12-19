@@ -40,10 +40,11 @@ const cardVariants = {
 
 /**
  * Get deck color based on index
+ * Cycle: Blue -> Cyan (Teal) -> Red (Coral)
  */
 function getDeckColor(index: number): DeckColor {
-    const colors: DeckColor[] = ['cyan', 'purple', 'red', 'emerald', 'amber', 'blue'];
-    return colors[index % colors.length];
+    const colors: DeckColor[] = ['blue', 'cyan', 'red', 'purple', 'emerald', 'amber'];
+    return colors[index % colors.length] || 'blue';
 }
 
 /**
@@ -77,26 +78,26 @@ export function DeckList({
 }: DeckListProps) {
     return (
         <motion.div
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6 w-full px-4"
         >
-        <AnimatePresence>
-        {decks.map((deck, index) => (
-            <motion.div key={deck.id} variants={cardVariants} layout>
-            <DeckCard
-            deck={deck}
-            color={getDeckColor(index)}
-            masteryPercent={calculateMasteryPercent(deck)}
-            onClick={() => onDeckClick(deck.id)}
-            onDelete={() => onDeckDelete(deck.id)}
-            onEdit={() => onDeckEdit(deck.id)}
-            onReview={() => onDeckReview(deck.id)}
-            />
-            </motion.div>
-        ))}
-        </AnimatePresence>
+            <AnimatePresence>
+                {decks.map((deck, index) => (
+                    <motion.div key={deck.id} variants={cardVariants} layout className="h-full">
+                        <DeckCard
+                            deck={deck}
+                            color={getDeckColor(index)}
+                            masteryPercent={calculateMasteryPercent(deck)}
+                            onClick={() => onDeckClick(deck.id)}
+                            onDelete={() => onDeckDelete(deck.id)}
+                            onEdit={() => onDeckEdit(deck.id)}
+                            onReview={() => onDeckReview(deck.id)}
+                        />
+                    </motion.div>
+                ))}
+            </AnimatePresence>
         </motion.div>
     );
 }

@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { X, Activity, Download, Trash2, CheckCircle2, Loader2, AlertCircle, Clock } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 import type { EnhancedDocument } from '../../types/documents.types';
 
 interface DocumentViewerProps {
@@ -83,7 +84,6 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
 
             {/* Modal */}
             <motion.div
-                layoutId={`monolith-${doc.id}`}
                 className="relative w-full max-w-5xl h-[80vh] bg-[#050505] border border-white/10 rounded-3xl overflow-hidden shadow-2xl flex flex-col md:flex-row pointer-events-auto"
             >
                 {/* Header */}
@@ -100,11 +100,53 @@ export const DocumentViewer: React.FC<DocumentViewerProps> = ({
                     </button>
                 </div>
 
-                {/* Left: Preview */}
-                <div className="w-full md:w-2/3 h-full relative flex items-center justify-center bg-black/40">
-                    <div className="relative w-64 h-80 bg-white/5 border border-white/10 rounded-2xl flex items-center justify-center shadow-2xl">
-                        <FileIcon type={doc.type} className="w-24 h-24 text-slate-500" />
-                    </div>
+                {/* Left: Preview or Data DNA */}
+                <div className="w-full md:w-2/3 h-full relative flex items-center justify-center bg-black/40 overflow-hidden">
+                    {/* Grid Pattern Background */}
+                    <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:40px_40px]" />
+
+                    {['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(doc.type.toLowerCase()) ? (
+                        // Image Preview
+                        <img
+                            src={`/api/v1/documents/${doc.id}/content`}
+                            alt={doc.filename}
+                            className="max-w-[90%] max-h-[90%] object-contain rounded-lg shadow-2xl border border-white/10"
+                            onError={(e) => {
+                                (e.target as HTMLImageElement).style.display = 'none';
+                                logAction('PREVIEW: FAILED');
+                            }}
+                        />
+                    ) : (
+                        // Data DNA Visualization (Techy Fallback)
+                        <div className="relative w-full h-full flex items-center justify-center">
+                            <div className="absolute inset-0 flex items-center justify-center opacity-20 pointer-events-none">
+                                <div className="w-[600px] h-[600px] bg-cyan-500/20 blur-[100px] rounded-full" />
+                            </div>
+
+                            <div className="relative z-10 grid grid-cols-8 gap-2 p-8 font-mono text-[10px] text-cyan-500/40 select-none">
+                                {Array.from({ length: 192 }).map((_, i) => (
+                                    <div key={i} className={cn(
+                                        "w-8 h-4 flex items-center justify-center border border-cyan-500/5 rounded bg-black/20",
+                                        i % 7 === 0 && "text-cyan-400 bg-cyan-500/10 border-cyan-500/20",
+                                        i % 13 === 0 && "text-purple-400 bg-purple-500/10 border-purple-500/20",
+                                    )}>
+                                        {Math.floor(Math.random() * 255).toString(16).padStart(2, '0').toUpperCase()}
+                                    </div>
+                                ))}
+                            </div>
+
+                            {/* Center Icon Overlay */}
+                            <div className="absolute inset-0 flex items-center justify-center">
+                                <div className="p-8 rounded-3xl bg-black/80 backdrop-blur-xl border border-white/10 shadow-2xl">
+                                    <FileIcon type={doc.type} className="w-16 h-16 text-cyan-400" />
+                                    <div className="mt-4 text-center">
+                                        <div className="text-xs font-mono text-slate-400 mb-1">BINARY VIEW</div>
+                                        <div className="text-[10px] text-slate-600">{doc.type.toUpperCase()} // {doc.size}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* Right: Data Terminal */}

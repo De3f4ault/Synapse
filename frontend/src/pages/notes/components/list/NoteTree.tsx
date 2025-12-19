@@ -36,7 +36,7 @@ export const NeuralItem: React.FC<NeuralItemProps> = ({
             {/* Connection line */}
             {level > 0 && (
                 <div
-                    className="absolute left-0 top-0 bottom-0 w-px bg-border"
+                    className="absolute left-0 top-0 bottom-0 w-px bg-white/10"
                     style={{ left: `${level * 20 - 10}px` }}
                 />
             )}
@@ -45,39 +45,40 @@ export const NeuralItem: React.FC<NeuralItemProps> = ({
             <button
                 onClick={() => hasChildren ? toggleExpand(item.id) : onSelect(item.id)}
                 className={cn(
-                    "group relative w-full flex items-center gap-2 p-2 rounded-lg transition-all",
+                    "group relative w-full flex items-center gap-2 p-2 rounded-lg transition-all border border-transparent",
                     isSelected
-                        ? "bg-primary/10 text-primary"
-                        : "hover:bg-accent text-foreground"
+                        ? "bg-cyan-500/10 text-cyan-400 border-cyan-500/20 shadow-[0_0_10px_rgba(34,211,238,0.1)]"
+                        : "hover:bg-white/5 text-slate-400 hover:text-slate-200"
                 )}
                 style={{ paddingLeft: `${level * 20 + 8}px` }}
             >
                 {/* Icon and chevron */}
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1.5 shrink-0">
                     {hasChildren && (
                         <motion.div
                             animate={{ rotate: isExpanded ? 90 : 0 }}
                             transition={{ duration: 0.2 }}
+                            className="text-slate-600"
                         >
-                            <ChevronRight size={14} className="text-muted-foreground" />
+                            <ChevronRight size={14} />
                         </motion.div>
                     )}
 
                     {hasChildren ? (
                         isExpanded ? (
-                            <FolderOpen size={16} className={isSelected ? "text-primary" : "text-amber-600"} />
+                            <FolderOpen size={16} className={isSelected ? "text-cyan-400" : "text-amber-500/80"} />
                         ) : (
-                            <Folder size={16} className={isSelected ? "text-primary" : "text-amber-600"} />
+                            <Folder size={16} className={isSelected ? "text-cyan-400" : "text-amber-500/60"} />
                         )
                     ) : (
-                        <FileText size={14} className={isSelected ? "text-primary" : "text-muted-foreground"} />
+                        <FileText size={14} className={isSelected ? "text-cyan-400" : "text-slate-600"} />
                     )}
                 </div>
 
                 {/* Title */}
                 <span className={cn(
                     "flex-1 text-left text-sm truncate",
-                    isSelected ? "font-medium" : ""
+                    isSelected ? "font-bold" : "font-medium"
                 )}>
                     {item.title || 'Untitled'}
                 </span>
@@ -88,7 +89,7 @@ export const NeuralItem: React.FC<NeuralItemProps> = ({
                         initial={{ opacity: 0, x: -10 }}
                         whileHover={{ scale: 1.1 }}
                         onClick={(e) => { e.stopPropagation(); onDelete(item.id, e); }}
-                        className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-destructive/20 rounded text-muted-foreground hover:text-destructive transition-all cursor-pointer"
+                        className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-red-500/20 rounded text-slate-600 hover:text-red-400 transition-all cursor-pointer"
                         title="Delete note"
                     >
                         <Trash2 size={12} />

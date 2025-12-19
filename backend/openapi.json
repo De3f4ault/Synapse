@@ -1,5 +1,3 @@
-Initialized CacheClient (host=localhost, port=6379, db=0)
-[2m2025-12-12T19:43:21.203608Z[0m [[32m[1minfo     [0m] [1mwebsocket_routes_registered   [0m [[0m[1m[34mapp.main[0m][0m [36mapp[0m=[35msynapse[0m
 {
   "openapi": "3.1.0",
   "info": {
@@ -168,7 +166,7 @@ Initialized CacheClient (host=localhost, port=6379, db=0)
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/app__api__rest__documents__MessageResponse"
+                  "$ref": "#/components/schemas/app__api__rest__links__MessageResponse"
                 }
               }
             }
@@ -315,7 +313,7 @@ Initialized CacheClient (host=localhost, port=6379, db=0)
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/app__api__rest__documents__MessageResponse"
+                  "$ref": "#/components/schemas/app__api__rest__links__MessageResponse"
                 }
               }
             }
@@ -352,7 +350,7 @@ Initialized CacheClient (host=localhost, port=6379, db=0)
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/app__api__rest__documents__MessageResponse"
+                  "$ref": "#/components/schemas/app__api__rest__links__MessageResponse"
                 }
               }
             }
@@ -685,7 +683,7 @@ Initialized CacheClient (host=localhost, port=6379, db=0)
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/app__api__rest__documents__MessageResponse"
+                  "$ref": "#/components/schemas/app__api__rest__links__MessageResponse"
                 }
               }
             }
@@ -716,6 +714,53 @@ Initialized CacheClient (host=localhost, port=6379, db=0)
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/FlashcardGenerateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FlashcardGenerateResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/decks/generate-from-topic": {
+      "post": {
+        "tags": [
+          "Flashcards"
+        ],
+        "summary": "Generate flashcards from topic",
+        "description": "Use AI to generate flashcards from any topic",
+        "operationId": "generate_flashcards_from_topic_api_v1_decks_generate_from_topic_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FlashcardGenerateFromTopicRequest"
               }
             }
           },
@@ -1062,7 +1107,7 @@ Initialized CacheClient (host=localhost, port=6379, db=0)
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/app__api__rest__documents__MessageResponse"
+                  "$ref": "#/components/schemas/app__api__rest__links__MessageResponse"
                 }
               }
             }
@@ -1493,7 +1538,7 @@ Initialized CacheClient (host=localhost, port=6379, db=0)
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/app__api__rest__documents__MessageResponse"
+                  "$ref": "#/components/schemas/app__api__rest__links__MessageResponse"
                 }
               }
             }
@@ -1786,7 +1831,7 @@ Initialized CacheClient (host=localhost, port=6379, db=0)
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/app__api__rest__documents__MessageResponse"
+                  "$ref": "#/components/schemas/app__api__rest__links__MessageResponse"
                 }
               }
             }
@@ -1961,7 +2006,7 @@ Initialized CacheClient (host=localhost, port=6379, db=0)
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/app__api__rest__documents__MessageResponse"
+                  "$ref": "#/components/schemas/app__api__rest__links__MessageResponse"
                 }
               }
             }
@@ -2088,6 +2133,53 @@ Initialized CacheClient (host=localhost, port=6379, db=0)
             }
           }
         }
+      }
+    },
+    "/api/v1/quizzes/generate": {
+      "post": {
+        "tags": [
+          "Quizzes"
+        ],
+        "summary": "Generate quiz with AI",
+        "description": "Use AI to generate a quiz from a topic or document",
+        "operationId": "generate_quiz_api_v1_quizzes_generate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuizGenerateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuizGenerateResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
       }
     },
     "/api/v1/quizzes/{quiz_id}/start": {
@@ -2394,6 +2486,62 @@ Initialized CacheClient (host=localhost, port=6379, db=0)
                   "type": "object",
                   "additionalProperties": true,
                   "title": "Response Delete Session Api V1 Chat Sessions  Session Id  Delete"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "Update chat session",
+        "description": "Update session title",
+        "operationId": "update_session_api_v1_chat_sessions__session_id__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "session_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Session Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatSessionUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatSessionResponse"
                 }
               }
             }
@@ -2720,6 +2868,53 @@ Initialized CacheClient (host=localhost, port=6379, db=0)
             }
           }
         }
+      }
+    },
+    "/api/v1/chat/sessions/dashboard/message": {
+      "post": {
+        "tags": [
+          "Chat"
+        ],
+        "summary": "Dashboard Orchestrator Message",
+        "description": "Send message to dashboard orchestrator with full system access",
+        "operationId": "send_dashboard_message_api_v1_chat_sessions_dashboard_message_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatMessageCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChatMessageResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
       }
     },
     "/api/v1/study/due": {
@@ -3843,6 +4038,919 @@ Initialized CacheClient (host=localhost, port=6379, db=0)
         }
       }
     },
+    "/api/v1/rag/documents/ingest": {
+      "post": {
+        "tags": [
+          "RAG"
+        ],
+        "summary": "Ingest document into RAG",
+        "description": "Ingest document with smart routing: small docs processed inline, large docs queued to Celery",
+        "operationId": "ingest_document_api_v1_rag_documents_ingest_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DocumentIngestRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentIngestResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/rag/documents/batch": {
+      "post": {
+        "tags": [
+          "RAG"
+        ],
+        "summary": "Batch ingest documents",
+        "description": "Batch ingest multiple documents (always async via Celery).",
+        "operationId": "batch_ingest_api_v1_rag_documents_batch_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchIngestRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchIngestResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/rag/query": {
+      "post": {
+        "tags": [
+          "RAG"
+        ],
+        "summary": "Query RAG system",
+        "description": "Query RAG with all Phase 3 enhancements (LLM, reranking, personalization)",
+        "operationId": "query_rag_api_v1_rag_query_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QueryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueryResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/rag/feedback": {
+      "post": {
+        "tags": [
+          "RAG"
+        ],
+        "summary": "Submit feedback",
+        "description": "Submit user feedback for adaptive learning",
+        "operationId": "submit_feedback_api_v1_rag_feedback_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FeedbackRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedbackResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/api/v1/rag/tasks/{task_id}": {
+      "get": {
+        "tags": [
+          "RAG"
+        ],
+        "summary": "Get task status",
+        "description": "Get status of background task.",
+        "operationId": "get_task_status_api_v1_rag_tasks__task_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "task_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Task Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskStatusResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/links": {
+      "get": {
+        "tags": [
+          "Links"
+        ],
+        "summary": "List all links",
+        "description": "Get all links for the current user",
+        "operationId": "list_links_api_v1_links_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "link_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/LinkType"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by link type",
+              "title": "Link Type"
+            },
+            "description": "Filter by link type"
+          },
+          {
+            "name": "source_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/EntityType"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by source entity type",
+              "title": "Source Type"
+            },
+            "description": "Filter by source entity type"
+          },
+          {
+            "name": "target_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/EntityType"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by target entity type",
+              "title": "Target Type"
+            },
+            "description": "Filter by target entity type"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Page number",
+              "default": 1,
+              "title": "Page"
+            },
+            "description": "Page number"
+          },
+          {
+            "name": "page_size",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Items per page",
+              "default": 50,
+              "title": "Page Size"
+            },
+            "description": "Items per page"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LinkResponse"
+                  },
+                  "title": "Response List Links Api V1 Links Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Links"
+        ],
+        "summary": "Create link",
+        "description": "Create a new link between two entities",
+        "operationId": "create_link_api_v1_links_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LinkCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LinkResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/links/graph": {
+      "get": {
+        "tags": [
+          "Links"
+        ],
+        "summary": "Get knowledge graph",
+        "description": "Get full knowledge graph data for visualization",
+        "operationId": "get_knowledge_graph_api_v1_links_graph_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "entity_types",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by entity types (comma-separated)",
+              "title": "Entity Types"
+            },
+            "description": "Filter by entity types (comma-separated)"
+          },
+          {
+            "name": "link_types",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by link types (comma-separated)",
+              "title": "Link Types"
+            },
+            "description": "Filter by link types (comma-separated)"
+          },
+          {
+            "name": "include_suggested",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "Include suggested links",
+              "default": false,
+              "title": "Include Suggested"
+            },
+            "description": "Include suggested links"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KnowledgeGraphResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/links/entity/{entity_type}/{entity_id}": {
+      "get": {
+        "tags": [
+          "Links"
+        ],
+        "summary": "Get entity links",
+        "description": "Get all links to and from a specific entity",
+        "operationId": "get_entity_links_api_v1_links_entity__entity_type___entity_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "entity_type",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/EntityType"
+            }
+          },
+          {
+            "name": "entity_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Entity Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EntityLinksResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/links/entity/{entity_type}/{entity_id}/connected": {
+      "get": {
+        "tags": [
+          "Links"
+        ],
+        "summary": "Get connected entities",
+        "description": "Get all entities connected to a specific entity (traverses graph)",
+        "operationId": "get_connected_entities_api_v1_links_entity__entity_type___entity_id__connected_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "entity_type",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/EntityType"
+            }
+          },
+          {
+            "name": "entity_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Entity Id"
+            }
+          },
+          {
+            "name": "depth",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 3,
+              "minimum": 1,
+              "description": "How many hops to traverse",
+              "default": 1,
+              "title": "Depth"
+            },
+            "description": "How many hops to traverse"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ConnectedEntityResponse"
+                  },
+                  "title": "Response Get Connected Entities Api V1 Links Entity  Entity Type   Entity Id  Connected Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/links/suggested": {
+      "get": {
+        "tags": [
+          "Links"
+        ],
+        "summary": "Get suggested links",
+        "description": "Get AI-suggested links pending user review",
+        "operationId": "get_suggested_links_api_v1_links_suggested_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "entity_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/EntityType"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by entity type",
+              "title": "Entity Type"
+            },
+            "description": "Filter by entity type"
+          },
+          {
+            "name": "entity_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by entity ID",
+              "title": "Entity Id"
+            },
+            "description": "Filter by entity ID"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "Maximum results",
+              "default": 20,
+              "title": "Limit"
+            },
+            "description": "Maximum results"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/LinkResponse"
+                  },
+                  "title": "Response Get Suggested Links Api V1 Links Suggested Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/links/{link_id}": {
+      "get": {
+        "tags": [
+          "Links"
+        ],
+        "summary": "Get link",
+        "description": "Get a specific link by ID",
+        "operationId": "get_link_api_v1_links__link_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "link_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Link Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LinkResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Links"
+        ],
+        "summary": "Update link",
+        "description": "Update link properties",
+        "operationId": "update_link_api_v1_links__link_id__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "link_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Link Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LinkUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LinkResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Links"
+        ],
+        "summary": "Delete link",
+        "description": "Delete a link",
+        "operationId": "delete_link_api_v1_links__link_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "link_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Link Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/app__api__rest__links__MessageResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/links/{link_id}/accept": {
+      "post": {
+        "tags": [
+          "Links"
+        ],
+        "summary": "Accept suggested link",
+        "description": "Accept a suggested link, converting it to manual",
+        "operationId": "accept_link_api_v1_links__link_id__accept_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "link_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Link Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LinkResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/": {
       "get": {
         "tags": [
@@ -4002,6 +5110,56 @@ Initialized CacheClient (host=localhost, port=6379, db=0)
         ],
         "title": "AnswerSubmit",
         "description": "Answer submission."
+      },
+      "BatchIngestRequest": {
+        "properties": {
+          "documents": {
+            "items": {
+              "$ref": "#/components/schemas/DocumentIngestRequest"
+            },
+            "type": "array",
+            "maxItems": 100,
+            "minItems": 1,
+            "title": "Documents",
+            "description": "Documents to ingest"
+          }
+        },
+        "type": "object",
+        "required": [
+          "documents"
+        ],
+        "title": "BatchIngestRequest",
+        "description": "Batch ingest multiple documents."
+      },
+      "BatchIngestResponse": {
+        "properties": {
+          "task_id": {
+            "type": "string",
+            "title": "Task Id",
+            "description": "Batch task ID"
+          },
+          "document_count": {
+            "type": "integer",
+            "title": "Document Count",
+            "description": "Number of documents"
+          },
+          "status": {
+            "$ref": "#/components/schemas/TaskStatus"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "task_id",
+          "document_count",
+          "status",
+          "message"
+        ],
+        "title": "BatchIngestResponse",
+        "description": "Response from batch ingestion."
       },
       "Body_upload_chat_file_api_v1_chat_files_upload_post": {
         "properties": {
@@ -4223,6 +5381,57 @@ Initialized CacheClient (host=localhost, port=6379, db=0)
         ],
         "title": "ChatSessionResponse",
         "description": "Chat session response."
+      },
+      "ChatSessionUpdate": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Title",
+            "description": "Session title"
+          }
+        },
+        "type": "object",
+        "required": [
+          "title"
+        ],
+        "title": "ChatSessionUpdate",
+        "description": "Chat session update."
+      },
+      "ConnectedEntityResponse": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "title": "Type"
+          },
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "link_type": {
+            "type": "string",
+            "title": "Link Type"
+          },
+          "direction": {
+            "type": "string",
+            "title": "Direction"
+          },
+          "depth": {
+            "type": "integer",
+            "title": "Depth"
+          }
+        },
+        "type": "object",
+        "required": [
+          "type",
+          "id",
+          "link_type",
+          "direction",
+          "depth"
+        ],
+        "title": "ConnectedEntityResponse",
+        "description": "Connected entity info."
       },
       "DashboardOverview": {
         "properties": {
@@ -4521,6 +5730,103 @@ Initialized CacheClient (host=localhost, port=6379, db=0)
         "title": "DocumentChunkResponse",
         "description": "Document chunk response."
       },
+      "DocumentIngestRequest": {
+        "properties": {
+          "document_id": {
+            "type": "string",
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Document Id",
+            "description": "Unique document identifier"
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Title",
+            "description": "Document title"
+          },
+          "text": {
+            "type": "string",
+            "minLength": 10,
+            "title": "Text",
+            "description": "Document text content"
+          },
+          "source_type": {
+            "$ref": "#/components/schemas/SourceType",
+            "description": "Content source type",
+            "default": "documents"
+          }
+        },
+        "type": "object",
+        "required": [
+          "document_id",
+          "title",
+          "text"
+        ],
+        "title": "DocumentIngestRequest",
+        "description": "Request to ingest document into RAG.",
+        "example": {
+          "document_id": "bio_textbook_ch5",
+          "source_type": "documents",
+          "text": "Photosynthesis is the process...",
+          "title": "Chapter 5: Cellular Processes"
+        }
+      },
+      "DocumentIngestResponse": {
+        "properties": {
+          "document_id": {
+            "type": "string",
+            "title": "Document Id"
+          },
+          "status": {
+            "$ref": "#/components/schemas/TaskStatus"
+          },
+          "chunks": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chunks",
+            "description": "Number of chunks created (if completed)"
+          },
+          "task_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Task Id",
+            "description": "Celery task ID (if processing)"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message",
+            "description": "Status message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "document_id",
+          "status"
+        ],
+        "title": "DocumentIngestResponse",
+        "description": "Response from document ingestion."
+      },
       "DocumentResponse": {
         "properties": {
           "id": {
@@ -4611,6 +5917,132 @@ Initialized CacheClient (host=localhost, port=6379, db=0)
         ],
         "title": "DocumentResponse",
         "description": "Document response."
+      },
+      "EntityLinksResponse": {
+        "properties": {
+          "outgoing": {
+            "items": {
+              "$ref": "#/components/schemas/LinkResponse"
+            },
+            "type": "array",
+            "title": "Outgoing"
+          },
+          "backlinks": {
+            "items": {
+              "$ref": "#/components/schemas/LinkResponse"
+            },
+            "type": "array",
+            "title": "Backlinks"
+          }
+        },
+        "type": "object",
+        "required": [
+          "outgoing",
+          "backlinks"
+        ],
+        "title": "EntityLinksResponse",
+        "description": "Response for all links associated with an entity."
+      },
+      "EntityType": {
+        "type": "string",
+        "enum": [
+          "note",
+          "deck",
+          "flashcard",
+          "document",
+          "quiz",
+          "chat_session"
+        ],
+        "title": "EntityType",
+        "description": "Entity types that can be linked."
+      },
+      "FeedbackRequest": {
+        "properties": {
+          "query": {
+            "type": "string",
+            "title": "Query",
+            "description": "Original query"
+          },
+          "results": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Results",
+            "description": "Query results"
+          },
+          "clicked_indices": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "minItems": 0,
+            "title": "Clicked Indices",
+            "description": "Indices of clicked results"
+          },
+          "time_spent_ms": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Time Spent Ms",
+            "description": "Time spent reviewing results (milliseconds)"
+          },
+          "helpful_rating": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 5.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Helpful Rating",
+            "description": "User rating (1-5 stars)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "query",
+          "results",
+          "clicked_indices",
+          "time_spent_ms"
+        ],
+        "title": "FeedbackRequest",
+        "description": "User feedback on RAG query results."
+      },
+      "FeedbackResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "description": "Processing status"
+          },
+          "topics_updated": {
+            "type": "integer",
+            "title": "Topics Updated",
+            "description": "Number of topics updated",
+            "default": 0
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "title": "FeedbackResponse",
+        "description": "Response from feedback submission."
       },
       "FileUploadResponse": {
         "properties": {
@@ -4711,6 +6143,64 @@ Initialized CacheClient (host=localhost, port=6379, db=0)
         "title": "FlashcardCreate",
         "description": "Flashcard creation request."
       },
+      "FlashcardGenerateFromTopicRequest": {
+        "properties": {
+          "topic": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 3,
+            "title": "Topic",
+            "description": "Topic to generate flashcards about"
+          },
+          "deck_name": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deck Name",
+            "description": "Optional deck name (defaults to topic)"
+          },
+          "num_cards": {
+            "type": "integer",
+            "maximum": 50.0,
+            "minimum": 5.0,
+            "title": "Num Cards",
+            "description": "Number of flashcards to generate",
+            "default": 10
+          },
+          "difficulty": {
+            "type": "string",
+            "title": "Difficulty",
+            "description": "Difficulty level: easy, medium, hard",
+            "default": "medium"
+          },
+          "tags": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tags"
+          }
+        },
+        "type": "object",
+        "required": [
+          "topic"
+        ],
+        "title": "FlashcardGenerateFromTopicRequest",
+        "description": "Flashcard generation from topic request (like quiz generation)."
+      },
       "FlashcardGenerateRequest": {
         "properties": {
           "document_id": {
@@ -4760,7 +6250,7 @@ Initialized CacheClient (host=localhost, port=6379, db=0)
           "deck_name"
         ],
         "title": "FlashcardGenerateRequest",
-        "description": "Flashcard generation request."
+        "description": "Flashcard generation from document request."
       },
       "FlashcardGenerateResponse": {
         "properties": {
@@ -4989,6 +6479,95 @@ Initialized CacheClient (host=localhost, port=6379, db=0)
         "title": "FlashcardUpdate",
         "description": "Flashcard update request."
       },
+      "GraphEdge": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "target": {
+            "type": "string",
+            "title": "Target"
+          },
+          "type": {
+            "type": "string",
+            "title": "Type"
+          },
+          "strength": {
+            "type": "number",
+            "title": "Strength"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "source",
+          "target",
+          "type",
+          "strength",
+          "label"
+        ],
+        "title": "GraphEdge",
+        "description": "Edge in knowledge graph."
+      },
+      "GraphNode": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "type": {
+            "type": "string",
+            "title": "Type"
+          },
+          "entity_id": {
+            "type": "integer",
+            "title": "Entity Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "type",
+          "entity_id"
+        ],
+        "title": "GraphNode",
+        "description": "Node in knowledge graph."
+      },
+      "GraphStats": {
+        "properties": {
+          "total_nodes": {
+            "type": "integer",
+            "title": "Total Nodes"
+          },
+          "total_edges": {
+            "type": "integer",
+            "title": "Total Edges"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total_nodes",
+          "total_edges"
+        ],
+        "title": "GraphStats",
+        "description": "Graph statistics."
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -5048,6 +6627,240 @@ Initialized CacheClient (host=localhost, port=6379, db=0)
         ],
         "title": "HeatmapData",
         "description": "Activity heatmap data point."
+      },
+      "KnowledgeGraphResponse": {
+        "properties": {
+          "nodes": {
+            "items": {
+              "$ref": "#/components/schemas/GraphNode"
+            },
+            "type": "array",
+            "title": "Nodes"
+          },
+          "edges": {
+            "items": {
+              "$ref": "#/components/schemas/GraphEdge"
+            },
+            "type": "array",
+            "title": "Edges"
+          },
+          "stats": {
+            "$ref": "#/components/schemas/GraphStats"
+          }
+        },
+        "type": "object",
+        "required": [
+          "nodes",
+          "edges",
+          "stats"
+        ],
+        "title": "KnowledgeGraphResponse",
+        "description": "Knowledge graph data for visualization."
+      },
+      "LLMEnhancementStrategy": {
+        "type": "string",
+        "enum": [
+          "rewrite",
+          "hyde",
+          "multi_query",
+          "decompose"
+        ],
+        "title": "LLMEnhancementStrategy",
+        "description": "LLM query enhancement strategies."
+      },
+      "LinkCreate": {
+        "properties": {
+          "source_type": {
+            "$ref": "#/components/schemas/EntityType"
+          },
+          "source_id": {
+            "type": "integer",
+            "title": "Source Id"
+          },
+          "target_type": {
+            "$ref": "#/components/schemas/EntityType"
+          },
+          "target_id": {
+            "type": "integer",
+            "title": "Target Id"
+          },
+          "link_type": {
+            "$ref": "#/components/schemas/LinkType",
+            "default": "manual"
+          },
+          "strength": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Strength",
+            "default": 1.0
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "link_metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Link Metadata"
+          }
+        },
+        "type": "object",
+        "required": [
+          "source_type",
+          "source_id",
+          "target_type",
+          "target_id"
+        ],
+        "title": "LinkCreate",
+        "description": "Link creation request."
+      },
+      "LinkResponse": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "source_type": {
+            "$ref": "#/components/schemas/EntityType"
+          },
+          "source_id": {
+            "type": "integer",
+            "title": "Source Id"
+          },
+          "target_type": {
+            "$ref": "#/components/schemas/EntityType"
+          },
+          "target_id": {
+            "type": "integer",
+            "title": "Target Id"
+          },
+          "link_type": {
+            "$ref": "#/components/schemas/LinkType"
+          },
+          "strength": {
+            "type": "number",
+            "title": "Strength"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "link_metadata": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Link Metadata"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Updated At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "source_type",
+          "source_id",
+          "target_type",
+          "target_id",
+          "link_type",
+          "strength",
+          "label",
+          "link_metadata",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "LinkResponse",
+        "description": "Link response."
+      },
+      "LinkType": {
+        "type": "string",
+        "enum": [
+          "manual",
+          "mention",
+          "derived",
+          "suggested",
+          "semantic"
+        ],
+        "title": "LinkType",
+        "description": "Types of links between entities."
+      },
+      "LinkUpdate": {
+        "properties": {
+          "strength": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Strength"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 255
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "link_type": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LinkType"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "title": "LinkUpdate",
+        "description": "Link update request."
       },
       "MessageRole": {
         "type": "string",
@@ -5443,6 +7256,154 @@ Initialized CacheClient (host=localhost, port=6379, db=0)
         "title": "ProcessingStatusResponse",
         "description": "Processing status check response."
       },
+      "QueryChunk": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "title": "Text",
+            "description": "Chunk text content"
+          },
+          "score": {
+            "type": "number",
+            "title": "Score",
+            "description": "Relevance score"
+          },
+          "metadata": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Metadata",
+            "description": "Chunk metadata"
+          }
+        },
+        "type": "object",
+        "required": [
+          "text",
+          "score",
+          "metadata"
+        ],
+        "title": "QueryChunk",
+        "description": "Single result chunk from RAG query."
+      },
+      "QueryRequest": {
+        "properties": {
+          "query": {
+            "type": "string",
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Query",
+            "description": "User query"
+          },
+          "top_k": {
+            "type": "integer",
+            "maximum": 50.0,
+            "minimum": 1.0,
+            "title": "Top K",
+            "description": "Number of results to return",
+            "default": 5
+          },
+          "source_type": {
+            "$ref": "#/components/schemas/SourceType",
+            "description": "Content source to search",
+            "default": "documents"
+          },
+          "enable_llm_enhancement": {
+            "type": "boolean",
+            "title": "Enable Llm Enhancement",
+            "description": "Enable LLM query enhancement (GPT-4/Claude)",
+            "default": true
+          },
+          "llm_strategy": {
+            "$ref": "#/components/schemas/LLMEnhancementStrategy",
+            "description": "LLM enhancement strategy",
+            "default": "rewrite"
+          }
+        },
+        "type": "object",
+        "required": [
+          "query"
+        ],
+        "title": "QueryRequest",
+        "description": "Request to query RAG system.",
+        "example": {
+          "enable_llm_enhancement": true,
+          "llm_strategy": "rewrite",
+          "query": "How does photosynthesis work?",
+          "source_type": "documents",
+          "top_k": 5
+        }
+      },
+      "QueryResponse": {
+        "properties": {
+          "query": {
+            "type": "string",
+            "title": "Query",
+            "description": "Enhanced query used"
+          },
+          "original_query": {
+            "type": "string",
+            "title": "Original Query",
+            "description": "Original user query"
+          },
+          "chunks": {
+            "items": {
+              "$ref": "#/components/schemas/QueryChunk"
+            },
+            "type": "array",
+            "title": "Chunks",
+            "description": "Retrieved chunks"
+          },
+          "count": {
+            "type": "integer",
+            "title": "Count",
+            "description": "Number of chunks returned"
+          },
+          "reranked": {
+            "type": "boolean",
+            "title": "Reranked",
+            "description": "Cross-encoder reranking applied"
+          },
+          "learning_aware": {
+            "type": "boolean",
+            "title": "Learning Aware",
+            "description": "Learning-aware boosting applied"
+          },
+          "query_enhanced": {
+            "type": "boolean",
+            "title": "Query Enhanced",
+            "description": "Query expansion applied"
+          },
+          "llm_enhanced": {
+            "type": "boolean",
+            "title": "Llm Enhanced",
+            "description": "LLM enhancement applied"
+          },
+          "processing_time_ms": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Processing Time Ms",
+            "description": "Total processing time (ms)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "query",
+          "original_query",
+          "chunks",
+          "count",
+          "reranked",
+          "learning_aware",
+          "query_enhanced",
+          "llm_enhanced"
+        ],
+        "title": "QueryResponse",
+        "description": "Response from RAG query."
+      },
       "QuestionCreate": {
         "properties": {
           "question_text": {
@@ -5526,6 +7487,21 @@ Initialized CacheClient (host=localhost, port=6379, db=0)
           "order": {
             "type": "integer",
             "title": "Order"
+          },
+          "correct_answer": {
+            "type": "string",
+            "title": "Correct Answer"
+          },
+          "explanation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Explanation"
           }
         },
         "type": "object",
@@ -5535,10 +7511,11 @@ Initialized CacheClient (host=localhost, port=6379, db=0)
           "question_type",
           "options",
           "points",
-          "order"
+          "order",
+          "correct_answer"
         ],
         "title": "QuestionResponse",
-        "description": "Question response (without correct answer)."
+        "description": "Question response with answers for learning mode."
       },
       "QuestionType": {
         "type": "string",
@@ -5642,6 +7619,98 @@ Initialized CacheClient (host=localhost, port=6379, db=0)
         ],
         "title": "QuizDifficulty",
         "description": "Enum for quiz difficulty levels."
+      },
+      "QuizGenerateRequest": {
+        "properties": {
+          "topic": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 3,
+            "title": "Topic",
+            "description": "Topic to generate quiz about"
+          },
+          "document_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Id",
+            "description": "Optional document to base quiz on"
+          },
+          "num_questions": {
+            "type": "integer",
+            "maximum": 30.0,
+            "minimum": 5.0,
+            "title": "Num Questions",
+            "description": "Number of questions to generate",
+            "default": 10
+          },
+          "difficulty": {
+            "$ref": "#/components/schemas/QuizDifficulty",
+            "description": "Quiz difficulty level",
+            "default": "medium"
+          }
+        },
+        "type": "object",
+        "required": [
+          "topic"
+        ],
+        "title": "QuizGenerateRequest",
+        "description": "AI quiz generation request."
+      },
+      "QuizGenerateResponse": {
+        "properties": {
+          "quiz_id": {
+            "type": "integer",
+            "title": "Quiz Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "difficulty": {
+            "$ref": "#/components/schemas/QuizDifficulty"
+          },
+          "question_count": {
+            "type": "integer",
+            "title": "Question Count"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          }
+        },
+        "type": "object",
+        "required": [
+          "quiz_id",
+          "title",
+          "description",
+          "difficulty",
+          "question_count",
+          "status",
+          "message"
+        ],
+        "title": "QuizGenerateResponse",
+        "description": "AI quiz generation response."
       },
       "QuizResponse": {
         "properties": {
@@ -5961,6 +8030,17 @@ Initialized CacheClient (host=localhost, port=6379, db=0)
         "title": "ServiceStatus",
         "description": "Individual service status."
       },
+      "SourceType": {
+        "type": "string",
+        "enum": [
+          "documents",
+          "notes",
+          "code",
+          "flashcards"
+        ],
+        "title": "SourceType",
+        "description": "Content source types."
+      },
       "StudyItemResponse": {
         "properties": {
           "type": {
@@ -6085,6 +8165,72 @@ Initialized CacheClient (host=localhost, port=6379, db=0)
         ],
         "title": "StudySessionType",
         "description": "Enum for study session types."
+      },
+      "TaskStatus": {
+        "type": "string",
+        "enum": [
+          "pending",
+          "processing",
+          "completed",
+          "failed"
+        ],
+        "title": "TaskStatus",
+        "description": "Background task status."
+      },
+      "TaskStatusResponse": {
+        "properties": {
+          "task_id": {
+            "type": "string",
+            "title": "Task Id"
+          },
+          "status": {
+            "$ref": "#/components/schemas/TaskStatus"
+          },
+          "result": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Result"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "progress": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 100.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Progress",
+            "description": "Progress percentage (0-100)"
+          }
+        },
+        "type": "object",
+        "required": [
+          "task_id",
+          "status"
+        ],
+        "title": "TaskStatusResponse",
+        "description": "Status of background task."
       },
       "TokenResponse": {
         "properties": {
@@ -6693,7 +8839,7 @@ Initialized CacheClient (host=localhost, port=6379, db=0)
         "title": "WebhookUpdate",
         "description": "Webhook update request."
       },
-      "app__api__rest__documents__MessageResponse": {
+      "app__api__rest__links__MessageResponse": {
         "properties": {
           "message": {
             "type": "string",

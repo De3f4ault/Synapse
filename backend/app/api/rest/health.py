@@ -113,8 +113,7 @@ async def check_redis() -> ServiceStatus:
     except Exception as e:
         logger.error(f"Redis health check failed: {str(e)}")
         return ServiceStatus(
-            service="redis",
-            healthy=False,
+            status="unhealthy",
             message=f"Redis connection failed: {str(e)}",
             details={"error": str(e), "url": settings.REDIS_URL}
         )
@@ -143,8 +142,7 @@ async def check_qdrant() -> ServiceStatus:
         latency_ms = int((time.time() - start) * 1000)
         
         return ServiceStatus(
-            service="qdrant",
-            healthy=True,
+            status="healthy",
             message="Connected to Qdrant",
             latency_ms=latency_ms,
             details={
@@ -157,8 +155,7 @@ async def check_qdrant() -> ServiceStatus:
         latency_ms = int((time.time() - start) * 1000)
         logger.error(f"Qdrant health check failed: {str(e)}")
         return ServiceStatus(
-            service="qdrant",
-            healthy=False,
+            status="unhealthy",
             message=f"Qdrant connection failed: {str(e)}",
             latency_ms=latency_ms,
             details={"error": str(e)}

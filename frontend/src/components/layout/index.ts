@@ -7,7 +7,6 @@
 // Core Layout
 export { AppShell } from './AppShell';
 export { Header } from './Header';
-export { Sidebar } from './Sidebar';
 export { Breadcrumbs } from './Breadcrumbs';
 
 // Navigation
@@ -15,7 +14,6 @@ export { MobileNav } from './MobileNav';
 export { SearchCommand } from './SearchCommand';
 
 // User Interface
-export { UserMenu } from './UserMenu';
 export { NotificationCenter } from './NotificationCenter';
 
 // Utilities

@@ -61,7 +61,6 @@ const DataStreamRow = React.forwardRef<HTMLDivElement, {
     return (
         <motion.div
             ref={ref}
-            layoutId={`monolith-${doc.id}`}
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}

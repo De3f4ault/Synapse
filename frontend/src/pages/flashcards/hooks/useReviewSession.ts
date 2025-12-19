@@ -52,6 +52,25 @@ export function useReviewSession({
     const [results, setResults] = useState<ReviewResult[]>([]);
     const [isFlipped, setIsFlipped] = useState(false);
     const [sessionEnded, setSessionEnded] = useState(false);
+    const [isInitialized, setIsInitialized] = useState(false);
+
+    // Reinitialize session when cards become available
+    useEffect(() => {
+        // Only reinitialize if cards just became available and session is not yet initialized
+        if (cards.length > 0 && !isInitialized) {
+            const sessionCards = createBalancedSession(cards, sessionLength);
+            setSession({
+                deckId,
+                cards: sessionCards,
+                currentIndex: 0,
+                completed: 0,
+                correct: 0,
+                incorrect: 0,
+                startTime: Date.now(),
+            });
+            setIsInitialized(true);
+        }
+    }, [cards, sessionLength, deckId, isInitialized]);
 
     // Review mutation
     const { mutate: submitReview, isPending } = useMutation({

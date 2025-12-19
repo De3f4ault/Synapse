@@ -25,13 +25,20 @@ export interface Flashcard {
     front_media_url?: string | null;
     back_media_url?: string | null;
     learning_state: LearningState;
-    easiness_factor: number;
-    interval: number;
-    repetitions: number;
-    next_review_date: string;
-    accuracy: number;
-    created_at: string;
-    updated_at: string;
+    // API returns ease_factor, not easiness_factor
+    ease_factor?: number;
+    interval?: number;
+    repetitions?: number;
+    // API returns next_review, not next_review_date
+    next_review?: string | null;
+    last_review?: string | null;
+    accuracy?: number;
+    times_reviewed?: number;
+    created_at?: string;
+    // Additional computed fields from get_due_cards()
+    deck_name?: string | null;
+    overdue_days?: number | null;
+    priority_score?: number | null;
 }
 
 export type LearningState = 'new' | 'learning' | 'review' | 'mastered';

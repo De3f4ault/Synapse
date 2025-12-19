@@ -56,7 +56,7 @@ export function DocumentsPage() {
     );
 
     return (
-        <div className="h-full flex flex-col relative overflow-hidden">
+        <div className="h-full flex flex-col relative overflow-hidden nm-bg nm-constellation-bg">
             {/* Minimal Header (Optional, purely for context if needed, or rely on content interactions) */}
             <div className="p-6 pb-0">
                 <h1 className="text-3xl font-bold tracking-tight text-foreground/20 select-none">Documents</h1>

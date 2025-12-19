@@ -1,11 +1,7 @@
-/**
- * NEXT-LEVEL Note Card  
- * Premium design with hover effects, visual depth, and smart interactions
- */
-
 import { motion } from 'framer-motion';
 import { FileText, Clock, MoreVertical } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import { NeumorphicCard, NeumorphicBadge } from '@/components/neumorphic';
 
 interface NoteCardProps {
     note: {
@@ -22,22 +18,17 @@ interface NoteCardProps {
 export const NoteCard = ({ note, onClick, index }: NoteCardProps) => {
 
     // Get color accent based on first tag or default
-    const getAccentColor = (): { primary: string; light: string } => {
-        const colorPalette = [
-            { primary: '#8b5cf6', light: '#8b5cf615' }, // purple
-            { primary: '#ec4899', light: '#ec489915' }, // pink
-            { primary: '#f59e0b', light: '#f59e0b15' }, // amber
-            { primary: '#10b981', light: '#10b98115' }, // emerald
-            { primary: '#3b82f6', light: '#3b82f615' }, // blue
-            { primary: '#ef4444', light: '#ef444415' }, // red
+    const getAccentColor = (): 'purple' | 'cyan' | 'emerald' | 'coral' | 'red' | 'blue' => {
+        const colorPalette: Array<'purple' | 'cyan' | 'emerald' | 'coral' | 'red' | 'blue'> = [
+            'purple', 'cyan', 'coral', 'emerald', 'blue', 'red'
         ];
 
         if (!note.tags || note.tags.length === 0) {
-            return { primary: '#6366f1', light: '#6366f115' }; // default indigo
+            return 'blue';
         }
 
         const hash = note.tags[0]?.name?.charCodeAt(0) || 0;
-        return colorPalette[hash % colorPalette.length] ?? { primary: '#6366f1', light: '#6366f115' };
+        return colorPalette[hash % colorPalette.length];
     };
 
     // Extract preview text
@@ -51,7 +42,7 @@ export const NoteCard = ({ note, onClick, index }: NoteCardProps) => {
 
     const wordCount = note.content?.split(/\s+/).length || 0;
     const readTime = Math.max(1, Math.ceil(wordCount / 200));
-    const colors = getAccentColor();  // Always returns a valid color object
+    const variant = getAccentColor();
 
     return (
         <motion.div
@@ -60,105 +51,69 @@ export const NoteCard = ({ note, onClick, index }: NoteCardProps) => {
             transition={{ delay: index * 0.03, type: 'spring', stiffness: 300 }}
             whileHover={{ y: -6, transition: { duration: 0.2 } }}
             onClick={onClick}
-            className="group relative cursor-pointer"
+            className="group relative cursor-pointer h-full"
         >
-            {/* Hover glow effect */}
-            <div
-                className="absolute -inset-0.5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-xl"
-                style={{ background: `linear-gradient(135deg, ${colors.primary}20, transparent)` }}
-            />
-
-            {/* Card */}
-            <div className="relative bg-card border border-border rounded-2xl p-6 transition-all duration-300 group-hover:border-primary/30 group-hover:shadow-xl overflow-hidden">
-                {/* Top accent bar */}
-                <div
-                    className="absolute top-0 left-0 right-0 h-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                    style={{
-                        background: `linear-gradient(90deg, ${colors.primary}, transparent)`,
-                    }}
-                />
-
+            <NeumorphicCard
+                className="h-full flex flex-col p-6 transition-all duration-300 group-hover:shadow-[0_0_20px_rgba(34,211,238,0.1)] border-transparent group-hover:border-white/10"
+            >
                 {/* Header: Tags and Menu */}
-                <div className="flex items-start justify-between mb-3">
+                <div className="flex items-start justify-between mb-4">
                     {/* Tags */}
                     <div className="flex flex-wrap gap-1.5">
                         {note.tags && note.tags.length > 0 ? (
                             note.tags.slice(0, 2).map((tag: any, i: number) => (
-                                <span
+                                <NeumorphicBadge
                                     key={i}
-                                    className="px-2 py-1 text-xs font-medium rounded-lg transition-colors"
-                                    style={{
-                                        backgroundColor: colors.light,
-                                        color: colors.primary,
-                                    }}
+                                    variant={variant}
+                                    className="text-[10px] h-5 px-2"
                                 >
                                     {tag.name || tag}
-                                </span>
+                                </NeumorphicBadge>
                             ))
                         ) : (
-                            <span className="px-2 py-1 text-xs font-medium bg-muted text-muted-foreground rounded-lg">
+                            <span className="px-2 py-[2px] text-[10px] font-medium bg-white/5 text-slate-500 rounded-full border border-white/5">
                                 Untagged
                             </span>
                         )}
                         {note.tags && note.tags.length > 2 && (
-                            <span className="px-2 py-1 text-xs font-medium bg-muted text-muted-foreground rounded-lg">
+                            <span className="px-2 py-[2px] text-[10px] font-medium bg-white/5 text-slate-500 rounded-full border border-white/5">
                                 +{note.tags.length - 2}
                             </span>
                         )}
                     </div>
-
-                    {/* More menu */}
-                    <button
-                        className="p-1.5 opacity-0 group-hover:opacity-100 hover:bg-accent rounded-lg transition-all"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            // Could open menu here
-                        }}
-                    >
-                        <MoreVertical size={16} className="text-muted-foreground" />
-                    </button>
                 </div>
 
                 {/* Title */}
-                <h3 className="text-lg font-semibold text-foreground mb-2 line-clamp-2 group-hover:text-primary transition-colors">
+                <h3 className="text-lg font-bold text-slate-200 mb-3 line-clamp-2 group-hover:text-white transition-colors">
                     {note.title || 'Untitled Note'}
                 </h3>
 
                 {/* Content Preview */}
-                {note.content && (
-                    <p className="text-sm text-muted-foreground mb-4 line-clamp-3 leading-relaxed">
-                        {getPreview()}
-                    </p>
-                )}
+                <div className="flex-1">
+                    {note.content && (
+                        <p className="text-sm text-slate-500 mb-4 line-clamp-3 leading-relaxed group-hover:text-slate-400 transition-colors">
+                            {getPreview()}
+                        </p>
+                    )}
+                </div>
 
                 {/* Footer: Metadata */}
-                <div className="flex items-center justify-between pt-4 border-t border-border/50">
-                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                <div className="flex items-center justify-between pt-4 border-t border-white/5 mt-auto">
+                    <div className="flex items-center gap-3 text-xs text-slate-600 font-mono">
                         {/* Last updated */}
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-1.5">
                             <Clock size={12} />
                             <span>{formatDistanceToNow(new Date(note.updated_at), { addSuffix: true })}</span>
-                        </div>
-
-                        {/* Word count */}
-                        <div className="hidden sm:flex items-center gap-1">
-                            <FileText size={12} />
-                            <span>{wordCount} words</span>
                         </div>
                     </div>
 
                     {/* Read time badge */}
-                    <div className="flex items-center gap-1 px-2 py-1 bg-accent rounded-lg text-xs font-medium text-foreground">
-                        {readTime} min read
+                    <div className="flex items-center gap-1.5 text-[10px] font-medium text-cyan-500/80 bg-cyan-500/10 px-2 py-1 rounded-md border border-cyan-500/10">
+                        <FileText size={10} />
+                        {readTime} min
                     </div>
                 </div>
-
-                {/* Animated corner accent (visible on hover) */}
-                <div
-                    className={`absolute bottom-0 right-0 w-24 h-24 rounded-tl-full opacity-0 group-hover:opacity-10 transition-opacity duration-300`}
-                    style={{ backgroundColor: colors.primary }}
-                />
-            </div>
+            </NeumorphicCard>
         </motion.div>
     );
 };

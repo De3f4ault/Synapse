@@ -27,6 +27,7 @@ from .ai_usage import AIUsage
 from .agent_metric import AgentMetric
 from .webhook_event import WebhookEvent, WebhookStatus
 from .webhook import Webhook
+from .link import Link, LinkType, EntityType
 
 __all__ = [
     "Base",
@@ -53,4 +54,7 @@ __all__ = [
     "WebhookEvent",
     "WebhookStatus",
     "Webhook",
+    "Link",
+    "LinkType",
+    "EntityType",
 ]

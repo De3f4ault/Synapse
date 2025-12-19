@@ -38,6 +38,12 @@ from .study_tools import (
     CreateStudyPlanTool,
     TrackStudyProgressTool,
 )
+from .link_tools import (
+    GetRelatedContentTool,
+    CreateLinkTool,
+    GetKnowledgeGraphTool,
+    SuggestLinksTool,
+)
 
 __all__ = [
     # Base
@@ -70,4 +76,10 @@ __all__ = [
     "GetStudyRecommendationsTool",
     "CreateStudyPlanTool",
     "TrackStudyProgressTool",
+    # Link tools
+    "GetRelatedContentTool",
+    "CreateLinkTool",
+    "GetKnowledgeGraphTool",
+    "SuggestLinksTool",
 ]
+

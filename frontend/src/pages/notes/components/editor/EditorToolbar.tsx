@@ -12,6 +12,7 @@ import {
 import { cn } from '@/lib/utils';
 import { markdownFormatters } from '../../utils/textSelection';
 import type { EditorMode, ToolDockAction } from '../../types/notes.types';
+import { NeumorphicButton } from '@/components/neumorphic';
 
 interface EditorToolbarProps {
     mode: EditorMode;
@@ -61,120 +62,130 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
     };
 
     return (
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-50">
-            <motion.div
-                initial={{ y: 50, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                className="flex items-center gap-1 p-1.5 bg-[var(--synapse-bg-secondary)]/95 backdrop-blur-xl border border-[var(--synapse-border-subtle)] rounded-full shadow-2xl shadow-black/50"
-            >
-                {/* Edit/View Toggle */}
-                <div className="flex items-center gap-1 px-2 border-r border-border">
-                    <button
-                        onClick={() => onAction('toggle_edit')}
-                        className={cn(
-                            'p-3 rounded-full transition-all relative group',
-                            isEditing
-                                ? 'bg-primary/20 text-primary shadow-[0_0_15px_rgba(var(--primary-rgb),0.3)]'
-                                : 'text-muted-foreground hover:text-foreground hover:bg-accent'
-                        )}
-                        title={isEditing ? 'View Mode (⌘E)' : 'Edit Mode (⌘E)'}
-                    >
-                        {isEditing ? <Edit3 size={18} /> : <Eye size={18} />}
-                        <div className="absolute inset-0 bg-primary/20 rounded-full blur-md opacity-0 group-hover:opacity-100 transition-opacity" />
-                    </button>
-                </div>
+        <motion.div
+            initial={{ y: 50, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            className="flex items-center gap-1 p-1 bg-[#13151a]/90 backdrop-blur-xl border border-white/10 rounded-full shadow-2xl"
+        >
+            {/* Edit/View Toggle */}
+            <div className="flex items-center gap-1 px-1 pr-2 border-r border-white/10">
+                <NeumorphicButton
+                    variant={isEditing ? 'primary' : 'ghost'}
+                    size="icon"
+                    onClick={() => onAction('toggle_edit')}
+                    className="w-10 h-10 rounded-full"
+                    title={isEditing ? 'View Mode (⌘E)' : 'Edit Mode (⌘E)'}
+                >
+                    {isEditing ? <Edit3 size={18} /> : <Eye size={18} />}
+                </NeumorphicButton>
+            </div>
 
-                {/* Formatting Tools */}
-                <AnimatePresence>
-                    {isEditing && (
-                        <motion.div
-                            initial={{ width: 0, opacity: 0 }}
-                            animate={{ width: 'auto', opacity: 1 }}
-                            exit={{ width: 0, opacity: 0 }}
-                            transition={{ duration: 0.2 }}
-                            className="flex items-center gap-1 px-2 overflow-hidden"
+            {/* Formatting Tools */}
+            <AnimatePresence>
+                {isEditing && (
+                    <motion.div
+                        initial={{ width: 0, opacity: 0 }}
+                        animate={{ width: 'auto', opacity: 1 }}
+                        exit={{ width: 0, opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="flex items-center gap-1 px-1 overflow-hidden"
+                    >
+                        <NeumorphicButton
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleFormat('bold')}
+                            className="w-9 h-9 rounded-full"
+                            title="Bold (⌘B)"
                         >
-                            <button
-                                onClick={() => handleFormat('bold')}
-                                className="p-2.5 text-[var(--synapse-text-tertiary)] hover:text-white hover:bg-[var(--synapse-panel-hover)] rounded-full transition-colors"
-                                title="Bold (⌘B)"
-                            >
-                                <Bold size={16} />
-                            </button>
-                            <button
-                                onClick={() => handleFormat('italic')}
-                                className="p-2.5 text-[var(--synapse-text-tertiary)] hover:text-white hover:bg-[var(--synapse-panel-hover)] rounded-full transition-colors"
-                                title="Italic (⌘I)"
-                            >
-                                <Italic size={16} />
-                            </button>
-                            <button
-                                onClick={() => handleFormat('heading')}
-                                className="p-2.5 text-[var(--synapse-text-tertiary)] hover:text-white hover:bg-[var(--synapse-panel-hover)] rounded-full transition-colors"
-                                title="Heading"
-                            >
-                                <Heading2 size={16} />
-                            </button>
-                            <button
-                                onClick={() => handleFormat('list')}
-                                className="p-2.5 text-[var(--synapse-text-tertiary)] hover:text-white hover:bg-[var(--synapse-panel-hover)] rounded-full transition-colors"
-                                title="List"
-                            >
-                                <List size={16} />
-                            </button>
-                            <button
-                                onClick={() => handleFormat('code')}
-                                className="p-2.5 text-[var(--synapse-text-tertiary)] hover:text-white hover:bg-[var(--synapse-panel-hover)] rounded-full transition-colors"
-                                title="Code"
-                            >
-                                <Code size={16} />
-                            </button>
-                            <button
-                                onClick={() => handleFormat('link')}
-                                className="p-2.5 text-[var(--synapse-text-tertiary)] hover:text-white hover:bg-[var(--synapse-panel-hover)] rounded-full transition-colors"
-                                title="Link"
-                            >
-                                <Link size={16} />
-                            </button>
-                        </motion.div>
+                            <Bold size={16} />
+                        </NeumorphicButton>
+                        <NeumorphicButton
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleFormat('italic')}
+                            className="w-9 h-9 rounded-full"
+                            title="Italic (⌘I)"
+                        >
+                            <Italic size={16} />
+                        </NeumorphicButton>
+                        <NeumorphicButton
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleFormat('heading')}
+                            className="w-9 h-9 rounded-full"
+                            title="Heading"
+                        >
+                            <Heading2 size={16} />
+                        </NeumorphicButton>
+                        <NeumorphicButton
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleFormat('list')}
+                            className="w-9 h-9 rounded-full"
+                            title="List"
+                        >
+                            <List size={16} />
+                        </NeumorphicButton>
+                        <NeumorphicButton
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleFormat('code')}
+                            className="w-9 h-9 rounded-full"
+                            title="Code"
+                        >
+                            <Code size={16} />
+                        </NeumorphicButton>
+                        <NeumorphicButton
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleFormat('link')}
+                            className="w-9 h-9 rounded-full"
+                            title="Link"
+                        >
+                            <Link size={16} />
+                        </NeumorphicButton>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* AI Actions */}
+            <div className="flex items-center gap-1 px-1 pl-2 border-l border-white/10">
+                <NeumorphicButton
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => onAction('ai_summarize')}
+                    disabled={isProcessing}
+                    className="w-9 h-9 rounded-full hover:text-purple-400"
+                    title="Neural Synthesis"
+                >
+                    {isProcessing ? (
+                        <Loader2 size={18} className="animate-spin text-purple-400" />
+                    ) : (
+                        <Sparkles size={18} />
                     )}
-                </AnimatePresence>
+                </NeumorphicButton>
+                <NeumorphicButton
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => onAction('ai_tags')}
+                    disabled={isProcessing}
+                    className="w-9 h-9 rounded-full hover:text-cyan-400"
+                    title="Auto-Tag"
+                >
+                    <Tag size={18} />
+                </NeumorphicButton>
+            </div>
 
-                {/* AI Actions */}
-                <div className="flex items-center gap-1 px-2 border-l border-[var(--synapse-border-subtle)]">
-                    <button
-                        onClick={() => onAction('ai_summarize')}
-                        disabled={isProcessing}
-                        className="p-2.5 text-[var(--synapse-text-tertiary)] hover:text-[var(--synapse-purple)] hover:bg-[var(--synapse-purple)]/10 rounded-full transition-colors group relative disabled:opacity-50"
-                        title="Neural Synthesis"
-                    >
-                        {isProcessing ? (
-                            <Loader2 size={18} className="animate-spin text-[var(--synapse-purple)]" />
-                        ) : (
-                            <Sparkles size={18} />
-                        )}
-                        <div className="absolute inset-0 bg-[var(--synapse-purple)]/20 rounded-full blur-md opacity-0 group-hover:opacity-100 transition-opacity" />
-                    </button>
-                    <button
-                        onClick={() => onAction('ai_tags')}
-                        disabled={isProcessing}
-                        className="p-2.5 text-[var(--synapse-text-tertiary)] hover:text-[var(--synapse-emerald)] hover:bg-[var(--synapse-emerald)]/10 rounded-full transition-colors group relative disabled:opacity-50"
-                        title="Auto-Tag"
-                    >
-                        <Tag size={18} />
-                        <div className="absolute inset-0 bg-[var(--synapse-emerald)]/20 rounded-full blur-md opacity-0 group-hover:opacity-100 transition-opacity" />
-                    </button>
-                </div>
-
-                {/* Save Button */}
+            {/* Save Button */}
+            <div className="pl-1">
                 <motion.button
                     onClick={() => onAction('save')}
                     disabled={isSaving}
                     className={cn(
-                        'ml-2 w-10 h-10 rounded-full flex items-center justify-center text-white shadow-lg transition-all disabled:opacity-50',
+                        'w-10 h-10 rounded-full flex items-center justify-center text-white shadow-lg transition-all disabled:opacity-50',
                         hasUnsavedChanges
-                            ? 'bg-gradient-to-r from-[var(--synapse-cyan)] to-[var(--synapse-blue)] hover:shadow-[0_0_20px_rgba(34,211,238,0.5)] hover:scale-105 active:scale-95'
-                            : 'bg-gradient-to-r from-[var(--synapse-emerald)] to-green-600 shadow-emerald-900/50'
+                            ? 'bg-gradient-to-r from-cyan-500 to-blue-500 hover:shadow-[0_0_20px_rgba(6,182,212,0.5)] hover:scale-105 active:scale-95'
+                            : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/20'
                     )}
                     animate={hasUnsavedChanges && !isSaving ? { scale: [1, 1.05, 1] } : {}}
                     transition={{ duration: 2, repeat: Infinity }}
@@ -188,7 +199,7 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
                         <Check size={18} />
                     )}
                 </motion.button>
-            </motion.div>
-        </div>
+            </div>
+        </motion.div>
     );
 };

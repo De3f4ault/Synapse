@@ -64,9 +64,10 @@ class Settings(BaseSettings):
         description="JWT token expiration in minutes"
     )
 
-    # CORS - All common development ports
+    # CORS - All common development ports + HTTPS for nginx reverse proxy
     CORS_ORIGINS: List[str] = Field(
         default=[
+            # HTTP development servers
             "http://localhost:3000",
             "http://localhost:3001",
             "http://localhost:3002",
@@ -77,6 +78,10 @@ class Settings(BaseSettings):
             "http://127.0.0.1:8000",
             "http://localhost:5173",
             "http://127.0.0.1:5173",
+            # HTTPS (nginx reverse proxy)
+            "https://localhost",
+            "https://127.0.0.1",
+            "https://synapse.local",
         ],
         description="Allowed CORS origins"
     )

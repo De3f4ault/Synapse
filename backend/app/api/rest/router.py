@@ -24,6 +24,7 @@ from . import (
     webhooks,
     health,
     rag,  # RAG API endpoints
+    links,  # Knowledge graph links
 )
 
 # Import WebSocket endpoint
@@ -117,6 +118,12 @@ api_router.include_router(
     rag.router,
     prefix="/rag",
     tags=["RAG"]
+)
+
+api_router.include_router(
+    links.router,
+    prefix="/links",
+    tags=["Links"]
 )
 
 # ==================== WEBSOCKET ENDPOINTS ====================

@@ -1,8 +1,7 @@
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { NeumorphicCard, NeumorphicButton } from '@/components/neumorphic';
 import { FileText, Plus } from 'lucide-react';
 import type { DocumentResponse, NoteResponse } from '@/api/generated';
-import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 
 interface RecentFilesWidgetProps {
@@ -19,74 +18,81 @@ export const RecentFilesWidget: React.FC<RecentFilesWidgetProps> = ({ documents,
     const recentNotes = notes.slice(0, 3);
 
     return (
-        <Card className="col-span-2 lg:col-span-2">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-base font-bold flex items-center gap-2">
-                    <FileText className="h-4 w-4 text-blue-500" />
-                    Recent Knowledge
-                </CardTitle>
-                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => navigate('/documents')}>
+        <NeumorphicCard className="col-span-2 lg:col-span-2 p-6 flex flex-col h-[380px]">
+            <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl nm-inset flex items-center justify-center text-blue-400">
+                        <FileText className="w-5 h-5" />
+                    </div>
+                    <div>
+                        <h3 className="text-lg font-bold text-white">Recent Knowledge</h3>
+                        <p className="text-xs text-slate-500">Recently accessed</p>
+                    </div>
+                </div>
+                <NeumorphicButton
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => navigate('/documents')}
+                >
                     <Plus className="h-4 w-4" />
-                </Button>
-            </CardHeader>
-            <CardContent className="space-y-4 pt-4">
-                <div className="space-y-2">
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Documents</p>
+                </NeumorphicButton>
+            </div>
+
+            <div className="flex-1 overflow-y-auto scrollbar-hide space-y-6 pr-2">
+                <div className="space-y-3">
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-1">Documents</p>
                     {recentDocs.length === 0 ? (
-                        <p className="text-sm text-muted-foreground italic">No documents yet.</p>
+                        <p className="text-sm text-slate-500 italic pl-1">No documents yet.</p>
                     ) : (
                         recentDocs.map((doc) => (
                             <div
                                 key={doc.id}
-                                className="group flex items-center justify-between p-2 rounded-md hover:bg-muted/50 cursor-pointer transition-colors"
+                                className="group flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 cursor-pointer transition-colors border border-transparent hover:border-white/5"
                                 onClick={() => navigate(`/documents`)}
                             >
-                                <div className="flex items-center gap-3 overflow-hidden">
-                                    <div className="h-8 w-8 rounded bg-blue-500/10 flex items-center justify-center shrink-0">
-                                        <FileText className="h-4 w-4 text-blue-500" />
-                                    </div>
-                                    <div className="truncate">
-                                        <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">
-                                            {doc.filename}
-                                        </p>
-                                        <p className="text-xs text-muted-foreground">
-                                            {doc.page_count ? `${doc.page_count} pages` : `${doc.word_count || 0} words`}
-                                        </p>
-                                    </div>
+                                <div className="h-8 w-8 rounded-lg nm-inset flex items-center justify-center shrink-0 text-blue-400">
+                                    <FileText className="h-4 w-4" />
+                                </div>
+                                <div className="min-w-0">
+                                    <p className="text-sm font-medium text-slate-300 truncate group-hover:text-white transition-colors">
+                                        {doc.filename}
+                                    </p>
+                                    <p className="text-[10px] text-slate-500 font-mono">
+                                        {doc.page_count ? `${doc.page_count} pages` : `${doc.word_count || 0} words`}
+                                    </p>
                                 </div>
                             </div>
                         ))
                     )}
                 </div>
 
-                <div className="space-y-2">
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Notes</p>
+                <div className="space-y-3">
+                    <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-1">Notes</p>
                     {recentNotes.length === 0 ? (
-                        <p className="text-sm text-muted-foreground italic">No notes yet.</p>
+                        <p className="text-sm text-slate-500 italic pl-1">No notes yet.</p>
                     ) : (
                         recentNotes.map((note) => (
                             <div
                                 key={note.id}
-                                className="group flex items-center justify-between p-2 rounded-md hover:bg-muted/50 cursor-pointer transition-colors"
+                                className="group flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 cursor-pointer transition-colors border border-transparent hover:border-white/5"
                             >
-                                <div className="flex items-center gap-3 overflow-hidden">
-                                    <div className="h-8 w-8 rounded bg-yellow-500/10 flex items-center justify-center shrink-0">
-                                        <FileText className="h-4 w-4 text-yellow-500" />
-                                    </div>
-                                    <div className="truncate">
-                                        <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">
-                                            {note.title}
-                                        </p>
-                                        <p className="text-xs text-muted-foreground">
-                                            Note
-                                        </p>
-                                    </div>
+                                <div className="h-8 w-8 rounded-lg nm-inset flex items-center justify-center shrink-0 text-amber-400">
+                                    <FileText className="h-4 w-4" />
+                                </div>
+                                <div className="min-w-0">
+                                    <p className="text-sm font-medium text-slate-300 truncate group-hover:text-white transition-colors">
+                                        {note.title}
+                                    </p>
+                                    <p className="text-[10px] text-slate-500 font-mono">
+                                        Note
+                                    </p>
                                 </div>
                             </div>
                         ))
                     )}
                 </div>
-            </CardContent>
-        </Card>
+            </div>
+        </NeumorphicCard>
     );
 };

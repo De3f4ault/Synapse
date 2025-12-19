@@ -3,7 +3,7 @@
 /* tslint:disable */
 /* eslint-disable */
 /**
- * Flashcard generation request.
+ * Flashcard generation from document request.
  */
 export type FlashcardGenerateRequest = {
     /**

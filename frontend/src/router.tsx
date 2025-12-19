@@ -39,6 +39,9 @@ const StudyPage = React.lazy(() => import('@/pages/study/StudyPage').then(module
 // Chat
 const ChatPage = React.lazy(() => import('@/pages/chat/ChatPage').then(module => ({ default: module.ChatPage })));
 
+// Knowledge Graph
+const KnowledgeGraphPage = React.lazy(() => import('@/pages/knowledge/KnowledgeGraphPage').then(module => ({ default: module.KnowledgeGraphPage })));
+
 // Error
 const NotFoundPage = React.lazy(() => import('@/pages/NotFoundPage').then(module => ({ default: module.NotFoundPage })));
 
@@ -79,6 +82,17 @@ function AuthRoute() {
 }
 
 /**
+ * RootRedirect Component
+ * Handles the root "/" path:
+ * - Authenticated users -> Dashboard
+ * - Unauthenticated users -> Login page
+ */
+function RootRedirect() {
+    const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+    return <Navigate to={isAuthenticated ? "/dashboard" : "/auth/login"} replace />;
+}
+
+/**
  * Main Application Router
  *
  * Route Structure:
@@ -101,11 +115,12 @@ export function Router() {
                         <Route path="/auth/register" element={<RegisterPage />} />
                     </Route>
 
+                    {/* ==================== ROOT REDIRECT ==================== */}
+                    {/* Redirects to login (if unauthenticated) or dashboard (if authenticated) */}
+                    <Route path="/" element={<RootRedirect />} />
+
                     {/* ==================== PROTECTED ROUTES ==================== */}
                     <Route element={<ProtectedRoute />}>
-                        {/* Root redirect */}
-                        <Route path="/" element={<Navigate to="/dashboard" replace />} />
-
                         {/* Dashboard (includes analytics tabs) */}
                         <Route path="/dashboard" element={<DashboardPage />} />
 
@@ -136,6 +151,9 @@ export function Router() {
                         {/* ========== CHAT (Oracle) ========== */}
                         <Route path="/chat" element={<ChatPage />} />
                         <Route path="/chat/:sessionId" element={<ChatPage />} />
+
+                        {/* ========== KNOWLEDGE GRAPH ========== */}
+                        <Route path="/knowledge" element={<KnowledgeGraphPage />} />
 
                         {/* ========== ANALYTICS (Redirects to Dashboard) ========== */}
                         {/* Analytics is now integrated into the dashboard as tabs */}

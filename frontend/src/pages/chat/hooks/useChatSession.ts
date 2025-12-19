@@ -7,10 +7,11 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import {  ChatService  } from '@/api/generated';
+import { ChatService } from '@/api/generated';
 import type {
   ChatSessionResponse,
   ChatSessionCreate,
+  ChatSessionUpdate,
 } from '@/api/generated';
 import { toast } from 'sonner';
 
@@ -58,6 +59,26 @@ export const useCreateSession = () => {
     },
     onError: (error: any) => {
       toast.error(error.message || 'Failed to create session');
+    },
+  });
+};
+
+/**
+ * Hook to update a chat session (e.g. rename)
+ */
+export const useUpdateSession = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ sessionId, data }: { sessionId: number; data: ChatSessionUpdate }) =>
+      ChatService.updateSessionApiV1ChatSessionsSessionIdPatch(sessionId, data),
+    onSuccess: (_, { sessionId }) => {
+      queryClient.invalidateQueries({ queryKey: ['chat-sessions'] });
+      queryClient.invalidateQueries({ queryKey: ['chat-session', sessionId] });
+      toast.success('Session updated');
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to update session');
     },
   });
 };

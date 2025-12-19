@@ -2,11 +2,12 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-import type { app__api__rest__documents__MessageResponse } from '../models/app__api__rest__documents__MessageResponse';
+import type { app__api__rest__links__MessageResponse } from '../models/app__api__rest__links__MessageResponse';
 import type { DeckCreate } from '../models/DeckCreate';
 import type { DeckResponse } from '../models/DeckResponse';
 import type { DeckUpdate } from '../models/DeckUpdate';
 import type { FlashcardCreate } from '../models/FlashcardCreate';
+import type { FlashcardGenerateFromTopicRequest } from '../models/FlashcardGenerateFromTopicRequest';
 import type { FlashcardGenerateRequest } from '../models/FlashcardGenerateRequest';
 import type { FlashcardGenerateResponse } from '../models/FlashcardGenerateResponse';
 import type { FlashcardResponse } from '../models/FlashcardResponse';
@@ -117,12 +118,12 @@ export class FlashcardsService {
      * Delete deck
      * Delete a deck (soft delete)
      * @param deckId
-     * @returns app__api__rest__documents__MessageResponse Successful Response
+     * @returns app__api__rest__links__MessageResponse Successful Response
      * @throws ApiError
      */
     public static deleteDeckApiV1DecksDeckIdDelete(
         deckId: number,
-    ): CancelablePromise<app__api__rest__documents__MessageResponse> {
+    ): CancelablePromise<app__api__rest__links__MessageResponse> {
         return __request(OpenAPI, {
             method: 'DELETE',
             url: '/api/v1/decks/{deck_id}',
@@ -147,6 +148,26 @@ export class FlashcardsService {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/api/v1/decks/generate',
+            body: requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Generate flashcards from topic
+     * Use AI to generate flashcards from any topic
+     * @param requestBody
+     * @returns FlashcardGenerateResponse Successful Response
+     * @throws ApiError
+     */
+    public static generateFlashcardsFromTopicApiV1DecksGenerateFromTopicPost(
+        requestBody: FlashcardGenerateFromTopicRequest,
+    ): CancelablePromise<FlashcardGenerateResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/decks/generate-from-topic',
             body: requestBody,
             mediaType: 'application/json',
             errors: {
@@ -273,12 +294,12 @@ export class FlashcardsService {
      * Delete flashcard
      * Delete a flashcard (soft delete)
      * @param cardId
-     * @returns app__api__rest__documents__MessageResponse Successful Response
+     * @returns app__api__rest__links__MessageResponse Successful Response
      * @throws ApiError
      */
     public static deleteCardApiV1CardsCardIdDelete(
         cardId: number,
-    ): CancelablePromise<app__api__rest__documents__MessageResponse> {
+    ): CancelablePromise<app__api__rest__links__MessageResponse> {
         return __request(OpenAPI, {
             method: 'DELETE',
             url: '/api/v1/cards/{card_id}',

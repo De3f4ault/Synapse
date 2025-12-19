@@ -2,7 +2,7 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-import type { app__api__rest__documents__MessageResponse } from '../models/app__api__rest__documents__MessageResponse';
+import type { app__api__rest__links__MessageResponse } from '../models/app__api__rest__links__MessageResponse';
 import type { NoteCreate } from '../models/NoteCreate';
 import type { NoteResponse } from '../models/NoteResponse';
 import type { NoteSearchResult } from '../models/NoteSearchResult';
@@ -158,12 +158,12 @@ export class NotesService {
      * Delete note
      * Soft delete note and all children
      * @param noteId
-     * @returns app__api__rest__documents__MessageResponse Successful Response
+     * @returns app__api__rest__links__MessageResponse Successful Response
      * @throws ApiError
      */
     public static deleteNoteApiV1NotesNoteIdDelete(
         noteId: number,
-    ): CancelablePromise<app__api__rest__documents__MessageResponse> {
+    ): CancelablePromise<app__api__rest__links__MessageResponse> {
         return __request(OpenAPI, {
             method: 'DELETE',
             url: '/api/v1/notes/{note_id}',

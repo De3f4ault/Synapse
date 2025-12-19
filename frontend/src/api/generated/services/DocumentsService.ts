@@ -2,7 +2,7 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-import type { app__api__rest__documents__MessageResponse } from '../models/app__api__rest__documents__MessageResponse';
+import type { app__api__rest__links__MessageResponse } from '../models/app__api__rest__links__MessageResponse';
 import type { Body_upload_document_api_v1_documents_upload_post } from '../models/Body_upload_document_api_v1_documents_upload_post';
 import type { DocumentChunkResponse } from '../models/DocumentChunkResponse';
 import type { DocumentResponse } from '../models/DocumentResponse';
@@ -85,13 +85,13 @@ export class DocumentsService {
      * Delete a document and all its chunks
      * @param documentId
      * @param deleteFile Also delete physical file from storage
-     * @returns app__api__rest__documents__MessageResponse Successful Response
+     * @returns app__api__rest__links__MessageResponse Successful Response
      * @throws ApiError
      */
     public static deleteDocumentApiV1DocumentsDocumentIdDelete(
         documentId: number,
         deleteFile: boolean = false,
-    ): CancelablePromise<app__api__rest__documents__MessageResponse> {
+    ): CancelablePromise<app__api__rest__links__MessageResponse> {
         return __request(OpenAPI, {
             method: 'DELETE',
             url: '/api/v1/documents/{document_id}',
@@ -160,12 +160,12 @@ export class DocumentsService {
      * Trigger processing
      * Manually trigger document processing (if pending or failed)
      * @param documentId
-     * @returns app__api__rest__documents__MessageResponse Successful Response
+     * @returns app__api__rest__links__MessageResponse Successful Response
      * @throws ApiError
      */
     public static triggerProcessingApiV1DocumentsDocumentIdProcessPost(
         documentId: number,
-    ): CancelablePromise<app__api__rest__documents__MessageResponse> {
+    ): CancelablePromise<app__api__rest__links__MessageResponse> {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/api/v1/documents/{document_id}/process',

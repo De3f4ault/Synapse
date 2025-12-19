@@ -19,7 +19,7 @@ export function FloatingPageDock({ children, className }: FloatingPageDockProps)
                 animate={{ y: 0, opacity: 1 }}
                 className={cn(
                     "relative flex items-center gap-2 p-2 rounded-full pointer-events-auto shadow-2xl transition-all duration-300",
-                    "bg-background/80 backdrop-blur-xl border border-primary/20",
+                    "bg-black/20 backdrop-blur-xl border border-white/10",
                     className
                 )}
             >

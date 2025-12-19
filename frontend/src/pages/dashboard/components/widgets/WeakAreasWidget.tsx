@@ -1,5 +1,5 @@
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { NeumorphicCard } from '@/components/neumorphic';
 import { Progress } from '@/components/ui/progress';
 import { AlertCircle } from 'lucide-react';
 import type { WeakArea } from '@/api/generated';
@@ -10,38 +10,45 @@ interface WeakAreasWidgetProps {
 
 export const WeakAreasWidget: React.FC<WeakAreasWidgetProps> = ({ data }) => {
     return (
-        <Card className="col-span-2">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-base font-bold flex items-center gap-2">
-                    <AlertCircle className="h-4 w-4 text-red-500" />
-                    Focus Areas
-                </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 pt-4">
+        <NeumorphicCard className="col-span-2 p-6 flex flex-col h-[380px]">
+            <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 rounded-xl nm-inset flex items-center justify-center text-red-400">
+                    <AlertCircle className="w-5 h-5" />
+                </div>
+                <div>
+                    <h3 className="text-lg font-bold text-white">Focus Areas</h3>
+                    <p className="text-xs text-slate-500">Suggested improvements</p>
+                </div>
+            </div>
+
+            <div className="flex-1 w-full overflow-y-auto scrollbar-hide space-y-5 pr-2">
                 {data.length === 0 ? (
-                    <p className="text-sm text-muted-foreground text-center py-4">
-                        Great job! No significant weak areas detected.
-                    </p>
+                    <div className="h-full flex items-center justify-center text-center">
+                        <p className="text-sm text-slate-400 italic">
+                            Great job! No significant weak areas detected.
+                        </p>
+                    </div>
                 ) : (
                     data.slice(0, 5).map((area) => (
-                        <div key={area.topic} className="space-y-2">
+                        <div key={area.topic} className="space-y-2 group">
                             <div className="flex justify-between text-sm">
-                                <span className="font-medium text-muted-foreground">
+                                <span className="font-medium text-slate-300 group-hover:text-white transition-colors">
                                     {area.topic}
                                 </span>
-                                <span className="text-red-500 font-bold">
+                                <span className="text-red-400 font-bold font-mono">
                                     {(area.accuracy * 100).toFixed(0)}%
                                 </span>
                             </div>
-                            <Progress
-                                value={area.accuracy * 100}
-                                className="h-2 bg-secondary"
-                                indicatorClassName="bg-red-500"
-                            />
+                            <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
+                                <div
+                                    className="h-full bg-red-400 rounded-full transition-all duration-500"
+                                    style={{ width: `${area.accuracy * 100}%` }}
+                                />
+                            </div>
                         </div>
                     ))
                 )}
-            </CardContent>
-        </Card>
+            </div>
+        </NeumorphicCard>
     );
 };

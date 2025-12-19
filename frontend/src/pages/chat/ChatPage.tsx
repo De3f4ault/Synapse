@@ -87,7 +87,7 @@ export const ChatPage: React.FC = () => {
     }
 
     return (
-        <div className="flex h-screen overflow-hidden bg-background">
+        <div className="flex h-screen overflow-hidden nm-bg nm-constellation-bg">
             {/* Desktop Sidebar - Retractable */}
             <div
                 className={cn(

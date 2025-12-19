@@ -87,19 +87,21 @@ echo -e "${GREEN}→${NC} Starting FastAPI server on http://localhost:8000"
 BACKEND_PID=$!
 echo -e "${GREEN}✓${NC} Backend started (PID: $BACKEND_PID)"
 
-# Wait for backend to be ready
-echo -e "${YELLOW}→${NC} Waiting for backend to be ready..."
-for i in {1..30}; do
+# Wait for backend to be ready (60s timeout for ML model loading)
+echo -e "${YELLOW}→${NC} Waiting for backend to be ready (loading ML models)..."
+BACKEND_READY=false
+for i in {1..60}; do
     if curl -f http://localhost:8000/api/v1/health 2>/dev/null >/dev/null; then
         echo -e "${GREEN}✓${NC} Backend is ready!"
+        BACKEND_READY=true
         break
     fi
     sleep 1
-    if [ $i -eq 30 ]; then
-        echo -e "${RED}✗ Backend failed to start within 30 seconds${NC}"
-        echo -e "${YELLOW}→ Check logs: tail /tmp/synapse-backend.log${NC}"
-    fi
 done
+if [ "$BACKEND_READY" = false ]; then
+    echo -e "${YELLOW}⚠${NC} Backend still loading ML models (this is normal on first start)"
+    echo -e "${YELLOW}→${NC} The backend will be ready in ~30s. Check: tail -f /tmp/synapse-backend.log"
+fi
 
 echo ""
 
@@ -116,7 +118,7 @@ if [ ! -d node_modules ]; then
     npm install
 fi
 
-echo -e "${GREEN}→${NC} Starting Vite dev server on http://localhost:5173"
+echo -e "${GREEN}→${NC} Starting Vite dev server on http://localhost:3000"
 npm run dev > /tmp/synapse-frontend.log 2>&1 &
 FRONTEND_PID=$!
 echo -e "${GREEN}✓${NC} Frontend started (PID: $FRONTEND_PID)"
@@ -134,7 +136,7 @@ echo ""
 echo -e "${GREEN}Backend:${NC}  http://localhost:8000"
 echo -e "          API Docs: http://localhost:8000/docs"
 echo ""
-echo -e "${GREEN}Frontend:${NC} http://localhost:5173"
+echo -e "${GREEN}Frontend:${NC} http://localhost:3000"
 echo ""
 echo -e "${YELLOW}Logs:${NC}"
 echo -e "  Backend:  tail -f /tmp/synapse-backend.log"

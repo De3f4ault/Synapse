@@ -3,9 +3,10 @@
 /* tslint:disable */
 /* eslint-disable */
 /**
- * Simple message response.
+ * Graph statistics.
  */
-export type app__api__rest__documents__MessageResponse = {
-    message: string;
+export type GraphStats = {
+    total_nodes: number;
+    total_edges: number;
 };
 

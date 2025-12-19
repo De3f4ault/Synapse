@@ -92,19 +92,20 @@ export function calculateMastery(
 /**
  * Check if a card is due for review
  */
-export function isCardDue(nextReviewDate: string): boolean {
+export function isCardDue(nextReview?: string | null): boolean {
+    if (!nextReview) return true; // New cards without next_review are due
     const now = new Date();
-    const reviewDate = new Date(nextReviewDate);
+    const reviewDate = new Date(nextReview);
     return now >= reviewDate;
 }
 
 /**
  * Get cards that are due for review
  */
-export function getDueCards<T extends { next_review_date: string }>(
+export function getDueCards<T extends { next_review?: string | null }>(
     cards: T[]
 ): T[] {
-    return cards.filter((card) => isCardDue(card.next_review_date));
+    return cards.filter((card) => isCardDue(card.next_review));
 }
 
 /**
@@ -123,17 +124,17 @@ export function calculateDailyTarget(
  * Sort cards by priority for review
  */
 export function sortByReviewPriority<
-T extends { next_review_date: string; accuracy: number }
+    T extends { next_review?: string | null; accuracy?: number }
 >(cards: T[]): T[] {
     return [...cards].sort((a, b) => {
-        const aDate = new Date(a.next_review_date).getTime();
-        const bDate = new Date(b.next_review_date).getTime();
+        const aDate = a.next_review ? new Date(a.next_review).getTime() : 0;
+        const bDate = b.next_review ? new Date(b.next_review).getTime() : 0;
 
         // First: overdue cards (earlier date = higher priority)
         if (aDate !== bDate) return aDate - bDate;
 
         // Second: lower accuracy = higher priority
-        return a.accuracy - b.accuracy;
+        return (a.accuracy ?? 0) - (b.accuracy ?? 0);
     });
 }
 

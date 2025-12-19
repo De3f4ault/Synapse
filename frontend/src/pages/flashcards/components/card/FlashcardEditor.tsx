@@ -1,13 +1,13 @@
 /**
  * FlashcardEditor Component
- * Form for creating/editing flashcards
+ * Form for creating/editing flashcards - Neumorphic Design
  */
 
 import { useForm } from 'react-hook-form';
 import { Sparkles, Save, X, Loader2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { NeumorphicButton } from '@/components/neumorphic';
 import { cn } from '@/lib/utils';
 import { useCreateCard } from '../../hooks/useCards';
 import type { FlashcardCreateInput } from '../../types/flashcards.types';
@@ -31,7 +31,7 @@ export function FlashcardEditor({
         register,
         handleSubmit,
         formState: { errors, isDirty },
-            reset,
+        reset,
     } = useForm<FlashcardCreateInput>({
         defaultValues: {
             deck_id: deckId,
@@ -53,89 +53,90 @@ export function FlashcardEditor({
 
     return (
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-        {/* Front Text */}
-        <div className="space-y-2">
-        <Label htmlFor="front_text" className="text-sm font-bold text-slate-300 uppercase tracking-wider">
-        Query Layer (Front) <span className="text-cyan-500">*</span>
-        </Label>
-        <Textarea
-        id="front_text"
-        placeholder="What question or prompt should appear on the front?"
-        rows={4}
-        {...register('front_text', {
-            required: 'Front text is required',
-            minLength: { value: 1, message: 'Front text cannot be empty' },
-        })}
-        className={cn(
-            'bg-black/40 border-white/10 text-white placeholder:text-slate-600 focus:border-cyan-500/50 transition-colors resize-none',
-            errors.front_text && 'border-red-500/50 focus:border-red-500'
-        )}
-        />
-        {errors.front_text && (
-            <p className="text-xs text-red-400 mt-1 flex items-center gap-1">
-            <span className="w-1 h-1 rounded-full bg-red-500" />
-            {errors.front_text.message}
-            </p>
-        )}
-        </div>
+            {/* Front Text */}
+            <div className="space-y-2">
+                <Label htmlFor="front_text" className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                    Query Layer (Front) <span className="text-cyan-500">*</span>
+                </Label>
+                <Textarea
+                    id="front_text"
+                    placeholder="What question or prompt should appear on the front?"
+                    rows={4}
+                    {...register('front_text', {
+                        required: 'Front text is required',
+                        minLength: { value: 1, message: 'Front text cannot be empty' },
+                    })}
+                    className={cn(
+                        'nm-input w-full bg-transparent resize-none',
+                        errors.front_text && 'border-red-500/50 focus:border-red-500'
+                    )}
+                />
+                {errors.front_text && (
+                    <p className="text-xs text-red-400 mt-1 flex items-center gap-1">
+                        <span className="w-1 h-1 rounded-full bg-red-500" />
+                        {errors.front_text.message}
+                    </p>
+                )}
+            </div>
 
-        {/* Back Text */}
-        <div className="space-y-2">
-        <Label htmlFor="back_text" className="text-sm font-bold text-slate-300 uppercase tracking-wider">
-        Data Core (Back) <span className="text-purple-500">*</span>
-        </Label>
-        <Textarea
-        id="back_text"
-        placeholder="What answer or information should appear on the back?"
-        rows={4}
-        {...register('back_text', {
-            required: 'Back text is required',
-            minLength: { value: 1, message: 'Back text cannot be empty' },
-        })}
-        className={cn(
-            'bg-black/40 border-white/10 text-white placeholder:text-slate-600 focus:border-purple-500/50 transition-colors resize-none',
-            errors.back_text && 'border-red-500/50 focus:border-red-500'
-        )}
-        />
-        {errors.back_text && (
-            <p className="text-xs text-red-400 mt-1 flex items-center gap-1">
-            <span className="w-1 h-1 rounded-full bg-red-500" />
-            {errors.back_text.message}
-            </p>
-        )}
-        </div>
+            {/* Back Text */}
+            <div className="space-y-2">
+                <Label htmlFor="back_text" className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                    Data Core (Back) <span className="text-purple-500">*</span>
+                </Label>
+                <Textarea
+                    id="back_text"
+                    placeholder="What answer or information should appear on the back?"
+                    rows={4}
+                    {...register('back_text', {
+                        required: 'Back text is required',
+                        minLength: { value: 1, message: 'Back text cannot be empty' },
+                    })}
+                    className={cn(
+                        'nm-input w-full bg-transparent resize-none',
+                        errors.back_text && 'border-red-500/50 focus:border-red-500'
+                    )}
+                />
+                {errors.back_text && (
+                    <p className="text-xs text-red-400 mt-1 flex items-center gap-1">
+                        <span className="w-1 h-1 rounded-full bg-red-500" />
+                        {errors.back_text.message}
+                    </p>
+                )}
+            </div>
 
-        {/* Actions */}
-        <div className="flex gap-3 pt-4 border-t border-white/5">
-        {onCancel && (
-            <Button
-            type="button"
-            variant="outline"
-            onClick={onCancel}
-            className="flex-1 bg-white/5 hover:bg-white/10 border-white/10 text-white"
-            >
-            <X className="mr-2 h-4 w-4" />
-            Cancel
-            </Button>
-        )}
-        <Button
-        type="submit"
-        disabled={isPending || !isDirty}
-        className="flex-1 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 font-bold"
-        >
-        {isPending ? (
-            <>
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            Constructing...
-            </>
-        ) : (
-            <>
-            <Sparkles className="mr-2 h-4 w-4" />
-            Construct Fragment
-            </>
-        )}
-        </Button>
-        </div>
+            {/* Actions */}
+            <div className="flex gap-3 pt-4 border-t border-white/5">
+                {onCancel && (
+                    <NeumorphicButton
+                        type="button"
+                        variant="ghost"
+                        onClick={onCancel}
+                        className="flex-1"
+                    >
+                        <X className="mr-2 h-4 w-4" />
+                        Cancel
+                    </NeumorphicButton>
+                )}
+                <NeumorphicButton
+                    type="submit"
+                    disabled={isPending || !isDirty}
+                    variant="primary"
+                    className="flex-1"
+                >
+                    {isPending ? (
+                        <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Constructing...
+                        </>
+                    ) : (
+                        <>
+                            <Sparkles className="mr-2 h-4 w-4" />
+                            Construct Fragment
+                        </>
+                    )}
+                </NeumorphicButton>
+            </div>
         </form>
     );
 }

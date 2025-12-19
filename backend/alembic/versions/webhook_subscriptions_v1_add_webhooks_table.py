@@ -11,7 +11,7 @@ from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision = 'webhook_subscriptions_v1'
-down_revision = 'add_activity_log'  # Changed from 'update_json_to_jsonb' to fix branch
+down_revision = 'add_links_table'  # Changed from 'add_activity_log' to fix multiple heads
 branch_labels = None
 depends_on = None
 

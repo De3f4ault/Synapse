@@ -1,5 +1,5 @@
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { NeumorphicCard } from '@/components/neumorphic';
 import { cn } from '@/lib/utils';
 import { LucideIcon } from 'lucide-react';
 
@@ -12,6 +12,7 @@ interface StatusCardProps {
     trendValue?: string;
     className?: string;
     onClick?: () => void;
+    color?: 'cyan' | 'purple' | 'emerald' | 'amber' | 'red';
 }
 
 export const StatusCard: React.FC<StatusCardProps> = ({
@@ -23,41 +24,54 @@ export const StatusCard: React.FC<StatusCardProps> = ({
     trendValue,
     className,
     onClick,
+    color = 'cyan'
 }) => {
+    const colorClasses = {
+        cyan: 'text-cyan-400',
+        purple: 'text-purple-400',
+        emerald: 'text-emerald-400',
+        amber: 'text-amber-400',
+        red: 'text-red-400',
+    };
+
     return (
-        <Card
+        <NeumorphicCard
             className={cn(
-                "hover:bg-accent/50 transition-colors cursor-pointer",
+                "p-6 flex flex-col justify-between hover:bg-white/[0.02] transition-colors cursor-pointer group h-full",
                 className
             )}
             onClick={onClick}
         >
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
+            <div className="flex flex-row items-center justify-between pb-2">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-500 group-hover:text-slate-400 transition-colors">
                     {title}
-                </CardTitle>
-                <Icon className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-                <div className="text-2xl font-bold">{value}</div>
+                </span>
+                <div className={cn("w-8 h-8 rounded-lg nm-inset flex items-center justify-center transition-colors", colorClasses[color])}>
+                    <Icon className="h-4 w-4" />
+                </div>
+            </div>
+            <div>
+                <div className="text-3xl font-bold text-white mb-1 group-hover:scale-105 transition-transform origin-left">{value}</div>
                 {(subtitle || trendValue) && (
-                    <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                    <div className="text-xs text-slate-500 font-mono flex items-center gap-1">
                         {trend && (
                             <span className={cn(
-                                trend === 'up' ? "text-green-500" :
-                                    trend === 'down' ? "text-red-500" : "text-yellow-500"
+                                "font-bold",
+                                trend === 'up' ? "text-emerald-400" :
+                                    trend === 'down' ? "text-red-400" : "text-amber-400"
                             )}>
                                 {trend === 'up' ? '↑' : trend === 'down' ? '↓' : '→'}
                             </span>
                         )}
                         {trendValue && <span className={cn(
-                            trend === 'up' ? "text-green-500" :
-                                trend === 'down' ? "text-red-500" : "text-yellow-500"
+                            "font-bold",
+                            trend === 'up' ? "text-emerald-400" :
+                                trend === 'down' ? "text-red-400" : "text-amber-400"
                         )}>{trendValue}</span>}
                         {subtitle}
-                    </p>
+                    </div>
                 )}
-            </CardContent>
-        </Card>
+            </div>
+        </NeumorphicCard>
     );
 };

@@ -32,36 +32,36 @@ const navItems: NavItem[] = [
         href: '/dashboard',
         icon: <Home className="h-5 w-5" />,
     },
-{
-    label: 'Flashcards',
-    href: '/flashcards',
-    icon: <BookOpen className="h-5 w-5" />,
-},
-{
-    label: 'Notes',
-    href: '/notes',
-    icon: <FileText className="h-5 w-5" />,
-},
-{
-    label: 'Documents',
-    href: '/documents',
-    icon: <FileStack className="h-5 w-5" />,
-},
-{
-    label: 'Quizzes',
-    href: '/quizzes',
-    icon: <FileQuestion className="h-5 w-5" />,
-},
-{
-    label: 'Chat',
-    href: '/chat',
-    icon: <MessageSquare className="h-5 w-5" />,
-},
-{
-    label: 'Analytics',
-    href: '/analytics',
-    icon: <BarChart className="h-5 w-5" />,
-},
+    {
+        label: 'Flashcards',
+        href: '/flashcards',
+        icon: <BookOpen className="h-5 w-5" />,
+    },
+    {
+        label: 'Notes',
+        href: '/notes',
+        icon: <FileText className="h-5 w-5" />,
+    },
+    {
+        label: 'Documents',
+        href: '/documents',
+        icon: <FileStack className="h-5 w-5" />,
+    },
+    {
+        label: 'Quizzes',
+        href: '/quizzes',
+        icon: <FileQuestion className="h-5 w-5" />,
+    },
+    {
+        label: 'Chat',
+        href: '/chat',
+        icon: <MessageSquare className="h-5 w-5" />,
+    },
+    {
+        label: 'Analytics',
+        href: '/analytics',
+        icon: <BarChart className="h-5 w-5" />,
+    },
 ];
 
 interface MobileNavProps {
@@ -80,39 +80,39 @@ export function MobileNav({ open, onOpenChange }: MobileNavProps) {
 
     return (
         <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent side="left" className="w-72 p-0">
-        <SheetHeader className="border-b px-6 py-4">
-        <SheetTitle className="text-xl font-bold">SYNAPSE</SheetTitle>
-        </SheetHeader>
+            <SheetContent side="left" className="w-72 p-0 bg-black/80 backdrop-blur-xl border-r-white/10 text-white">
+                <SheetHeader className="border-b border-white/10 px-6 py-4">
+                    <SheetTitle className="text-xl font-bold text-white tracking-widest">SYNAPSE</SheetTitle>
+                </SheetHeader>
 
-        {/* Navigation Items */}
-        <nav className="flex flex-col gap-1 p-3">
-        {navItems.map((item, index) => {
-            const isActive = location.pathname.startsWith(item.href);
+                {/* Navigation Items */}
+                <nav className="flex flex-col gap-1 p-3">
+                    {navItems.map((item, index) => {
+                        const isActive = location.pathname.startsWith(item.href);
 
-            return (
-                <motion.div
-                key={item.href}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.05 }}
-                >
-                <Button
-                variant={isActive ? 'secondary' : 'ghost'}
-                className={cn(
-                    'w-full justify-start gap-3 text-left',
-                    isActive && 'bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary'
-                )}
-                onClick={() => handleNavigation(item.href)}
-                >
-                {item.icon}
-                <span className="font-medium">{item.label}</span>
-                </Button>
-                </motion.div>
-            );
-        })}
-        </nav>
-        </SheetContent>
+                        return (
+                            <motion.div
+                                key={item.href}
+                                initial={{ opacity: 0, x: -20 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: index * 0.05 }}
+                            >
+                                <Button
+                                    variant={isActive ? 'secondary' : 'ghost'}
+                                    className={cn(
+                                        'w-full justify-start gap-3 text-left',
+                                        isActive && 'bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary'
+                                    )}
+                                    onClick={() => handleNavigation(item.href)}
+                                >
+                                    {item.icon}
+                                    <span className="font-medium">{item.label}</span>
+                                </Button>
+                            </motion.div>
+                        );
+                    })}
+                </nav>
+            </SheetContent>
         </Sheet>
     );
 }

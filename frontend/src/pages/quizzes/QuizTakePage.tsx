@@ -5,25 +5,15 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { QuizzesService } from '@/api/generated';
 import { queryKeys } from '@/lib/queryKeys';
 import { QuizResultsView } from './components/results/QuizResultsView';
-import type { QuizAttemptStart, AnswerSubmit, AnswerResult } from '@/api/generated';
+import type { QuizAttemptStart, AnswerSubmit } from '@/api/generated';
 import {
     CheckCircle, XCircle, Loader2, Lightbulb,
     ChevronDown, ChevronUp, ArrowLeft, ArrowRight,
-    Clock
+    Clock, Award
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-
-/**
- * QuizTakePage - Enhanced Quiz Experience with Real-Time Feedback
- * 
- * Features:
- * - Real-time feedback on each answer (correct/incorrect shown immediately)
- * - Explanation shown after answering
- * - Previous/Next navigation
- * - Collapsible hints
- * - Detailed results summary
- */
+import { NeumorphicButton, NeumorphicCard } from '@/components/neumorphic';
 
 interface QuestionState {
     answered: boolean;
@@ -32,6 +22,9 @@ interface QuestionState {
     showExplanation: boolean;
 }
 
+/**
+ * QuizTakePage - Neumorphic Deep Space Refactor
+ */
 export function QuizTakePage() {
     const { quizId } = useParams<{ quizId: string }>();
     const navigate = useNavigate();
@@ -138,7 +131,7 @@ export function QuizTakePage() {
                 answered: true,
                 selectedAnswer: answer,
                 isCorrect,
-                showExplanation: true // Auto-show explanation on answer
+                showExplanation: true
             });
             return newMap;
         });
@@ -153,7 +146,6 @@ export function QuizTakePage() {
     };
 
     const handleFinish = () => {
-        // Check if all questions answered
         const answeredCount = Array.from(questionStates.values()).filter(s => s.answered).length;
         const totalQuestions = attemptData?.questions.length || 0;
 
@@ -182,9 +174,9 @@ export function QuizTakePage() {
     // Loading State
     if (gameState === 'LOADING' || !attemptData?.questions) {
         return (
-            <div className="h-full flex flex-col items-center justify-center">
+            <div className="h-screen w-full flex flex-col items-center justify-center nm-bg nm-constellation-bg">
                 <Loader2 className="w-12 h-12 text-cyan-400 animate-spin mb-4" />
-                <p className="text-slate-400 text-sm">Loading Quiz...</p>
+                <p className="text-slate-400 text-sm tracking-widest uppercase">Initializing Simulation...</p>
             </div>
         );
     }
@@ -204,32 +196,34 @@ export function QuizTakePage() {
         const rank = getRank(percentage);
 
         const performanceProp = {
-            score: percentage, // percentage is used as score in display
+            score: percentage,
             percentage: percentage,
             rank: rank,
-            maxStreak: 0, // Not tracked yet, defaulting
+            maxStreak: 0,
             duration: elapsedTime,
             correctCount: stats.correct,
             totalCount: stats.total
         };
 
         return (
-            <QuizResultsView
-                performance={performanceProp}
-                attemptData={attemptData!}
-                results={results}
-                onReturn={() => navigate('/quizzes')}
-            />
+            <div className="h-screen nm-bg nm-constellation-bg overflow-y-auto">
+                <QuizResultsView
+                    performance={performanceProp}
+                    attemptData={attemptData!}
+                    results={results}
+                    onReturn={() => navigate('/quizzes')}
+                />
+            </div>
         );
     }
 
-    // Active Quiz State - Get current question safely
+    // Active Quiz State
     const questions = attemptData.questions;
     const currentQ = questions[currentIdx];
 
     if (!currentQ) {
         return (
-            <div className="h-full flex flex-col items-center justify-center">
+            <div className="h-screen flex flex-col items-center justify-center nm-bg nm-constellation-bg">
                 <p className="text-slate-400">Question not found</p>
             </div>
         );
@@ -240,63 +234,69 @@ export function QuizTakePage() {
         ? Object.entries(currentQ.options as Record<string, string>)
         : [];
     const stats = getStats();
-
-    // Get correct answer from question (now available from backend)
     const correctAnswer = (currentQ as any).correct_answer || '';
     const explanation = (currentQ as any).explanation || '';
 
     return (
-        <div className="h-full flex flex-col">
+        <div className="h-screen nm-bg nm-constellation-bg flex flex-col overflow-hidden">
             {/* Header */}
-            <div className="h-14 border-b border-white/5 flex items-center justify-between px-6 bg-black/20">
+            <div className="h-16 flex items-center justify-between px-8 bg-[#0a0a0f]/50 backdrop-blur-sm border-b border-white/5 shrink-0 z-20">
                 <button
                     onClick={() => {
-                        if (confirm('Exit quiz? Your progress will be submitted.')) {
+                        if (confirm('Exit simulation? Progress will be saved/submitted.')) {
                             handleFinish();
                         }
                     }}
-                    className="text-slate-400 hover:text-white text-sm flex items-center gap-2"
+                    className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors"
                 >
-                    <ArrowLeft size={16} />
-                    Exit
+                    <ArrowLeft size={18} />
+                    <span className="font-medium">Exit</span>
                 </button>
 
-                <div className="text-sm text-slate-400">
-                    <span className="text-white font-medium">{currentIdx + 1}</span> / {questions.length}
+                <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2">
+                    <span className="text-cyan-400 font-mono text-lg font-bold">
+                        Q{currentIdx + 1}
+                    </span>
+                    <span className="text-slate-600 font-mono">/</span>
+                    <span className="text-slate-500 font-mono">{questions.length}</span>
                 </div>
 
-                <div className="flex items-center gap-4 text-sm">
-                    <span className="text-slate-400 flex items-center gap-1">
-                        <Clock size={14} />
+                <div className="flex items-center gap-6 text-sm font-mono">
+                    <div className="flex items-center gap-2 text-slate-400 bg-white/5 px-3 py-1.5 rounded-full border border-white/5">
+                        <Clock size={14} className="text-cyan-500" />
                         {formatTime(elapsedTime)}
-                    </span>
-                    <span className="text-emerald-400 flex items-center gap-1">
+                    </div>
+                    <div className="flex items-center gap-2 text-emerald-400 bg-emerald-500/10 px-3 py-1.5 rounded-full border border-emerald-500/20">
                         <CheckCircle size={14} />
                         {stats.correct}
-                    </span>
+                    </div>
                 </div>
             </div>
 
-            {/* Progress Bar */}
-            <div className="h-1 bg-slate-800">
-                <div
-                    className="h-full bg-gradient-to-r from-cyan-500 to-purple-500 transition-all duration-300"
-                    style={{ width: `${((currentIdx + 1) / questions.length) * 100}%` }}
+            {/* Glowing Gradient Progress Line */}
+            <div className="h-[2px] w-full bg-white/5 shrink-0 relative">
+                <motion.div
+                    className="absolute inset-y-0 left-0 bg-gradient-to-r from-cyan-500 to-purple-500 shadow-[0_0_10px_rgba(6,182,212,0.5)]"
+                    initial={{ width: 0 }}
+                    animate={{ width: `${((currentIdx + 1) / questions.length) * 100}%` }}
+                    transition={{ duration: 0.3 }}
                 />
             </div>
 
-            {/* Main Content */}
-            <div className="flex-1 overflow-y-auto p-6">
-                <div className="max-w-2xl mx-auto">
+            {/* Main Content Area */}
+            <div className="flex-1 overflow-y-auto px-6 py-8 flex justify-center">
+                <div className="max-w-3xl w-full space-y-8">
                     <motion.div
                         key={currentIdx}
                         initial={{ opacity: 0, x: 20 }}
                         animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -20 }}
+                        transition={{ duration: 0.2 }}
                         className="space-y-6"
                     >
-                        {/* Question */}
-                        <div className="synapse-panel p-6">
-                            <h2 className="text-xl font-medium text-white leading-relaxed mb-6">
+                        {/* Question Card */}
+                        <NeumorphicCard className="p-8">
+                            <h2 className="text-2xl font-medium text-slate-100 leading-relaxed mb-8">
                                 {currentQ.question_text}
                             </h2>
 
@@ -309,18 +309,18 @@ export function QuizTakePage() {
                                     const isAnswered = currentState.answered;
                                     const isThisCorrect = optionLetter.toLowerCase() === correctAnswer.toLowerCase();
 
-                                    let statusClass = 'border-slate-700 hover:border-cyan-500/50 text-slate-300';
+                                    let statusClass = 'border-white/5 bg-black/20 text-slate-300 hover:border-cyan-500/30 hover:bg-cyan-500/5';
+                                    let indicator = <span className="font-mono text-sm opacity-50">{optionLetter}.</span>;
 
                                     if (isAnswered) {
                                         if (isThisCorrect) {
-                                            // This is the correct answer - always show green
-                                            statusClass = 'border-emerald-500 bg-emerald-500/10 text-emerald-400';
+                                            statusClass = 'border-emerald-500/50 bg-emerald-500/10 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.1)]';
+                                            indicator = <CheckCircle size={18} className="text-emerald-400" />;
                                         } else if (isSelected) {
-                                            // User selected this wrong answer
-                                            statusClass = 'border-red-500 bg-red-500/10 text-red-400';
+                                            statusClass = 'border-red-500/50 bg-red-500/10 text-red-400';
+                                            indicator = <XCircle size={18} className="text-red-400" />;
                                         } else {
-                                            // Other options
-                                            statusClass = 'border-slate-800 text-slate-600';
+                                            statusClass = 'border-white/5 bg-black/20 text-slate-500 opacity-50';
                                         }
                                     }
 
@@ -334,114 +334,104 @@ export function QuizTakePage() {
                                             }}
                                             disabled={isAnswered}
                                             className={cn(
-                                                "w-full p-4 rounded-lg border text-left transition-all",
-                                                statusClass,
-                                                !isAnswered && "hover:bg-white/5 cursor-pointer"
+                                                "w-full p-5 rounded-xl border text-left transition-all duration-200 flex items-start gap-4 group",
+                                                statusClass
                                             )}
                                         >
-                                            <div className="flex items-start gap-3">
-                                                <span className="font-mono text-sm opacity-60">{optionLetter}.</span>
-                                                <span className="flex-1">{optionText}</span>
-                                                {isAnswered && isThisCorrect && (
-                                                    <CheckCircle size={18} className="text-emerald-400 flex-shrink-0" />
-                                                )}
-                                                {isAnswered && isSelected && !isThisCorrect && (
-                                                    <XCircle size={18} className="text-red-400 flex-shrink-0" />
-                                                )}
+                                            <div className="mt-0.5 shrink-0 w-6 flex justify-center">
+                                                {indicator}
                                             </div>
+                                            <span className="flex-1 text-base leading-relaxed">{optionText}</span>
                                         </button>
                                     );
                                 })}
                             </div>
 
-                            {/* Real-time Feedback after answering */}
+                            {/* Auto-Explanation */}
                             <AnimatePresence>
                                 {currentState.answered && (
                                     <motion.div
-                                        initial={{ opacity: 0, height: 0 }}
-                                        animate={{ opacity: 1, height: 'auto' }}
-                                        exit={{ opacity: 0, height: 0 }}
+                                        initial={{ opacity: 0, height: 0, marginTop: 0 }}
+                                        animate={{ opacity: 1, height: 'auto', marginTop: 24 }}
+                                        exit={{ opacity: 0, height: 0, marginTop: 0 }}
                                         className={cn(
-                                            "mt-4 p-4 rounded-lg border",
+                                            "overflow-hidden rounded-xl border p-5",
                                             currentState.isCorrect
-                                                ? "bg-emerald-500/10 border-emerald-500/30"
-                                                : "bg-red-500/10 border-red-500/30"
+                                                ? "bg-emerald-500/5 border-emerald-500/20"
+                                                : "bg-[#0a0a0f] border-white/10"
                                         )}
                                     >
-                                        <div className="flex items-start gap-3">
-                                            {currentState.isCorrect ? (
-                                                <CheckCircle className="text-emerald-400 flex-shrink-0" size={20} />
-                                            ) : (
-                                                <XCircle className="text-red-400 flex-shrink-0" size={20} />
-                                            )}
-                                            <div>
-                                                <p className={cn(
-                                                    "font-medium mb-1",
-                                                    currentState.isCorrect ? "text-emerald-400" : "text-red-400"
-                                                )}>
-                                                    {currentState.isCorrect ? "That's right!" : "Not quite"}
-                                                </p>
-                                                {explanation && (
-                                                    <p className="text-slate-400 text-sm">
-                                                        {explanation}
-                                                    </p>
+                                        <div className="flex gap-3">
+                                            <div className="shrink-0 mt-1">
+                                                {currentState.isCorrect ? (
+                                                    <div className="p-1.5 rounded-full bg-emerald-500/20 text-emerald-400">
+                                                        <CheckCircle size={16} />
+                                                    </div>
+                                                ) : (
+                                                    <div className="p-1.5 rounded-full bg-slate-800 text-slate-400">
+                                                        <Lightbulb size={16} />
+                                                    </div>
                                                 )}
+                                            </div>
+                                            <div>
+                                                <h4 className={cn(
+                                                    "font-bold mb-1 text-sm uppercase tracking-wider",
+                                                    currentState.isCorrect ? "text-emerald-400" : "text-slate-300"
+                                                )}>
+                                                    {currentState.isCorrect ? "Correct Analysis" : "Insight"}
+                                                </h4>
+                                                <p className="text-slate-400 leading-relaxed text-sm">
+                                                    {explanation || "No additional explanation provided."}
+                                                </p>
                                             </div>
                                         </div>
                                     </motion.div>
                                 )}
                             </AnimatePresence>
-                        </div>
+                        </NeumorphicCard>
 
-                        {/* Hint Section */}
+                        {/* Collapsible Hint */}
                         {!currentState.answered && (
-                            <div className="synapse-panel overflow-hidden">
+                            <div className="flex justify-end">
                                 <button
                                     onClick={() => setShowHint(!showHint)}
-                                    className="w-full p-4 flex items-center justify-between text-left"
+                                    className="text-xs font-medium text-slate-500 hover:text-cyan-400 flex items-center gap-1.5 transition-colors"
                                 >
-                                    <span className="flex items-center gap-2 text-slate-400">
-                                        <Lightbulb size={16} />
-                                        Need a hint?
-                                    </span>
-                                    {showHint ? (
-                                        <ChevronUp size={16} className="text-slate-400" />
-                                    ) : (
-                                        <ChevronDown size={16} className="text-slate-400" />
-                                    )}
+                                    <Lightbulb size={14} />
+                                    {showHint ? 'Hide Hint' : 'Show Hint'}
                                 </button>
-                                <AnimatePresence>
-                                    {showHint && (
-                                        <motion.div
-                                            initial={{ opacity: 0, height: 0 }}
-                                            animate={{ opacity: 1, height: 'auto' }}
-                                            exit={{ opacity: 0, height: 0 }}
-                                            className="px-4 pb-4"
-                                        >
-                                            <p className="text-slate-500 text-sm">
-                                                Think about the core concept being tested. Eliminate obviously incorrect answers first.
-                                            </p>
-                                        </motion.div>
-                                    )}
-                                </AnimatePresence>
                             </div>
                         )}
+                        <AnimatePresence>
+                            {showHint && !currentState.answered && (
+                                <motion.div
+                                    initial={{ opacity: 0, height: 0 }}
+                                    animate={{ opacity: 1, height: 'auto' }}
+                                    exit={{ opacity: 0, height: 0 }}
+                                    className="bg-cyan-500/5 border border-cyan-500/20 rounded-xl p-4 text-cyan-200/80 text-sm italic"
+                                >
+                                    Think about the core concept being tested. Eliminate obviously incorrect answers first.
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+
                     </motion.div>
                 </div>
             </div>
 
-            {/* Footer Navigation */}
-            <div className="h-16 border-t border-white/5 flex items-center justify-between px-6 bg-black/20">
+            {/* Bottom Controls */}
+            <div className="h-20 border-t border-white/5 bg-[#13151a]/80 backdrop-blur-md px-8 shrink-0 flex items-center justify-between">
                 <button
                     onClick={() => goToQuestion(currentIdx - 1)}
                     disabled={currentIdx === 0}
-                    className="synapse-button disabled:opacity-50 flex items-center gap-2"
+                    className="flex items-center gap-2 text-slate-400 hover:text-white disabled:opacity-30 disabled:hover:text-slate-400 transition-colors font-medium px-4 py-2"
                 >
-                    <ArrowLeft size={14} />
+                    <ArrowLeft size={16} />
                     Previous
                 </button>
 
-                <div className="flex gap-2">
+                {/* Question Dots */}
+                <div className="flex gap-1.5 overflow-x-auto max-w-md px-4 scrollbar-hide">
                     {questions.map((q, idx) => {
                         const state = getCurrentState(q.id);
                         return (
@@ -449,45 +439,49 @@ export function QuizTakePage() {
                                 key={idx}
                                 onClick={() => goToQuestion(idx)}
                                 className={cn(
-                                    "w-8 h-8 rounded-full text-xs font-medium transition-all",
+                                    "w-2.5 h-2.5 rounded-full transition-all",
                                     idx === currentIdx
-                                        ? "bg-cyan-500 text-white"
+                                        ? "bg-cyan-400 scale-125 shadow-[0_0_8px_rgba(34,211,238,0.6)]"
                                         : state.answered
                                             ? state.isCorrect
-                                                ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/50"
-                                                : "bg-red-500/20 text-red-400 border border-red-500/50"
-                                            : "bg-slate-800 text-slate-500 hover:bg-slate-700"
+                                                ? "bg-emerald-500/50"
+                                                : "bg-red-500/50"
+                                            : "bg-white/10 hover:bg-white/30"
                                 )}
-                            >
-                                {idx + 1}
-                            </button>
+                                title={`Question ${idx + 1}`}
+                            />
                         );
                     })}
                 </div>
 
                 {currentIdx === questions.length - 1 ? (
-                    <button
+                    <NeumorphicButton
                         onClick={handleFinish}
                         disabled={isSubmitting}
-                        className="synapse-button-primary px-6 flex items-center gap-2"
+                        variant="primary"
+                        className="px-8 shadow-cyan-500/20"
                     >
                         {isSubmitting ? (
                             <>
-                                <Loader2 size={14} className="animate-spin" />
+                                <Loader2 size={16} className="animate-spin mr-2" />
                                 Submitting...
                             </>
                         ) : (
-                            'Finish Quiz'
+                            <>
+                                <Award size={16} className="mr-2" />
+                                Finish Simulation
+                            </>
                         )}
-                    </button>
+                    </NeumorphicButton>
                 ) : (
-                    <button
+                    <NeumorphicButton
                         onClick={() => goToQuestion(currentIdx + 1)}
-                        className="synapse-button-primary px-6 flex items-center gap-2"
+                        variant="ghost"
+                        className="px-8 bg-white/5 hover:bg-white/10"
                     >
                         Next
-                        <ArrowRight size={14} />
-                    </button>
+                        <ArrowRight size={16} className="ml-2" />
+                    </NeumorphicButton>
                 )}
             </div>
         </div>

@@ -34,8 +34,8 @@ class LLMQueryExpander:
    
     def __init__(
         self,
-        llm_provider: str = "openai",
-        model: str = "gpt-4-turbo-preview",
+        llm_provider: str = "gemini",
+        model: str = None,
         temperature: float = 0.3,
         max_tokens: int = 500,
         enable_caching: bool = True
@@ -44,20 +44,39 @@ class LLMQueryExpander:
         Initialize LLM query expander.
         
         Args:
-            llm_provider: "openai" or "anthropic"
-            model: Model name (gpt-4-turbo-preview, claude-3-sonnet, etc.)
+            llm_provider: "gemini", "openai" or "anthropic"
+            model: Model name (auto-selected based on provider if None)
             temperature: Creativity (0.0-1.0, lower = more focused)
             max_tokens: Maximum response length
             enable_caching: Enable prompt caching (saves costs)
         """
         self.llm_provider = llm_provider
-        self.model = model
         self.temperature = temperature
         self.max_tokens = max_tokens
         self.enable_caching = enable_caching
         
+        # Set default model based on provider
+        if model is None:
+            model_defaults = {
+                "gemini": "gemini-1.5-flash",
+                "openai": "gpt-4-turbo-preview",
+                "anthropic": "claude-3-sonnet-20240229"
+            }
+            model = model_defaults.get(llm_provider, "gemini-1.5-flash")
+        self.model = model
+        
         # Initialize LLM client
-        if llm_provider == "openai":
+        if llm_provider == "gemini":
+            try:
+                import google.generativeai as genai
+                from app.core.config import settings
+                genai.configure(api_key=settings.GEMINI_API_KEY)
+                self.client = genai.GenerativeModel(model)
+                logger.info("llm_expander_initialized", provider="gemini", model=model)
+            except ImportError:
+                logger.error("google_generativeai_not_installed", help="pip install google-generativeai")
+                raise
+        elif llm_provider == "openai":
             try:
                 from openai import AsyncOpenAI
                 self.client = AsyncOpenAI()
@@ -74,7 +93,7 @@ class LLMQueryExpander:
                 logger.error("anthropic_not_installed", help="pip install anthropic")
                 raise
         else:
-            raise ValueError(f"Unsupported LLM provider: {llm_provider}")
+            raise ValueError(f"Unsupported LLM provider: {llm_provider}. Use 'gemini', 'openai', or 'anthropic'")
         
         # Prompt cache (simple in-memory for now)
         self._cache: Dict[str, str] = {}
@@ -180,7 +199,26 @@ Provide sub-questions, one per line, numbered."""
     
     async def _call_llm(self, prompt: str) -> str:
         """Call LLM API."""
-        if self.llm_provider == "openai":
+        import asyncio
+        
+        if self.llm_provider == "gemini":
+            # Gemini SDK is sync, wrap in thread for async
+            system_prompt = "You are an educational content expert helping students learn more effectively."
+            full_prompt = f"{system_prompt}\n\n{prompt}"
+            
+            def _sync_call():
+                response = self.client.generate_content(
+                    full_prompt,
+                    generation_config={
+                        "temperature": self.temperature,
+                        "max_output_tokens": self.max_tokens
+                    }
+                )
+                return response.text.strip()
+            
+            return await asyncio.to_thread(_sync_call)
+        
+        elif self.llm_provider == "openai":
             response = await self.client.chat.completions.create(
                 model=self.model,
                 messages=[

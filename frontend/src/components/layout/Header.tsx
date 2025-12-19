@@ -14,7 +14,7 @@ import {
     FileStack, Atom, Bell, User, Settings,
     LogOut, Moon, Sun, ChevronRight, Search,
     Grid, X, Plus,
-    CreditCard, ClipboardList, Upload
+    CreditCard, ClipboardList, Upload, Share2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -49,11 +49,12 @@ interface NavItem {
 
 const navItems: NavItem[] = [
     { label: 'Dashboard', href: '/dashboard', icon: Home },
-    { label: 'Flashcards', href: '/flashcards', icon: BookOpen, badge: 12 },
+    { label: 'Flashcards', href: '/flashcards', icon: BookOpen },
     { label: 'Notes', href: '/notes', icon: FileText },
     { label: 'Docs', href: '/documents', icon: FileStack },
     { label: 'Quizzes', href: '/quizzes', icon: FileQuestion },
     { label: 'Chat', href: '/chat', icon: MessageSquare },
+    { label: 'Graph', href: '/knowledge', icon: Share2 },
 ];
 
 const quickActions = [
@@ -115,7 +116,7 @@ export function Header({ className }: HeaderProps) {
                 transition={{ type: "spring", stiffness: 100, damping: 20 }}
             >
                 {/* 1. Brand + Mobile Launcher */}
-                <div className="flex items-center gap-4 z-50 relative pointer-events-auto bg-background/80 backdrop-blur-xl border border-primary/20 rounded-full px-4 py-2 shadow-lg" ref={launcherRef}>
+                <div className="flex items-center gap-4 z-50 relative pointer-events-auto bg-black/20 backdrop-blur-xl border border-white/10 rounded-full px-4 py-2 shadow-2xl" ref={launcherRef}>
                     {/* Mobile Waffle Trigger */}
                     <button
                         onClick={() => setLauncherOpen(!launcherOpen)}
@@ -123,7 +124,7 @@ export function Header({ className }: HeaderProps) {
                             "lg:hidden p-2 rounded-full transition-all active:scale-95 border",
                             launcherOpen
                                 ? "bg-primary/10 text-primary border-primary/20"
-                                : "hover:bg-muted text-muted-foreground border-transparent"
+                                : "hover:bg-white/5 text-slate-400 border-transparent"
                         )}
                     >
                         {launcherOpen ? <X className="w-5 h-5" /> : <Grid className="w-5 h-5" />}
@@ -135,22 +136,22 @@ export function Header({ className }: HeaderProps) {
                             <motion.div
                                 animate={{ rotate: 360 }}
                                 transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
-                                className="absolute inset-0 rounded-full border-2 border-primary/30 border-t-primary border-l-transparent"
+                                className="absolute inset-0 rounded-full border-2 border-cyan-500/30 border-t-cyan-500 border-l-transparent"
                             />
-                            <Atom className="w-5 h-5 text-primary relative z-10" />
+                            <Atom className="w-5 h-5 text-cyan-400 relative z-10" />
                         </div>
                         <div className="hidden sm:flex flex-col">
-                            <span className="font-sans text-lg text-foreground font-bold tracking-tight leading-none">
+                            <span className="font-sans text-lg text-white font-bold tracking-tight leading-none group-hover:text-cyan-400 transition-colors">
                                 SYNAPSE
                             </span>
                             <div className="flex items-center gap-2 mt-0.5">
                                 <span className={cn(
                                     "w-1.5 h-1.5 rounded-full animate-pulse",
-                                    wsConnected ? "bg-green-500" : "bg-red-500"
+                                    wsConnected ? "bg-emerald-500" : "bg-red-500"
                                 )} />
                                 <span className={cn(
                                     "text-[9px] font-mono uppercase tracking-wider leading-none",
-                                    wsConnected ? "text-muted-foreground" : "text-destructive"
+                                    wsConnected ? "text-slate-400" : "text-red-400"
                                 )}>
                                     {wsConnected ? "ONLINE" : "OFFLINE"}
                                 </span>
@@ -166,15 +167,15 @@ export function Header({ className }: HeaderProps) {
                                 animate={{ opacity: 1, y: 0, scale: 1 }}
                                 exit={{ opacity: 0, y: -10, scale: 0.95 }}
                                 transition={{ duration: 0.2 }}
-                                className="absolute top-16 left-0 w-[300px] bg-card border border-border rounded-xl shadow-2xl z-[100] overflow-hidden"
+                                className="absolute top-16 left-0 w-[300px] bg-[#0a0a0f]/95 border border-white/10 rounded-2xl shadow-2xl z-[100] overflow-hidden backdrop-blur-3xl"
                             >
-                                <div className="p-3 border-b border-border">
+                                <div className="p-3 border-b border-white/5">
                                     <div className="relative">
-                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
                                         <input
                                             type="text"
                                             placeholder="Search apps..."
-                                            className="w-full bg-muted/50 rounded-md py-1.5 pl-8 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all"
+                                            className="w-full bg-white/5 rounded-md py-1.5 pl-8 pr-3 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/50 transition-all border border-transparent focus:border-cyan-500/20"
                                         />
                                     </div>
                                 </div>
@@ -185,12 +186,12 @@ export function Header({ className }: HeaderProps) {
                                             <button
                                                 key={item.href}
                                                 onClick={() => navigate(item.href)}
-                                                className="flex flex-col items-center gap-1.5 p-2 rounded-lg hover:bg-muted/50 transition-colors group"
+                                                className="flex flex-col items-center gap-1.5 p-2 rounded-lg hover:bg-white/5 transition-colors group"
                                             >
-                                                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+                                                <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-slate-400 group-hover:bg-cyan-500/20 group-hover:text-cyan-400 transition-colors border border-white/5 group-hover:border-cyan-500/30">
                                                     <Icon className="w-5 h-5" />
                                                 </div>
-                                                <span className="text-[10px] font-medium text-muted-foreground">
+                                                <span className="text-[10px] font-medium text-slate-500 group-hover:text-slate-300">
                                                     {item.label}
                                                 </span>
                                             </button>
@@ -205,8 +206,8 @@ export function Header({ className }: HeaderProps) {
                 {/* 2. Desktop Navigation Dock */}
                 <nav className="hidden lg:flex items-center absolute left-1/2 -translate-x-1/2 pointer-events-auto">
                     <div className={cn(
-                        "flex items-center gap-1 p-1.5 rounded-full border border-border transition-all duration-500 shadow-xl",
-                        "bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60"
+                        "flex items-center gap-1 p-1.5 rounded-full border border-white/10 transition-all duration-500 shadow-2xl",
+                        "bg-black/20 backdrop-blur-xl supports-[backdrop-filter]:bg-black/10"
                     )}>
                         {navItems.map((item) => {
                             const Icon = item.icon;
@@ -219,10 +220,10 @@ export function Header({ className }: HeaderProps) {
                                             <button
                                                 onClick={() => navigate(item.href)}
                                                 className={cn(
-                                                    "relative px-4 py-2.5 rounded-full group transition-all duration-300",
+                                                    "relative px-5 py-3 rounded-full group transition-all duration-300",
                                                     isActive
-                                                        ? "bg-primary text-primary-foreground shadow-md"
-                                                        : "hover:bg-muted text-muted-foreground hover:text-foreground"
+                                                        ? "bg-cyan-500/10 text-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.2)]"
+                                                        : "hover:bg-white/5 text-slate-400 hover:text-slate-200"
                                                 )}
                                             >
                                                 <Icon className="w-4 h-4" />
@@ -230,14 +231,14 @@ export function Header({ className }: HeaderProps) {
                                                     <span className="sr-only">(Active)</span>
                                                 )}
                                                 {item.badge && (
-                                                    <span className="absolute top-1 right-1 flex h-2 w-2">
-                                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75"></span>
-                                                        <span className="relative inline-flex rounded-full h-2 w-2 bg-destructive"></span>
+                                                    <span className="absolute top-2 right-2 flex h-1.5 w-1.5">
+                                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+                                                        <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-cyan-400"></span>
                                                     </span>
                                                 )}
                                             </button>
                                         </TooltipTrigger>
-                                        <TooltipContent side="bottom" className="text-xs font-medium">
+                                        <TooltipContent side="bottom" className="text-xs font-medium bg-black/90 border-white/10 text-white">
                                             {item.label}
                                         </TooltipContent>
                                     </Tooltip>
@@ -248,43 +249,43 @@ export function Header({ className }: HeaderProps) {
                 </nav>
 
                 {/* 3. Right Actions */}
-                <div className="flex items-center gap-3 z-50 pointer-events-auto bg-background/80 backdrop-blur-xl border border-primary/20 rounded-full px-4 py-2 shadow-lg">
+                <div className="flex items-center gap-3 z-50 pointer-events-auto bg-black/20 backdrop-blur-xl border border-white/10 rounded-full px-4 py-2 shadow-2xl">
                     {/* Search */}
                     <div
-                        className="hidden md:flex items-center bg-muted/50 border border-transparent rounded-full px-3 py-1.5 hover:bg-muted transition-all cursor-text group"
+                        className="hidden md:flex items-center bg-white/5 border border-transparent rounded-full px-3 py-1.5 hover:bg-white/10 transition-all cursor-text group"
                         onClick={() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }))}
                     >
-                        <Search className="w-3.5 h-3.5 text-muted-foreground group-hover:text-foreground mr-2" />
-                        <span className="text-xs text-muted-foreground group-hover:text-foreground font-medium mr-2">Search</span>
-                        <kbd className="text-[9px] font-mono bg-background px-1.5 rounded border border-border text-muted-foreground">⌘K</kbd>
+                        <Search className="w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300 mr-2" />
+                        <span className="text-xs text-slate-500 group-hover:text-slate-300 font-medium mr-2">Search</span>
+                        <kbd className="text-[9px] font-mono bg-black/40 px-1.5 rounded border border-white/10 text-slate-500">⌘K</kbd>
                     </div>
 
                     {/* Quick Actions */}
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary">
+                            <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full hover:bg-white/10 hover:text-cyan-400 text-slate-400">
                                 <Plus className="h-4 w-4" />
                             </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-56 p-2">
-                            <DropdownMenuLabel className="text-xs font-medium text-muted-foreground px-2 py-1.5">
+                        <DropdownMenuContent align="end" className="w-56 p-2 bg-[#0a0a0f]/95 border-white/10 backdrop-blur-3xl">
+                            <DropdownMenuLabel className="text-xs font-medium text-slate-500 px-2 py-1.5 uppercase tracking-wider">
                                 Quick Create
                             </DropdownMenuLabel>
-                            <DropdownMenuSeparator />
+                            <DropdownMenuSeparator className="bg-white/5" />
                             {quickActions.map((action) => {
                                 const Icon = action.icon;
                                 return (
                                     <DropdownMenuItem
                                         key={action.label}
                                         onClick={() => navigate(action.href)}
-                                        className="gap-3 p-2 cursor-pointer"
+                                        className="gap-3 p-2 cursor-pointer focus:bg-white/5 focus:text-white group"
                                     >
-                                        <div className="p-1.5 rounded-md bg-primary/10 text-primary">
+                                        <div className="p-1.5 rounded-md bg-white/5 text-slate-400 group-focus:text-cyan-400 transition-colors">
                                             <Icon className="h-4 w-4" />
                                         </div>
                                         <div className="flex-1">
-                                            <div className="text-xs font-medium">{action.label}</div>
-                                            <div className="text-[10px] text-muted-foreground">{action.desc}</div>
+                                            <div className="text-xs font-medium text-slate-300 group-focus:text-white">{action.label}</div>
+                                            <div className="text-[10px] text-slate-500">{action.desc}</div>
                                         </div>
                                     </DropdownMenuItem>
                                 );
@@ -293,18 +294,18 @@ export function Header({ className }: HeaderProps) {
                     </DropdownMenu>
 
                     {/* Notifications */}
-                    <button className="relative group p-2 rounded-full hover:bg-primary/10 hover:text-primary transition-colors text-muted-foreground">
+                    <button className="relative group p-2 rounded-full hover:bg-white/10 hover:text-cyan-400 transition-colors text-slate-400">
                         <Bell className="w-5 h-5" />
-                        <span className="absolute top-2 right-2.5 w-1.5 h-1.5 bg-destructive rounded-full" />
+                        <span className="absolute top-2.5 right-2.5 w-1.5 h-1.5 bg-cyan-500 rounded-full" />
                     </button>
 
                     {/* User Avatar - Control Panel Trigger */}
                     <button
                         onClick={() => setControlPanelOpen(true)}
-                        className="flex items-center gap-2 pl-1 pr-1 py-1 rounded-full hover:bg-muted transition-all border border-transparent hover:border-border"
+                        className="flex items-center gap-2 pl-1 pr-1 py-1 rounded-full hover:bg-white/5 transition-all border border-transparent hover:border-white/10"
                     >
-                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20">
-                            <User className="w-4 h-4 text-primary" />
+                        <div className="w-8 h-8 rounded-full bg-cyan-500/10 flex items-center justify-center border border-cyan-500/20 text-cyan-400">
+                            <User className="w-4 h-4" />
                         </div>
                     </button>
                 </div>

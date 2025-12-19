@@ -8,6 +8,7 @@ import type { ChatMessageCreate } from '../models/ChatMessageCreate';
 import type { ChatMessageResponse } from '../models/ChatMessageResponse';
 import type { ChatSessionCreate } from '../models/ChatSessionCreate';
 import type { ChatSessionResponse } from '../models/ChatSessionResponse';
+import type { ChatSessionUpdate } from '../models/ChatSessionUpdate';
 import type { FileUploadResponse } from '../models/FileUploadResponse';
 import type { CancelablePromise } from '../core/CancelablePromise';
 import { OpenAPI } from '../core/OpenAPI';
@@ -94,6 +95,31 @@ export class ChatService {
             path: {
                 'session_id': sessionId,
             },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Update chat session
+     * Update session title
+     * @param sessionId
+     * @param requestBody
+     * @returns ChatSessionResponse Successful Response
+     * @throws ApiError
+     */
+    public static updateSessionApiV1ChatSessionsSessionIdPatch(
+        sessionId: number,
+        requestBody: ChatSessionUpdate,
+    ): CancelablePromise<ChatSessionResponse> {
+        return __request(OpenAPI, {
+            method: 'PATCH',
+            url: '/api/v1/chat/sessions/{session_id}',
+            path: {
+                'session_id': sessionId,
+            },
+            body: requestBody,
+            mediaType: 'application/json',
             errors: {
                 422: `Validation Error`,
             },
@@ -227,6 +253,26 @@ export class ChatService {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/v1/chat/models',
+        });
+    }
+    /**
+     * Dashboard Orchestrator Message
+     * Send message to dashboard orchestrator with full system access
+     * @param requestBody
+     * @returns ChatMessageResponse Successful Response
+     * @throws ApiError
+     */
+    public static sendDashboardMessageApiV1ChatSessionsDashboardMessagePost(
+        requestBody: ChatMessageCreate,
+    ): CancelablePromise<ChatMessageResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/chat/sessions/dashboard/message',
+            body: requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: `Validation Error`,
+            },
         });
     }
 }
