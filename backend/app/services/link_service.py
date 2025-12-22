@@ -11,6 +11,10 @@ from sqlalchemy.orm import selectinload
 import structlog
 
 from app.models.link import Link, LinkType, EntityType
+from app.models.note import Note
+from app.models.deck import Deck
+from app.models.document import Document
+from app.models.quiz import Quiz
 
 
 logger = structlog.get_logger(__name__)
@@ -44,7 +48,7 @@ class LinkService:
         link_type: LinkType = LinkType.MANUAL,
         strength: float = 1.0,
         label: Optional[str] = None,
-        metadata: Optional[dict] = None
+        metadata: Optional[dict] = None,
     ) -> Link:
         """
         Create a new link between entities.
@@ -72,7 +76,7 @@ class LinkService:
                 "link_already_exists",
                 link_id=existing.id,
                 source=f"{source_type.value}:{source_id}",
-                target=f"{target_type.value}:{target_id}"
+                target=f"{target_type.value}:{target_id}",
             )
             return existing
 
@@ -85,7 +89,7 @@ class LinkService:
             link_type=link_type,
             strength=strength,
             label=label,
-            link_metadata=metadata or {}
+            link_metadata=metadata or {},
         )
 
         self.session.add(link)
@@ -97,7 +101,7 @@ class LinkService:
             link_id=link.id,
             source=f"{source_type.value}:{source_id}",
             target=f"{target_type.value}:{target_id}",
-            link_type=link_type.value
+            link_type=link_type.value,
         )
 
         return link
@@ -105,9 +109,7 @@ class LinkService:
     async def get_link(self, link_id: int, user_id: int) -> Optional[Link]:
         """Get a link by ID."""
         result = await self.session.execute(
-            select(Link).where(
-                and_(Link.id == link_id, Link.user_id == user_id)
-            )
+            select(Link).where(and_(Link.id == link_id, Link.user_id == user_id))
         )
         return result.scalar_one_or_none()
 
@@ -117,7 +119,7 @@ class LinkService:
         source_type: EntityType,
         source_id: int,
         target_type: EntityType,
-        target_id: int
+        target_id: int,
     ) -> Optional[Link]:
         """Get a specific link between two entities."""
         result = await self.session.execute(
@@ -127,18 +129,13 @@ class LinkService:
                     Link.source_type == source_type,
                     Link.source_id == source_id,
                     Link.target_type == target_type,
-                    Link.target_id == target_id
+                    Link.target_id == target_id,
                 )
             )
         )
         return result.scalar_one_or_none()
 
-    async def update_link(
-        self,
-        link_id: int,
-        user_id: int,
-        **kwargs
-    ) -> Optional[Link]:
+    async def update_link(self, link_id: int, user_id: int, **kwargs) -> Optional[Link]:
         """Update link properties."""
         link = await self.get_link(link_id, user_id)
         if not link:
@@ -168,9 +165,7 @@ class LinkService:
 
     async def accept_suggested_link(self, link_id: int, user_id: int) -> Optional[Link]:
         """Accept a suggested link, converting it to manual."""
-        return await self.update_link(
-            link_id, user_id, link_type=LinkType.MANUAL
-        )
+        return await self.update_link(link_id, user_id, link_type=LinkType.MANUAL)
 
     async def dismiss_suggested_link(self, link_id: int, user_id: int) -> bool:
         """Dismiss (delete) a suggested link."""
@@ -185,7 +180,7 @@ class LinkService:
         user_id: int,
         entity_type: EntityType,
         entity_id: int,
-        link_types: Optional[List[LinkType]] = None
+        link_types: Optional[List[LinkType]] = None,
     ) -> List[Link]:
         """
         Get all links FROM an entity (outgoing).
@@ -203,7 +198,7 @@ class LinkService:
             and_(
                 Link.user_id == user_id,
                 Link.source_type == entity_type,
-                Link.source_id == entity_id
+                Link.source_id == entity_id,
             )
         )
 
@@ -218,7 +213,7 @@ class LinkService:
         user_id: int,
         entity_type: EntityType,
         entity_id: int,
-        link_types: Optional[List[LinkType]] = None
+        link_types: Optional[List[LinkType]] = None,
     ) -> List[Link]:
         """
         Get all links TO an entity (backlinks).
@@ -236,7 +231,7 @@ class LinkService:
             and_(
                 Link.user_id == user_id,
                 Link.target_type == entity_type,
-                Link.target_id == entity_id
+                Link.target_id == entity_id,
             )
         )
 
@@ -247,10 +242,7 @@ class LinkService:
         return list(result.scalars().all())
 
     async def get_all_links_for(
-        self,
-        user_id: int,
-        entity_type: EntityType,
-        entity_id: int
+        self, user_id: int, entity_type: EntityType, entity_id: int
     ) -> Dict[str, List[Link]]:
         """
         Get both outgoing links and backlinks for an entity.
@@ -261,31 +253,25 @@ class LinkService:
         outgoing = await self.get_links_from(user_id, entity_type, entity_id)
         backlinks = await self.get_links_to(user_id, entity_type, entity_id)
 
-        return {
-            "outgoing": outgoing,
-            "backlinks": backlinks
-        }
+        return {"outgoing": outgoing, "backlinks": backlinks}
 
     async def get_suggested_links(
         self,
         user_id: int,
         entity_type: Optional[EntityType] = None,
         entity_id: Optional[int] = None,
-        limit: int = 20
+        limit: int = 20,
     ) -> List[Link]:
         """Get pending suggested links for review."""
         query = select(Link).where(
-            and_(
-                Link.user_id == user_id,
-                Link.link_type == LinkType.SUGGESTED
-            )
+            and_(Link.user_id == user_id, Link.link_type == LinkType.SUGGESTED)
         )
 
         if entity_type and entity_id:
             query = query.where(
                 or_(
                     and_(Link.source_type == entity_type, Link.source_id == entity_id),
-                    and_(Link.target_type == entity_type, Link.target_id == entity_id)
+                    and_(Link.target_type == entity_type, Link.target_id == entity_id),
                 )
             )
 
@@ -303,10 +289,18 @@ class LinkService:
         user_id: int,
         entity_types: Optional[List[EntityType]] = None,
         link_types: Optional[List[LinkType]] = None,
-        include_suggested: bool = False
+        include_suggested: bool = False,
+        include_disconnected: bool = True,
     ) -> Dict[str, Any]:
         """
         Get full knowledge graph data for visualization.
+
+        Args:
+            user_id: Owner user ID
+            entity_types: Optional filter by entity types
+            link_types: Optional filter by link types
+            include_suggested: Whether to include suggested links
+            include_disconnected: Whether to include nodes that have no links
 
         Returns:
             Dict with 'nodes' and 'edges' for graph rendering
@@ -324,58 +318,115 @@ class LinkService:
         links = list(result.scalars().all())
 
         # Build nodes set and edges list
-        nodes_set = set()
+        nodes_dict = {}  # Map "type:id" -> Node dict
         edges = []
 
         for link in links:
-            source_key = link.source_key
-            target_key = link.target_key
-
             # Filter by entity types if specified
             if entity_types:
                 if link.source_type not in entity_types or link.target_type not in entity_types:
                     continue
 
-            nodes_set.add((link.source_type.value, link.source_id))
-            nodes_set.add((link.target_type.value, link.target_id))
+            source_key = link.source_key
+            target_key = link.target_key
 
-            edges.append({
-                "id": link.id,
-                "source": source_key,
-                "target": target_key,
-                "type": link.link_type.value,
-                "strength": link.strength,
-                "label": link.label
-            })
+            # Add source node placeholder if missing (will be populated fully later or just exist as ID)
+            if source_key not in nodes_dict:
+                nodes_dict[source_key] = {
+                    "id": source_key,
+                    "type": link.source_type.value,
+                    "entity_id": link.source_id,
+                    "label": f"Entity {link.source_id}",  # Placeholder
+                }
 
-        # Convert nodes set to list
-        nodes = [
-            {"id": f"{etype}:{eid}", "type": etype, "entity_id": eid}
-            for etype, eid in nodes_set
-        ]
+            # Add target node placeholder if missing
+            if target_key not in nodes_dict:
+                nodes_dict[target_key] = {
+                    "id": target_key,
+                    "type": link.target_type.value,
+                    "entity_id": link.target_id,
+                    "label": f"Entity {link.target_id}",  # Placeholder
+                }
+
+            edges.append(
+                {
+                    "id": link.id,
+                    "source": source_key,
+                    "target": target_key,
+                    "type": link.link_type.value,
+                    "strength": link.strength,
+                    "label": link.label,
+                }
+            )
+
+        # --- Populate Disconnected Nodes & Enrich Labels ---
+
+        # Determine which entity types to fetch
+        types_to_fetch = (
+            entity_types
+            if entity_types
+            else [EntityType.NOTE, EntityType.DECK, EntityType.DOCUMENT, EntityType.QUIZ]
+        )
+
+        # Fetch all entities for requested types
+        if include_disconnected:
+            # If we want disconnected, we just fetch ALL items and merge/overwrite
+            pass
+        else:
+            # Only fetch items that are already in nodes_dict (to get their labels)
+            # But honestly, fetching all user items is usually cleaner/easier than many individual queries
+            # unless the user has thousands of items.
+            # For now, let's fetch all active items for each type to correctly populate labels AND adding disconnected ones.
+            pass
+
+        # Helper to process entities
+        async def process_entities(model, entity_type, label_field):
+            if entity_type not in types_to_fetch:
+                return
+
+            stmt = select(model).where(model.user_id == user_id)
+            # Add soft delete check if applicable (Note, Deck, Quiz, Document have SoftDeleteMixin)
+            if hasattr(model, "deleted_at"):
+                stmt = stmt.where(model.deleted_at.is_(None))
+
+            items = (await self.session.execute(stmt)).scalars().all()
+
+            for item in items:
+                key = f"{entity_type.value}:{item.id}"
+
+                # If we're including disconnected OR this node is already in the graph
+                if include_disconnected or key in nodes_dict:
+                    nodes_dict[key] = {
+                        "id": key,
+                        "type": entity_type.value,
+                        "entity_id": item.id,
+                        "label": getattr(item, label_field),
+                    }
+
+        # Run fetch operations concurrently-ish (sequentially awaited here but efficient enough)
+        await process_entities(Note, EntityType.NOTE, "title")
+        await process_entities(Deck, EntityType.DECK, "name")
+        await process_entities(Document, EntityType.DOCUMENT, "filename")
+        await process_entities(Quiz, EntityType.QUIZ, "title")
+        # Chat sessions might be separate or added here if needed, keeping to core content for now
+
+        nodes = list(nodes_dict.values())
 
         logger.info(
             "knowledge_graph_retrieved",
             user_id=user_id,
             node_count=len(nodes),
-            edge_count=len(edges)
+            edge_count=len(edges),
         )
 
         return {
             "nodes": nodes,
             "edges": edges,
-            "stats": {
-                "total_nodes": len(nodes),
-                "total_edges": len(edges)
-            }
+            "stats": {"total_nodes": len(nodes), "total_edges": len(edges)},
         }
 
     async def get_connected_entities(
-        self,
-        user_id: int,
-        entity_type: EntityType,
-        entity_id: int,
-        depth: int = 1
+        self, user_id: int, entity_type: EntityType, entity_id: int, depth: int = 1
     ) -> List[Dict[str, Any]]:
         """
         Get all entities connected to a given entity (up to specified depth).
@@ -407,25 +458,29 @@ class LinkService:
             for link in links_data["outgoing"]:
                 target_key = link.target_key
                 if target_key not in visited:
-                    connected.append({
-                        "type": link.target_type.value,
-                        "id": link.target_id,
-                        "link_type": link.link_type.value,
-                        "direction": "outgoing",
-                        "depth": current_depth
-                    })
+                    connected.append(
+                        {
+                            "type": link.target_type.value,
+                            "id": link.target_id,
+                            "link_type": link.link_type.value,
+                            "direction": "outgoing",
+                            "depth": current_depth,
+                        }
+                    )
                     await traverse(link.target_type, link.target_id, current_depth + 1)
 
             for link in links_data["backlinks"]:
                 source_key = link.source_key
                 if source_key not in visited:
-                    connected.append({
-                        "type": link.source_type.value,
-                        "id": link.source_id,
-                        "link_type": link.link_type.value,
-                        "direction": "incoming",
-                        "depth": current_depth
-                    })
+                    connected.append(
+                        {
+                            "type": link.source_type.value,
+                            "id": link.source_id,
+                            "link_type": link.link_type.value,
+                            "direction": "incoming",
+                            "depth": current_depth,
+                        }
+                    )
                     await traverse(link.source_type, link.source_id, current_depth + 1)
 
         await traverse(entity_type, entity_id, 1)
@@ -436,10 +491,7 @@ class LinkService:
     # -------------------------------------------------------------------------
 
     async def delete_links_for_entity(
-        self,
-        user_id: int,
-        entity_type: EntityType,
-        entity_id: int
+        self, user_id: int, entity_type: EntityType, entity_id: int
     ) -> int:
         """
         Delete all links to/from an entity (called when entity is deleted).
@@ -453,8 +505,8 @@ class LinkService:
                     Link.user_id == user_id,
                     or_(
                         and_(Link.source_type == entity_type, Link.source_id == entity_id),
-                        and_(Link.target_type == entity_type, Link.target_id == entity_id)
-                    )
+                        and_(Link.target_type == entity_type, Link.target_id == entity_id),
+                    ),
                 )
             )
         )
@@ -464,6 +516,6 @@ class LinkService:
         logger.info(
             "links_deleted_for_entity",
             entity=f"{entity_type.value}:{entity_id}",
-            count=deleted_count
+            count=deleted_count,
         )
         return deleted_count

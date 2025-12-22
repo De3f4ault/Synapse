@@ -5,11 +5,11 @@
  * Location: components/layout/AppShell.tsx
  */
 
-import React from 'react';
-import { Outlet } from 'react-router-dom';
-import { Header } from './Header';
+import React from "react";
+import { Outlet } from "react-router-dom";
+import { Header } from "./Header";
 
-import { GridPattern } from '@/components/ui/grid-pattern';
+import { GridPattern } from "@/components/ui/grid-pattern";
 
 /**
  * AppShell Component
@@ -21,26 +21,25 @@ import { GridPattern } from '@/components/ui/grid-pattern';
  */
 
 interface AppShellProps {
-    children?: React.ReactNode;
+  children?: React.ReactNode;
 }
 
 export function AppShell({ children }: AppShellProps) {
-    return (
-        <div className="relative h-screen flex flex-col bg-background text-foreground overflow-hidden">
-            {/* Header - Flex Item (No Overlap) */}
-            <Header className="flex-none z-50" />
+  return (
+    <div className="relative h-screen flex flex-col bg-background text-foreground overflow-hidden">
+      {/* Header - Flex Item (No Overlap) */}
+      <Header className="flex-none z-50" />
 
-            {/* Main Content Area - Fills remaining space */}
-            <main className="flex-1 relative overflow-hidden flex flex-col">
-                {/* Render child routes or passed children */}
-                {children || <Outlet />}
-            </main>
+      {/* Main Content Area - Fills remaining space */}
+      <main className="flex-1 relative overflow-hidden flex flex-col">
+        {/* Render child routes or passed children */}
+        {children || <Outlet />}
+      </main>
 
-            {/* Global Background - Grid Pattern */}
-            <GridPattern className="pointer-events-none -z-10" />
-        </div>
-    );
+      {/* Global Background - Grid Pattern */}
+      <GridPattern className="pointer-events-none -z-10" />
+    </div>
+  );
 }
-
 
 export default AppShell;

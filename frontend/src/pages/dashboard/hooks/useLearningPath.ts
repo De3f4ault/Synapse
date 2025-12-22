@@ -3,10 +3,10 @@
  * Hooks into dashboard data to create structured learning paths
  */
 
-import { useMemo } from 'react';
-import { generatePathways } from '../utils/pathwayGenerator';
-import type { DashboardData } from '../types/dashboard.types';
-import type { LearningPathway } from '../types/pathway.types';
+import { useMemo } from "react";
+import { generatePathways } from "../utils/pathwayGenerator";
+import type { DashboardData } from "../types/dashboard.types";
+import type { LearningPathway } from "../types/pathway.types";
 
 interface UseLearningPathReturn {
   pathways: LearningPathway[];
@@ -23,30 +23,36 @@ interface UseLearningPathReturn {
  * @param data - Dashboard data containing decks and cards
  * @returns Learning pathways with statistics
  */
-export function useLearningPath(data: DashboardData | undefined): UseLearningPathReturn {
+export function useLearningPath(
+  data: DashboardData | undefined,
+): UseLearningPathReturn {
   const pathways = useMemo(() => {
     if (!data) return [];
 
     try {
       return generatePathways(data);
     } catch (error) {
-      console.error('Error generating pathways:', error);
+      console.error("Error generating pathways:", error);
       return [];
     }
   }, [data]);
 
   const stats = useMemo(() => {
     const totalPathways = pathways.length;
-    const completedPathways = pathways.filter(p => p.completionPercentage === 100).length;
-    const inProgressPathways = pathways.filter(p =>
-    p.completionPercentage > 0 && p.completionPercentage < 100
+    const completedPathways = pathways.filter(
+      (p) => p.completionPercentage === 100,
+    ).length;
+    const inProgressPathways = pathways.filter(
+      (p) => p.completionPercentage > 0 && p.completionPercentage < 100,
     ).length;
 
-    const averageCompletion = totalPathways > 0
-    ? Math.round(
-      pathways.reduce((sum, p) => sum + p.completionPercentage, 0) / totalPathways
-    )
-    : 0;
+    const averageCompletion =
+      totalPathways > 0
+        ? Math.round(
+            pathways.reduce((sum, p) => sum + p.completionPercentage, 0) /
+              totalPathways,
+          )
+        : 0;
 
     return {
       totalPathways,
@@ -68,10 +74,10 @@ export function useLearningPath(data: DashboardData | undefined): UseLearningPat
  */
 export function usePathwayById(
   pathways: LearningPathway[],
-  pathwayId: string
+  pathwayId: string,
 ): LearningPathway | undefined {
   return useMemo(() => {
-    return pathways.find(p => p.id === pathwayId);
+    return pathways.find((p) => p.id === pathwayId);
   }, [pathways, pathwayId]);
 }
 
@@ -79,11 +85,11 @@ export function usePathwayById(
  * Get next recommended pathway to work on
  */
 export function useNextRecommendedPathway(
-  pathways: LearningPathway[]
+  pathways: LearningPathway[],
 ): LearningPathway | null {
   return useMemo(() => {
     // Filter incomplete pathways
-    const incomplete = pathways.filter(p => p.completionPercentage < 100);
+    const incomplete = pathways.filter((p) => p.completionPercentage < 100);
 
     if (incomplete.length === 0) return null;
 

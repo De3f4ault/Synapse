@@ -14,11 +14,7 @@ class DocumentUpload(BaseModel):
     # This schema is for additional metadata if needed
 
     class Config:
-        json_schema_extra = {
-            "example": {
-                "note": "Metadata can be included here if needed"
-            }
-        }
+        json_schema_extra = {"example": {"note": "Metadata can be included here if needed"}}
 
 
 class DocumentResponse(BaseModel):
@@ -31,10 +27,15 @@ class DocumentResponse(BaseModel):
     file_type: str = Field(description="File type (extension)")
     file_size: int = Field(description="File size in bytes")
     gemini_file_uri: Optional[str] = Field(default=None, description="Gemini Files API URI")
-    gemini_file_expires_at: Optional[datetime] = Field(default=None, description="Gemini file expiration")
-    processing_status: str = Field(description="Processing status (pending, processing, completed, failed)")
+    gemini_file_expires_at: Optional[datetime] = Field(
+        default=None, description="Gemini file expiration"
+    )
+    processing_status: str = Field(
+        description="Processing status (pending, processing, completed, failed)"
+    )
     page_count: Optional[int] = Field(default=None, description="Number of pages (for PDFs)")
     word_count: Optional[int] = Field(default=None, description="Word count")
+    ocr_performed: bool = Field(default=False, description="Whether OCR was used to extract text")
     metadata: Optional[Dict[str, Any]] = Field(default=None, description="Additional metadata")
     created_at: datetime = Field(description="Upload time")
     updated_at: datetime = Field(description="Last update time")
@@ -54,12 +55,9 @@ class DocumentResponse(BaseModel):
                 "processing_status": "completed",
                 "page_count": 150,
                 "word_count": 45000,
-                "metadata": {
-                    "author": "Jane Doe",
-                    "creation_date": "2024-01-01"
-                },
+                "metadata": {"author": "Jane Doe", "creation_date": "2024-01-01"},
                 "created_at": "2025-11-06T10:00:00Z",
-                "updated_at": "2025-11-06T10:30:00Z"
+                "updated_at": "2025-11-06T10:30:00Z",
             }
         }
 
@@ -90,10 +88,8 @@ class DocumentChunkResponse(BaseModel):
                 "start_char": 0,
                 "end_char": 512,
                 "score": 0.95,
-                "metadata": {
-                    "section": "Chapter 2: Plant Biology"
-                },
-                "created_at": "2025-11-06T10:30:00Z"
+                "metadata": {"section": "Chapter 2: Plant Biology"},
+                "created_at": "2025-11-06T10:30:00Z",
             }
         }
 
@@ -118,7 +114,7 @@ class DocumentProcessingStatus(BaseModel):
                 "message": "Processing chunks...",
                 "chunks_processed": 65,
                 "total_chunks": 100,
-                "error": None
+                "error": None,
             }
         }
 
@@ -135,10 +131,7 @@ class DocumentAnalysisRequest(BaseModel):
             "example": {
                 "document_id": 1,
                 "analysis_type": "summary",
-                "options": {
-                    "max_length": 500,
-                    "focus_areas": ["main_concepts", "key_findings"]
-                }
+                "options": {"max_length": 500, "focus_areas": ["main_concepts", "key_findings"]},
             }
         }
 
@@ -161,10 +154,10 @@ class DocumentAnalysisResponse(BaseModel):
                 "result": {
                     "summary": "This document covers the fundamentals of photosynthesis...",
                     "key_concepts": ["photosynthesis", "chloroplasts", "light reactions"],
-                    "main_topics": ["Plant Biology", "Energy Conversion"]
+                    "main_topics": ["Plant Biology", "Energy Conversion"],
                 },
                 "model_used": "gemini-1.5-flash",
                 "tokens_used": 1250,
-                "created_at": "2025-11-06T12:00:00Z"
+                "created_at": "2025-11-06T12:00:00Z",
             }
         }

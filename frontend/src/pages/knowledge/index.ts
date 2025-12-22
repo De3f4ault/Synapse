@@ -1,3 +1,3 @@
 // Knowledge Graph Module
-export { KnowledgeGraphPage } from './KnowledgeGraphPage';
-export { default } from './KnowledgeGraphPage';
+export { KnowledgeGraphPage } from "./KnowledgeGraphPage";
+export { default } from "./KnowledgeGraphPage";

@@ -3,8 +3,12 @@
  * Converts flashcard decks into structured learning pathways
  */
 
-import type { LearningPathway, PathwayTopic, TopicStatus } from '../types/pathway.types';
-import type { DashboardData } from '../types/dashboard.types';
+import type {
+  LearningPathway,
+  PathwayTopic,
+  TopicStatus,
+} from "../types/pathway.types";
+import type { DashboardData } from "../types/dashboard.types";
 
 /**
  * Generate learning pathways from dashboard data
@@ -16,16 +20,19 @@ export function generatePathways(data: DashboardData): LearningPathway[] {
   }
 
   // Group cards by deck
-  const deckMap = new Map<string, {
-    deckId: number;
-    deckName: string;
-    cards: any[];
-    tags?: string[];
-  }>();
+  const deckMap = new Map<
+    string,
+    {
+      deckId: number;
+      deckName: string;
+      cards: any[];
+      tags?: string[];
+    }
+  >();
 
-  data.dueCards.forEach(card => {
+  data.dueCards.forEach((card) => {
     const deckId = card.deck_id;
-    const deckName = card.deck_name || 'Unknown Deck';
+    const deckName = card.deck_name || "Unknown Deck";
 
     if (!deckMap.has(deckName)) {
       deckMap.set(deckName, {
@@ -56,7 +63,9 @@ export function generatePathways(data: DashboardData): LearningPathway[] {
   });
 
   // Sort by completion (incomplete first)
-  return pathways.sort((a, b) => a.completionPercentage - b.completionPercentage);
+  return pathways.sort(
+    (a, b) => a.completionPercentage - b.completionPercentage,
+  );
 }
 
 /**
@@ -68,36 +77,39 @@ function buildTopicsFromDeck(deck: {
   cards: any[];
 }): PathwayTopic[] {
   const totalCards = deck.cards.length;
-  const masteredCards = deck.cards.filter(c => c.learning_state === 'mastered').length;
+  const masteredCards = deck.cards.filter(
+    (c) => c.learning_state === "mastered",
+  ).length;
   // inProgressCards removed as unused
 
-  const completionPercentage = totalCards > 0
-    ? Math.round((masteredCards / totalCards) * 100)
-    : 0;
+  const completionPercentage =
+    totalCards > 0 ? Math.round((masteredCards / totalCards) * 100) : 0;
 
-  const averageAccuracy = deck.cards.reduce((sum, card) => {
-    return sum + (card.accuracy || 0);
-  }, 0) / (totalCards || 1) / 100; // Convert percentage to decimal
+  const averageAccuracy =
+    deck.cards.reduce((sum, card) => {
+      return sum + (card.accuracy || 0);
+    }, 0) /
+    (totalCards || 1) /
+    100; // Convert percentage to decimal
 
   const totalReviews = deck.cards.reduce((sum, card) => {
     return sum + (card.times_reviewed || 0);
   }, 0);
 
-  const status = calculateTopicStatus(
-    completionPercentage / 100,
-    totalReviews
-  );
+  const status = calculateTopicStatus(completionPercentage / 100, totalReviews);
 
-  return [{
-    id: `topic-${deck.deckId}`,
-    title: deck.deckName,
-    status,
-    completionPercentage,
-    accuracy: averageAccuracy,
-    reviewCount: totalReviews,
-    prerequisites: [],
-    deckId: deck.deckId,
-  }];
+  return [
+    {
+      id: `topic-${deck.deckId}`,
+      title: deck.deckName,
+      status,
+      completionPercentage,
+      accuracy: averageAccuracy,
+      reviewCount: totalReviews,
+      prerequisites: [],
+      deckId: deck.deckId,
+    },
+  ];
 }
 
 /**
@@ -105,12 +117,12 @@ function buildTopicsFromDeck(deck: {
  */
 export function calculateTopicStatus(
   accuracy: number,
-  reviewCount: number
+  reviewCount: number,
 ): TopicStatus {
-  if (reviewCount === 0) return 'available';
-  if (accuracy >= 0.85 && reviewCount >= 10) return 'mastered';
-  if (reviewCount > 0) return 'in-progress';
-  return 'available';
+  if (reviewCount === 0) return "available";
+  if (accuracy >= 0.85 && reviewCount >= 10) return "mastered";
+  if (reviewCount > 0) return "in-progress";
+  return "available";
 }
 
 /**
@@ -133,21 +145,21 @@ function getCategoryIcon(category: string): string {
   const categoryLower = category.toLowerCase();
 
   const iconMap: Record<string, string> = {
-    biology: '',
-    chemistry: '',
-    physics: '',
-    math: '',
-    mathematics: '',
-    history: '',
-    language: '',
-    english: '',
-    literature: '',
-    science: '',
-    computer: '',
-    programming: '',
-    geography: '',
-    art: '',
-    music: '',
+    biology: "",
+    chemistry: "",
+    physics: "",
+    math: "",
+    mathematics: "",
+    history: "",
+    language: "",
+    english: "",
+    literature: "",
+    science: "",
+    computer: "",
+    programming: "",
+    geography: "",
+    art: "",
+    music: "",
   };
 
   // Check for matches
@@ -157,7 +169,7 @@ function getCategoryIcon(category: string): string {
     }
   }
 
-  return ''; // Default icon
+  return ""; // Default icon
 }
 
 /**
@@ -166,23 +178,26 @@ function getCategoryIcon(category: string): string {
  */
 export function determinePrerequisites(
   topic: PathwayTopic,
-  allTopics: PathwayTopic[]
+  allTopics: PathwayTopic[],
 ): string[] {
   // Simple heuristic: if topic name suggests advanced content, mark earlier topics as prerequisites
   const prerequisites: string[] = [];
 
   const topicLower = topic.title.toLowerCase();
-  const isAdvanced = topicLower.includes('advanced') ||
-    topicLower.includes('ii') ||
-    topicLower.includes('2');
+  const isAdvanced =
+    topicLower.includes("advanced") ||
+    topicLower.includes("ii") ||
+    topicLower.includes("2");
 
   if (isAdvanced) {
     // Find basic version of this topic
-    allTopics.forEach(t => {
+    allTopics.forEach((t) => {
       const tLower = t.title.toLowerCase();
       if (
         t.id !== topic.id &&
-        (tLower.includes('basic') || tLower.includes('intro') || tLower.includes('i'))
+        (tLower.includes("basic") ||
+          tLower.includes("intro") ||
+          tLower.includes("i"))
       ) {
         prerequisites.push(t.id);
       }
@@ -197,11 +212,13 @@ export function determinePrerequisites(
  */
 export function isTopicLocked(
   topic: PathwayTopic,
-  completedTopicIds: Set<string>
+  completedTopicIds: Set<string>,
 ): boolean {
   if (topic.prerequisites.length === 0) return false;
 
-  return !topic.prerequisites.every(prereqId => completedTopicIds.has(prereqId));
+  return !topic.prerequisites.every((prereqId) =>
+    completedTopicIds.has(prereqId),
+  );
 }
 
 /**
@@ -209,11 +226,11 @@ export function isTopicLocked(
  */
 export function getNextUnlockedTopic(
   pathway: LearningPathway,
-  completedTopicIds: Set<string>
+  completedTopicIds: Set<string>,
 ): PathwayTopic | null {
   for (const topic of pathway.topics) {
     if (
-      topic.status !== 'mastered' &&
+      topic.status !== "mastered" &&
       !isTopicLocked(topic, completedTopicIds)
     ) {
       return topic;

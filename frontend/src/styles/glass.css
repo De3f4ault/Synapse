@@ -111,7 +111,7 @@
 }
 
 .glass-shimmer::before {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: -100%;
@@ -121,7 +121,7 @@
     90deg,
     transparent,
     rgba(255, 255, 255, 0.1),
-                              transparent
+    transparent
   );
   animation: shimmer 2s infinite;
 }

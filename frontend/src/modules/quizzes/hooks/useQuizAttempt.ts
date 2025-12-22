@@ -1,11 +1,13 @@
-import { useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import {
-    QuizzesService,
-} from '@/api/generated';
-import { QUERY_KEYS } from '@/lib/constants';
-import { useToast } from '@/hooks/use-toast';
-import type { AnswerSubmit, QuizAttemptStart, QuizResultResponse } from '@/api/generated';
+import { useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { QuizzesService } from "@/api/generated";
+import { QUERY_KEYS } from "@/lib/constants";
+import { useToast } from "@/hooks/use-toast";
+import type {
+  AnswerSubmit,
+  QuizAttemptStart,
+  QuizResultResponse,
+} from "@/api/generated";
 
 /**
  * Hook for managing quiz attempts
@@ -13,107 +15,109 @@ import type { AnswerSubmit, QuizAttemptStart, QuizResultResponse } from '@/api/g
  */
 
 interface UseQuizAttemptOptions {
-    quizId: number;
-    onComplete?: (result: QuizResultResponse) => void;
+  quizId: number;
+  onComplete?: (result: QuizResultResponse) => void;
 }
 
 export function useQuizAttempt({ quizId, onComplete }: UseQuizAttemptOptions) {
-    const [attempt, setAttempt] = useState<QuizAttemptStart | null>(null);
-    const [answers, setAnswers] = useState<Map<number, string>>(new Map());
-    const [startTime, setStartTime] = useState<number | null>(null);
-    const { toast } = useToast();
-    const queryClient = useQueryClient();
+  const [attempt, setAttempt] = useState<QuizAttemptStart | null>(null);
+  const [answers, setAnswers] = useState<Map<number, string>>(new Map());
+  const [startTime, setStartTime] = useState<number | null>(null);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
-    // Start quiz mutation
-    const { mutate: startQuiz, isPending: isStarting } = useMutation({
+  // Start quiz mutation
+  const { mutate: startQuiz, isPending: isStarting } = useMutation({
+    mutationFn: () =>
+      QuizzesService.startQuizAttemptApiV1QuizzesQuizIdStartPost(quizId),
+    onSuccess: (result) => {
+      setAttempt(result);
+      setStartTime(Date.now());
+      setAnswers(new Map());
+      toast({
+        title: "Quiz Started",
+        description: `${result.questions.length} questions to answer`,
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Failed to Start Quiz",
+        description:
+          error instanceof Error ? error.message : "An error occurred",
+        variant: "destructive",
+      });
+    },
+  });
 
-        mutationFn: () => QuizzesService.startQuizAttemptApiV1QuizzesQuizIdStartPost(quizId),
-        onSuccess: (result) => {
-            setAttempt(result);
-            setStartTime(Date.now());
-            setAnswers(new Map());
-            toast({
-                title: 'Quiz Started',
-                description: `${result.questions.length} questions to answer`,
-            });
-        },
-        onError: (error) => {
-            toast({
-                title: 'Failed to Start Quiz',
-                description: error instanceof Error ? error.message : 'An error occurred',
-                variant: 'destructive',
-            });
-        },
-    });
+  // Submit quiz mutation
+  const { mutate: submitQuiz, isPending: isSubmitting } = useMutation({
+    mutationFn: () => {
+      if (!attempt) throw new Error("No active attempt");
 
-    // Submit quiz mutation
-    const { mutate: submitQuiz, isPending: isSubmitting } = useMutation({
-        mutationFn: () => {
-            if (!attempt) throw new Error('No active attempt');
+      const answersList: AnswerSubmit[] = Array.from(answers.entries()).map(
+        ([questionId, answer]) => ({
+          question_id: questionId,
+          answer,
+        }),
+      );
 
-            const answersList: AnswerSubmit[] = Array.from(answers.entries()).map(
-                ([questionId, answer]) => ({
-                    question_id: questionId,
-                    answer,
-                })
-            );
+      return QuizzesService.submitQuizAttemptApiV1QuizzesAttemptsAttemptIdSubmitPost(
+        attempt.attempt_id,
+        answersList,
+      );
+    },
+    onSuccess: (result) => {
+      toast({
+        title: "Quiz Submitted",
+        description: `Score: ${result.percentage.toFixed(1)}%`,
+      });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.QUIZZES] });
+      onComplete?.(result);
+    },
+    onError: (error) => {
+      toast({
+        title: "Failed to Submit Quiz",
+        description:
+          error instanceof Error ? error.message : "An error occurred",
+        variant: "destructive",
+      });
+    },
+  });
 
-            return QuizzesService.submitQuizAttemptApiV1QuizzesAttemptsAttemptIdSubmitPost(
-                attempt.attempt_id,
-                answersList
-            );
-        },
-        onSuccess: (result) => {
-            toast({
-                title: 'Quiz Submitted',
-                description: `Score: ${result.percentage.toFixed(1)}%`,
-            });
-            queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.QUIZZES] });
-            onComplete?.(result);
-        },
-        onError: (error) => {
-            toast({
-                title: 'Failed to Submit Quiz',
-                description: error instanceof Error ? error.message : 'An error occurred',
-                variant: 'destructive',
-            });
-        },
-    });
+  // Set answer for a question
+  const setAnswer = (questionId: number, answer: string) => {
+    setAnswers((prev) => new Map(prev).set(questionId, answer));
+  };
 
-    // Set answer for a question
-    const setAnswer = (questionId: number, answer: string) => {
-        setAnswers((prev) => new Map(prev).set(questionId, answer));
-    };
+  // Get answer for a question
+  const getAnswer = (questionId: number): string | undefined => {
+    return answers.get(questionId);
+  };
 
-    // Get answer for a question
-    const getAnswer = (questionId: number): string | undefined => {
-        return answers.get(questionId);
-    };
+  // Calculate elapsed time
+  const getElapsedTime = (): number => {
+    if (!startTime) return 0;
+    return Math.floor((Date.now() - startTime) / 1000);
+  };
 
-    // Calculate elapsed time
-    const getElapsedTime = (): number => {
-        if (!startTime) return 0;
-        return Math.floor((Date.now() - startTime) / 1000);
-    };
+  // Check if all questions are answered
+  const isComplete = (): boolean => {
+    if (!attempt) return false;
+    return attempt.questions.every((q) => answers.has(q.id));
+  };
 
-    // Check if all questions are answered
-    const isComplete = (): boolean => {
-        if (!attempt) return false;
-        return attempt.questions.every((q) => answers.has(q.id));
-    };
-
-    return {
-        attempt,
-        answers,
-        startQuiz,
-        submitQuiz,
-        setAnswer,
-        getAnswer,
-        isStarting,
-        isSubmitting,
-        isComplete: isComplete(),
-        answeredCount: answers.size,
-        totalQuestions: attempt?.questions.length || 0,
-        elapsedTime: getElapsedTime(),
-    };
+  return {
+    attempt,
+    answers,
+    startQuiz,
+    submitQuiz,
+    setAnswer,
+    getAnswer,
+    isStarting,
+    isSubmitting,
+    isComplete: isComplete(),
+    answeredCount: answers.size,
+    totalQuestions: attempt?.questions.length || 0,
+    elapsedTime: getElapsedTime(),
+  };
 }

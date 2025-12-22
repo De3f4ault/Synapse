@@ -5,7 +5,6 @@ import time
 import structlog
 
 from app.core.ai.rag.pipeline.rag_pipeline import RAGPipeline
-from app.schemas.rag import SourceType, LLMEnhancementStrategy
 
 logger = structlog.get_logger(__name__)
 

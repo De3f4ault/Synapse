@@ -1,5 +1,5 @@
 // useWebSocket hook - Access WebSocket manager and connection state
-import { useWebSocketContext } from '../context/WebSocketProvider';
+import { useWebSocketContext } from "../context/WebSocketProvider";
 
 /**
  * Hook to access WebSocket manager and connection state
@@ -10,5 +10,5 @@ import { useWebSocketContext } from '../context/WebSocketProvider';
  * ```
  */
 export function useWebSocket() {
-    return useWebSocketContext();
+  return useWebSocketContext();
 }

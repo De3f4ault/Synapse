@@ -3,31 +3,34 @@
  * Shows user's current streak and motivational message
  */
 
-import { motion } from 'framer-motion';
-import { Flame, Calendar, TrendingUp } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import type { DashboardOverview } from '@/api/generated';
+import { motion } from "framer-motion";
+import { Flame, Calendar, TrendingUp } from "lucide-react";
+import { cn } from "@/lib/utils";
+import type { DashboardOverview } from "@/api/generated";
 
 interface WelcomeCardProps {
   overview: DashboardOverview | null;
   userName?: string;
 }
 
-export function WelcomeCard({ overview, userName = 'there' }: WelcomeCardProps) {
+export function WelcomeCard({
+  overview,
+  userName = "there",
+}: WelcomeCardProps) {
   const streak = overview?.study_streak_days || 0;
   const reviewsToday = overview?.cards_reviewed_today || 0;
 
   const getGreeting = () => {
     const hour = new Date().getHours();
-    if (hour < 12) return 'Good morning';
-    if (hour < 18) return 'Good afternoon';
-    return 'Good evening';
+    if (hour < 12) return "Good morning";
+    if (hour < 18) return "Good afternoon";
+    return "Good evening";
   };
 
   const getMotivation = () => {
-    if (streak >= 30) return 'Incredible consistency!';
-    if (streak >= 7) return 'Keep the momentum going!';
-    if (reviewsToday > 0) return 'Great progress today!';
+    if (streak >= 30) return "Incredible consistency!";
+    if (streak >= 7) return "Keep the momentum going!";
+    if (reviewsToday > 0) return "Great progress today!";
     return "Let's make today count!";
   };
 
@@ -53,14 +56,20 @@ export function WelcomeCard({ overview, userName = 'there' }: WelcomeCardProps) 
         <div className="grid grid-cols-3 gap-3">
           {/* Streak */}
           <div className="flex items-center gap-2 p-3 rounded-lg bg-white/5 border border-white/5">
-            <div className={cn(
-              "w-8 h-8 rounded-full flex items-center justify-center",
-              streak > 0 ? "bg-orange-500/20 text-orange-400 shadow-[0_0_15px_rgba(249,115,22,0.2)]" : "bg-slate-800 text-slate-500"
-            )}>
+            <div
+              className={cn(
+                "w-8 h-8 rounded-full flex items-center justify-center",
+                streak > 0
+                  ? "bg-orange-500/20 text-orange-400 shadow-[0_0_15px_rgba(249,115,22,0.2)]"
+                  : "bg-slate-800 text-slate-500",
+              )}
+            >
               <Flame className="w-4 h-4" />
             </div>
             <div>
-              <p className="text-xs text-slate-500 uppercase tracking-wide">Streak</p>
+              <p className="text-xs text-slate-500 uppercase tracking-wide">
+                Streak
+              </p>
               <p className="text-lg font-bold text-white">{streak}d</p>
             </div>
           </div>
@@ -71,7 +80,9 @@ export function WelcomeCard({ overview, userName = 'there' }: WelcomeCardProps) 
               <TrendingUp className="w-4 h-4" />
             </div>
             <div>
-              <p className="text-xs text-slate-500 uppercase tracking-wide">Today</p>
+              <p className="text-xs text-slate-500 uppercase tracking-wide">
+                Today
+              </p>
               <p className="text-lg font-bold text-white">{reviewsToday}</p>
             </div>
           </div>
@@ -82,8 +93,12 @@ export function WelcomeCard({ overview, userName = 'there' }: WelcomeCardProps) 
               <Calendar className="w-4 h-4" />
             </div>
             <div>
-              <p className="text-xs text-slate-500 uppercase tracking-wide">Cards</p>
-              <p className="text-lg font-bold text-white">{overview?.total_cards || 0}</p>
+              <p className="text-xs text-slate-500 uppercase tracking-wide">
+                Cards
+              </p>
+              <p className="text-lg font-bold text-white">
+                {overview?.total_cards || 0}
+              </p>
             </div>
           </div>
         </div>

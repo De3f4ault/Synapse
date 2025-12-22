@@ -9,31 +9,31 @@
     /* OKLCH Light Mode Colors */
     --background: 100% 0 0; /* oklch format */
     --foreground: 14.5% 0 0;
-    
+
     --card: 100% 0 0;
     --card-foreground: 14.5% 0 0;
-    
+
     --popover: 100% 0 0;
     --popover-foreground: 14.5% 0 0;
-    
+
     --primary: 20.5% 0 0;
     --primary-foreground: 98.5% 0 0;
-    
+
     --secondary: 97% 0 0;
     --secondary-foreground: 20.5% 0 0;
-    
+
     --muted: 97% 0 0;
     --muted-foreground: 55.6% 0 0;
-    
+
     --accent: 97% 0 0;
     --accent-foreground: 20.5% 0 0;
-    
+
     --destructive: 57.7% 24.5% 27.325;
-    
+
     --border: 92.2% 0 0;
     --input: 92.2% 0 0;
     --ring: 70.8% 0 0;
-    
+
     /* Sidebar colors for light mode */
     --sidebar: 98.5% 0 0;
     --sidebar-foreground: 14.5% 0 0;
@@ -49,31 +49,31 @@
     /* OKLCH Dark Mode Colors */
     --background: 14.5% 0 0;
     --foreground: 98.5% 0 0;
-    
+
     --card: 20.5% 0 0;
     --card-foreground: 98.5% 0 0;
-    
+
     --popover: 20.5% 0 0;
     --popover-foreground: 98.5% 0 0;
-    
+
     --primary: 92.2% 0 0;
     --primary-foreground: 20.5% 0 0;
-    
+
     --secondary: 26.9% 0 0;
     --secondary-foreground: 98.5% 0 0;
-    
+
     --muted: 26.9% 0 0;
     --muted-foreground: 70.8% 0 0;
-    
+
     --accent: 26.9% 0 0;
     --accent-foreground: 98.5% 0 0;
-    
+
     --destructive: 70.4% 19.1% 22.216;
-    
+
     --border: 100% 0 0 / 10%;
     --input: 100% 0 0 / 15%;
     --ring: 55.6% 0 0;
-    
+
     /* Sidebar colors for dark mode */
     --sidebar: 20.5% 0 0;
     --sidebar-foreground: 98.5% 0 0;

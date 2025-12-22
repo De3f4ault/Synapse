@@ -1,4 +1,4 @@
-import { useMediaQuery } from './useMediaQuery';
+import { useMediaQuery } from "./useMediaQuery";
 
 /**
  * usePrefersReducedMotion Hook
@@ -26,7 +26,7 @@ import { useMediaQuery } from './useMediaQuery';
  */
 
 export function usePrefersReducedMotion(): boolean {
-    return useMediaQuery('(prefers-reduced-motion: reduce)');
+  return useMediaQuery("(prefers-reduced-motion: reduce)");
 }
 
 /**
@@ -47,10 +47,10 @@ export function usePrefersReducedMotion(): boolean {
  * </motion.div>
  */
 export function useShouldAnimate(enableAnimations: boolean = true): boolean {
-    const prefersReducedMotion = usePrefersReducedMotion();
+  const prefersReducedMotion = usePrefersReducedMotion();
 
-    // Animations should only be enabled if:
-    // 1. User hasn't requested reduced motion AND
-    // 2. App setting allows animations
-    return !prefersReducedMotion && enableAnimations;
+  // Animations should only be enabled if:
+  // 1. User hasn't requested reduced motion AND
+  // 2. App setting allows animations
+  return !prefersReducedMotion && enableAnimations;
 }

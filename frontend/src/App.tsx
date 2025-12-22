@@ -1,7 +1,7 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Router } from './router';
-import { Toaster } from '@/components/ui/toaster';
-import { WebSocketProvider } from '@/api/websocket/context/WebSocketProvider';
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { Router } from "./router";
+import { Toaster } from "@/components/ui/toaster";
+import { WebSocketProvider } from "@/api/websocket/context/WebSocketProvider";
 
 /**
  * App Component
@@ -13,24 +13,24 @@ import { WebSocketProvider } from '@/api/websocket/context/WebSocketProvider';
  */
 
 const queryClient = new QueryClient({
-    defaultOptions: {
-        queries: {
-            retry: 1,
-            refetchOnWindowFocus: false,
-            staleTime: 5 * 60 * 1000,
-        },
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: false,
+      staleTime: 5 * 60 * 1000,
     },
+  },
 });
 
 function App() {
-    return (
-        <QueryClientProvider client={queryClient}>
-        <WebSocketProvider>
+  return (
+    <QueryClientProvider client={queryClient}>
+      <WebSocketProvider>
         <Router />
         <Toaster />
-        </WebSocketProvider>
-        </QueryClientProvider>
-    );
+      </WebSocketProvider>
+    </QueryClientProvider>
+  );
 }
 
 export default App;

@@ -16,6 +16,7 @@ from sqlalchemy import (
     JSON,
     Enum as SQLEnum,
     Text,
+    Boolean,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -25,6 +26,7 @@ from .mixins import TimestampMixin, SoftDeleteMixin, UserOwnedMixin
 
 class ProcessingStatus(str, enum.Enum):
     """Enum for document processing states."""
+
     PENDING = "pending"
     PROCESSING = "processing"
     COMPLETED = "completed"
@@ -42,50 +44,31 @@ class Document(Base, TimestampMixin, SoftDeleteMixin, UserOwnedMixin):
     __tablename__ = "documents"
 
     # Primary Key
-    id: Mapped[int] = mapped_column(
-        primary_key=True,
-        autoincrement=True,
-        doc="Primary key"
-    )
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True, doc="Primary key")
 
     # File Information
-    filename: Mapped[str] = mapped_column(
-        String(255),
-        nullable=False,
-        doc="Original filename"
-    )
+    filename: Mapped[str] = mapped_column(String(255), nullable=False, doc="Original filename")
 
     file_path: Mapped[str] = mapped_column(
-        String(500),
-        nullable=False,
-        doc="Path to stored file on disk"
+        String(500), nullable=False, doc="Path to stored file on disk"
     )
 
     file_type: Mapped[str] = mapped_column(
-        String(50),
-        nullable=False,
-        doc="File type/extension (e.g., 'pdf', 'docx')"
+        String(50), nullable=False, doc="File type/extension (e.g., 'pdf', 'docx')"
     )
 
-    file_size: Mapped[int] = mapped_column(
-        Integer,
-        nullable=False,
-        doc="File size in bytes"
-    )
+    file_size: Mapped[int] = mapped_column(Integer, nullable=False, doc="File size in bytes")
 
     # Gemini Files API Integration
     gemini_file_uri: Mapped[Optional[str]] = mapped_column(
-        String(500),
-        nullable=True,
-        default=None,
-        doc="URI of file uploaded to Gemini Files API"
+        String(500), nullable=True, default=None, doc="URI of file uploaded to Gemini Files API"
     )
 
     gemini_file_expires_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True),
         nullable=True,
         default=None,
-        doc="Expiration timestamp for Gemini file (48 hours after upload)"
+        doc="Expiration timestamp for Gemini file (48 hours after upload)",
     )
 
     # Processing Status
@@ -94,38 +77,47 @@ class Document(Base, TimestampMixin, SoftDeleteMixin, UserOwnedMixin):
         default=ProcessingStatus.PENDING,
         nullable=False,
         index=True,
-        doc="Current processing status"
+        doc="Current processing status",
     )
 
     # Content Metadata
     page_count: Mapped[Optional[int]] = mapped_column(
-        Integer,
-        nullable=True,
-        default=None,
-        doc="Number of pages (for PDFs)"
+        Integer, nullable=True, default=None, doc="Number of pages (for PDFs)"
     )
 
     word_count: Mapped[Optional[int]] = mapped_column(
-        Integer,
-        nullable=True,
-        default=None,
-        doc="Approximate word count"
+        Integer, nullable=True, default=None, doc="Approximate word count"
+    )
+
+    ocr_performed: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, doc="Whether OCR was used to extract text"
     )
 
     file_metadata: Mapped[Optional[dict]] = mapped_column(
-        JSON,
-        nullable=True,
-        default=None,
-        doc="Additional metadata (author, creation date, etc.)"
+        JSON, nullable=True, default=None, doc="Additional metadata (author, creation date, etc.)"
     )
 
-    # Extracted Content
-
     content_text: Mapped[Optional[str]] = mapped_column(
-        Text,
-        nullable=True,
-        default=None,
-        doc="Extracted text content from the document"
+        Text, nullable=True, default=None, doc="Extracted text content from the document"
+    )
+
+    # User Annotations & Classification
+    sector: Mapped[Optional[str]] = mapped_column(
+        String(100), nullable=True, default="Uncategorized", doc="User-defined sector/category"
+    )
+
+    notes: Mapped[Optional[str]] = mapped_column(
+        Text, nullable=True, default=None, doc="User notes attached to this document"
+    )
+
+    # AI-Generated Content (cached)
+    ai_summary: Mapped[Optional[str]] = mapped_column(
+        Text, nullable=True, default=None, doc="AI-generated summary of the document"
+    )
+
+    # Reading Progress (0.0 to 1.0)
+    reading_progress: Mapped[Optional[float]] = mapped_column(
+        nullable=True, default=0.0, doc="Reading progress (0.0 = start, 1.0 = finished)"
     )
     # ----------------------------------------------------------------------
 
@@ -151,4 +143,5 @@ class Document(Base, TimestampMixin, SoftDeleteMixin, UserOwnedMixin):
         if not self.gemini_file_expires_at:
             return True
         from datetime import datetime, timezone
+
         return datetime.now(timezone.utc) > self.gemini_file_expires_at

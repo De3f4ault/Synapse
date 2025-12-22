@@ -27,21 +27,19 @@ class BaseTask(Task):
         """Handle task failure."""
         logger.error(
             f"Task {self.name} [{task_id}] failed: {exc}",
-            extra={"task_id": task_id, "args": args, "kwargs": kwargs}
+            extra={"task_id": task_id, "args": args, "kwargs": kwargs},
         )
 
     def on_retry(self, exc, task_id, args, kwargs, einfo):
         """Handle task retry."""
         logger.warning(
             f"Task {self.name} [{task_id}] retrying: {exc}",
-            extra={"task_id": task_id, "retry_count": self.request.retries}
+            extra={"task_id": task_id, "retry_count": self.request.retries},
         )
 
     def on_success(self, retval, task_id, args, kwargs):
         """Handle task success."""
-        logger.info(
-            f"Task {self.name} [{task_id}] completed successfully"
-        )
+        logger.info(f"Task {self.name} [{task_id}] completed successfully")
 
 
 @shared_task(
@@ -82,9 +80,7 @@ def process_document_task(self, document_id: int) -> Dict[str, Any]:
         async def process():
             async with AsyncSessionLocal() as session:
                 # Get document
-                result = await session.execute(
-                    select(Document).where(Document.id == document_id)
-                )
+                result = await session.execute(select(Document).where(Document.id == document_id))
                 document = result.scalar_one_or_none()
 
                 if not document:
@@ -98,8 +94,7 @@ def process_document_task(self, document_id: int) -> Dict[str, Any]:
                     # Step 1: Process document (extract text and chunk)
                     processor = DocumentProcessor()
                     extracted_data = processor.process_document(
-                        file_path=document.file_path,
-                        file_type=document.file_type
+                        file_path=document.file_path, file_type=document.file_type
                     )
 
                     # Update document with extracted content
@@ -107,12 +102,11 @@ def process_document_task(self, document_id: int) -> Dict[str, Any]:
                     document.page_count = extracted_data.get("page_count")
                     document.word_count = extracted_data["word_count"]
                     document.file_metadata = extracted_data.get("metadata", {})
+                    document.ocr_performed = extracted_data.get("ocr_performed", False)
 
                     # Step 2: Chunking
                     chunks_data = processor.chunk_text(
-                        text=extracted_data["content_text"],
-                        chunk_size=1000,
-                        overlap=200
+                        text=extracted_data["content_text"], chunk_size=1000, overlap=200
                     )
 
                     # Step 3: Save chunks to database
@@ -123,7 +117,7 @@ def process_document_task(self, document_id: int) -> Dict[str, Any]:
                             content=chunk_data["content"],
                             chunk_index=chunk_data["chunk_index"],
                             start_char=chunk_data["start_char"],
-                            end_char=chunk_data["end_char"]
+                            end_char=chunk_data["end_char"],
                         )
                         session.add(chunk)
                         chunk_objects.append(chunk)
@@ -131,22 +125,16 @@ def process_document_task(self, document_id: int) -> Dict[str, Any]:
                     # Flush to get chunk IDs
                     await session.flush()
 
-                    logger.info(
-                        f"Document {document_id}: Created {len(chunk_objects)} chunks"
-                    )
+                    logger.info(f"Document {document_id}: Created {len(chunk_objects)} chunks")
 
                     # Step 4: Generate and store embeddings
                     embedding_service = DocumentEmbeddingService()
 
                     embedding_stats = await embedding_service.process_document_embeddings(
-                        document_id=document.id,
-                        chunks=chunk_objects,
-                        session=session
+                        document_id=document.id, chunks=chunk_objects, session=session
                     )
 
-                    logger.info(
-                        f"Document {document_id}: Generated embeddings - {embedding_stats}"
-                    )
+                    logger.info(f"Document {document_id}: Generated embeddings - {embedding_stats}")
 
                     # Step 5: Update final status
                     document.processing_status = ProcessingStatus.COMPLETED
@@ -158,12 +146,11 @@ def process_document_task(self, document_id: int) -> Dict[str, Any]:
                         "chunks_created": len(chunk_objects),
                         "embeddings_stored": embedding_stats.get("embeddings_stored", 0),
                         "word_count": extracted_data["word_count"],
-                        "page_count": extracted_data.get("page_count")
+                        "page_count": extracted_data.get("page_count"),
+                        "ocr_performed": extracted_data.get("ocr_performed", False),
                     }
 
-                    logger.info(
-                        f"Document {document_id} processed successfully: {result_stats}"
-                    )
+                    logger.info(f"Document {document_id} processed successfully: {result_stats}")
 
                     return result_stats
 
@@ -172,8 +159,7 @@ def process_document_task(self, document_id: int) -> Dict[str, Any]:
                     document.processing_status = ProcessingStatus.FAILED
                     await session.commit()
                     logger.error(
-                        f"Document {document_id} processing failed: {str(e)}",
-                        exc_info=True
+                        f"Document {document_id} processing failed: {str(e)}", exc_info=True
                     )
                     raise
 
@@ -182,10 +168,7 @@ def process_document_task(self, document_id: int) -> Dict[str, Any]:
         return result
 
     except Exception as e:
-        logger.error(
-            f"Error processing document {document_id}: {str(e)}",
-            exc_info=True
-        )
+        logger.error(f"Error processing document {document_id}: {str(e)}", exc_info=True)
         raise
 
 
@@ -221,10 +204,7 @@ def retry_failed_webhooks_task(self) -> Dict[str, int]:
 
         stats = asyncio.run(run_retry())
 
-        logger.info(
-            "Webhook retry job completed",
-            extra=stats
-        )
+        logger.info("Webhook retry job completed", extra=stats)
 
         return stats
 
@@ -240,13 +220,7 @@ def retry_failed_webhooks_task(self) -> Dict[str, int]:
     soft_time_limit=30,
     time_limit=60,
 )
-def send_email_task(
-    self,
-    to: str,
-    subject: str,
-    body: str,
-    html: bool = False
-) -> bool:
+def send_email_task(self, to: str, subject: str, body: str, html: bool = False) -> bool:
     """
     Send email asynchronously.
 
@@ -279,12 +253,7 @@ def send_email_task(
     soft_time_limit=600,
     time_limit=900,
 )
-def generate_report_task(
-    self,
-    report_type: str,
-    user_id: str,
-    parameters: Dict[str, Any]
-) -> str:
+def generate_report_task(self, report_type: str, user_id: str, parameters: Dict[str, Any]) -> str:
     """
     Generate report asynchronously.
 
@@ -333,6 +302,7 @@ def cleanup_task(self, cleanup_type: str) -> Dict[str, int]:
 
         if cleanup_type == "temp_files":
             from ...services.storage.manager import StorageManager
+
             stats["files_deleted"] = 0
 
         elif cleanup_type == "old_logs":

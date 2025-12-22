@@ -10,62 +10,62 @@ import { ChatConversationView } from "./chat-conversation-view";
 import { useChatMessages, useSendMessage } from "../hooks/useChatMessages";
 
 interface ChatMainProps {
-    sessionId: number;
+  sessionId: number;
 }
 
 export function ChatMain({ sessionId }: ChatMainProps) {
-    const [message, setMessage] = useState("");
+  const [message, setMessage] = useState("");
 
-    // Fetch messages for this session
-    const { data: messages = [], isLoading } = useChatMessages(sessionId);
+  // Fetch messages for this session
+  const { data: messages = [], isLoading } = useChatMessages(sessionId);
 
-    // Send message mutation
-    const sendMessageMutation = useSendMessage(sessionId);
+  // Send message mutation
+  const sendMessageMutation = useSendMessage(sessionId);
 
-    const isConversationStarted = messages.length > 0;
+  const isConversationStarted = messages.length > 0;
 
-    const handleSend = () => {
-        if (!message.trim()) return;
+  const handleSend = () => {
+    if (!message.trim()) return;
 
-        sendMessageMutation.mutate(message, {
-            onSuccess: () => {
-                setMessage("");
-            },
-        });
-    };
-
-    const handleReset = () => {
-        // Navigate to new session or clear current
-        // For now, just clear the input
+    sendMessageMutation.mutate(message, {
+      onSuccess: () => {
         setMessage("");
-    };
+      },
+    });
+  };
 
-    if (isLoading) {
-        return (
-            <div className="flex h-full items-center justify-center">
-                <p className="text-muted-foreground">Loading...</p>
-            </div>
-        );
-    }
+  const handleReset = () => {
+    // Navigate to new session or clear current
+    // For now, just clear the input
+    setMessage("");
+  };
 
-    if (isConversationStarted) {
-        return (
-            <ChatConversationView
-                messages={messages}
-                message={message}
-                onMessageChange={setMessage}
-                onSend={handleSend}
-                onReset={handleReset}
-                isSending={sendMessageMutation.isPending}
-            />
-        );
-    }
-
+  if (isLoading) {
     return (
-        <ChatWelcomeScreen
-            message={message}
-            onMessageChange={setMessage}
-            onSend={handleSend}
-        />
+      <div className="flex h-full items-center justify-center">
+        <p className="text-muted-foreground">Loading...</p>
+      </div>
     );
+  }
+
+  if (isConversationStarted) {
+    return (
+      <ChatConversationView
+        messages={messages}
+        message={message}
+        onMessageChange={setMessage}
+        onSend={handleSend}
+        onReset={handleReset}
+        isSending={sendMessageMutation.isPending}
+      />
+    );
+  }
+
+  return (
+    <ChatWelcomeScreen
+      message={message}
+      onMessageChange={setMessage}
+      onSend={handleSend}
+    />
+  );
 }

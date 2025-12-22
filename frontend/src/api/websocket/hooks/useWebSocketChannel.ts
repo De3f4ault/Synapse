@@ -1,7 +1,7 @@
 // useWebSocketChannel hook - Subscribe to all events from a channel
-import { useEffect, useRef } from 'react';
-import { useWebSocket } from './useWebSocket';
-import type { MessageHandler } from '../types';
+import { useEffect, useRef } from "react";
+import { useWebSocket } from "./useWebSocket";
+import type { MessageHandler } from "../types";
 
 /**
  * Hook to subscribe to all events from a channel
@@ -21,40 +21,42 @@ import type { MessageHandler } from '../types';
  * ```
  */
 export function useWebSocketChannel<T = any>(
-    channel: string,
-    handler: (event: string, data: T) => void,
-                                             dependencies: any[] = []
+  channel: string,
+  handler: (event: string, data: T) => void,
+  dependencies: any[] = [],
 ): void {
-    const { manager, isConnected } = useWebSocket();
-    const handlerRef = useRef(handler);
+  const { manager, isConnected } = useWebSocket();
+  const handlerRef = useRef(handler);
 
-    // Update handler ref when it changes
-    useEffect(() => {
-        handlerRef.current = handler;
-    }, [handler]);
+  // Update handler ref when it changes
+  useEffect(() => {
+    handlerRef.current = handler;
+  }, [handler]);
 
-    useEffect(() => {
-        if (!manager || !isConnected) {
-            return;
-        }
+  useEffect(() => {
+    if (!manager || !isConnected) {
+      return;
+    }
 
-        // Create message handler that passes all events to the handler
-        const messageHandler: MessageHandler = (message) => {
-            const eventType = message.type || message.event || 'unknown';
-            const eventData = message.data || message;
+    // Create message handler that passes all events to the handler
+    const messageHandler: MessageHandler = (message) => {
+      const eventType = message.type || message.event || "unknown";
+      const eventData = message.data || message;
 
-            handlerRef.current(eventType, eventData);
-        };
+      handlerRef.current(eventType, eventData);
+    };
 
-        // Subscribe to channel
-        const unsubscribe = manager.subscribe(channel, messageHandler);
+    // Subscribe to channel
+    const unsubscribe = manager.subscribe(channel, messageHandler);
 
-        console.log(`[useWebSocketChannel] Subscribed to channel: ${channel}`);
+    console.log(`[useWebSocketChannel] Subscribed to channel: ${channel}`);
 
-        // Cleanup
-        return () => {
-            unsubscribe();
-            console.log(`[useWebSocketChannel] Unsubscribed from channel: ${channel}`);
-        };
-    }, [manager, isConnected, channel, ...dependencies]);
+    // Cleanup
+    return () => {
+      unsubscribe();
+      console.log(
+        `[useWebSocketChannel] Unsubscribed from channel: ${channel}`,
+      );
+    };
+  }, [manager, isConnected, channel, ...dependencies]);
 }

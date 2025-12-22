@@ -22,8 +22,10 @@ router = APIRouter()
 # Request/Response Schemas
 # ============================================================================
 
+
 class LinkCreate(BaseModel):
     """Link creation request."""
+
     source_type: EntityType
     source_id: int
     target_type: EntityType
@@ -36,6 +38,7 @@ class LinkCreate(BaseModel):
 
 class LinkUpdate(BaseModel):
     """Link update request."""
+
     strength: Optional[float] = Field(None, ge=0.0, le=1.0)
     label: Optional[str] = Field(None, max_length=255)
     link_type: Optional[LinkType] = None
@@ -43,6 +46,7 @@ class LinkUpdate(BaseModel):
 
 class LinkResponse(BaseModel):
     """Link response."""
+
     id: int
     source_type: EntityType
     source_id: int
@@ -61,19 +65,23 @@ class LinkResponse(BaseModel):
 
 class EntityLinksResponse(BaseModel):
     """Response for all links associated with an entity."""
+
     outgoing: List[LinkResponse]
     backlinks: List[LinkResponse]
 
 
 class GraphNode(BaseModel):
     """Node in knowledge graph."""
+
     id: str
     type: str
     entity_id: int
+    label: Optional[str] = None
 
 
 class GraphEdge(BaseModel):
     """Edge in knowledge graph."""
+
     id: int
     source: str
     target: str
@@ -84,12 +92,14 @@ class GraphEdge(BaseModel):
 
 class GraphStats(BaseModel):
     """Graph statistics."""
+
     total_nodes: int
     total_edges: int
 
 
 class KnowledgeGraphResponse(BaseModel):
     """Knowledge graph data for visualization."""
+
     nodes: List[GraphNode]
     edges: List[GraphEdge]
     stats: GraphStats
@@ -97,6 +107,7 @@ class KnowledgeGraphResponse(BaseModel):
 
 class ConnectedEntityResponse(BaseModel):
     """Connected entity info."""
+
     type: str
     id: int
     link_type: str
@@ -106,6 +117,7 @@ class ConnectedEntityResponse(BaseModel):
 
 class MessageResponse(BaseModel):
     """Simple message response."""
+
     message: str
 
 
@@ -113,11 +125,12 @@ class MessageResponse(BaseModel):
 # Endpoints
 # ============================================================================
 
+
 @router.get(
     "",
     response_model=List[LinkResponse],
     summary="List all links",
-    description="Get all links for the current user"
+    description="Get all links for the current user",
 )
 async def list_links(
     link_type: Optional[LinkType] = Query(None, description="Filter by link type"),
@@ -126,7 +139,7 @@ async def list_links(
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(50, ge=1, le=100, description="Items per page"),
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """List user's links with optional filtering."""
     from sqlalchemy import select, and_
@@ -154,12 +167,12 @@ async def list_links(
     response_model=LinkResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Create link",
-    description="Create a new link between two entities"
+    description="Create a new link between two entities",
 )
 async def create_link(
     link_data: LinkCreate,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """Create a new link between entities."""
     service = LinkService(db)
@@ -173,7 +186,7 @@ async def create_link(
         link_type=link_data.link_type,
         strength=link_data.strength,
         label=link_data.label,
-        metadata=link_data.link_metadata
+        metadata=link_data.link_metadata,
     )
 
     return LinkResponse.model_validate(link)
@@ -183,14 +196,16 @@ async def create_link(
     "/graph",
     response_model=KnowledgeGraphResponse,
     summary="Get knowledge graph",
-    description="Get full knowledge graph data for visualization"
+    description="Get full knowledge graph data for visualization",
 )
 async def get_knowledge_graph(
-    entity_types: Optional[str] = Query(None, description="Filter by entity types (comma-separated)"),
+    entity_types: Optional[str] = Query(
+        None, description="Filter by entity types (comma-separated)"
+    ),
     link_types: Optional[str] = Query(None, description="Filter by link types (comma-separated)"),
     include_suggested: bool = Query(False, description="Include suggested links"),
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """Get knowledge graph for visualization."""
     service = LinkService(db)
@@ -208,13 +223,13 @@ async def get_knowledge_graph(
         user_id=current_user.id,
         entity_types=entity_type_list,
         link_types=link_type_list,
-        include_suggested=include_suggested
+        include_suggested=include_suggested,
     )
 
     return KnowledgeGraphResponse(
         nodes=[GraphNode(**node) for node in graph_data["nodes"]],
         edges=[GraphEdge(**edge) for edge in graph_data["edges"]],
-        stats=GraphStats(**graph_data["stats"])
+        stats=GraphStats(**graph_data["stats"]),
     )
 
 
@@ -222,26 +237,24 @@ async def get_knowledge_graph(
     "/entity/{entity_type}/{entity_id}",
     response_model=EntityLinksResponse,
     summary="Get entity links",
-    description="Get all links to and from a specific entity"
+    description="Get all links to and from a specific entity",
 )
 async def get_entity_links(
     entity_type: EntityType,
     entity_id: int,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """Get all links for a specific entity."""
     service = LinkService(db)
 
     links_data = await service.get_all_links_for(
-        user_id=current_user.id,
-        entity_type=entity_type,
-        entity_id=entity_id
+        user_id=current_user.id, entity_type=entity_type, entity_id=entity_id
     )
 
     return EntityLinksResponse(
         outgoing=[LinkResponse.model_validate(link) for link in links_data["outgoing"]],
-        backlinks=[LinkResponse.model_validate(link) for link in links_data["backlinks"]]
+        backlinks=[LinkResponse.model_validate(link) for link in links_data["backlinks"]],
     )
 
 
@@ -249,23 +262,20 @@ async def get_entity_links(
     "/entity/{entity_type}/{entity_id}/connected",
     response_model=List[ConnectedEntityResponse],
     summary="Get connected entities",
-    description="Get all entities connected to a specific entity (traverses graph)"
+    description="Get all entities connected to a specific entity (traverses graph)",
 )
 async def get_connected_entities(
     entity_type: EntityType,
     entity_id: int,
     depth: int = Query(1, ge=1, le=3, description="How many hops to traverse"),
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """Get entities connected to a specific entity."""
     service = LinkService(db)
 
     connected = await service.get_connected_entities(
-        user_id=current_user.id,
-        entity_type=entity_type,
-        entity_id=entity_id,
-        depth=depth
+        user_id=current_user.id, entity_type=entity_type, entity_id=entity_id, depth=depth
     )
 
     return [ConnectedEntityResponse(**c) for c in connected]
@@ -275,23 +285,20 @@ async def get_connected_entities(
     "/suggested",
     response_model=List[LinkResponse],
     summary="Get suggested links",
-    description="Get AI-suggested links pending user review"
+    description="Get AI-suggested links pending user review",
 )
 async def get_suggested_links(
     entity_type: Optional[EntityType] = Query(None, description="Filter by entity type"),
     entity_id: Optional[int] = Query(None, description="Filter by entity ID"),
     limit: int = Query(20, ge=1, le=100, description="Maximum results"),
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """Get suggested links for review."""
     service = LinkService(db)
 
     suggested = await service.get_suggested_links(
-        user_id=current_user.id,
-        entity_type=entity_type,
-        entity_id=entity_id,
-        limit=limit
+        user_id=current_user.id, entity_type=entity_type, entity_id=entity_id, limit=limit
     )
 
     return [LinkResponse.model_validate(link) for link in suggested]
@@ -301,22 +308,17 @@ async def get_suggested_links(
     "/{link_id}",
     response_model=LinkResponse,
     summary="Get link",
-    description="Get a specific link by ID"
+    description="Get a specific link by ID",
 )
 async def get_link(
-    link_id: int,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    link_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
 ):
     """Get a specific link."""
     service = LinkService(db)
     link = await service.get_link(link_id, current_user.id)
 
     if not link:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Link not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Link not found")
 
     return LinkResponse.model_validate(link)
 
@@ -325,13 +327,13 @@ async def get_link(
     "/{link_id}",
     response_model=LinkResponse,
     summary="Update link",
-    description="Update link properties"
+    description="Update link properties",
 )
 async def update_link(
     link_id: int,
     link_data: LinkUpdate,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """Update an existing link."""
     service = LinkService(db)
@@ -340,10 +342,7 @@ async def update_link(
     link = await service.update_link(link_id, current_user.id, **update_data)
 
     if not link:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Link not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Link not found")
 
     return LinkResponse.model_validate(link)
 
@@ -352,12 +351,10 @@ async def update_link(
     "/{link_id}/accept",
     response_model=LinkResponse,
     summary="Accept suggested link",
-    description="Accept a suggested link, converting it to manual"
+    description="Accept a suggested link, converting it to manual",
 )
 async def accept_link(
-    link_id: int,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    link_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
 ):
     """Accept a suggested link."""
     service = LinkService(db)
@@ -365,24 +362,16 @@ async def accept_link(
     link = await service.accept_suggested_link(link_id, current_user.id)
 
     if not link:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Link not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Link not found")
 
     return LinkResponse.model_validate(link)
 
 
 @router.delete(
-    "/{link_id}",
-    response_model=MessageResponse,
-    summary="Delete link",
-    description="Delete a link"
+    "/{link_id}", response_model=MessageResponse, summary="Delete link", description="Delete a link"
 )
 async def delete_link(
-    link_id: int,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    link_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
 ):
     """Delete a link."""
     service = LinkService(db)
@@ -390,9 +379,6 @@ async def delete_link(
     deleted = await service.delete_link(link_id, current_user.id)
 
     if not deleted:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Link not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Link not found")
 
     return MessageResponse(message="Link deleted successfully")

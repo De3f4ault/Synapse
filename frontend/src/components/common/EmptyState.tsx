@@ -3,19 +3,19 @@ import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 interface EmptyStateProps {
-    icon?: React.ReactNode;
-    title: string;
-    description?: string;
-    action?: {
-        label: string;
-        onClick: () => void;
-    };
-    secondaryAction?: {
-        label: string;
-        onClick: () => void;
-    };
-    variant?: "default" | "no-data" | "no-results" | "error" | "coming-soon";
-    className?: string;
+  icon?: React.ReactNode;
+  title: string;
+  description?: string;
+  action?: {
+    label: string;
+    onClick: () => void;
+  };
+  secondaryAction?: {
+    label: string;
+    onClick: () => void;
+  };
+  variant?: "default" | "no-data" | "no-results" | "error" | "coming-soon";
+  className?: string;
 }
 
 /**
@@ -38,120 +38,110 @@ interface EmptyStateProps {
  * />
  */
 export function EmptyState({
-    icon,
-    title,
-    description,
-    action,
-    secondaryAction,
-    variant = "default",
-    className,
+  icon,
+  title,
+  description,
+  action,
+  secondaryAction,
+  variant = "default",
+  className,
 }: EmptyStateProps) {
-    // Variant-specific styling
-    const variantStyles = {
-        default: "text-muted-foreground",
-            "no-data": "text-muted-foreground",
-            "no-results": "text-muted-foreground",
-            error: "text-destructive",
-            "coming-soon": "text-primary",
-    };
+  // Variant-specific styling
+  const variantStyles = {
+    default: "text-muted-foreground",
+    "no-data": "text-muted-foreground",
+    "no-results": "text-muted-foreground",
+    error: "text-destructive",
+    "coming-soon": "text-primary",
+  };
 
-    // Animation variants for icon
-    const iconVariants = {
-        initial: { opacity: 0, y: 20 },
-        animate: {
-            opacity: 1,
-            y: 0,
-            transition: {
-                duration: 0.5,
-                ease: "easeOut",
-            },
-        },
-        float: {
-            y: [0, -8, 0],
-            transition: {
-                duration: 3,
-                repeat: Infinity,
-                ease: "easeInOut",
-            },
-        },
-    };
+  // Animation variants for icon
+  const iconVariants = {
+    initial: { opacity: 0, y: 20 },
+    animate: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        duration: 0.5,
+        ease: "easeOut",
+      },
+    },
+    float: {
+      y: [0, -8, 0],
+      transition: {
+        duration: 3,
+        repeat: Infinity,
+        ease: "easeInOut",
+      },
+    },
+  };
 
-    // Animation variants for content
-    const contentVariants = {
-        initial: { opacity: 0, y: 10 },
-        animate: {
-            opacity: 1,
-            y: 0,
-            transition: {
-                duration: 0.4,
-                delay: 0.2,
-                ease: "easeOut",
-            },
-        },
-    };
+  // Animation variants for content
+  const contentVariants = {
+    initial: { opacity: 0, y: 10 },
+    animate: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        duration: 0.4,
+        delay: 0.2,
+        ease: "easeOut",
+      },
+    },
+  };
 
-    return (
-        <div
-        className={cn(
-            "flex flex-col items-center justify-center py-12 px-4 text-center",
-            className
-        )}
-        role="status"
-        aria-live="polite"
-        >
-        {icon && (
-            <motion.div
-            className={cn(
-                "mb-4",
-                variantStyles[variant]
-            )}
-            variants={iconVariants}
-            initial="initial"
-            animate={["animate", "float"]}
-            aria-hidden="true"
-            >
-            {icon}
-            </motion.div>
-        )}
-
+  return (
+    <div
+      className={cn(
+        "flex flex-col items-center justify-center py-12 px-4 text-center",
+        className,
+      )}
+      role="status"
+      aria-live="polite"
+    >
+      {icon && (
         <motion.div
+          className={cn("mb-4", variantStyles[variant])}
+          variants={iconVariants}
+          initial="initial"
+          animate={["animate", "float"]}
+          aria-hidden="true"
+        >
+          {icon}
+        </motion.div>
+      )}
+
+      <motion.div
         variants={contentVariants}
         initial="initial"
         animate="animate"
         className="max-w-md"
-        >
-        <h3 className="mb-2 text-lg font-semibold text-foreground">
-        {title}
-        </h3>
+      >
+        <h3 className="mb-2 text-lg font-semibold text-foreground">{title}</h3>
 
         {description && (
-            <p className="mb-6 text-sm text-muted-foreground">
-            {description}
-            </p>
+          <p className="mb-6 text-sm text-muted-foreground">{description}</p>
         )}
 
         {(action || secondaryAction) && (
-            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
             {action && (
-                <Button
-                onClick={action.onClick}
-                size="default"
-                >
+              <Button onClick={action.onClick} size="default">
                 {action.label}
-                </Button>
+              </Button>
             )}
             {secondaryAction && (
-                <Button
+              <Button
                 onClick={secondaryAction.onClick}
                 variant="outline"
                 size="default"
-                >
+              >
                 {secondaryAction.label}
-                </Button>
+              </Button>
             )}
-            </div>
+          </div>
         )}
-        </motion.div>
-        </div>
-    );
+      </motion.div>
+    </div>
+  );
 }
