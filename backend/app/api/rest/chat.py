@@ -29,23 +29,27 @@ router = APIRouter()
 # Schemas
 # ============================================================================
 
+
 class ChatSessionCreate(BaseModel):
     """Chat session creation."""
+
     title: Optional[str] = Field(None, max_length=500, description="Custom session title")
     document_id: Optional[int] = Field(None, description="Optional document for context")
     context_modules: Optional[List[str]] = Field(
         default_factory=lambda: ["flashcards", "notes"],
-        description="Modules to include in context building"
+        description="Modules to include in context building",
     )
 
 
 class ChatSessionUpdate(BaseModel):
     """Chat session update."""
+
     title: str = Field(..., min_length=1, max_length=200, description="Session title")
 
 
 class ChatSessionResponse(BaseModel):
     """Chat session response."""
+
     id: int
     title: str
     document_id: Optional[int]
@@ -57,11 +61,13 @@ class ChatSessionResponse(BaseModel):
 
 class ChatMessageCreate(BaseModel):
     """Chat message creation."""
+
     content: str = Field(..., min_length=1, max_length=5000, description="Message content")
 
 
 class ChatMessageResponse(BaseModel):
     """Chat message response."""
+
     id: int
     session_id: int
     role: MessageRole
@@ -76,6 +82,7 @@ class ChatMessageResponse(BaseModel):
 # File upload response
 class FileUploadResponse(BaseModel):
     """File upload response for chat."""
+
     id: str
     filename: str
     file_type: str
@@ -88,6 +95,7 @@ class FileUploadResponse(BaseModel):
 # AI Model response
 class AIModelResponse(BaseModel):
     """AI model information."""
+
     id: str
     name: str
     description: str
@@ -100,6 +108,7 @@ class AIModelResponse(BaseModel):
 # ============================================================================
 # Helper Functions - Token Counting
 # ============================================================================
+
 
 def estimate_tokens(text: str) -> int:
     """
@@ -121,13 +130,14 @@ def estimate_tokens(text: str) -> int:
 # Helper Functions - AI Response Generation
 # ============================================================================
 
+
 async def generate_ai_response(
     message: str,
     user_id: int,
     session_id: int,
     context: Optional[dict] = None,
     db: Optional[AsyncSession] = None,
-    chat_history: Optional[List[dict]] = None
+    chat_history: Optional[List[dict]] = None,
 ) -> dict:
     """
     Generate AI response using TutorAgent.
@@ -149,20 +159,14 @@ async def generate_ai_response(
         # Build context if not provided
         if context is None and db:
             context_engine = ContextEngine(db)
-            context = await context_engine.get_user_context(
-                user_id=user_id,
-                focus=message
-            )
+            context = await context_engine.get_user_context(user_id=user_id, focus=message)
 
         # Create TutorAgent
         agent = await create_agent("tutor")
 
         # Execute agent with user message, context, and chat history
         result = await agent.execute(
-            user_id=user_id,
-            input=message,
-            context=context or {},
-            chat_history=chat_history or []
+            user_id=user_id, input=message, context=context or {}, chat_history=chat_history or []
         )
 
         # Extract response components from AgentResult dataclass
@@ -171,7 +175,11 @@ async def generate_ai_response(
         else:
             output = result.error or "I apologize, but I couldn't generate a response."
 
-        model = result.metadata.get("model", "gemini-2.5-flash") if result.metadata else "gemini-2.5-flash"
+        model = (
+            result.metadata.get("model", "gemini-2.5-flash")
+            if result.metadata
+            else "gemini-2.5-flash"
+        )
         tokens = result.total_tokens if result.total_tokens > 0 else estimate_tokens(output)
 
         #  Extract function calls and grounding sources from metadata
@@ -185,7 +193,7 @@ async def generate_ai_response(
             "model": model,
             "tokens": tokens,
             "function_calls": function_calls,
-            "grounding_sources": grounding_sources
+            "grounding_sources": grounding_sources,
         }
 
     except Exception as e:
@@ -194,9 +202,11 @@ async def generate_ai_response(
         return {
             "output": f"I encountered an error processing your message: {str(e)}. Please try again.",
             "model": "error",
-            "tokens": estimate_tokens("I encountered an error processing your message. Please try again."),
+            "tokens": estimate_tokens(
+                "I encountered an error processing your message. Please try again."
+            ),
             "function_calls": None,
-            "grounding_sources": None
+            "grounding_sources": None,
         }
 
 
@@ -204,48 +214,51 @@ async def generate_ai_response(
 # Endpoints - Sessions
 # ============================================================================
 
+
 @router.get(
     "/sessions",
     response_model=List[ChatSessionResponse],
     summary="List chat sessions",
-    description="Retrieve user's chat sessions"
+    description="Retrieve user's chat sessions",
 )
 async def list_sessions(
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Items per page"),
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
-    """List user's chat sessions with pagination."""
-    query = select(ChatSession).where(
-        and_(
-            ChatSession.user_id == current_user.id,
-            ChatSession.deleted_at.is_(None)
-        )
-    ).order_by(ChatSession.updated_at.desc())
+    """
+    List user's chat sessions with pagination.
 
-    query = query.offset((page - 1) * page_size).limit(page_size)
-    result = await db.execute(query)
-    sessions = result.scalars().all()
+    OPTIMIZED: Uses single JOIN+GROUP BY query instead of N+1 loop.
+    Performance: 20+ queries → 1 query.
+    """
+    # Single optimized query with LEFT JOIN and GROUP BY
+    stmt = (
+        select(ChatSession, func.count(ChatMessage.id).label("message_count"))
+        .outerjoin(ChatMessage, ChatMessage.session_id == ChatSession.id)
+        .where(and_(ChatSession.user_id == current_user.id, ChatSession.deleted_at.is_(None)))
+        .group_by(ChatSession.id)
+        .order_by(ChatSession.updated_at.desc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+    )
 
-    response = []
-    for session in sessions:
-        msg_count = await db.execute(
-            select(func.count(ChatMessage.id)).where(ChatMessage.session_id == session.id)
-        )
-        message_count = msg_count.scalar() or 0
+    result = await db.execute(stmt)
+    sessions_with_counts = result.all()
 
-        response.append(ChatSessionResponse(
+    return [
+        ChatSessionResponse(
             id=session.id,
             title=session.title,
             document_id=session.document_id,
-            message_count=message_count,
+            message_count=count,
             total_tokens=session.total_tokens_used,
             created_at=session.created_at,
-            updated_at=session.updated_at
-        ))
-
-    return response
+            updated_at=session.updated_at,
+        )
+        for session, count in sessions_with_counts
+    ]
 
 
 @router.post(
@@ -253,12 +266,12 @@ async def list_sessions(
     response_model=ChatSessionResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Create chat session",
-    description="Start a new chat session"
+    description="Start a new chat session",
 )
 async def create_session(
     session_data: ChatSessionCreate,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """Create a new chat session."""
     # Auto-generate title if not provided
@@ -268,7 +281,7 @@ async def create_session(
         user_id=current_user.id,
         title=title,
         document_id=session_data.document_id,
-        context_modules={"modules": session_data.context_modules or ["flashcards", "notes"]}
+        context_modules={"modules": session_data.context_modules or ["flashcards", "notes"]},
     )
 
     db.add(new_session)
@@ -284,7 +297,7 @@ async def create_session(
         message_count=0,
         total_tokens=0,
         created_at=new_session.created_at,
-        updated_at=new_session.updated_at
+        updated_at=new_session.updated_at,
     )
 
 
@@ -292,35 +305,38 @@ async def create_session(
     "/sessions/{session_id}",
     response_model=ChatSessionResponse,
     summary="Get chat session",
-    description="Retrieve a specific chat session"
+    description="Retrieve a specific chat session",
 )
 async def get_session(
     session_id: int,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
-    """Get a specific chat session."""
-    result = await db.execute(
-        select(ChatSession).where(
+    """
+    Get a specific chat session.
+
+    OPTIMIZED: Uses single JOIN query for session + message count.
+    """
+    stmt = (
+        select(ChatSession, func.count(ChatMessage.id).label("message_count"))
+        .outerjoin(ChatMessage, ChatMessage.session_id == ChatSession.id)
+        .where(
             and_(
                 ChatSession.id == session_id,
                 ChatSession.user_id == current_user.id,
-                ChatSession.deleted_at.is_(None)
+                ChatSession.deleted_at.is_(None),
             )
         )
+        .group_by(ChatSession.id)
     )
-    session = result.scalar_one_or_none()
 
-    if not session:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Session not found"
-        )
+    result = await db.execute(stmt)
+    row = result.first()
 
-    msg_count = await db.execute(
-        select(func.count(ChatMessage.id)).where(ChatMessage.session_id == session.id)
-    )
-    message_count = msg_count.scalar() or 0
+    if not row:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
+
+    session, message_count = row
 
     return ChatSessionResponse(
         id=session.id,
@@ -329,7 +345,7 @@ async def get_session(
         message_count=message_count,
         total_tokens=session.total_tokens_used,
         created_at=session.created_at,
-        updated_at=session.updated_at
+        updated_at=session.updated_at,
     )
 
 
@@ -337,12 +353,12 @@ async def get_session(
     "/sessions/{session_id}",
     response_model=dict,
     summary="Delete chat session",
-    description="Delete a chat session"
+    description="Delete a chat session",
 )
 async def delete_session(
     session_id: int,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """Delete a chat session (soft delete)."""
     result = await db.execute(
@@ -350,17 +366,14 @@ async def delete_session(
             and_(
                 ChatSession.id == session_id,
                 ChatSession.user_id == current_user.id,
-                ChatSession.deleted_at.is_(None)
+                ChatSession.deleted_at.is_(None),
             )
         )
     )
     session = result.scalar_one_or_none()
 
     if not session:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Session not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
 
     session.deleted_at = datetime.utcnow()
     await db.commit()
@@ -374,42 +387,48 @@ async def delete_session(
     "/sessions/{session_id}",
     response_model=ChatSessionResponse,
     summary="Update chat session",
-    description="Update session title"
+    description="Update session title",
 )
 async def update_session(
     session_id: int,
     session_update: ChatSessionUpdate,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
-    """Update chat session title."""
+    """
+    Update chat session title.
+
+    OPTIMIZED: Uses single JOIN query for session + message count.
+    """
+    # First, get the session for update
     result = await db.execute(
         select(ChatSession).where(
             and_(
                 ChatSession.id == session_id,
                 ChatSession.user_id == current_user.id,
-                ChatSession.deleted_at.is_(None)
+                ChatSession.deleted_at.is_(None),
             )
         )
     )
     session = result.scalar_one_or_none()
 
     if not session:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Session not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
 
     session.title = session_update.title
     session.updated_at = datetime.utcnow()
     await db.commit()
-    await db.refresh(session)
 
-    # Get message count
-    msg_count = await db.execute(
-        select(func.count(ChatMessage.id)).where(ChatMessage.session_id == session.id)
+    # Get updated session with message count in single query
+    stmt = (
+        select(ChatSession, func.count(ChatMessage.id).label("message_count"))
+        .outerjoin(ChatMessage, ChatMessage.session_id == ChatSession.id)
+        .where(ChatSession.id == session_id)
+        .group_by(ChatSession.id)
     )
-    message_count = msg_count.scalar() or 0
+    result = await db.execute(stmt)
+    row = result.first()
+    session, message_count = row
 
     logger.info(f"Chat session updated: {session_id}, new title: {session.title}")
 
@@ -420,7 +439,7 @@ async def update_session(
         message_count=message_count,
         total_tokens=session.total_tokens_used,
         created_at=session.created_at,
-        updated_at=session.updated_at
+        updated_at=session.updated_at,
     )
 
 
@@ -428,17 +447,18 @@ async def update_session(
 # Endpoints - Messages
 # ============================================================================
 
+
 @router.get(
     "/sessions/{session_id}/messages",
     response_model=List[ChatMessageResponse],
     summary="Get chat messages",
-    description="Retrieve messages from a chat session"
+    description="Retrieve messages from a chat session",
 )
 async def get_messages(
     session_id: int,
     limit: int = Query(100, ge=1, le=500, description="Max messages to return"),
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """Get messages from a chat session."""
     # Verify session ownership
@@ -447,23 +467,21 @@ async def get_messages(
             and_(
                 ChatSession.id == session_id,
                 ChatSession.user_id == current_user.id,
-                ChatSession.deleted_at.is_(None)
+                ChatSession.deleted_at.is_(None),
             )
         )
     )
     session = session_result.scalar_one_or_none()
 
     if not session:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Session not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
 
     # Get messages
     messages_result = await db.execute(
-        select(ChatMessage).where(
-            ChatMessage.session_id == session_id
-        ).order_by(ChatMessage.created_at.asc()).limit(limit)
+        select(ChatMessage)
+        .where(ChatMessage.session_id == session_id)
+        .order_by(ChatMessage.created_at.asc())
+        .limit(limit)
     )
     messages = messages_result.scalars().all()
 
@@ -477,8 +495,10 @@ async def get_messages(
             model_used=msg.model_used,
             # Handle legacy records where function_calls might be int instead of dict
             function_calls=msg.function_calls if isinstance(msg.function_calls, dict) else None,
-            grounding_sources=msg.grounding_sources if isinstance(msg.grounding_sources, dict) else None,
-            created_at=msg.created_at
+            grounding_sources=msg.grounding_sources
+            if isinstance(msg.grounding_sources, dict)
+            else None,
+            created_at=msg.created_at,
         )
         for msg in messages
     ]
@@ -489,13 +509,13 @@ async def get_messages(
     response_model=ChatMessageResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Send chat message",
-    description="Send a message and get AI response (non-streaming)"
+    description="Send a message and get AI response (non-streaming)",
 )
 async def send_message(
     session_id: int,
     message_data: ChatMessageCreate,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Send a message and receive AI response.
@@ -519,24 +539,21 @@ async def send_message(
                 and_(
                     ChatSession.id == session_id,
                     ChatSession.user_id == current_user.id,
-                    ChatSession.deleted_at.is_(None)
+                    ChatSession.deleted_at.is_(None),
                 )
             )
         )
         session = session_result.scalar_one_or_none()
 
         if not session:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Session not found"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
 
         # Save user message
         user_message = ChatMessage(
             session_id=session_id,
             role=MessageRole.USER,
             content=message_data.content,
-            tokens=estimate_tokens(message_data.content)
+            tokens=estimate_tokens(message_data.content),
         )
         db.add(user_message)
         await db.flush()
@@ -545,24 +562,25 @@ async def send_message(
 
         # Fetch conversation history (excluding the message we just added)
         history_result = await db.execute(
-            select(ChatMessage).where(
-                ChatMessage.session_id == session_id
-            ).order_by(ChatMessage.created_at.asc()).limit(50)  # Limit to last 50 messages
+            select(ChatMessage)
+            .where(ChatMessage.session_id == session_id)
+            .order_by(ChatMessage.created_at.asc())
+            .limit(50)  # Limit to last 50 messages
         )
         history_messages = history_result.scalars().all()
-        
+
         # Format chat history for the agent (exclude the current user message we just added)
         chat_history = [
             {"role": msg.role.value, "content": msg.content}
             for msg in history_messages
             if msg.id != user_message.id  # Exclude current message
         ]
-        
+
         logger.info(f"Loaded {len(chat_history)} previous messages for context")
 
         # Use orchestrator for intelligent agent routing
         from app.core.ai.orchestrator import get_orchestrator
-        
+
         orchestrator = get_orchestrator()
         orchestration_result = await orchestrator.handle_message(
             message=message_data.content,
@@ -570,9 +588,9 @@ async def send_message(
             session_id=session_id,
             context={
                 "document_id": session.document_id,
-                "context_modules": session.context_modules
+                "context_modules": session.context_modules,
             },
-            chat_history=chat_history
+            chat_history=chat_history,
         )
 
         # Create AI message record from orchestration result
@@ -584,7 +602,7 @@ async def send_message(
                 tool_calls_data = tc
             elif isinstance(tc, int) and tc > 0:
                 tool_calls_data = {"count": tc}
-        
+
         ai_message = ChatMessage(
             session_id=session_id,
             role=MessageRole.ASSISTANT,
@@ -592,7 +610,7 @@ async def send_message(
             tokens=orchestration_result.tokens_used or estimate_tokens(orchestration_result.output),
             model_used=f"gemini-2.5-flash ({orchestration_result.agent_used})",
             function_calls=tool_calls_data,
-            grounding_sources=None
+            grounding_sources=None,
         )
         db.add(ai_message)
 
@@ -612,9 +630,13 @@ async def send_message(
             tokens=ai_message.tokens,
             model_used=ai_message.model_used,
             # Ensure function_calls is dict or None
-            function_calls=ai_message.function_calls if isinstance(ai_message.function_calls, dict) else None,
-            grounding_sources=ai_message.grounding_sources if isinstance(ai_message.grounding_sources, dict) else None,
-            created_at=ai_message.created_at
+            function_calls=ai_message.function_calls
+            if isinstance(ai_message.function_calls, dict)
+            else None,
+            grounding_sources=ai_message.grounding_sources
+            if isinstance(ai_message.grounding_sources, dict)
+            else None,
+            created_at=ai_message.created_at,
         )
 
     except HTTPException:
@@ -625,7 +647,7 @@ async def send_message(
         logger.error(f"Error in send_message: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to process message: {str(e)}"
+            detail=f"Failed to process message: {str(e)}",
         )
 
 
@@ -634,35 +656,32 @@ async def send_message(
     "/messages/{message_id}",
     response_model=dict,
     summary="Delete message",
-    description="Delete a specific message"
+    description="Delete a specific message",
 )
 async def delete_message(
     message_id: int,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """Delete a message."""
     # Get message with session verification
     result = await db.execute(
-        select(ChatMessage).join(ChatSession).where(
+        select(ChatMessage)
+        .join(ChatSession)
+        .where(
             and_(
                 ChatMessage.id == message_id,
                 ChatSession.user_id == current_user.id,
-                ChatSession.deleted_at.is_(None)
+                ChatSession.deleted_at.is_(None),
             )
         )
     )
     message = result.scalar_one_or_none()
 
     if not message:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Message not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Message not found")
 
-    await db.execute(
-        delete(ChatMessage).where(ChatMessage.id == message_id)
-    )
+    await db.execute(delete(ChatMessage).where(ChatMessage.id == message_id))
     await db.commit()
 
     logger.info(f"Message deleted: {message_id}")
@@ -674,22 +693,24 @@ async def delete_message(
     "/messages/{message_id}/regenerate",
     response_model=ChatMessageResponse,
     summary="Regenerate message",
-    description="Regenerate AI response for a message"
+    description="Regenerate AI response for a message",
 )
 async def regenerate_message(
     message_id: int,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """Regenerate AI response for a message."""
     # Get original assistant message
     result = await db.execute(
-        select(ChatMessage).join(ChatSession).where(
+        select(ChatMessage)
+        .join(ChatSession)
+        .where(
             and_(
                 ChatMessage.id == message_id,
                 ChatMessage.role == MessageRole.ASSISTANT,
                 ChatSession.user_id == current_user.id,
-                ChatSession.deleted_at.is_(None)
+                ChatSession.deleted_at.is_(None),
             )
         )
     )
@@ -698,25 +719,27 @@ async def regenerate_message(
     if not old_message:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Message not found or not an assistant message"
+            detail="Message not found or not an assistant message",
         )
 
     # Get the user message that triggered this response
     user_msg_result = await db.execute(
-        select(ChatMessage).where(
+        select(ChatMessage)
+        .where(
             and_(
                 ChatMessage.session_id == old_message.session_id,
                 ChatMessage.role == MessageRole.USER,
-                ChatMessage.created_at < old_message.created_at
+                ChatMessage.created_at < old_message.created_at,
             )
-        ).order_by(ChatMessage.created_at.desc()).limit(1)
+        )
+        .order_by(ChatMessage.created_at.desc())
+        .limit(1)
     )
     user_message = user_msg_result.scalar_one_or_none()
 
     if not user_message:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot find original user message"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot find original user message"
         )
 
     # Generate new AI response
@@ -724,7 +747,7 @@ async def regenerate_message(
         message=user_message.content,
         user_id=current_user.id,
         session_id=old_message.session_id,
-        db=None
+        db=None,
     )
 
     # Update existing message
@@ -749,7 +772,7 @@ async def regenerate_message(
         model_used=old_message.model_used,
         function_calls=old_message.function_calls,
         grounding_sources=old_message.grounding_sources,
-        created_at=old_message.created_at
+        created_at=old_message.created_at,
     )
 
 
@@ -757,18 +780,19 @@ async def regenerate_message(
 # File Upload Endpoint
 # ============================================================================
 
+
 @router.post(
     "/files/upload",
     response_model=FileUploadResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Upload file for chat",
-    description="Upload a file to use as context in chat"
+    description="Upload a file to use as context in chat",
 )
 async def upload_chat_file(
     file: UploadFile = File(...),
     session_id: Optional[int] = None,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Upload file for chat context.
@@ -782,11 +806,7 @@ async def upload_chat_file(
 
         # Upload file using existing infrastructure
         storage = StorageManager()
-        file_path = await storage.save_file(
-            file=file,
-            user_id=current_user.id,
-            module="chat"
-        )
+        file_path = await storage.save_file(file=file, user_id=current_user.id, module="chat")
 
         # Create document record
         from app.models.document import Document
@@ -797,7 +817,7 @@ async def upload_chat_file(
             file_type=file.content_type or "application/octet-stream",
             file_size=file.size or 0,
             file_path=file_path,
-            processing_status="pending"
+            processing_status="pending",
         )
 
         db.add(document)
@@ -813,14 +833,14 @@ async def upload_chat_file(
             file_size=document.file_size,
             url=f"/api/v1/documents/{document.id}",
             preview_url=None,  # Could add thumbnail generation here
-            uploaded_at=document.created_at
+            uploaded_at=document.created_at,
         )
 
     except Exception as e:
         logger.error(f"Error uploading chat file: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to upload file: {str(e)}"
+            detail=f"Failed to upload file: {str(e)}",
         )
 
 
@@ -828,11 +848,12 @@ async def upload_chat_file(
 # Model Selection Endpoint
 # ============================================================================
 
+
 @router.get(
     "/models",
     response_model=List[AIModelResponse],
     summary="List AI models",
-    description="Get list of available AI models"
+    description="Get list of available AI models",
 )
 async def list_models():
     """
@@ -848,7 +869,7 @@ async def list_models():
             capabilities=["text", "code", "reasoning"],
             max_tokens=8192,
             supports_vision=False,
-            supports_search=False
+            supports_search=False,
         ),
         AIModelResponse(
             id="gemini-1.5-flash",
@@ -857,7 +878,7 @@ async def list_models():
             capabilities=["text", "code", "vision", "reasoning"],
             max_tokens=8192,
             supports_vision=True,
-            supports_search=True
+            supports_search=True,
         ),
         AIModelResponse(
             id="gemini-1.5-pro",
@@ -866,7 +887,7 @@ async def list_models():
             capabilities=["text", "code", "vision", "reasoning", "long-context"],
             max_tokens=32768,
             supports_vision=True,
-            supports_search=True
+            supports_search=True,
         ),
         AIModelResponse(
             id="gemini-2.0-flash-thinking",
@@ -875,8 +896,8 @@ async def list_models():
             capabilities=["text", "code", "reasoning", "thinking"],
             max_tokens=8192,
             supports_vision=False,
-            supports_search=True
-        )
+            supports_search=True,
+        ),
     ]
 
     return models
@@ -886,28 +907,29 @@ async def list_models():
 # Dashboard Orchestrator Endpoint
 # ============================================================================
 
-DASHBOARD_SESSION_STORAGE_KEY = 'synapse_dashboard_session'
+DASHBOARD_SESSION_STORAGE_KEY = "synapse_dashboard_session"
+
 
 @router.post(
     "/sessions/dashboard/message",
     response_model=ChatMessageResponse,
     summary="Dashboard Orchestrator Message",
-    description="Send message to dashboard orchestrator with full system access"
+    description="Send message to dashboard orchestrator with full system access",
 )
 async def send_dashboard_message(
     message_data: ChatMessageCreate,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Send message to dashboard orchestrator.
-    
+
     Different from regular chat:
     - Uses DashboardAgent with ALL tools
     - Builds comprehensive context from all modules
     - Returns rich metadata for UI rendering
     - Stores in dedicated dashboard session
-    
+
     The Dashboard Orchestrator has:
     - Complete knowledge of user's learning state
     - Ability to create flashcards, notes, quizzes
@@ -918,9 +940,9 @@ async def send_dashboard_message(
         logger.info(
             "dashboard_message_received",
             user_id=current_user.id,
-            message_length=len(message_data.content)
+            message_length=len(message_data.content),
         )
-        
+
         # ====================================================================
         # GET OR CREATE DASHBOARD SESSION
         # ====================================================================
@@ -929,28 +951,21 @@ async def send_dashboard_message(
             and_(
                 ChatSession.user_id == current_user.id,
                 ChatSession.title == DASHBOARD_SESSION_STORAGE_KEY,
-                ChatSession.deleted_at.is_(None)
+                ChatSession.deleted_at.is_(None),
             )
         )
         result = await db.execute(session_query)
         session = result.scalar_one_or_none()
-        
+
         if not session:
             # Create new dashboard session
-            session = ChatSession(
-                user_id=current_user.id,
-                title=DASHBOARD_SESSION_STORAGE_KEY
-            )
+            session = ChatSession(user_id=current_user.id, title=DASHBOARD_SESSION_STORAGE_KEY)
             db.add(session)
             await db.commit()
             await db.refresh(session)
-            
-            logger.info(
-                "dashboard_session_created",
-                user_id=current_user.id,
-                session_id=session.id
-            )
-        
+
+            logger.info("dashboard_session_created", user_id=current_user.id, session_id=session.id)
+
         # ====================================================================
         # SAVE USER MESSAGE
         # ====================================================================
@@ -958,73 +973,72 @@ async def send_dashboard_message(
             session_id=session.id,
             role=MessageRole.USER,
             content=message_data.content,
-            tokens=estimate_tokens(message_data.content)
+            tokens=estimate_tokens(message_data.content),
         )
         db.add(user_message)
         await db.commit()
         await db.refresh(user_message)
-        
+
         # ====================================================================
         # BUILD COMPREHENSIVE DASHBOARD CONTEXT
         # ====================================================================
         from app.core.ai.context.dashboard_context_builder import build_dashboard_context
-        
-        context = await build_dashboard_context(
-            user_id=current_user.id,
-            db=db
-        )
-        
+
+        context = await build_dashboard_context(user_id=current_user.id, db=db)
+
         logger.debug(
             "dashboard_context_built",
             user_id=current_user.id,
             flashcards=context.get("user_stats", {}).get("total_flashcards", 0),
-            notes=context.get("user_stats", {}).get("total_notes", 0)
+            notes=context.get("user_stats", {}).get("total_notes", 0),
         )
-        
+
         # ====================================================================
         # GET CONVERSATION HISTORY
         # ====================================================================
-        history_query = select(ChatMessage).where(
-            ChatMessage.session_id == session.id
-        ).order_by(ChatMessage.created_at).limit(20)  # Last 20 messages
-        
+        history_query = (
+            select(ChatMessage)
+            .where(ChatMessage.session_id == session.id)
+            .order_by(ChatMessage.created_at)
+            .limit(20)
+        )  # Last 20 messages
+
         history_result = await db.execute(history_query)
         history = history_result.scalars().all()
-        
+
         chat_history = [
-            {
-                "role": msg.role.value,
-                "content": msg.content
-            }
+            {"role": msg.role.value, "content": msg.content}
             for msg in history[:-1]  # Exclude the message we just added
         ]
-        
+
         # ====================================================================
         # CALL DASHBOARD ORCHESTRATOR
         # ====================================================================
         from app.core.ai.orchestrator import get_orchestrator
-        
+
         orchestrator = get_orchestrator()
-        
+
         # Force dashboard agent by adding preference to context
         context["agent_preference"] = "dashboard"
-        
+
         result = await orchestrator.handle_message(
             message=message_data.content,
             user_id=current_user.id,
             session_id=session.id,
             context=context,
-            chat_history=chat_history
+            chat_history=chat_history,
         )
-        
+
         logger.info(
             "dashboard_orchestration_complete",
             user_id=current_user.id,
             agent_used=result.agent_used,
-            tools_called=len(result.metadata.get("tool_calls", [])) if isinstance(result.metadata.get("tool_calls"), list) else 0,
-            tokens=result.tokens_used
+            tools_called=len(result.metadata.get("tool_calls", []))
+            if isinstance(result.metadata.get("tool_calls"), list)
+            else 0,
+            tokens=result.tokens_used,
         )
-        
+
         # ====================================================================
         # EXTRACT ACTIONS TAKEN
         # ====================================================================
@@ -1036,12 +1050,14 @@ async def send_dashboard_message(
                 tool_result = tool_call.get("result", {})
                 if isinstance(tool_result, dict) and tool_result.get("success"):
                     action_data = tool_result.get("data", {})
-                    actions_taken.append({
-                        "type": tool_call.get("tool", ""),
-                        "data": action_data,
-                        "message": tool_result.get("message", "")
-                    })
-        
+                    actions_taken.append(
+                        {
+                            "type": tool_call.get("tool", ""),
+                            "data": action_data,
+                            "message": tool_result.get("message", ""),
+                        }
+                    )
+
         # ====================================================================
         # SAVE AI RESPONSE
         # ====================================================================
@@ -1053,25 +1069,25 @@ async def send_dashboard_message(
             model_used=result.agent_used,
             function_calls={
                 "tool_calls": result.metadata.get("tool_calls", []),
-                "actions_taken": actions_taken
+                "actions_taken": actions_taken,
             },
-            grounding_sources=None
+            grounding_sources=None,
         )
         db.add(ai_message)
-        
+
         # Update session timestamp
         session.updated_at = datetime.utcnow()
-        
+
         await db.commit()
         await db.refresh(ai_message)
-        
+
         logger.info(
             "dashboard_message_saved",
             user_id=current_user.id,
             message_id=ai_message.id,
-            actions=len(actions_taken)
+            actions=len(actions_taken),
         )
-        
+
         # ====================================================================
         # RETURN ENRICHED RESPONSE
         # ====================================================================
@@ -1084,32 +1100,32 @@ async def send_dashboard_message(
             model_used=ai_message.model_used,
             function_calls=ai_message.function_calls,
             grounding_sources=ai_message.grounding_sources,
-            created_at=ai_message.created_at
+            created_at=ai_message.created_at,
         )
-        
+
     except Exception as e:
         logger.error(
             "dashboard_message_error",
             user_id=current_user.id,
             error=str(e),
             error_type=type(e).__name__,
-            exc_info=True
+            exc_info=True,
         )
-        
+
         # Create error message
         error_message = ChatMessage(
             session_id=session.id if session else None,
             role=MessageRole.ASSISTANT,
             content="I encountered an error processing your request. Please try again.",
             tokens=0,
-            model_used="error"
+            model_used="error",
         )
-        
+
         if session:
             db.add(error_message)
             await db.commit()
             await db.refresh(error_message)
-            
+
             return ChatMessageResponse(
                 id=error_message.id,
                 session_id=error_message.session_id,
@@ -1119,10 +1135,10 @@ async def send_dashboard_message(
                 model_used=error_message.model_used,
                 function_calls=None,
                 grounding_sources=None,
-                created_at=error_message.created_at
+                created_at=error_message.created_at,
             )
         else:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Dashboard orchestrator error: {str(e)}"
+                detail=f"Dashboard orchestrator error: {str(e)}",
             )

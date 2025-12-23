@@ -1,7 +1,8 @@
 import { motion } from "framer-motion";
 import { FileText, Clock, MoreVertical } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
-import { NeumorphicCard, NeumorphicBadge } from "@/components/neumorphic";
+import { NeumorphicBadge } from "@/components/neumorphic";
+import GlassCard from "@/components/ui/GlassCard";
 
 interface NoteCardProps {
   note: {
@@ -58,7 +59,10 @@ export const NoteCard = ({ note, onClick, index }: NoteCardProps) => {
       onClick={onClick}
       className="group relative cursor-pointer h-full"
     >
-      <NeumorphicCard className="h-full flex flex-col p-6 transition-all duration-300 group-hover:shadow-[0_0_20px_rgba(34,211,238,0.1)] border-transparent group-hover:border-white/10">
+      <GlassCard
+        hover
+        className="h-full flex flex-col p-6 border-transparent transition-all duration-300"
+      >
         {/* Header: Tags and Menu */}
         <div className="flex items-start justify-between mb-4">
           {/* Tags */}
@@ -120,7 +124,7 @@ export const NoteCard = ({ note, onClick, index }: NoteCardProps) => {
             {readTime} min
           </div>
         </div>
-      </NeumorphicCard>
+      </GlassCard>
     </motion.div>
   );
 };

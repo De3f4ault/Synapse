@@ -7,7 +7,7 @@
  * - Retractable sidebar with localStorage persistence
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { ChatSidebar } from "./components/chat-sidebar";
 import { ChatMain } from "./components/chat-main";
@@ -37,6 +37,9 @@ export const ChatPage: React.FC = () => {
     }
   }, []);
 
+  // Ref to track if session creation is in progress (prevents infinite loop)
+  const creatingSessionRef = useRef(false);
+
   // Auto-navigation logic
   useEffect(() => {
     if (isLoading) return;
@@ -53,19 +56,26 @@ export const ChatPage: React.FC = () => {
         if (latest) {
           navigate(`/chat/${latest.id}`, { replace: true });
         }
-      } else {
-        // No sessions exist - create first one
+      } else if (!creatingSessionRef.current && !createSessionMutation.isPending) {
+        // No sessions exist - create first one (with guard to prevent infinite loop)
+        creatingSessionRef.current = true;
         createSessionMutation.mutate(
           { title: "New Conversation" },
           {
             onSuccess: (newSession) => {
               navigate(`/chat/${newSession.id}`, { replace: true });
             },
+            onSettled: () => {
+              // Reset the ref after mutation completes (success or error)
+              creatingSessionRef.current = false;
+            },
           },
         );
       }
     }
-  }, [sessionId, sessions, isLoading, navigate, createSessionMutation]);
+    // NOTE: createSessionMutation intentionally excluded to prevent infinite loop
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionId, sessions, isLoading, navigate]);
 
   // Toggle sidebar
   const toggleSidebar = () => {

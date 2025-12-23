@@ -2,6 +2,7 @@ import React from "react";
 import { motion } from "framer-motion";
 import { Loader2, ScanLine } from "lucide-react";
 import { useAuthStore } from "@/stores/authStore";
+import GlassCard from "@/components/ui/GlassCard";
 import type { EnhancedDocument } from "../../types/documents.types";
 
 interface DocumentCardProps {
@@ -47,24 +48,25 @@ export const DocumentCard = React.forwardRef<HTMLDivElement, DocumentCardProps>(
     const token = useAuthStore((state) => state.token);
 
     return (
-      <motion.div
+      <GlassCard
         ref={ref}
         layout
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
         transition={{ duration: 0.2 }}
+        hover
         onClick={() => {
           onSelect(doc);
           logAction(`OPEN: ${doc.filename}`);
         }}
-        className="group relative w-full aspect-[3/4] cursor-pointer rounded-xl bg-card border border-border shadow-sm hover:shadow-lg hover:border-primary/50 transition-all duration-300 overflow-hidden flex flex-col"
+        className="group w-full aspect-[3/4] flex flex-col"
       >
         {/* Thumbnail Area */}
         <div className="flex-1 w-full relative bg-muted/30 overflow-hidden">
           {!imgError &&
-          (doc.type === "pdf" ||
-            ["jpg", "png", "jpeg", "webp"].includes(doc.type)) ? (
+            (doc.type === "pdf" ||
+              ["jpg", "png", "jpeg", "webp"].includes(doc.type)) ? (
             <div className="w-full h-full relative">
               {/* Main Thumbnail */}
               <img
@@ -105,7 +107,7 @@ export const DocumentCard = React.forwardRef<HTMLDivElement, DocumentCardProps>(
         </div>
 
         {/* Footer Area */}
-        <div className="h-auto min-h-[80px] bg-card p-3 border-t border-border/50 flex flex-col justify-between relative z-10">
+        <div className="h-auto min-h-[80px] bg-black/40 backdrop-blur-md p-3 border-t border-white/5 flex flex-col justify-between relative z-10">
           <div className="space-y-1">
             <h3
               className="text-sm font-semibold text-card-foreground line-clamp-2 leading-tight group-hover:text-primary transition-colors"
@@ -133,7 +135,7 @@ export const DocumentCard = React.forwardRef<HTMLDivElement, DocumentCardProps>(
             </div>
           </div>
         </div>
-      </motion.div>
+      </GlassCard>
     );
   },
 );

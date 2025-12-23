@@ -32,7 +32,7 @@ type ViewMode = "tree" | "grid" | "list";
  */
 export function NotesPage() {
   const navigate = useNavigate();
-  const [viewMode, setViewMode] = useState<ViewMode>("tree");
+  const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [showStats, setShowStats] = useState(false);
 
   // Fetch notes

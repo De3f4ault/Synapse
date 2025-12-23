@@ -25,8 +25,10 @@ router = APIRouter()
 # Request/Response Schemas
 # ============================================================================
 
+
 class NoteCreate(BaseModel):
     """Note creation request."""
+
     title: str = Field(..., max_length=500, min_length=1)
     content: str = Field(..., min_length=1)
     format: NoteFormat = NoteFormat.MARKDOWN
@@ -36,6 +38,7 @@ class NoteCreate(BaseModel):
 
 class NoteUpdate(BaseModel):
     """Note update request."""
+
     title: Optional[str] = Field(None, max_length=500, min_length=1)
     content: Optional[str] = Field(None, min_length=1)
     format: Optional[NoteFormat] = None
@@ -43,6 +46,7 @@ class NoteUpdate(BaseModel):
 
 class NoteResponse(BaseModel):
     """Note response."""
+
     id: int
     title: str
     content: str
@@ -60,14 +64,16 @@ class NoteResponse(BaseModel):
 
 class NoteTreeNode(BaseModel):
     """Recursive note tree node."""
+
     id: int
     title: str
     parent_id: Optional[int]
-    children: List['NoteTreeNode'] = []
+    children: List["NoteTreeNode"] = []
 
 
 class NoteVersionResponse(BaseModel):
     """Note version history response."""
+
     id: int
     note_id: int
     version_number: int
@@ -78,6 +84,7 @@ class NoteVersionResponse(BaseModel):
 
 class NoteSearchResult(BaseModel):
     """Note search result."""
+
     id: int
     title: str
     content: str
@@ -88,6 +95,7 @@ class NoteSearchResult(BaseModel):
 
 class MessageResponse(BaseModel):
     """Simple message response."""
+
     message: str
 
 
@@ -95,11 +103,12 @@ class MessageResponse(BaseModel):
 # Endpoints
 # ============================================================================
 
+
 @router.get(
     "",
     response_model=List[NoteResponse],
     summary="List notes",
-    description="Retrieve user's notes with pagination and filtering"
+    description="Retrieve user's notes with pagination and filtering",
 )
 async def list_notes(
     parent_id: Optional[int] = Query(None, description="Filter by parent (NULL for root notes)"),
@@ -107,44 +116,38 @@ async def list_notes(
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Items per page"),
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
-    """List user's notes with optional filtering."""
-    # Build query
-    query = select(Note).where(
-        and_(
-            Note.user_id == current_user.id,
-            Note.deleted_at.is_(None)
-        )
+    """List user's notes with optional filtering (optimized - single query)."""
+    # Build single query with LEFT OUTER JOIN for children counts
+    # Using a self-join with alias for counting children
+    from sqlalchemy.orm import aliased
+
+    ChildNote = aliased(Note, name="child_note")
+
+    stmt = (
+        select(Note, func.count(ChildNote.id).label("children_count"))
+        .outerjoin(ChildNote, and_(ChildNote.parent_id == Note.id, ChildNote.deleted_at.is_(None)))
+        .where(and_(Note.user_id == current_user.id, Note.deleted_at.is_(None)))
     )
 
     # Filter by parent
     if parent_id is not None:
-        query = query.where(Note.parent_id == parent_id)
-    else:
-        # If no parent_id specified, show all notes (not just root)
-        pass
+        stmt = stmt.where(Note.parent_id == parent_id)
 
-    # Apply pagination
-    query = query.offset((page - 1) * page_size).limit(page_size)
-    query = query.order_by(Note.updated_at.desc())
+    # Apply grouping, ordering, and pagination
+    stmt = (
+        stmt.group_by(Note.id)
+        .order_by(Note.updated_at.desc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+    )
 
-    result = await db.execute(query)
-    notes = result.scalars().all()
+    result = await db.execute(stmt)
+    notes_with_counts = result.all()
 
-    # Get children count for each note
-    response_notes = []
-    for note in notes:
-        children_count_query = select(func.count(Note.id)).where(
-            and_(
-                Note.parent_id == note.id,
-                Note.deleted_at.is_(None)
-            )
-        )
-        children_count_result = await db.execute(children_count_query)
-        children_count = children_count_result.scalar()
-
-        response_notes.append(NoteResponse(
+    return [
+        NoteResponse(
             id=note.id,
             title=note.title,
             content=note.content,
@@ -154,10 +157,10 @@ async def list_notes(
             embedding_id=note.embedding_id,
             created_at=note.created_at,
             updated_at=note.updated_at,
-            children_count=children_count
-        ))
-
-    return response_notes
+            children_count=children_count,
+        )
+        for note, children_count in notes_with_counts
+    ]
 
 
 @router.post(
@@ -165,12 +168,12 @@ async def list_notes(
     response_model=NoteResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Create note",
-    description="Create a new note with optional parent for hierarchy"
+    description="Create a new note with optional parent for hierarchy",
 )
 async def create_note(
     note_data: NoteCreate,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """Create a new note with versioning."""
     # Verify parent exists if specified
@@ -180,15 +183,14 @@ async def create_note(
                 and_(
                     Note.id == note_data.parent_id,
                     Note.user_id == current_user.id,
-                    Note.deleted_at.is_(None)
+                    Note.deleted_at.is_(None),
                 )
             )
         )
         parent = parent_result.scalar_one_or_none()
         if not parent:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Parent note not found"
+                status_code=status.HTTP_404_NOT_FOUND, detail="Parent note not found"
             )
 
     # Create note
@@ -197,7 +199,7 @@ async def create_note(
         title=note_data.title,
         content=note_data.content,
         format=note_data.format,
-        parent_id=note_data.parent_id
+        parent_id=note_data.parent_id,
     )
 
     db.add(new_note)
@@ -211,7 +213,7 @@ async def create_note(
         version_number=1,
         title=new_note.title,
         content=new_note.content,
-        format=new_note.format
+        format=new_note.format,
     )
 
     db.add(version)
@@ -227,7 +229,7 @@ async def create_note(
         embedding_id=new_note.embedding_id,
         created_at=new_note.created_at,
         updated_at=new_note.updated_at,
-        children_count=0
+        children_count=0,
     )
 
 
@@ -235,23 +237,28 @@ async def create_note(
     "/tree",
     response_model=List[NoteTreeNode],
     summary="Get note hierarchy",
-    description="Retrieve hierarchical note structure as tree"
+    description="Retrieve hierarchical note structure as tree",
 )
 async def get_note_tree(
     root_id: Optional[int] = Query(None, description="Start from specific note (NULL for roots)"),
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """Get hierarchical note tree structure."""
+
     # Build tree recursively
     async def build_tree(parent_id: Optional[int]) -> List[NoteTreeNode]:
-        query = select(Note).where(
-            and_(
-                Note.user_id == current_user.id,
-                Note.parent_id == parent_id,
-                Note.deleted_at.is_(None)
+        query = (
+            select(Note)
+            .where(
+                and_(
+                    Note.user_id == current_user.id,
+                    Note.parent_id == parent_id,
+                    Note.deleted_at.is_(None),
+                )
             )
-        ).order_by(Note.title)
+            .order_by(Note.title)
+        )
 
         result = await db.execute(query)
         notes = result.scalars().all()
@@ -259,12 +266,11 @@ async def get_note_tree(
         tree_nodes = []
         for note in notes:
             children = await build_tree(note.id)
-            tree_nodes.append(NoteTreeNode(
-                id=note.id,
-                title=note.title,
-                parent_id=note.parent_id,
-                children=children
-            ))
+            tree_nodes.append(
+                NoteTreeNode(
+                    id=note.id, title=note.title, parent_id=note.parent_id, children=children
+                )
+            )
 
         return tree_nodes
 
@@ -275,13 +281,13 @@ async def get_note_tree(
     "/search",
     response_model=List[NoteSearchResult],
     summary="Search notes",
-    description="Full-text search across notes (title and content)"
+    description="Full-text search across notes (title and content)",
 )
 async def search_notes(
     query: str = Query(..., min_length=1, description="Search query"),
     limit: int = Query(20, ge=1, le=100, description="Maximum results"),
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Search notes with basic text search.
@@ -294,16 +300,17 @@ async def search_notes(
     # Simple LIKE search (case-insensitive)
     search_pattern = f"%{query}%"
 
-    search_query = select(Note).where(
-        and_(
-            Note.user_id == current_user.id,
-            Note.deleted_at.is_(None),
-            or_(
-                Note.title.ilike(search_pattern),
-                Note.content.ilike(search_pattern)
+    search_query = (
+        select(Note)
+        .where(
+            and_(
+                Note.user_id == current_user.id,
+                Note.deleted_at.is_(None),
+                or_(Note.title.ilike(search_pattern), Note.content.ilike(search_pattern)),
             )
         )
-    ).limit(limit)
+        .limit(limit)
+    )
 
     result = await db.execute(search_query)
     notes = result.scalars().all()
@@ -319,14 +326,16 @@ async def search_notes(
             score = 1.0
             match_type = "title"
 
-        results.append(NoteSearchResult(
-            id=note.id,
-            title=note.title,
-            content=note.content[:200] + "..." if len(note.content) > 200 else note.content,
-            format=note.format,
-            score=score,
-            match_type=match_type
-        ))
+        results.append(
+            NoteSearchResult(
+                id=note.id,
+                title=note.title,
+                content=note.content[:200] + "..." if len(note.content) > 200 else note.content,
+                format=note.format,
+                score=score,
+                match_type=match_type,
+            )
+        )
 
     # Sort by score descending
     results.sort(key=lambda x: x.score, reverse=True)
@@ -338,38 +347,26 @@ async def search_notes(
     "/{note_id}",
     response_model=NoteResponse,
     summary="Get note",
-    description="Retrieve a specific note by ID"
+    description="Retrieve a specific note by ID",
 )
 async def get_note(
-    note_id: int,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    note_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
 ):
     """Get a specific note."""
     result = await db.execute(
         select(Note).where(
-            and_(
-                Note.id == note_id,
-                Note.user_id == current_user.id,
-                Note.deleted_at.is_(None)
-            )
+            and_(Note.id == note_id, Note.user_id == current_user.id, Note.deleted_at.is_(None))
         )
     )
     note = result.scalar_one_or_none()
 
     if not note:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Note not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found")
 
     # Get children count
     children_count_result = await db.execute(
         select(func.count(Note.id)).where(
-            and_(
-                Note.parent_id == note.id,
-                Note.deleted_at.is_(None)
-            )
+            and_(Note.parent_id == note.id, Note.deleted_at.is_(None))
         )
     )
     children_count = children_count_result.scalar()
@@ -384,7 +381,7 @@ async def get_note(
         embedding_id=note.embedding_id,
         created_at=note.created_at,
         updated_at=note.updated_at,
-        children_count=children_count
+        children_count=children_count,
     )
 
 
@@ -392,37 +389,28 @@ async def get_note(
     "/{note_id}/versions",
     response_model=List[NoteVersionResponse],
     summary="Get note versions",
-    description="Retrieve version history for a note"
+    description="Retrieve version history for a note",
 )
 async def get_note_versions(
-    note_id: int,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    note_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
 ):
     """Get all versions of a note."""
     # Verify note ownership
     note_result = await db.execute(
         select(Note).where(
-            and_(
-                Note.id == note_id,
-                Note.user_id == current_user.id,
-                Note.deleted_at.is_(None)
-            )
+            and_(Note.id == note_id, Note.user_id == current_user.id, Note.deleted_at.is_(None))
         )
     )
     note = note_result.scalar_one_or_none()
 
     if not note:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Note not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found")
 
     # Get all versions
     versions_result = await db.execute(
-        select(NoteVersion).where(
-            NoteVersion.note_id == note_id
-        ).order_by(NoteVersion.version_number.desc())
+        select(NoteVersion)
+        .where(NoteVersion.note_id == note_id)
+        .order_by(NoteVersion.version_number.desc())
     )
     versions = versions_result.scalars().all()
 
@@ -433,7 +421,7 @@ async def get_note_versions(
             version_number=v.version_number,
             title=v.title,
             created_at=v.created_at,
-            created_by=v.created_by
+            created_by=v.created_by,
         )
         for v in versions
     ]
@@ -443,32 +431,25 @@ async def get_note_versions(
     "/{note_id}",
     response_model=NoteResponse,
     summary="Update note",
-    description="Update note and create new version"
+    description="Update note and create new version",
 )
 async def update_note(
     note_id: int,
     note_data: NoteUpdate,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """Update note and create version history."""
     # Get note
     result = await db.execute(
         select(Note).where(
-            and_(
-                Note.id == note_id,
-                Note.user_id == current_user.id,
-                Note.deleted_at.is_(None)
-            )
+            and_(Note.id == note_id, Note.user_id == current_user.id, Note.deleted_at.is_(None))
         )
     )
     note = result.scalar_one_or_none()
 
     if not note:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Note not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found")
 
     # Track if content changed
     content_changed = False
@@ -490,9 +471,7 @@ async def update_note(
     if content_changed:
         # Get latest version number
         latest_version_result = await db.execute(
-            select(func.max(NoteVersion.version_number)).where(
-                NoteVersion.note_id == note.id
-            )
+            select(func.max(NoteVersion.version_number)).where(NoteVersion.note_id == note.id)
         )
         latest_version = latest_version_result.scalar() or 0
 
@@ -503,7 +482,7 @@ async def update_note(
             version_number=latest_version + 1,
             title=note.title,
             content=note.content,
-            format=note.format
+            format=note.format,
         )
         db.add(new_version)
 
@@ -513,10 +492,7 @@ async def update_note(
     # Get children count
     children_count_result = await db.execute(
         select(func.count(Note.id)).where(
-            and_(
-                Note.parent_id == note.id,
-                Note.deleted_at.is_(None)
-            )
+            and_(Note.parent_id == note.id, Note.deleted_at.is_(None))
         )
     )
     children_count = children_count_result.scalar()
@@ -531,7 +507,7 @@ async def update_note(
         embedding_id=note.embedding_id,
         created_at=note.created_at,
         updated_at=note.updated_at,
-        children_count=children_count
+        children_count=children_count,
     )
 
 
@@ -539,30 +515,21 @@ async def update_note(
     "/{note_id}",
     response_model=MessageResponse,
     summary="Delete note",
-    description="Soft delete note and all children"
+    description="Soft delete note and all children",
 )
 async def delete_note(
-    note_id: int,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    note_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
 ):
     """Delete note (soft delete) including all children."""
     result = await db.execute(
         select(Note).where(
-            and_(
-                Note.id == note_id,
-                Note.user_id == current_user.id,
-                Note.deleted_at.is_(None)
-            )
+            and_(Note.id == note_id, Note.user_id == current_user.id, Note.deleted_at.is_(None))
         )
     )
     note = result.scalar_one_or_none()
 
     if not note:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Note not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found")
 
     # Soft delete note
     note.deleted_at = datetime.utcnow()
@@ -570,12 +537,7 @@ async def delete_note(
     # Recursively soft delete all children
     async def delete_children(parent_id: int):
         children_result = await db.execute(
-            select(Note).where(
-                and_(
-                    Note.parent_id == parent_id,
-                    Note.deleted_at.is_(None)
-                )
-            )
+            select(Note).where(and_(Note.parent_id == parent_id, Note.deleted_at.is_(None)))
         )
         children = children_result.scalars().all()
 

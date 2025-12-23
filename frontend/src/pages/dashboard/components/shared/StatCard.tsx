@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { LucideIcon, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { AnimatedCounter } from "@/components/common/AnimatedCounter";
 import { cn } from "@/lib/utils";
-import GlassCard from "./GlassCard";
+import GlassCard from "@/components/ui/GlassCard";
 
 export interface StatCardProps {
   label: string;

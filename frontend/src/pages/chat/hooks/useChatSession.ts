@@ -17,6 +17,10 @@ import { toast } from "sonner";
 
 /**
  * Hook to list all chat sessions
+ * 
+ * OPTIMIZED: Balanced caching per TanStack Query v5 best practices.
+ * - staleTime: 30s (data considered fresh)
+ * - gcTime: 5min (inactive data cached)
  */
 export const useChatSessions = (params?: {
   page?: number;
@@ -29,13 +33,16 @@ export const useChatSessions = (params?: {
       const pageSize = params?.pageSize ?? 20;
       return ChatService.listSessionsApiV1ChatSessionsGet(page, pageSize);
     },
-    staleTime: 1000 * 60 * 5, // 5 minutes
-    refetchOnWindowFocus: true,
+    staleTime: 1000 * 30,       // 30 seconds (fresh window)
+    gcTime: 1000 * 60 * 5,      // 5 minutes (garbage collection)
+    refetchOnWindowFocus: true, // Refetch when user returns to tab
   });
 };
 
 /**
  * Hook to get a specific chat session
+ * 
+ * OPTIMIZED: Same caching strategy as list.
  */
 export const useChatSession = (sessionId: number | undefined) => {
   return useQuery<ChatSessionResponse>({
@@ -43,7 +50,8 @@ export const useChatSession = (sessionId: number | undefined) => {
     queryFn: () =>
       ChatService.getSessionApiV1ChatSessionsSessionIdGet(sessionId!),
     enabled: !!sessionId,
-    staleTime: 1000 * 60 * 5, // 5 minutes
+    staleTime: 1000 * 30,       // 30 seconds
+    gcTime: 1000 * 60 * 5,      // 5 minutes
   });
 };
 
