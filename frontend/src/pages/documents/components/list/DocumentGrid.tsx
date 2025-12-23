@@ -1,7 +1,8 @@
 import React from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence } from "framer-motion";
 import { ScanLine } from "lucide-react";
 import { DocumentCard } from "./DocumentCard";
+import { useThumbnails } from "../../hooks/useThumbnails";
 import type { EnhancedDocument } from "../../types/documents.types";
 
 interface DocumentGridProps {
@@ -14,6 +15,7 @@ interface DocumentGridProps {
 
 /**
  * Grid view for documents with flat grid layout
+ * Uses batch thumbnail fetching for performance (1 request instead of N)
  */
 export const DocumentGrid: React.FC<DocumentGridProps> = ({
   documents,
@@ -22,6 +24,15 @@ export const DocumentGrid: React.FC<DocumentGridProps> = ({
   onDelete,
   logAction,
 }) => {
+  // Batch fetch all thumbnails in one request
+  const documentIds = React.useMemo(
+    () => documents
+      .filter(doc => doc.type === "pdf" || ["jpg", "png", "jpeg", "webp"].includes(doc.type))
+      .map(doc => doc.id),
+    [documents]
+  );
+  const { data: thumbnails } = useThumbnails(documentIds);
+
   return (
     <div className="relative w-full h-full">
       <div className="w-full h-full p-6 grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-4 overflow-visible content-start">
@@ -34,6 +45,7 @@ export const DocumentGrid: React.FC<DocumentGridProps> = ({
               onSelect={onSelect}
               onDelete={() => onDelete(doc.id)}
               logAction={logAction}
+              thumbnailUrl={thumbnails?.[String(doc.id)]}
             />
           ))}
         </AnimatePresence>

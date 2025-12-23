@@ -1,5 +1,4 @@
 import React from "react";
-import { motion } from "framer-motion";
 import { Loader2, ScanLine } from "lucide-react";
 import { useAuthStore } from "@/stores/authStore";
 import GlassCard from "@/components/ui/GlassCard";
@@ -11,6 +10,8 @@ interface DocumentCardProps {
   onSelect: (doc: EnhancedDocument) => void;
   onDelete?: () => void;
   logAction: (msg: string) => void;
+  /** Pre-fetched thumbnail data URL (base64) from batch API. If provided, uses this instead of individual fetch. */
+  thumbnailUrl?: string | null;
 }
 
 /**
@@ -43,9 +44,12 @@ const FileIcon: React.FC<{ type: string; className?: string }> = ({
  * Paperless-style Card with Thumbnail Preview
  */
 export const DocumentCard = React.forwardRef<HTMLDivElement, DocumentCardProps>(
-  ({ doc, index: _index, onSelect, logAction }, ref) => {
+  ({ doc, index: _index, onSelect, logAction, thumbnailUrl }, ref) => {
     const [imgError, setImgError] = React.useState(false);
     const token = useAuthStore((state) => state.token);
+
+    // Use pre-fetched thumbnail if available, otherwise fallback to individual fetch
+    const imgSrc = thumbnailUrl ?? `/api/v1/documents/${doc.id}/thumb?token=${token}`;
 
     return (
       <GlassCard
@@ -70,7 +74,7 @@ export const DocumentCard = React.forwardRef<HTMLDivElement, DocumentCardProps>(
             <div className="w-full h-full relative">
               {/* Main Thumbnail */}
               <img
-                src={`/api/v1/documents/${doc.id}/thumb?token=${token}`}
+                src={imgSrc}
                 alt={doc.filename}
                 className="w-full h-full object-cover object-top transition-transform duration-500 group-hover:scale-105"
                 onError={() => setImgError(true)}

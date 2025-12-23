@@ -825,6 +825,74 @@ async def get_document_thumbnail(
     return FileResponse(thumb_path, media_type="image/png")
 
 
+@router.get(
+    "/batch/thumbs",
+    summary="Get multiple document thumbnails",
+    description="Fetch thumbnails for multiple documents in a single request. Returns base64-encoded PNGs.",
+)
+async def get_batch_thumbnails(
+    ids: str = Query(..., description="Comma-separated document IDs"),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Batch fetch document thumbnails.
+
+    Performance: 1 request instead of N requests for N documents.
+    Returns base64-encoded PNG thumbnails.
+    """
+    import base64
+
+    # Parse document IDs
+    try:
+        document_ids = [int(id.strip()) for id in ids.split(",") if id.strip()]
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid document IDs format")
+
+    if not document_ids:
+        return {"thumbnails": {}}
+
+    if len(document_ids) > 50:
+        raise HTTPException(status_code=400, detail="Maximum 50 documents per request")
+
+    # Single query to fetch all requested documents
+    result = await db.execute(
+        select(Document).where(
+            and_(
+                Document.id.in_(document_ids),
+                Document.user_id == current_user.id,
+                Document.deleted_at.is_(None),
+            )
+        )
+    )
+    documents = result.scalars().all()
+
+    # Generate thumbnails for each document
+    thumbnails = {}
+    for doc in documents:
+        if not os.path.exists(doc.file_path):
+            thumbnails[str(doc.id)] = None
+            continue
+
+        mime_type = "application/pdf" if doc.file_type == "pdf" else f"image/{doc.file_type}"
+        thumb_path = generate_thumbnail(doc.file_path, mime_type)
+
+        if thumb_path and os.path.exists(thumb_path):
+            try:
+                with open(thumb_path, "rb") as f:
+                    thumb_data = base64.b64encode(f.read()).decode("utf-8")
+                thumbnails[str(doc.id)] = {
+                    "data": f"data:image/png;base64,{thumb_data}",
+                    "filename": doc.filename,
+                }
+            except Exception:
+                thumbnails[str(doc.id)] = None
+        else:
+            thumbnails[str(doc.id)] = None
+
+    return {"thumbnails": thumbnails}
+
+
 async def _get_doc_or_404(document_id: int, user: User, db: AsyncSession) -> Document:
     result = await db.execute(
         select(Document).where(
