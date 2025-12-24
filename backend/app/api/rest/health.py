@@ -29,8 +29,10 @@ router = APIRouter()
 # Response Schemas
 # ============================================================================
 
+
 class ServiceStatus(BaseModel):
     """Individual service status."""
+
     status: str  # "healthy" or "unhealthy"
     message: str
     latency_ms: Optional[float] = None
@@ -39,6 +41,7 @@ class ServiceStatus(BaseModel):
 
 class HealthResponse(BaseModel):
     """Overall health status response."""
+
     status: str  # "healthy" or "unhealthy"
     timestamp: datetime
     services: Dict[str, ServiceStatus]
@@ -48,6 +51,7 @@ class HealthResponse(BaseModel):
 # Helper Functions - Service Checks
 # ============================================================================
 
+
 async def check_postgresql(db: AsyncSession) -> ServiceStatus:
     """
     Check PostgreSQL database connectivity.
@@ -56,6 +60,7 @@ async def check_postgresql(db: AsyncSession) -> ServiceStatus:
         ServiceStatus with health status
     """
     import time
+
     start = time.time()
 
     try:
@@ -66,14 +71,14 @@ async def check_postgresql(db: AsyncSession) -> ServiceStatus:
             status="healthy",
             message="Connected to PostgreSQL",
             latency_ms=latency,
-            details={"driver": "asyncpg"}
+            details={"driver": "asyncpg"},
         )
     except Exception as e:
         logger.error(f"PostgreSQL health check failed: {str(e)}")
         return ServiceStatus(
             status="unhealthy",
             message=f"PostgreSQL connection failed: {str(e)}",
-            details={"error": str(e)}
+            details={"error": str(e)},
         )
 
 
@@ -85,6 +90,7 @@ async def check_redis() -> ServiceStatus:
         ServiceStatus with health status
     """
     import time
+
     start = time.time()
 
     try:
@@ -107,40 +113,40 @@ async def check_redis() -> ServiceStatus:
             details={
                 "url": settings.REDIS_URL,
                 "used_memory": used_memory,
-                "connected_clients": info.get("connected_clients", 0)
-            }
+                "connected_clients": info.get("connected_clients", 0),
+            },
         )
     except Exception as e:
         logger.error(f"Redis health check failed: {str(e)}")
         return ServiceStatus(
             status="unhealthy",
             message=f"Redis connection failed: {str(e)}",
-            details={"error": str(e), "url": settings.REDIS_URL}
+            details={"error": str(e), "url": settings.REDIS_URL},
         )
 
 
 async def check_qdrant() -> ServiceStatus:
     """
     Check Qdrant vector store connectivity.
-    
+
     Returns:
         ServiceStatus with Qdrant health information
     """
     import time
-    
+
     start = time.time()
-    
+
     try:
         from app.core.ai.rag.vector_store.qdrant.client import get_qdrant_client
-        
+
         qdrant_client = get_qdrant_client()
         client = qdrant_client.get_client()
-        
+
         # Test connection by getting collections
         collections = client.get_collections()
-        
+
         latency_ms = int((time.time() - start) * 1000)
-        
+
         return ServiceStatus(
             status="healthy",
             message="Connected to Qdrant",
@@ -148,8 +154,8 @@ async def check_qdrant() -> ServiceStatus:
             details={
                 "collections_count": len(collections.collections),
                 "host": qdrant_client.config.host,
-                "port": qdrant_client.config.port
-            }
+                "port": qdrant_client.config.port,
+            },
         )
     except Exception as e:
         latency_ms = int((time.time() - start) * 1000)
@@ -158,7 +164,7 @@ async def check_qdrant() -> ServiceStatus:
             status="unhealthy",
             message=f"Qdrant connection failed: {str(e)}",
             latency_ms=latency_ms,
-            details={"error": str(e)}
+            details={"error": str(e)},
         )
 
 
@@ -170,6 +176,7 @@ async def check_duckdb() -> ServiceStatus:
         ServiceStatus with health status
     """
     import time
+
     start = time.time()
 
     try:
@@ -191,17 +198,14 @@ async def check_duckdb() -> ServiceStatus:
             status="healthy",
             message="Connected to DuckDB",
             latency_ms=latency,
-            details={
-                "path": str(settings.DUCKDB_PATH),
-                "table_count": table_count
-            }
+            details={"path": str(settings.DUCKDB_PATH), "table_count": table_count},
         )
     except Exception as e:
         logger.error(f"DuckDB health check failed: {str(e)}")
         return ServiceStatus(
             status="unhealthy",
             message=f"DuckDB connection failed: {str(e)}",
-            details={"error": str(e), "path": str(settings.DUCKDB_PATH)}
+            details={"error": str(e), "path": str(settings.DUCKDB_PATH)},
         )
 
 
@@ -213,36 +217,35 @@ async def check_gemini_api() -> ServiceStatus:
         ServiceStatus with health status
     """
     import time
+
     start = time.time()
 
     try:
-        import google.generativeai as genai
+        from google import genai
 
-        genai.configure(api_key=settings.GEMINI_API_KEY)
+        client = genai.Client(api_key=settings.GEMINI_API_KEY)
 
-        # List available models to verify API key is valid
-        models = list(genai.list_models())
+        # Test API by making a simple generation request
+        response = client.models.generate_content(
+            model="gemini-2.0-flash", contents="Say 'OK' in one word."
+        )
         latency = (time.time() - start) * 1000
-
-        # Count available models
-        available_models = [m.name for m in models if "generateContent" in m.supported_generation_methods]
 
         return ServiceStatus(
             status="healthy",
             message="Connected to Gemini API",
             latency_ms=latency,
-            details={
-                "available_models": len(available_models),
-                "model_names": [m.split("/")[-1] for m in available_models[:5]],
-                "api_configured": True
-            }
+            details={"response_received": bool(response.text), "api_configured": True},
         )
     except Exception as e:
         logger.error(f"Gemini API health check failed: {str(e)}")
         return ServiceStatus(
             status="unhealthy",
             message=f"Gemini API check failed: {str(e)}",
-            details={"error": str(e), "possible_causes": ["Invalid API key", "API quota exceeded", "Network issue"]}
+            details={
+                "error": str(e),
+                "possible_causes": ["Invalid API key", "API quota exceeded", "Network issue"],
+            },
         )
 
 
@@ -250,11 +253,12 @@ async def check_gemini_api() -> ServiceStatus:
 # Endpoints
 # ============================================================================
 
+
 @router.get(
     "",
     response_model=HealthResponse,
     summary="Overall health check",
-    description="Check health of all system services"
+    description="Check health of all system services",
 )
 async def health_check(db: AsyncSession = Depends(get_db)):
     """
@@ -289,15 +293,11 @@ async def health_check(db: AsyncSession = Depends(get_db)):
 
     # Determine overall status
     # All services must be healthy for overall health
-    overall_status = "healthy" if all(
-        s.status == "healthy" for s in services.values()
-    ) else "unhealthy"
-
-    response = HealthResponse(
-        status=overall_status,
-        timestamp=datetime.utcnow(),
-        services=services
+    overall_status = (
+        "healthy" if all(s.status == "healthy" for s in services.values()) else "unhealthy"
     )
+
+    response = HealthResponse(status=overall_status, timestamp=datetime.utcnow(), services=services)
 
     # Return appropriate status code
     if overall_status == "unhealthy":
@@ -311,7 +311,7 @@ async def health_check(db: AsyncSession = Depends(get_db)):
 @router.get(
     "/ready",
     summary="Readiness check",
-    description="Kubernetes readiness probe - check if app is ready for traffic"
+    description="Kubernetes readiness probe - check if app is ready for traffic",
 )
 async def readiness_check(db: AsyncSession = Depends(get_db)):
     """
@@ -331,6 +331,7 @@ async def readiness_check(db: AsyncSession = Depends(get_db)):
 
         # Check Redis (needed for many features)
         import redis.asyncio as redis
+
         redis_client = redis.from_url(settings.REDIS_URL)
         await redis_client.ping()
         await redis_client.close()
@@ -339,20 +340,20 @@ async def readiness_check(db: AsyncSession = Depends(get_db)):
         return {
             "status": "ready",
             "timestamp": datetime.utcnow(),
-            "services_required": ["postgresql", "redis"]
+            "services_required": ["postgresql", "redis"],
         }
     except Exception as e:
         logger.error(f"Readiness check failed: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Application not ready - critical services unavailable"
+            detail="Application not ready - critical services unavailable",
         )
 
 
 @router.get(
     "/live",
     summary="Liveness check",
-    description="Kubernetes liveness probe - check if app process is alive"
+    description="Kubernetes liveness probe - check if app process is alive",
 )
 async def liveness_check():
     """
@@ -361,7 +362,4 @@ async def liveness_check():
     Returns 200 if application process is alive (always succeeds).
     Used to determine if container should be restarted.
     """
-    return {
-        "status": "alive",
-        "timestamp": datetime.utcnow()
-    }
+    return {"status": "alive", "timestamp": datetime.utcnow()}

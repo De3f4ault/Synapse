@@ -4,6 +4,7 @@
  */
 
 import { motion } from "framer-motion";
+import { Circle } from "lucide-react";
 import { ProgressBar } from "./ProgressBar";
 import { PathwayCard } from "./PathwayCard";
 import GlassCard from "../shared/GlassCard";

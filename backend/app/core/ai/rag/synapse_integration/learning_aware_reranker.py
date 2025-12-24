@@ -1,6 +1,6 @@
 """Learning-Aware Reranker - Boosts weak areas for personalized learning."""
 
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Any
 from llama_index.core.postprocessor.types import BaseNodePostprocessor
 from llama_index.core.schema import NodeWithScore, QueryBundle
 from pydantic import PrivateAttr, Field

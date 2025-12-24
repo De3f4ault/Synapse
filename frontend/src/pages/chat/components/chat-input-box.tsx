@@ -5,7 +5,7 @@
  * Glassmorphism effect and gradient border on focus
  */
 
-import { PaperclipIcon, SendIcon } from "lucide-react";
+import { PaperclipIcon, SendIcon, Mic } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
@@ -15,6 +15,7 @@ interface ChatInputBoxProps {
   message: string;
   onMessageChange: (value: string) => void;
   onSend: () => void;
+  onVoiceClick?: () => void;
   placeholder?: string;
   disabled?: boolean;
   className?: string;
@@ -24,6 +25,7 @@ export function ChatInputBox({
   message,
   onMessageChange,
   onSend,
+  onVoiceClick,
   placeholder = "Type your message...",
   disabled = false,
   className,
@@ -83,6 +85,21 @@ export function ChatInputBox({
           >
             <PaperclipIcon className="size-4" />
           </Button>
+
+          {/* Voice Mode Button */}
+          {onVoiceClick && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onVoiceClick}
+              className="size-8 shrink-0 rounded-full hover:bg-purple-500/10 hover:text-purple-500 transition-colors"
+              type="button"
+              disabled={disabled}
+              title="Voice Mode"
+            >
+              <Mic className="size-4" />
+            </Button>
+          )}
 
           {/* Send Button */}
           <Button

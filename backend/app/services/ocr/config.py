@@ -7,7 +7,6 @@ All settings can be overridden via environment variables.
 
 from enum import Enum
 from typing import Optional, Dict, Any
-import os
 
 from pydantic import Field
 from pydantic_settings import BaseSettings

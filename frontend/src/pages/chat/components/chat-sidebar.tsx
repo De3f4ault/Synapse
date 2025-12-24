@@ -9,7 +9,7 @@
  */
 
 import { useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   Search,
   MoreVertical,
@@ -22,6 +22,8 @@ import {
   Plus,
   Check,
   X,
+  Bot,
+  MessageSquare as ChatIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -46,6 +48,17 @@ interface ChatSidebarProps {
   className?: string;
 }
 
+type SessionFilter = "all" | "dashboard" | "chat";
+
+/**
+ * Helper to check if a session is dashboard-origin
+ */
+const isDashboardSession = (title: string | null | undefined): boolean => {
+  if (!title) return false;
+  const lower = title.toLowerCase();
+  return lower.includes("dashboard") || lower.includes("assistant");
+};
+
 export function ChatSidebar({ currentSessionId, className }: ChatSidebarProps) {
   const navigate = useNavigate();
   const { data: sessions = [] } = useChatSessions();
@@ -56,9 +69,22 @@ export function ChatSidebar({ currentSessionId, className }: ChatSidebarProps) {
   // Renaming state
   const [renamingId, setRenamingId] = useState<number | null>(null);
   const [renameValue, setRenameValue] = useState("");
+  const [sourceFilter, setSourceFilter] = useState<SessionFilter>("all");
+
+  // Filter sessions based on source
+  const filteredSessions = useMemo(() => {
+    switch (sourceFilter) {
+      case "dashboard":
+        return sessions.filter((s) => isDashboardSession(s.title));
+      case "chat":
+        return sessions.filter((s) => !isDashboardSession(s.title));
+      default:
+        return sessions;
+    }
+  }, [sessions, sourceFilter]);
 
   // Note: Archive functionality not yet implemented in backend
-  const recentChats = sessions;
+  const recentChats = filteredSessions;
   const archivedChats: typeof sessions = [];
 
   const handleCreateSession = () => {
@@ -116,6 +142,47 @@ export function ChatSidebar({ currentSessionId, className }: ChatSidebarProps) {
             className="pl-9 pr-4 h-9 bg-white/5 border-white/5 focus:border-cyan-500/50 focus:ring-0 text-xs transition-all"
           />
         </div>
+      </div>
+
+      <Separator className="bg-white/5" />
+
+      {/* Source Filter Toggle */}
+      <div className="px-3 py-2 flex gap-1">
+        <button
+          onClick={() => setSourceFilter("all")}
+          className={cn(
+            "flex-1 py-1.5 px-2 rounded-md text-[10px] font-medium uppercase tracking-wide transition-all",
+            sourceFilter === "all"
+              ? "bg-primary/20 text-primary border border-primary/30"
+              : "text-slate-500 hover:text-slate-400 hover:bg-white/5"
+          )}
+        >
+          All
+        </button>
+        <button
+          onClick={() => setSourceFilter("dashboard")}
+          className={cn(
+            "flex-1 py-1.5 px-2 rounded-md text-[10px] font-medium uppercase tracking-wide transition-all flex items-center justify-center gap-1",
+            sourceFilter === "dashboard"
+              ? "bg-cyan-500/20 text-cyan-400 border border-cyan-500/30"
+              : "text-slate-500 hover:text-slate-400 hover:bg-white/5"
+          )}
+        >
+          <Bot size={10} />
+          Dashboard
+        </button>
+        <button
+          onClick={() => setSourceFilter("chat")}
+          className={cn(
+            "flex-1 py-1.5 px-2 rounded-md text-[10px] font-medium uppercase tracking-wide transition-all flex items-center justify-center gap-1",
+            sourceFilter === "chat"
+              ? "bg-purple-500/20 text-purple-400 border border-purple-500/30"
+              : "text-slate-500 hover:text-slate-400 hover:bg-white/5"
+          )}
+        >
+          <ChatIcon size={10} />
+          Chat
+        </button>
       </div>
 
       <Separator className="bg-white/5" />

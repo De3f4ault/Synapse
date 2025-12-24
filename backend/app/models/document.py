@@ -18,7 +18,7 @@ from sqlalchemy import (
     Text,
     Boolean,
 )
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column
 
 from .base import Base
 from .mixins import TimestampMixin, SoftDeleteMixin, UserOwnedMixin

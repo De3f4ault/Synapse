@@ -336,16 +336,16 @@ async def cleanup_gemini_file(document: Document) -> bool:
         if not document.gemini_file_uri:
             return True
 
-        import google.generativeai as genai
+        from google import genai
         from app.core.config import settings
 
-        genai.configure(api_key=settings.GEMINI_API_KEY)
+        client = genai.Client(api_key=settings.GEMINI_API_KEY)
 
         # Extract file ID from URI (format: "files/FILE_ID")
         file_id = document.gemini_file_uri.split("/")[-1]
 
-        # Delete the file
-        genai.delete_file(file_id)
+        # Delete the file using new SDK
+        client.files.delete(name=f"files/{file_id}")
 
         logger.info(f"Deleted file from Gemini Files API: {file_id}")
         return True
@@ -973,11 +973,10 @@ async def generate_document_summary(
 
     # Generate summary using Gemini
     try:
-        import google.generativeai as genai
+        from google import genai
         from app.core.config import settings
 
-        genai.configure(api_key=settings.GEMINI_API_KEY)
-        model = genai.GenerativeModel("gemini-1.5-flash")
+        client = genai.Client(api_key=settings.GEMINI_API_KEY)
 
         # Truncate content if too long (Gemini has context limits)
         content = doc.content_text[:30000] if len(doc.content_text) > 30000 else doc.content_text
@@ -990,7 +989,7 @@ Document Title: {doc.filename}
 Content:
 {content}"""
 
-        response = model.generate_content(prompt)
+        response = client.models.generate_content(model="gemini-2.0-flash", contents=prompt)
         summary = response.text
 
         # Cache the summary

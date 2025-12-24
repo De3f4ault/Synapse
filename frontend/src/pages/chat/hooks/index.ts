@@ -1,13 +1,11 @@
 /**
  * Chat hooks exports
- * Central export point for essential chat hooks only
+ * Re-exports from shared module for backwards compatibility
  */
 
-// Session management
-export * from "./useChatSession";
+// Re-export everything from the shared chat module
+export * from "@/modules/chat";
 
-// Message handling
-export * from "./useChatMessages";
+// Legacy exports (kept for backwards compatibility)
+// These are now re-exported from the shared module
 
-// Streaming - WebSocket message streaming
-export * from "./useChatStreaming";

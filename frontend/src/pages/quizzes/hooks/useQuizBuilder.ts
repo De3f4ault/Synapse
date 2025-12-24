@@ -57,6 +57,7 @@ export function useQuizBuilder() {
         description: schema.description,
         time_limit_minutes: schema.time_limit_minutes,
         difficulty: schema.difficulty as any,
+        questions: [],
       });
     } catch (e) {
       toast.error("NEURAL LINK FAILURE");

@@ -1,5 +1,4 @@
 import React from "react";
-import { motion } from "framer-motion";
 import { LucideIcon, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { AnimatedCounter } from "@/components/common/AnimatedCounter";
 import { cn } from "@/lib/utils";
@@ -50,7 +49,7 @@ export function StatCard({
   trend,
   icon: Icon,
   iconColor = "text-cyan-400",
-  variant = "default",
+  variant: _variant = "default",
   className,
   onClick,
 }: StatCardProps) {

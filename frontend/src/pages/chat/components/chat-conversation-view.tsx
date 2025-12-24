@@ -11,6 +11,7 @@ interface ChatConversationViewProps {
   onMessageChange: (value: string) => void;
   onSend: () => void;
   onReset: () => void;
+  onVoiceClick?: () => void;
   isSending?: boolean;
 }
 
@@ -20,6 +21,7 @@ export function ChatConversationView({
   onMessageChange,
   onSend,
   onReset,
+  onVoiceClick,
   isSending = false,
 }: ChatConversationViewProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -56,6 +58,7 @@ export function ChatConversationView({
             message={message}
             onMessageChange={onMessageChange}
             onSend={onSend}
+            onVoiceClick={onVoiceClick}
             placeholder="Continue the conversation..."
             disabled={isSending}
           />

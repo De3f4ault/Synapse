@@ -14,6 +14,7 @@ from .dashboard import dashboard_websocket_endpoint
 from .chat import chat_websocket
 from .activity import activity_websocket_endpoint
 from .study import study_websocket_endpoint
+from .live_voice import live_voice_websocket_endpoint
 
 
 def register_websocket_routes(app: FastAPI):
@@ -29,8 +30,7 @@ def register_websocket_routes(app: FastAPI):
 
     @app.websocket("/ws/unified")
     async def unified_ws(
-        websocket: WebSocket,
-        token: str = Query(..., description="JWT authentication token")
+        websocket: WebSocket, token: str = Query(..., description="JWT authentication token")
     ):
         """
         **NEW** Unified WebSocket endpoint for all real-time features.
@@ -52,8 +52,7 @@ def register_websocket_routes(app: FastAPI):
 
     @app.websocket("/ws/dashboard")
     async def dashboard_ws(
-        websocket: WebSocket,
-        token: str = Query(..., description="JWT authentication token")
+        websocket: WebSocket, token: str = Query(..., description="JWT authentication token")
     ):
         """
         Dashboard WebSocket endpoint with real-time updates.
@@ -76,7 +75,7 @@ def register_websocket_routes(app: FastAPI):
         websocket: WebSocket,
         session_id: str,
         token: str = Query(..., description="JWT authentication token"),
-        db: AsyncSession = Depends(get_db)
+        db: AsyncSession = Depends(get_db),
     ):
         """
         Chat WebSocket endpoint with AI streaming.
@@ -95,8 +94,7 @@ def register_websocket_routes(app: FastAPI):
 
     @app.websocket("/ws/activity")
     async def activity_ws(
-        websocket: WebSocket,
-        token: str = Query(..., description="JWT authentication token")
+        websocket: WebSocket, token: str = Query(..., description="JWT authentication token")
     ):
         """
         Activity tracking WebSocket endpoint.
@@ -117,7 +115,7 @@ def register_websocket_routes(app: FastAPI):
     async def study_ws(
         websocket: WebSocket,
         session_id: int,
-        token: str = Query(..., description="JWT authentication token")
+        token: str = Query(..., description="JWT authentication token"),
     ):
         """
         Study session WebSocket endpoint.
@@ -133,3 +131,29 @@ def register_websocket_routes(app: FastAPI):
         Authentication via query parameter: ws://host/ws/study/123?token=xxx
         """
         await study_websocket_endpoint(websocket, session_id, token)
+
+    @app.websocket("/ws/live")
+    async def live_voice_ws(
+        websocket: WebSocket, token: str = Query(..., description="JWT authentication token")
+    ):
+        """
+        Live Voice WebSocket endpoint with Gemini Live API.
+
+        **NEW**: Real-time bidirectional voice interaction.
+
+        Provides:
+        - Low-latency audio streaming (16kHz in, 24kHz out)
+        - Interruptible AI responses
+        - Search Grounding integration
+        - Real-time transcription
+
+        Protocol:
+        - Client sends: {"type": "audio", "data": "<base64 PCM>"}
+        - Client sends: {"type": "text", "content": "Hello"}
+        - Server sends: {"type": "audio", "data": "<base64 PCM>"}
+        - Server sends: {"type": "transcript", "text": "..."}
+        - Server sends: {"type": "grounding", "metadata": {...}}
+
+        Authentication via query parameter: ws://host/ws/live?token=xxx
+        """
+        await live_voice_websocket_endpoint(websocket, token)

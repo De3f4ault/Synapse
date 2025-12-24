@@ -7,6 +7,7 @@
 import { useState } from "react";
 import { ChatWelcomeScreen } from "./chat-welcome-screen";
 import { ChatConversationView } from "./chat-conversation-view";
+import { LiveVoiceOverlay } from "./live-voice-overlay";
 import { useChatMessages, useSendMessage } from "../hooks/useChatMessages";
 
 interface ChatMainProps {
@@ -15,6 +16,7 @@ interface ChatMainProps {
 
 export function ChatMain({ sessionId }: ChatMainProps) {
   const [message, setMessage] = useState("");
+  const [isVoiceOpen, setIsVoiceOpen] = useState(false);
 
   // Fetch messages for this session
   const { data: messages = [], isLoading } = useChatMessages(sessionId);
@@ -40,6 +42,10 @@ export function ChatMain({ sessionId }: ChatMainProps) {
     setMessage("");
   };
 
+  const handleVoiceClick = () => {
+    setIsVoiceOpen(true);
+  };
+
   if (isLoading) {
     return (
       <div className="flex h-full items-center justify-center">
@@ -48,24 +54,34 @@ export function ChatMain({ sessionId }: ChatMainProps) {
     );
   }
 
-  if (isConversationStarted) {
-    return (
-      <ChatConversationView
-        messages={messages}
-        message={message}
-        onMessageChange={setMessage}
-        onSend={handleSend}
-        onReset={handleReset}
-        isSending={sendMessageMutation.isPending}
-      />
-    );
-  }
-
   return (
-    <ChatWelcomeScreen
-      message={message}
-      onMessageChange={setMessage}
-      onSend={handleSend}
-    />
+    <>
+      {isConversationStarted ? (
+        <ChatConversationView
+          messages={messages}
+          message={message}
+          onMessageChange={setMessage}
+          onSend={handleSend}
+          onReset={handleReset}
+          onVoiceClick={handleVoiceClick}
+          isSending={sendMessageMutation.isPending}
+        />
+      ) : (
+        <ChatWelcomeScreen
+          message={message}
+          onMessageChange={setMessage}
+          onSend={handleSend}
+          onVoiceClick={handleVoiceClick}
+        />
+      )}
+
+      {/* Voice Mode Overlay */}
+      <LiveVoiceOverlay
+        isOpen={isVoiceOpen}
+        onClose={() => setIsVoiceOpen(false)}
+        systemInstruction="You are Synapse, a helpful AI learning assistant."
+        enableSearch={true}
+      />
+    </>
   );
 }

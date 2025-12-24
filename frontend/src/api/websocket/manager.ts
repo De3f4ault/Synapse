@@ -38,7 +38,6 @@ export class WebSocketManager {
   private readonly maxReconnectAttempts = 5;
   private readonly reconnectBaseDelay = 1000;
   private readonly heartbeatInterval = 30000; // 30 seconds
-  private readonly connectionTimeout = 10000;
 
   private constructor() {
     // Private constructor for singleton

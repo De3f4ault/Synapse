@@ -5,7 +5,7 @@ import { ActivityGraph } from "./components/widgets/ActivityGraph";
 import { WeakAreasWidget } from "./components/widgets/WeakAreasWidget";
 import { MasteryWidget } from "./components/widgets/MasteryWidget";
 import { RecentFilesWidget } from "./components/widgets/RecentFilesWidget";
-import { DashboardAssistant } from "./components/widgets/DashboardAssistant";
+import { DashboardAssistant } from "./components/widgets/dashboard-assistant";
 import {
   Layers,
   MessageSquare,

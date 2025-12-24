@@ -15,8 +15,7 @@ import {
 } from "lucide-react";
 import Confetti from "react-confetti";
 import { useWindowSize } from "@/hooks/use-window-size";
-import { CardFlip } from "./CardFlip";
-import { SwipeGesture } from "./SwipeGesture";
+import { ReviewCard } from "./ReviewCard";
 import { ReviewTimer } from "./ReviewTimer";
 import { useReviewSession } from "../../hooks/useReviewSession";
 import { useReviewStore } from "../../stores/reviewStore";
@@ -383,25 +382,19 @@ export function ReviewSession({ cards, onComplete }: ReviewSessionProps) {
         <AnimatePresence mode="wait">
           <motion.div
             key={currentCard.id}
-            initial={{ opacity: 0, x: 300 }}
-            animate={{ opacity: 1, x: 0 }}
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, x: -300 }}
             transition={{ duration: 0.3 }}
             className="py-8"
           >
-            {!isFlipped ? (
-              <CardFlip
-                card={currentCard}
-                isFlipped={isFlipped}
-                onFlip={flipCard}
-              />
-            ) : (
-              <SwipeGesture
-                card={currentCard}
-                onSwipe={handleSwipe}
-                disabled={isPending}
-              />
-            )}
+            <ReviewCard
+              card={currentCard}
+              isFlipped={isFlipped}
+              onFlip={flipCard}
+              onSwipe={handleSwipe}
+              disabled={isPending}
+            />
           </motion.div>
         </AnimatePresence>
 
