@@ -24,6 +24,7 @@ export class SearchService {
      * @param modules Comma-separated modules to search
      * @param searchType Search strategy: fts, semantic, or hybrid
      * @param limit Maximum results
+     * @param token Auth token for image/file requests
      * @returns SearchResponse Successful Response
      * @throws ApiError
      */
@@ -32,6 +33,7 @@ export class SearchService {
         modules?: (string | null),
         searchType: string = 'hybrid',
         limit: number = 20,
+        token?: (string | null),
     ): CancelablePromise<SearchResponse> {
         return __request(OpenAPI, {
             method: 'GET',
@@ -41,6 +43,7 @@ export class SearchService {
                 'modules': modules,
                 'search_type': searchType,
                 'limit': limit,
+                'token': token,
             },
             errors: {
                 422: `Validation Error`,
@@ -54,12 +57,14 @@ export class SearchService {
      * Returns potential search terms based on user's content.
      * @param query Partial query
      * @param limit
+     * @param token Auth token for image/file requests
      * @returns string Successful Response
      * @throws ApiError
      */
     public static searchSuggestionsApiV1SearchSuggestGet(
         query: string,
         limit: number = 10,
+        token?: (string | null),
     ): CancelablePromise<Array<string>> {
         return __request(OpenAPI, {
             method: 'GET',
@@ -67,6 +72,7 @@ export class SearchService {
             query: {
                 'query': query,
                 'limit': limit,
+                'token': token,
             },
             errors: {
                 422: `Validation Error`,

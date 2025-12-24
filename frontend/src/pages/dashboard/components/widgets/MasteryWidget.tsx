@@ -38,9 +38,15 @@ export const MasteryWidget: React.FC<MasteryWidgetProps> = ({ data }) => {
 
       <div className="flex-1 w-full min-h-0 flex items-center justify-center">
         {chartData.length < 3 ? (
-          <div className="text-center p-4">
-            <p className="text-sm text-slate-400">
+          <div className="text-center p-4 flex flex-col items-center">
+            <div className="w-16 h-16 rounded-2xl nm-inset flex items-center justify-center mb-4 text-amber-400/50">
+              <Award className="w-8 h-8" />
+            </div>
+            <p className="text-sm text-slate-300 mb-1">
               Study more topics to see your mastery radar.
+            </p>
+            <p className="text-xs text-slate-500">
+              Review cards across different subjects
             </p>
           </div>
         ) : (

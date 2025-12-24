@@ -247,6 +247,73 @@ async def get_deck(
     )
 
 
+@router.get(
+    "/{deck_id}/cards",
+    summary="List deck cards",
+    description="Get all flashcards in a deck",
+)
+async def list_deck_cards(
+    deck_id: int,
+    page: int = Query(1, ge=1, description="Page number"),
+    page_size: int = Query(100, ge=1, le=500, description="Items per page"),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Get all flashcards in a deck.
+
+    This returns ALL cards in the deck, not just due cards.
+    Used by DeckDetailPage to display the full card list.
+    """
+    # Verify deck ownership
+    deck_result = await db.execute(
+        select(Deck).where(
+            and_(Deck.id == deck_id, Deck.user_id == current_user.id, Deck.deleted_at.is_(None))
+        )
+    )
+    deck = deck_result.scalar_one_or_none()
+
+    if not deck:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Deck not found")
+
+    # Get all cards in the deck
+    offset = (page - 1) * page_size
+    cards_result = await db.execute(
+        select(Flashcard)
+        .where(and_(Flashcard.deck_id == deck_id, Flashcard.deleted_at.is_(None)))
+        .order_by(Flashcard.created_at.desc())
+        .offset(offset)
+        .limit(page_size)
+    )
+    cards = cards_result.scalars().all()
+
+    # Return cards as list of dicts to match FlashcardResponse format
+    return [
+        {
+            "id": card.id,
+            "deck_id": card.deck_id,
+            "front_text": card.front_text,
+            "back_text": card.back_text,
+            "front_media_url": card.front_media_url,
+            "back_media_url": card.back_media_url,
+            "ease_factor": float(card.ease_factor) if card.ease_factor else 2.5,
+            "interval": card.interval or 0,
+            "repetitions": card.repetitions or 0,
+            "last_review": card.last_review,
+            "next_review": card.next_review,
+            "learning_state": card.learning_state or "new",
+            "times_reviewed": card.times_reviewed or 0,
+            "accuracy": (
+                card.times_correct / card.times_reviewed
+                if card.times_reviewed and card.times_reviewed > 0
+                else 0.0
+            ),
+            "deck_name": deck.name,
+        }
+        for card in cards
+    ]
+
+
 @router.put(
     "/{deck_id}",
     response_model=DeckResponse,

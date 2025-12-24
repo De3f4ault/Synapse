@@ -14,10 +14,15 @@ export type DocumentResponse = {
     processing_status: ProcessingStatus;
     page_count: (number | null);
     word_count: (number | null);
+    ocr_performed?: boolean;
     gemini_file_uri: (string | null);
     gemini_file_expired: boolean;
     user_id: number;
     created_at: string;
     updated_at: string;
+    sector?: (string | null);
+    notes?: (string | null);
+    ai_summary?: (string | null);
+    reading_progress?: (number | null);
 };
 

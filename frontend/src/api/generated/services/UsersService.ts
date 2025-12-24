@@ -13,28 +13,42 @@ export class UsersService {
     /**
      * Get user profile
      * Retrieve authenticated user's profile
+     * @param token Auth token for image/file requests
      * @returns any Successful Response
      * @throws ApiError
      */
-    public static getProfileApiV1UsersMeGet(): CancelablePromise<any> {
+    public static getProfileApiV1UsersMeGet(
+        token?: (string | null),
+    ): CancelablePromise<any> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/v1/users/me',
+            query: {
+                'token': token,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
         });
     }
     /**
      * Update user profile
      * Update authenticated user's profile information
      * @param requestBody
+     * @param token Auth token for image/file requests
      * @returns any Successful Response
      * @throws ApiError
      */
     public static updateProfileApiV1UsersMePut(
         requestBody: UserUpdate,
+        token?: (string | null),
     ): CancelablePromise<any> {
         return __request(OpenAPI, {
             method: 'PUT',
             url: '/api/v1/users/me',
+            query: {
+                'token': token,
+            },
             body: requestBody,
             mediaType: 'application/json',
             errors: {
@@ -45,28 +59,42 @@ export class UsersService {
     /**
      * Delete account
      * Delete authenticated user's account (soft delete)
+     * @param token Auth token for image/file requests
      * @returns app__api__rest__links__MessageResponse Successful Response
      * @throws ApiError
      */
-    public static deleteAccountApiV1UsersMeDelete(): CancelablePromise<app__api__rest__links__MessageResponse> {
+    public static deleteAccountApiV1UsersMeDelete(
+        token?: (string | null),
+    ): CancelablePromise<app__api__rest__links__MessageResponse> {
         return __request(OpenAPI, {
             method: 'DELETE',
             url: '/api/v1/users/me',
+            query: {
+                'token': token,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
         });
     }
     /**
      * Change password
      * Change authenticated user's password
      * @param requestBody
+     * @param token Auth token for image/file requests
      * @returns app__api__rest__links__MessageResponse Successful Response
      * @throws ApiError
      */
     public static changePasswordApiV1UsersMePasswordPut(
         requestBody: PasswordChange,
+        token?: (string | null),
     ): CancelablePromise<app__api__rest__links__MessageResponse> {
         return __request(OpenAPI, {
             method: 'PUT',
             url: '/api/v1/users/me/password',
+            query: {
+                'token': token,
+            },
             body: requestBody,
             mediaType: 'application/json',
             errors: {
@@ -77,13 +105,22 @@ export class UsersService {
     /**
      * Get user statistics
      * Retrieve comprehensive learning statistics
+     * @param token Auth token for image/file requests
      * @returns UserStatistics Successful Response
      * @throws ApiError
      */
-    public static getStatisticsApiV1UsersMeStatisticsGet(): CancelablePromise<UserStatistics> {
+    public static getStatisticsApiV1UsersMeStatisticsGet(
+        token?: (string | null),
+    ): CancelablePromise<UserStatistics> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/v1/users/me/statistics',
+            query: {
+                'token': token,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
         });
     }
 }

@@ -23,9 +23,17 @@ export const WeakAreasWidget: React.FC<WeakAreasWidgetProps> = ({ data }) => {
 
       <div className="flex-1 w-full overflow-y-auto scrollbar-hide space-y-5 pr-2">
         {data.length === 0 ? (
-          <div className="h-full flex items-center justify-center text-center">
-            <p className="text-sm text-slate-400 italic">
-              Great job! No significant weak areas detected.
+          <div className="h-full flex flex-col items-center justify-center text-center px-4">
+            <div className="w-14 h-14 rounded-2xl nm-inset flex items-center justify-center mb-4 text-emerald-400/60">
+              <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <p className="text-sm text-emerald-400 font-medium mb-1">
+              No weak areas detected
+            </p>
+            <p className="text-xs text-slate-500">
+              Complete study sessions to track areas that need focus
             </p>
           </div>
         ) : (

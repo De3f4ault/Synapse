@@ -96,10 +96,10 @@ export const DashboardPage: React.FC = () => {
             <>
               <StatusCard
                 title="Due Cards"
-                value={data?.dueCards?.length || 0}
+                value={data?.overview?.due_cards || 0}
                 subtitle="Ready for review"
                 icon={Layers}
-                trend={data?.dueCards?.length ? "up" : "neutral"}
+                trend={(data?.overview?.due_cards || 0) > 0 ? "up" : "neutral"}
                 onClick={() => navigate("/flashcards")}
                 color="cyan"
               />

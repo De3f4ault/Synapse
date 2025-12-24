@@ -31,18 +31,20 @@ class FlashcardRepository:
         """
         self.session = session
 
-    async def record_review(self, card_id: int, quality: int) -> Dict:
+    async def record_review(self, card_id: int, user_id: int, quality: int) -> Dict:
         """
         Record a flashcard review using the SM-2 algorithm.
 
         Calls the PostgreSQL function `record_review` which:
         1. Locks the card row for atomic update
-        2. Calculates new SM-2 values (ease_factor, repetitions, interval)
-        3. Updates the card with new scheduling
-        4. Creates a review history record
+        2. Validates user ownership
+        3. Calculates new SM-2 values (ease_factor, repetitions, interval)
+        4. Updates the card with new scheduling
+        5. Creates a review history record
 
         Args:
             card_id: ID of the flashcard being reviewed
+            user_id: ID of the user performing the review
             quality: Quality rating 0-5 (0=Again, 5=Trivial)
 
         Returns:
@@ -56,12 +58,11 @@ class FlashcardRepository:
             Exception: If card not found or database error
         """
         query = text("""
-            SELECT * FROM developer_schema.record_review(:card_id, :quality)
+            SELECT * FROM developer_schema.record_review(:card_id, :user_id, :quality)
         """)
 
         result = await self.session.execute(
-            query,
-            {"card_id": card_id, "quality": quality}
+            query, {"card_id": card_id, "user_id": user_id, "quality": quality}
         )
 
         row = result.fetchone()
@@ -74,10 +75,7 @@ class FlashcardRepository:
         return result_json
 
     async def get_due_cards(
-        self,
-        user_id: int,
-        deck_id: Optional[int] = None,
-        limit: int = 20
+        self, user_id: int, deck_id: Optional[int] = None, limit: int = 20
     ) -> List[Dict]:
         """
         Get cards due for review with priority scoring.
@@ -110,23 +108,25 @@ class FlashcardRepository:
 
         cards = []
         for row in rows:
-            cards.append({
-                "id": row.card_id,
-                "deck_id": row.deck_id,
-                "deck_name": row.deck_name,
-                "front_text": row.front_text,
-                "back_text": row.back_text,
-                "ease_factor": float(row.ease_factor),
-                "interval": row.interval_days,
-                "repetitions": row.repetitions,
-                "last_review": row.last_review,
-                "next_review": row.next_review,
-                "learning_state": row.learning_state,
-                "times_reviewed": row.times_reviewed,
-                "accuracy": float(row.accuracy) if row.accuracy else 0.0,
-                "overdue_days": row.overdue_days,
-                "priority_score": float(row.priority_score) if row.priority_score else 0.0
-            })
+            cards.append(
+                {
+                    "id": row.card_id,
+                    "deck_id": row.deck_id,
+                    "deck_name": row.deck_name,
+                    "front_text": row.front_text,
+                    "back_text": row.back_text,
+                    "ease_factor": float(row.ease_factor),
+                    "interval": row.interval_days,
+                    "repetitions": row.repetitions,
+                    "last_review": row.last_review,
+                    "next_review": row.next_review,
+                    "learning_state": row.learning_state,
+                    "times_reviewed": row.times_reviewed,
+                    "accuracy": float(row.accuracy) if row.accuracy else 0.0,
+                    "overdue_days": row.overdue_days,
+                    "priority_score": float(row.priority_score) if row.priority_score else 0.0,
+                }
+            )
 
         return cards
 
@@ -150,10 +150,7 @@ class FlashcardRepository:
             SELECT developer_schema.calculate_mastery(:user_id, :topic)
         """)
 
-        result = await self.session.execute(
-            query,
-            {"user_id": user_id, "topic": topic}
-        )
+        result = await self.session.execute(query, {"user_id": user_id, "topic": topic})
 
         mastery_score = result.scalar()
 
@@ -196,7 +193,7 @@ class FlashcardRepository:
                 "due_cards": 0,
                 "mastered_cards": 0,
                 "avg_ease_factor": 0.0,
-                "active_users": 0
+                "active_users": 0,
             }
 
         return {
@@ -204,7 +201,7 @@ class FlashcardRepository:
             "due_cards": row.due_cards,
             "mastered_cards": row.mastered_cards,
             "avg_ease_factor": float(row.avg_ease_factor) if row.avg_ease_factor else 0.0,
-            "active_users": row.active_users
+            "active_users": row.active_users,
         }
 
     async def get_weak_areas(self, user_id: int, limit: int = 5) -> List[Dict]:
@@ -228,29 +225,24 @@ class FlashcardRepository:
             SELECT * FROM developer_schema.detect_weak_areas(:user_id, :limit)
         """)
 
-        result = await self.session.execute(
-            query,
-            {"user_id": user_id, "limit": limit}
-        )
+        result = await self.session.execute(query, {"user_id": user_id, "limit": limit})
 
         rows = result.fetchall()
 
         weak_areas = []
         for row in rows:
-            weak_areas.append({
-                "topic": row.topic,
-                "accuracy": float(row.accuracy),
-                "review_count": row.review_count,
-                "trend": row.trend if hasattr(row, 'trend') else "stable"
-            })
+            weak_areas.append(
+                {
+                    "topic": row.topic,
+                    "accuracy": float(row.accuracy),
+                    "review_count": row.review_count,
+                    "trend": row.trend if hasattr(row, "trend") else "stable",
+                }
+            )
 
         return weak_areas
 
-    async def get_review_history(
-        self,
-        card_id: int,
-        limit: int = 50
-    ) -> List[Dict]:
+    async def get_review_history(self, card_id: int, limit: int = 50) -> List[Dict]:
         """
         Get review history for a card.
 
@@ -279,26 +271,25 @@ class FlashcardRepository:
             LIMIT :limit
         """)
 
-        result = await self.session.execute(
-            query,
-            {"card_id": card_id, "limit": limit}
-        )
+        result = await self.session.execute(query, {"card_id": card_id, "limit": limit})
 
         rows = result.fetchall()
 
         history = []
         for row in rows:
-            history.append({
-                "id": row.id,
-                "card_id": row.card_id,
-                "user_id": row.user_id,
-                "quality": row.quality,
-                "ease_factor_before": float(row.ease_factor_before),
-                "ease_factor_after": float(row.ease_factor_after),
-                "interval_before": row.interval_before,
-                "interval_after": row.interval_after,
-                "time_taken_ms": row.time_taken_ms,
-                "reviewed_at": row.reviewed_at
-            })
+            history.append(
+                {
+                    "id": row.id,
+                    "card_id": row.card_id,
+                    "user_id": row.user_id,
+                    "quality": row.quality,
+                    "ease_factor_before": float(row.ease_factor_before),
+                    "ease_factor_after": float(row.ease_factor_after),
+                    "interval_before": row.interval_before,
+                    "interval_after": row.interval_after,
+                    "time_taken_ms": row.time_taken_ms,
+                    "reviewed_at": row.reviewed_at,
+                }
+            )
 
         return history

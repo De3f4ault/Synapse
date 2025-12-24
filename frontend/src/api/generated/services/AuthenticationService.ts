@@ -54,37 +54,64 @@ export class AuthenticationService {
     /**
      * User logout
      * Invalidate current session by blacklisting JWT token
+     * @param token Auth token for image/file requests
      * @returns app__api__rest__links__MessageResponse Successful Response
      * @throws ApiError
      */
-    public static logoutApiV1AuthLogoutPost(): CancelablePromise<app__api__rest__links__MessageResponse> {
+    public static logoutApiV1AuthLogoutPost(
+        token?: (string | null),
+    ): CancelablePromise<app__api__rest__links__MessageResponse> {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/api/v1/auth/logout',
+            query: {
+                'token': token,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
         });
     }
     /**
      * Get current user
      * Retrieve authenticated user's profile information
+     * @param token Auth token for image/file requests
      * @returns UserResponse Successful Response
      * @throws ApiError
      */
-    public static getCurrentUserProfileApiV1AuthMeGet(): CancelablePromise<UserResponse> {
+    public static getCurrentUserProfileApiV1AuthMeGet(
+        token?: (string | null),
+    ): CancelablePromise<UserResponse> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/v1/auth/me',
+            query: {
+                'token': token,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
         });
     }
     /**
      * Refresh access token
      * Generate new access token using existing valid token
+     * @param token Auth token for image/file requests
      * @returns TokenResponse Successful Response
      * @throws ApiError
      */
-    public static refreshTokenApiV1AuthRefreshPost(): CancelablePromise<TokenResponse> {
+    public static refreshTokenApiV1AuthRefreshPost(
+        token?: (string | null),
+    ): CancelablePromise<TokenResponse> {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/api/v1/auth/refresh',
+            query: {
+                'token': token,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
         });
     }
 }

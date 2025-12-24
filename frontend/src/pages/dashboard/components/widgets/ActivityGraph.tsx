@@ -10,7 +10,8 @@ import {
   CartesianGrid,
 } from "recharts";
 import type { PerformanceTrend } from "@/api/generated";
-import { Loader2, TrendingUp } from "lucide-react";
+import { Loader2, TrendingUp, Zap, BookOpen } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 interface ActivityGraphProps {
   data: PerformanceTrend[];
@@ -21,6 +22,8 @@ export const ActivityGraph: React.FC<ActivityGraphProps> = ({
   data,
   isLoading,
 }) => {
+  const navigate = useNavigate();
+
   if (isLoading) {
     return (
       <NeumorphicCard className="col-span-4 lg:col-span-3 h-[380px] flex flex-col items-center justify-center">
@@ -28,6 +31,42 @@ export const ActivityGraph: React.FC<ActivityGraphProps> = ({
         <span className="text-slate-400 font-mono text-sm">
           Loading neural activity...
         </span>
+      </NeumorphicCard>
+    );
+  }
+
+  // Empty state when no study activity
+  if (!data || data.length === 0) {
+    return (
+      <NeumorphicCard className="col-span-4 lg:col-span-3 h-[380px] p-6 flex flex-col">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-10 h-10 rounded-xl nm-inset flex items-center justify-center text-cyan-400">
+            <TrendingUp className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="text-lg font-bold text-white">Learning Activity</h3>
+            <p className="text-xs text-slate-500">Performance over time</p>
+          </div>
+        </div>
+
+        <div className="flex-1 flex flex-col items-center justify-center text-center">
+          <div className="w-20 h-20 rounded-2xl nm-inset flex items-center justify-center mb-6 text-cyan-400/50">
+            <BookOpen className="w-10 h-10" />
+          </div>
+          <h4 className="text-lg font-semibold text-white mb-2">
+            Start Your Learning Journey
+          </h4>
+          <p className="text-sm text-slate-400 mb-6 max-w-xs">
+            Complete your first study session to see your performance trends here.
+          </p>
+          <button
+            onClick={() => navigate("/flashcards/review")}
+            className="px-6 py-3 rounded-xl nm-convex text-cyan-400 font-medium hover:text-cyan-300 transition-colors flex items-center gap-2"
+          >
+            <Zap className="w-4 h-4" />
+            Start Studying
+          </button>
+        </div>
       </NeumorphicCard>
     );
   }

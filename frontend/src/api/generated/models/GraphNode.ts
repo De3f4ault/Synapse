@@ -9,5 +9,6 @@ export type GraphNode = {
     id: string;
     type: string;
     entity_id: number;
+    label?: (string | null);
 };
 

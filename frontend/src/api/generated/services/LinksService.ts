@@ -23,6 +23,7 @@ export class LinksService {
      * @param targetType Filter by target entity type
      * @param page Page number
      * @param pageSize Items per page
+     * @param token Auth token for image/file requests
      * @returns LinkResponse Successful Response
      * @throws ApiError
      */
@@ -32,6 +33,7 @@ export class LinksService {
         targetType?: (EntityType | null),
         page: number = 1,
         pageSize: number = 50,
+        token?: (string | null),
     ): CancelablePromise<Array<LinkResponse>> {
         return __request(OpenAPI, {
             method: 'GET',
@@ -42,6 +44,7 @@ export class LinksService {
                 'target_type': targetType,
                 'page': page,
                 'page_size': pageSize,
+                'token': token,
             },
             errors: {
                 422: `Validation Error`,
@@ -52,15 +55,20 @@ export class LinksService {
      * Create link
      * Create a new link between two entities
      * @param requestBody
+     * @param token Auth token for image/file requests
      * @returns LinkResponse Successful Response
      * @throws ApiError
      */
     public static createLinkApiV1LinksPost(
         requestBody: LinkCreate,
+        token?: (string | null),
     ): CancelablePromise<LinkResponse> {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/api/v1/links',
+            query: {
+                'token': token,
+            },
             body: requestBody,
             mediaType: 'application/json',
             errors: {
@@ -74,6 +82,7 @@ export class LinksService {
      * @param entityTypes Filter by entity types (comma-separated)
      * @param linkTypes Filter by link types (comma-separated)
      * @param includeSuggested Include suggested links
+     * @param token Auth token for image/file requests
      * @returns KnowledgeGraphResponse Successful Response
      * @throws ApiError
      */
@@ -81,6 +90,7 @@ export class LinksService {
         entityTypes?: (string | null),
         linkTypes?: (string | null),
         includeSuggested: boolean = false,
+        token?: (string | null),
     ): CancelablePromise<KnowledgeGraphResponse> {
         return __request(OpenAPI, {
             method: 'GET',
@@ -89,6 +99,7 @@ export class LinksService {
                 'entity_types': entityTypes,
                 'link_types': linkTypes,
                 'include_suggested': includeSuggested,
+                'token': token,
             },
             errors: {
                 422: `Validation Error`,
@@ -100,12 +111,14 @@ export class LinksService {
      * Get all links to and from a specific entity
      * @param entityType
      * @param entityId
+     * @param token Auth token for image/file requests
      * @returns EntityLinksResponse Successful Response
      * @throws ApiError
      */
     public static getEntityLinksApiV1LinksEntityEntityTypeEntityIdGet(
         entityType: EntityType,
         entityId: number,
+        token?: (string | null),
     ): CancelablePromise<EntityLinksResponse> {
         return __request(OpenAPI, {
             method: 'GET',
@@ -113,6 +126,9 @@ export class LinksService {
             path: {
                 'entity_type': entityType,
                 'entity_id': entityId,
+            },
+            query: {
+                'token': token,
             },
             errors: {
                 422: `Validation Error`,
@@ -125,6 +141,7 @@ export class LinksService {
      * @param entityType
      * @param entityId
      * @param depth How many hops to traverse
+     * @param token Auth token for image/file requests
      * @returns ConnectedEntityResponse Successful Response
      * @throws ApiError
      */
@@ -132,6 +149,7 @@ export class LinksService {
         entityType: EntityType,
         entityId: number,
         depth: number = 1,
+        token?: (string | null),
     ): CancelablePromise<Array<ConnectedEntityResponse>> {
         return __request(OpenAPI, {
             method: 'GET',
@@ -142,6 +160,7 @@ export class LinksService {
             },
             query: {
                 'depth': depth,
+                'token': token,
             },
             errors: {
                 422: `Validation Error`,
@@ -154,6 +173,7 @@ export class LinksService {
      * @param entityType Filter by entity type
      * @param entityId Filter by entity ID
      * @param limit Maximum results
+     * @param token Auth token for image/file requests
      * @returns LinkResponse Successful Response
      * @throws ApiError
      */
@@ -161,6 +181,7 @@ export class LinksService {
         entityType?: (EntityType | null),
         entityId?: (number | null),
         limit: number = 20,
+        token?: (string | null),
     ): CancelablePromise<Array<LinkResponse>> {
         return __request(OpenAPI, {
             method: 'GET',
@@ -169,6 +190,7 @@ export class LinksService {
                 'entity_type': entityType,
                 'entity_id': entityId,
                 'limit': limit,
+                'token': token,
             },
             errors: {
                 422: `Validation Error`,
@@ -179,17 +201,22 @@ export class LinksService {
      * Get link
      * Get a specific link by ID
      * @param linkId
+     * @param token Auth token for image/file requests
      * @returns LinkResponse Successful Response
      * @throws ApiError
      */
     public static getLinkApiV1LinksLinkIdGet(
         linkId: number,
+        token?: (string | null),
     ): CancelablePromise<LinkResponse> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/v1/links/{link_id}',
             path: {
                 'link_id': linkId,
+            },
+            query: {
+                'token': token,
             },
             errors: {
                 422: `Validation Error`,
@@ -201,18 +228,23 @@ export class LinksService {
      * Update link properties
      * @param linkId
      * @param requestBody
+     * @param token Auth token for image/file requests
      * @returns LinkResponse Successful Response
      * @throws ApiError
      */
     public static updateLinkApiV1LinksLinkIdPut(
         linkId: number,
         requestBody: LinkUpdate,
+        token?: (string | null),
     ): CancelablePromise<LinkResponse> {
         return __request(OpenAPI, {
             method: 'PUT',
             url: '/api/v1/links/{link_id}',
             path: {
                 'link_id': linkId,
+            },
+            query: {
+                'token': token,
             },
             body: requestBody,
             mediaType: 'application/json',
@@ -225,17 +257,22 @@ export class LinksService {
      * Delete link
      * Delete a link
      * @param linkId
+     * @param token Auth token for image/file requests
      * @returns app__api__rest__links__MessageResponse Successful Response
      * @throws ApiError
      */
     public static deleteLinkApiV1LinksLinkIdDelete(
         linkId: number,
+        token?: (string | null),
     ): CancelablePromise<app__api__rest__links__MessageResponse> {
         return __request(OpenAPI, {
             method: 'DELETE',
             url: '/api/v1/links/{link_id}',
             path: {
                 'link_id': linkId,
+            },
+            query: {
+                'token': token,
             },
             errors: {
                 422: `Validation Error`,
@@ -246,17 +283,22 @@ export class LinksService {
      * Accept suggested link
      * Accept a suggested link, converting it to manual
      * @param linkId
+     * @param token Auth token for image/file requests
      * @returns LinkResponse Successful Response
      * @throws ApiError
      */
     public static acceptLinkApiV1LinksLinkIdAcceptPost(
         linkId: number,
+        token?: (string | null),
     ): CancelablePromise<LinkResponse> {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/api/v1/links/{link_id}/accept',
             path: {
                 'link_id': linkId,
+            },
+            query: {
+                'token': token,
             },
             errors: {
                 422: `Validation Error`,

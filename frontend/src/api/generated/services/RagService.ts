@@ -19,15 +19,20 @@ export class RagService {
      * Ingest document into RAG
      * Ingest document with smart routing: small docs processed inline, large docs queued to Celery
      * @param requestBody
+     * @param token Auth token for image/file requests
      * @returns DocumentIngestResponse Successful Response
      * @throws ApiError
      */
     public static ingestDocumentApiV1RagDocumentsIngestPost(
         requestBody: DocumentIngestRequest,
+        token?: (string | null),
     ): CancelablePromise<DocumentIngestResponse> {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/api/v1/rag/documents/ingest',
+            query: {
+                'token': token,
+            },
             body: requestBody,
             mediaType: 'application/json',
             errors: {
@@ -39,15 +44,20 @@ export class RagService {
      * Batch ingest documents
      * Batch ingest multiple documents (always async via Celery).
      * @param requestBody
+     * @param token Auth token for image/file requests
      * @returns BatchIngestResponse Successful Response
      * @throws ApiError
      */
     public static batchIngestApiV1RagDocumentsBatchPost(
         requestBody: BatchIngestRequest,
+        token?: (string | null),
     ): CancelablePromise<BatchIngestResponse> {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/api/v1/rag/documents/batch',
+            query: {
+                'token': token,
+            },
             body: requestBody,
             mediaType: 'application/json',
             errors: {
@@ -59,15 +69,20 @@ export class RagService {
      * Query RAG system
      * Query RAG with all Phase 3 enhancements (LLM, reranking, personalization)
      * @param requestBody
+     * @param token Auth token for image/file requests
      * @returns QueryResponse Successful Response
      * @throws ApiError
      */
     public static queryRagApiV1RagQueryPost(
         requestBody: QueryRequest,
+        token?: (string | null),
     ): CancelablePromise<QueryResponse> {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/api/v1/rag/query',
+            query: {
+                'token': token,
+            },
             body: requestBody,
             mediaType: 'application/json',
             errors: {
@@ -79,15 +94,20 @@ export class RagService {
      * Submit feedback
      * Submit user feedback for adaptive learning
      * @param requestBody
+     * @param token Auth token for image/file requests
      * @returns FeedbackResponse Successful Response
      * @throws ApiError
      */
     public static submitFeedbackApiV1RagFeedbackPost(
         requestBody: FeedbackRequest,
+        token?: (string | null),
     ): CancelablePromise<FeedbackResponse> {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/api/v1/rag/feedback',
+            query: {
+                'token': token,
+            },
             body: requestBody,
             mediaType: 'application/json',
             errors: {
@@ -99,17 +119,22 @@ export class RagService {
      * Get task status
      * Get status of background task.
      * @param taskId
+     * @param token Auth token for image/file requests
      * @returns TaskStatusResponse Successful Response
      * @throws ApiError
      */
     public static getTaskStatusApiV1RagTasksTaskIdGet(
         taskId: string,
+        token?: (string | null),
     ): CancelablePromise<TaskStatusResponse> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/v1/rag/tasks/{task_id}',
             path: {
                 'task_id': taskId,
+            },
+            query: {
+                'token': token,
             },
             errors: {
                 422: `Validation Error`,

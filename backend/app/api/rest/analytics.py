@@ -92,7 +92,6 @@ async def get_overview(
     Performance: 1 query vs 8 queries (original implementation).
     """
     from sqlalchemy import text
-    from sqlalchemy.exc import ProgrammingError
 
     try:
         # Try to use the materialized view (single query)
@@ -136,9 +135,13 @@ async def get_overview(
                 total_study_time_minutes=row["total_study_time_minutes"],
             )
 
-    except ProgrammingError:
-        # View doesn't exist - fall back to direct queries
-        pass
+    except Exception as e:
+        # View query failed - fall back to direct queries
+        # This catches ProgrammingError (view doesn't exist) or any other issue
+        import structlog
+
+        logger = structlog.get_logger(__name__)
+        logger.warning("materialized_view_query_failed", error=str(e), user_id=current_user.id)
 
     # Fallback: direct queries (original 8-query implementation)
     # This runs if the materialized view is not deployed yet

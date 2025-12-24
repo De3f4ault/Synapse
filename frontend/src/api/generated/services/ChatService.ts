@@ -19,12 +19,14 @@ export class ChatService {
      * Retrieve user's chat sessions
      * @param page Page number
      * @param pageSize Items per page
+     * @param token Auth token for image/file requests
      * @returns ChatSessionResponse Successful Response
      * @throws ApiError
      */
     public static listSessionsApiV1ChatSessionsGet(
         page: number = 1,
         pageSize: number = 20,
+        token?: (string | null),
     ): CancelablePromise<Array<ChatSessionResponse>> {
         return __request(OpenAPI, {
             method: 'GET',
@@ -32,6 +34,7 @@ export class ChatService {
             query: {
                 'page': page,
                 'page_size': pageSize,
+                'token': token,
             },
             errors: {
                 422: `Validation Error`,
@@ -42,15 +45,20 @@ export class ChatService {
      * Create chat session
      * Start a new chat session
      * @param requestBody
+     * @param token Auth token for image/file requests
      * @returns ChatSessionResponse Successful Response
      * @throws ApiError
      */
     public static createSessionApiV1ChatSessionsPost(
         requestBody: ChatSessionCreate,
+        token?: (string | null),
     ): CancelablePromise<ChatSessionResponse> {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/api/v1/chat/sessions',
+            query: {
+                'token': token,
+            },
             body: requestBody,
             mediaType: 'application/json',
             errors: {
@@ -62,17 +70,22 @@ export class ChatService {
      * Get chat session
      * Retrieve a specific chat session
      * @param sessionId
+     * @param token Auth token for image/file requests
      * @returns ChatSessionResponse Successful Response
      * @throws ApiError
      */
     public static getSessionApiV1ChatSessionsSessionIdGet(
         sessionId: number,
+        token?: (string | null),
     ): CancelablePromise<ChatSessionResponse> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/v1/chat/sessions/{session_id}',
             path: {
                 'session_id': sessionId,
+            },
+            query: {
+                'token': token,
             },
             errors: {
                 422: `Validation Error`,
@@ -83,17 +96,22 @@ export class ChatService {
      * Delete chat session
      * Delete a chat session
      * @param sessionId
+     * @param token Auth token for image/file requests
      * @returns any Successful Response
      * @throws ApiError
      */
     public static deleteSessionApiV1ChatSessionsSessionIdDelete(
         sessionId: number,
+        token?: (string | null),
     ): CancelablePromise<Record<string, any>> {
         return __request(OpenAPI, {
             method: 'DELETE',
             url: '/api/v1/chat/sessions/{session_id}',
             path: {
                 'session_id': sessionId,
+            },
+            query: {
+                'token': token,
             },
             errors: {
                 422: `Validation Error`,
@@ -105,18 +123,23 @@ export class ChatService {
      * Update session title
      * @param sessionId
      * @param requestBody
+     * @param token Auth token for image/file requests
      * @returns ChatSessionResponse Successful Response
      * @throws ApiError
      */
     public static updateSessionApiV1ChatSessionsSessionIdPatch(
         sessionId: number,
         requestBody: ChatSessionUpdate,
+        token?: (string | null),
     ): CancelablePromise<ChatSessionResponse> {
         return __request(OpenAPI, {
             method: 'PATCH',
             url: '/api/v1/chat/sessions/{session_id}',
             path: {
                 'session_id': sessionId,
+            },
+            query: {
+                'token': token,
             },
             body: requestBody,
             mediaType: 'application/json',
@@ -130,12 +153,14 @@ export class ChatService {
      * Retrieve messages from a chat session
      * @param sessionId
      * @param limit Max messages to return
+     * @param token Auth token for image/file requests
      * @returns ChatMessageResponse Successful Response
      * @throws ApiError
      */
     public static getMessagesApiV1ChatSessionsSessionIdMessagesGet(
         sessionId: number,
         limit: number = 100,
+        token?: (string | null),
     ): CancelablePromise<Array<ChatMessageResponse>> {
         return __request(OpenAPI, {
             method: 'GET',
@@ -145,6 +170,7 @@ export class ChatService {
             },
             query: {
                 'limit': limit,
+                'token': token,
             },
             errors: {
                 422: `Validation Error`,
@@ -156,18 +182,23 @@ export class ChatService {
      * Send a message and get AI response (non-streaming)
      * @param sessionId
      * @param requestBody
+     * @param token Auth token for image/file requests
      * @returns ChatMessageResponse Successful Response
      * @throws ApiError
      */
     public static sendMessageApiV1ChatSessionsSessionIdMessagesPost(
         sessionId: number,
         requestBody: ChatMessageCreate,
+        token?: (string | null),
     ): CancelablePromise<ChatMessageResponse> {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/api/v1/chat/sessions/{session_id}/messages',
             path: {
                 'session_id': sessionId,
+            },
+            query: {
+                'token': token,
             },
             body: requestBody,
             mediaType: 'application/json',
@@ -180,17 +211,22 @@ export class ChatService {
      * Delete message
      * Delete a specific message
      * @param messageId
+     * @param token Auth token for image/file requests
      * @returns any Successful Response
      * @throws ApiError
      */
     public static deleteMessageApiV1ChatMessagesMessageIdDelete(
         messageId: number,
+        token?: (string | null),
     ): CancelablePromise<Record<string, any>> {
         return __request(OpenAPI, {
             method: 'DELETE',
             url: '/api/v1/chat/messages/{message_id}',
             path: {
                 'message_id': messageId,
+            },
+            query: {
+                'token': token,
             },
             errors: {
                 422: `Validation Error`,
@@ -201,17 +237,22 @@ export class ChatService {
      * Regenerate message
      * Regenerate AI response for a message
      * @param messageId
+     * @param token Auth token for image/file requests
      * @returns ChatMessageResponse Successful Response
      * @throws ApiError
      */
     public static regenerateMessageApiV1ChatMessagesMessageIdRegeneratePost(
         messageId: number,
+        token?: (string | null),
     ): CancelablePromise<ChatMessageResponse> {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/api/v1/chat/messages/{message_id}/regenerate',
             path: {
                 'message_id': messageId,
+            },
+            query: {
+                'token': token,
             },
             errors: {
                 422: `Validation Error`,
@@ -223,18 +264,21 @@ export class ChatService {
      * Upload a file to use as context in chat
      * @param formData
      * @param sessionId
+     * @param token Auth token for image/file requests
      * @returns FileUploadResponse Successful Response
      * @throws ApiError
      */
     public static uploadChatFileApiV1ChatFilesUploadPost(
         formData: Body_upload_chat_file_api_v1_chat_files_upload_post,
         sessionId?: (number | null),
+        token?: (string | null),
     ): CancelablePromise<FileUploadResponse> {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/api/v1/chat/files/upload',
             query: {
                 'session_id': sessionId,
+                'token': token,
             },
             formData: formData,
             mediaType: 'multipart/form-data',
@@ -259,15 +303,20 @@ export class ChatService {
      * Dashboard Orchestrator Message
      * Send message to dashboard orchestrator with full system access
      * @param requestBody
+     * @param token Auth token for image/file requests
      * @returns ChatMessageResponse Successful Response
      * @throws ApiError
      */
     public static sendDashboardMessageApiV1ChatSessionsDashboardMessagePost(
         requestBody: ChatMessageCreate,
+        token?: (string | null),
     ): CancelablePromise<ChatMessageResponse> {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/api/v1/chat/sessions/dashboard/message',
+            query: {
+                'token': token,
+            },
             body: requestBody,
             mediaType: 'application/json',
             errors: {

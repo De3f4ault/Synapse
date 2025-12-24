@@ -284,7 +284,7 @@ export function DeckDetailPage() {
   const { data: deck, isLoading: deckLoading } = useDeck(id);
   const { data: cardsResponse, isLoading: cardsLoading } = useQuery({
     queryKey: queryKeys.decks.cards(id),
-    queryFn: () => FlashcardsService.getDueCardsApiV1CardsDueGet(id),
+    queryFn: () => FlashcardsService.listDeckCardsApiV1DecksDeckIdCardsGet(id),
     enabled: !!id,
   });
   const cards = cardsResponse as Flashcard[] | undefined;
@@ -458,17 +458,17 @@ export function DeckDetailPage() {
                 <QuickAction
                   icon={BookOpen}
                   label="Browse All Cards"
-                  onClick={() => {}}
+                  onClick={() => { }}
                 />
                 <QuickAction
                   icon={BarChart3}
                   label="View Analytics"
-                  onClick={() => {}}
+                  onClick={() => { }}
                 />
                 <QuickAction
                   icon={Sparkles}
                   label="AI Study Tips"
-                  onClick={() => {}}
+                  onClick={() => { }}
                 />
               </div>
 
