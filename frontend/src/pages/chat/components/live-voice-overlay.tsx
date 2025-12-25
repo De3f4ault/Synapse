@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLiveVoice, LiveVoiceState } from "../hooks/useLiveVoice";
+import { AudioVisualizer } from "./audio-visualizer";
 
 interface LiveVoiceOverlayProps {
     isOpen: boolean;
@@ -154,85 +155,12 @@ export const LiveVoiceOverlay: React.FC<LiveVoiceOverlayProps> = ({
 
                 {/* Main content */}
                 <div className="relative flex flex-col items-center gap-8 max-w-lg px-6">
-                    {/* Audio visualizer circle */}
-                    <div className="relative">
-                        {/* Outer glow */}
-                        <motion.div
-                            className={cn(
-                                "absolute inset-0 rounded-full blur-xl",
-                                state === "speaking" ? "bg-blue-500/30" : "bg-purple-500/30"
-                            )}
-                            animate={{
-                                scale: 1 + audioLevel * 0.5,
-                                opacity: 0.3 + audioLevel * 0.4,
-                            }}
-                            transition={{ duration: 0.1 }}
-                        />
-
-                        {/* Inner pulse rings */}
-                        {state === "listening" && (
-                            <>
-                                <motion.div
-                                    className="absolute inset-0 rounded-full border-2 border-purple-500/50"
-                                    animate={{
-                                        scale: [1, 1.3, 1],
-                                        opacity: [0.5, 0, 0.5],
-                                    }}
-                                    transition={{
-                                        duration: 2,
-                                        repeat: Infinity,
-                                        ease: "easeOut",
-                                    }}
-                                />
-                                <motion.div
-                                    className="absolute inset-0 rounded-full border-2 border-purple-500/30"
-                                    animate={{
-                                        scale: [1, 1.5, 1],
-                                        opacity: [0.3, 0, 0.3],
-                                    }}
-                                    transition={{
-                                        duration: 2,
-                                        repeat: Infinity,
-                                        ease: "easeOut",
-                                        delay: 0.5,
-                                    }}
-                                />
-                            </>
-                        )}
-
-                        {/* Main circle */}
-                        <motion.div
-                            className={cn(
-                                "w-40 h-40 rounded-full flex items-center justify-center",
-                                "bg-gradient-to-br",
-                                state === "speaking"
-                                    ? "from-blue-600 to-blue-800"
-                                    : state === "listening"
-                                        ? "from-purple-600 to-purple-800"
-                                        : state === "error"
-                                            ? "from-red-600 to-red-800"
-                                            : "from-gray-600 to-gray-800"
-                            )}
-                            animate={{
-                                scale: 1 + audioLevel * 0.1,
-                            }}
-                            transition={{ duration: 0.05 }}
-                        >
-                            {/* Icon */}
-                            <motion.div
-                                className="text-white"
-                                animate={{ scale: 1 + audioLevel * 0.2 }}
-                            >
-                                {state === "connecting" ? (
-                                    <Loader2 className="w-16 h-16 animate-spin" />
-                                ) : state === "speaking" ? (
-                                    <Volume2 className="w-16 h-16" />
-                                ) : (
-                                    <Mic className="w-16 h-16" />
-                                )}
-                            </motion.div>
-                        </motion.div>
-                    </div>
+                    {/* Audio visualizer */}
+                    <AudioVisualizer
+                        audioLevel={audioLevel}
+                        state={state}
+                        size={220}
+                    />
 
                     {/* State label */}
                     <div className={cn("flex items-center gap-2", stateInfo.color)}>

@@ -49,6 +49,7 @@ export interface UseLiveVoiceReturn {
     inputTranscript: string;
     outputTranscript: string;
     audioLevel: number;
+    analyserNode: AnalyserNode | null;
 }
 
 // Audio constants
@@ -490,5 +491,6 @@ export function useLiveVoice(options: UseLiveVoiceOptions = {}): UseLiveVoiceRet
         inputTranscript,
         outputTranscript,
         audioLevel,
+        analyserNode: analyserRef.current,
     };
 }
