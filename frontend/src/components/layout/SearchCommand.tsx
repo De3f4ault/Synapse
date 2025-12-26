@@ -31,6 +31,7 @@ import {
   NotesService,
   FlashcardsService,
   QuizzesService,
+  SearchService,
 } from "@/api/generated";
 import type {
   DocumentResponse,
@@ -95,6 +96,33 @@ export function SearchCommand() {
     queryFn: () => QuizzesService.listQuizzesApiV1QuizzesGet(1, 100),
     enabled: commandPaletteOpen,
     staleTime: 1000 * 60 * 5,
+  });
+
+  // Hybrid search query (server-side BM25 + vector search)
+  const { data: hybridNotes, isLoading: isSearching } = useQuery({
+    queryKey: ["hybrid-search-notes", search],
+    queryFn: () =>
+      SearchService.searchHybridNotesApiV1SearchHybridNotesGet(
+        search,
+        10,
+        0.5,
+        0.5
+      ),
+    enabled: commandPaletteOpen && search.length >= 2,
+    staleTime: 1000 * 30, // Cache for 30 seconds
+  });
+
+  const { data: hybridFlashcards } = useQuery({
+    queryKey: ["hybrid-search-flashcards", search],
+    queryFn: () =>
+      SearchService.searchHybridFlashcardsApiV1SearchHybridFlashcardsGet(
+        search,
+        10,
+        0.5,
+        0.5
+      ),
+    enabled: commandPaletteOpen && search.length >= 2,
+    staleTime: 1000 * 30,
   });
 
   // Navigation items
@@ -249,68 +277,100 @@ export function SearchCommand() {
   const contentItems: SearchResult[] = useMemo(() => {
     const items: SearchResult[] = [];
 
-    // Documents
-    if (Array.isArray(documents)) {
+    // If we have hybrid search results, prioritize those when searching
+    if (search.length >= 2 && hybridNotes?.results) {
       items.push(
-        ...documents.slice(0, 10).map((doc: DocumentResponse) => ({
-          id: `doc-${doc.id}`,
-          title: doc.filename,
-          description: `Document • ${doc.file_type} • ${new Date(doc.created_at).toLocaleDateString()}`,
-          icon: <Files className="h-4 w-4" />,
-          href: `/documents/${doc.id}`,
-          category: "content" as const,
-          resourceType: "document" as const,
-        })),
-      );
-    }
-
-    // Notes
-    if (Array.isArray(notes)) {
-      items.push(
-        ...notes.slice(0, 10).map((note: NoteResponse) => ({
-          id: `note-${note.id}`,
-          title: note.title,
-          description: `Note • ${new Date(note.created_at).toLocaleDateString()}`,
+        ...hybridNotes.results.map((note) => ({
+          id: `hybrid-note-${note.id}`,
+          title: note.title || "Untitled Note",
+          description: `🔍 Note • Score: ${(note.hybrid_score * 100).toFixed(1)}% • BM25: ${note.bm25_rank}, Vector: ${note.vector_rank}`,
           icon: <StickyNote className="h-4 w-4" />,
           href: `/notes/${note.id}`,
           category: "content" as const,
           resourceType: "note" as const,
-        })),
+        }))
       );
     }
 
-    // Flashcard Decks
-    if (Array.isArray(decks)) {
+    if (search.length >= 2 && hybridFlashcards?.results) {
       items.push(
-        ...decks.slice(0, 10).map((deck: DeckResponse) => ({
-          id: `deck-${deck.id}`,
-          title: deck.name,
-          description: `Deck • ${deck.card_count || 0} cards`,
+        ...hybridFlashcards.results.map((fc) => ({
+          id: `hybrid-fc-${fc.id}`,
+          title: fc.front_text.slice(0, 50),
+          description: `🔍 Flashcard • Score: ${(fc.hybrid_score * 100).toFixed(1)}%`,
           icon: <BookOpen className="h-4 w-4" />,
-          href: `/flashcards/${deck.id}`,
+          href: `/flashcards/${fc.deck_id}`,
           category: "content" as const,
           resourceType: "deck" as const,
-        })),
+        }))
       );
     }
 
-    // Quizzes
-    if (Array.isArray(quizzes)) {
-      items.push(
-        ...quizzes.slice(0, 10).map((quiz: QuizResponse) => ({
-          id: `quiz-${quiz.id}`,
-          title: quiz.title,
-          description: `Quiz • ${quiz.question_count || 0} questions`,
-          icon: <FileQuestion className="h-4 w-4" />,
-          href: `/quizzes/${quiz.id}`,
-          category: "content" as const,
-          resourceType: "quiz" as const,
-        })),
-      );
+    // When not searching or no hybrid results, show regular content
+    if (search.length < 2 || items.length === 0) {
+      // Documents
+      if (Array.isArray(documents)) {
+        items.push(
+          ...documents.slice(0, 10).map((doc: DocumentResponse) => ({
+            id: `doc-${doc.id}`,
+            title: doc.filename,
+            description: `Document • ${doc.file_type} • ${new Date(doc.created_at).toLocaleDateString()}`,
+            icon: <Files className="h-4 w-4" />,
+            href: `/documents/${doc.id}`,
+            category: "content" as const,
+            resourceType: "document" as const,
+          })),
+        );
+      }
+
+      // Notes
+      if (Array.isArray(notes)) {
+        items.push(
+          ...notes.slice(0, 10).map((note: NoteResponse) => ({
+            id: `note-${note.id}`,
+            title: note.title,
+            description: `Note • ${new Date(note.created_at).toLocaleDateString()}`,
+            icon: <StickyNote className="h-4 w-4" />,
+            href: `/notes/${note.id}`,
+            category: "content" as const,
+            resourceType: "note" as const,
+          })),
+        );
+      }
+
+      // Flashcard Decks
+      if (Array.isArray(decks)) {
+        items.push(
+          ...decks.slice(0, 10).map((deck: DeckResponse) => ({
+            id: `deck-${deck.id}`,
+            title: deck.name,
+            description: `Deck • ${deck.card_count || 0} cards`,
+            icon: <BookOpen className="h-4 w-4" />,
+            href: `/flashcards/${deck.id}`,
+            category: "content" as const,
+            resourceType: "deck" as const,
+          })),
+        );
+      }
+
+      // Quizzes
+      if (Array.isArray(quizzes)) {
+        items.push(
+          ...quizzes.slice(0, 10).map((quiz: QuizResponse) => ({
+            id: `quiz-${quiz.id}`,
+            title: quiz.title,
+            description: `Quiz • ${quiz.question_count || 0} questions`,
+            icon: <FileQuestion className="h-4 w-4" />,
+            href: `/quizzes/${quiz.id}`,
+            category: "content" as const,
+            resourceType: "quiz" as const,
+          })),
+        );
+      }
     }
 
     return items;
-  }, [documents, notes, decks, quizzes]);
+  }, [documents, notes, decks, quizzes, search, hybridNotes, hybridFlashcards]);
 
   // Combine all items
   const allItems = [

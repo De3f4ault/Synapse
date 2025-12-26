@@ -397,3 +397,176 @@ async def search_suggestions(
     result = sorted(list(suggestions))[:limit]
 
     return result
+
+
+# ============================================================================
+# New SQL Function-Based Hybrid Search (PostgreSQL Native)
+# ============================================================================
+
+
+class NoteHybridResult(BaseModel):
+    """Note result from SQL-based hybrid search."""
+
+    id: int
+    title: Optional[str]
+    content_preview: str
+    bm25_rank: int
+    bm25_score: float
+    vector_rank: int
+    vector_score: float
+    hybrid_score: float
+
+
+class FlashcardHybridResult(BaseModel):
+    """Flashcard result from SQL-based hybrid search."""
+
+    id: int
+    front_text: str
+    back_text: str
+    deck_id: int
+    bm25_rank: int
+    bm25_score: float
+    vector_rank: int
+    vector_score: float
+    hybrid_score: float
+
+
+class NoteHybridResponse(BaseModel):
+    """Response for note hybrid search."""
+
+    query: str
+    total_results: int
+    bm25_weight: float
+    vector_weight: float
+    results: List[NoteHybridResult]
+
+
+class FlashcardHybridResponse(BaseModel):
+    """Response for flashcard hybrid search."""
+
+    query: str
+    total_results: int
+    bm25_weight: float
+    vector_weight: float
+    results: List[FlashcardHybridResult]
+
+
+@router.get("/hybrid/notes", response_model=NoteHybridResponse)
+async def search_hybrid_notes(
+    q: str = Query(..., min_length=1, description="Search query"),
+    limit: int = Query(10, ge=1, le=50, description="Maximum results"),
+    bm25_weight: float = Query(0.5, ge=0.0, le=1.0, description="BM25 weight"),
+    vector_weight: float = Query(0.5, ge=0.0, le=1.0, description="Vector weight"),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Hybrid search notes using PostgreSQL-native BM25 + vector search.
+
+    Uses pg_search (ParadeDB) for BM25 keyword matching and pgvector
+    for semantic similarity, combined with RRF (Reciprocal Rank Fusion).
+
+    This provides better results than either BM25 or vector search alone:
+    - BM25 catches exact keyword matches
+    - Vector search catches semantically related content
+    - RRF combines both for optimal ranking
+    """
+    from app.services.search import get_hybrid_search_service
+
+    service = get_hybrid_search_service()
+
+    logger.info(
+        f"Hybrid notes search: '{q}' user={current_user.id} "
+        f"weights=({bm25_weight}, {vector_weight})"
+    )
+
+    results = await service.search_notes(
+        db=db,
+        query=q,
+        user_id=current_user.id,
+        limit=limit,
+        bm25_weight=bm25_weight,
+        vector_weight=vector_weight,
+    )
+
+    formatted = [
+        NoteHybridResult(
+            id=r.id,
+            title=r.title,
+            content_preview=r.content[:200] if r.content else "",
+            bm25_rank=r.bm25_rank,
+            bm25_score=r.bm25_score,
+            vector_rank=r.vector_rank,
+            vector_score=r.vector_score,
+            hybrid_score=r.hybrid_score,
+        )
+        for r in results
+    ]
+
+    logger.info(f"Hybrid notes search complete: {len(formatted)} results")
+
+    return NoteHybridResponse(
+        query=q,
+        total_results=len(formatted),
+        bm25_weight=bm25_weight,
+        vector_weight=vector_weight,
+        results=formatted,
+    )
+
+
+@router.get("/hybrid/flashcards", response_model=FlashcardHybridResponse)
+async def search_hybrid_flashcards(
+    q: str = Query(..., min_length=1, description="Search query"),
+    limit: int = Query(10, ge=1, le=50, description="Maximum results"),
+    bm25_weight: float = Query(0.5, ge=0.0, le=1.0, description="BM25 weight"),
+    vector_weight: float = Query(0.5, ge=0.0, le=1.0, description="Vector weight"),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Hybrid search flashcards using PostgreSQL-native BM25 + vector search.
+
+    Searches both front_text and back_text of flashcards using:
+    - pg_search (ParadeDB) for BM25 keyword matching
+    - pgvector for semantic similarity
+    - RRF (Reciprocal Rank Fusion) for score combination
+    """
+    from app.services.search import get_hybrid_search_service
+
+    service = get_hybrid_search_service()
+
+    logger.info(f"Hybrid flashcards search: '{q}' user={current_user.id}")
+
+    results = await service.search_flashcards(
+        db=db,
+        query=q,
+        user_id=current_user.id,
+        limit=limit,
+        bm25_weight=bm25_weight,
+        vector_weight=vector_weight,
+    )
+
+    formatted = [
+        FlashcardHybridResult(
+            id=r.id,
+            front_text=r.front_text,
+            back_text=r.back_text,
+            deck_id=r.deck_id,
+            bm25_rank=r.bm25_rank,
+            bm25_score=r.bm25_score,
+            vector_rank=r.vector_rank,
+            vector_score=r.vector_score,
+            hybrid_score=r.hybrid_score,
+        )
+        for r in results
+    ]
+
+    logger.info(f"Hybrid flashcards search complete: {len(formatted)} results")
+
+    return FlashcardHybridResponse(
+        query=q,
+        total_results=len(formatted),
+        bm25_weight=bm25_weight,
+        vector_weight=vector_weight,
+        results=formatted,
+    )
