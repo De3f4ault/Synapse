@@ -3,12 +3,12 @@
 from typing import List
 from llama_index.core.retrievers import BaseRetriever
 from llama_index.core.schema import NodeWithScore, QueryBundle, TextNode
-from llama_index.core import Settings
 import structlog
 
 from app.core.ai.rag.vector_store.qdrant.client import QdrantClientWrapper
 from app.core.ai.rag.vector_store.qdrant.collection_manager import CollectionManager
 from app.core.ai.rag.vector_store.operations.search import VectorSearch
+from app.core.ai.rag.config.llamaindex_config import configure_llamaindex
 
 logger = structlog.get_logger(__name__)
 
@@ -42,6 +42,9 @@ class QdrantVectorRetriever(BaseRetriever):
         """
         super().__init__(**kwargs)
 
+        # Ensure LlamaIndex is configured to use local embeddings
+        configure_llamaindex()
+
         self.qdrant_client = qdrant_client.get_client()
         self.collection_manager = collection_manager
         self.searcher = VectorSearch(self.qdrant_client)
@@ -51,10 +54,22 @@ class QdrantVectorRetriever(BaseRetriever):
         """
         Synchronous retrieve implementation.
         Required by BaseRetriever abstract base class.
+
+        Uses nest_asyncio to handle cases where we're called from an async context.
         """
         import asyncio
 
-        return asyncio.run(self._aretrieve(query_bundle))
+        try:
+            # Try to get the running loop
+            _ = asyncio.get_running_loop()  # Just to check if loop exists
+            # We're in an async context - use run_coroutine_threadsafe or similar
+            import nest_asyncio
+
+            nest_asyncio.apply()
+            return asyncio.run(self._aretrieve(query_bundle))
+        except RuntimeError:
+            # No running loop - safe to use asyncio.run
+            return asyncio.run(self._aretrieve(query_bundle))
 
     async def _aretrieve(self, query_bundle: QueryBundle) -> List[NodeWithScore]:
         """
@@ -71,8 +86,12 @@ class QdrantVectorRetriever(BaseRetriever):
         query = query_bundle.query_str
         logger.info("qdrant_retrieval_start", query=query[:50])
 
-        # 1. Get query embedding (uses Settings.embed_model)
-        query_embedding = Settings.embed_model.get_query_embedding(query)
+        # 1. Get query embedding using our own embedder (bypasses LlamaIndex's HuggingFace issues)
+        from app.core.ai.rag.embeddings.models.all_minilm import AllMiniLMEmbedder
+
+        embedder = AllMiniLMEmbedder()
+        embedding = embedder.encode(query)
+        query_embedding = embedding[0].tolist() if embedding.ndim > 1 else embedding.tolist()
 
         # 2. Get user_id and source_type from metadata
         user_id = query_bundle.custom_embedding_strs.get("user_id")
