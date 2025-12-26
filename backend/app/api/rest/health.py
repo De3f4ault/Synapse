@@ -2,12 +2,13 @@
 Health check REST API endpoints.
 
 System health and service status monitoring endpoints.
-Complete implementation with all 5 service checks:
+Complete implementation with service checks:
 - PostgreSQL database
 - Redis cache
 - Qdrant vector store
-- DuckDB analytics
 - Gemini API
+
+Note: DuckDB removed - using PostgreSQL materialized views for analytics.
 """
 
 from datetime import datetime
@@ -168,45 +169,8 @@ async def check_qdrant() -> ServiceStatus:
         )
 
 
-async def check_duckdb() -> ServiceStatus:
-    """
-    Check DuckDB analytics database connectivity.
-
-    Returns:
-        ServiceStatus with health status
-    """
-    import time
-
-    start = time.time()
-
-    try:
-        import duckdb
-
-        conn = duckdb.connect(str(settings.DUCKDB_PATH))
-
-        # Check database is accessible
-        result = conn.execute(
-            "SELECT COUNT(*) as table_count FROM information_schema.tables"
-        ).fetchone()
-
-        table_count = result[0] if result else 0
-        latency = (time.time() - start) * 1000
-
-        conn.close()
-
-        return ServiceStatus(
-            status="healthy",
-            message="Connected to DuckDB",
-            latency_ms=latency,
-            details={"path": str(settings.DUCKDB_PATH), "table_count": table_count},
-        )
-    except Exception as e:
-        logger.error(f"DuckDB health check failed: {str(e)}")
-        return ServiceStatus(
-            status="unhealthy",
-            message=f"DuckDB connection failed: {str(e)}",
-            details={"error": str(e), "path": str(settings.DUCKDB_PATH)},
-        )
+# NOTE: DuckDB check removed - analytics now use PostgreSQL materialized views
+# See app/sql/views/user_dashboard_stats.sql
 
 
 async def check_gemini_api() -> ServiceStatus:
@@ -285,8 +249,7 @@ async def health_check(db: AsyncSession = Depends(get_db)):
     # Check Qdrant (important)
     services["qdrant"] = await check_qdrant()
 
-    # Check DuckDB (important)
-    services["duckdb"] = await check_duckdb()
+    # NOTE: DuckDB removed - analytics now use PostgreSQL materialized views
 
     # Check Gemini API (important)
     services["gemini_api"] = await check_gemini_api()

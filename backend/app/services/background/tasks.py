@@ -55,10 +55,9 @@ def process_document_task(self, document_id: int) -> Dict[str, Any]:
     This task:
     1. Extracts text from the document
     2. Chunks the text for embedding
-    3. Generates embeddings for each chunk
-    4. Stores embeddings in Qdrant
-    5. Updates document status and content
-    6. Creates document chunks in database with embedding IDs
+    3. Generates embeddings via RAG pipeline (Qdrant)
+    4. Updates document status and content
+    5. Creates document chunks in database
 
     Args:
         document_id: Document ID to process
@@ -73,7 +72,7 @@ def process_document_task(self, document_id: int) -> Dict[str, Any]:
         from app.models.document import Document, ProcessingStatus
         from app.models.document_chunk import DocumentChunk
         from app.services.background.document_processor import DocumentProcessor
-        from app.services.embeddings import DocumentEmbeddingService
+        from app.services.rag import get_rag_service
         from sqlalchemy import select
         import asyncio
 
@@ -127,14 +126,21 @@ def process_document_task(self, document_id: int) -> Dict[str, Any]:
 
                     logger.info(f"Document {document_id}: Created {len(chunk_objects)} chunks")
 
-                    # Step 4: Generate and store embeddings
-                    embedding_service = DocumentEmbeddingService()
+                    # Step 4: Generate and store embeddings via RAG service (Qdrant)
+                    rag_service = get_rag_service()
 
-                    embedding_stats = await embedding_service.process_document_embeddings(
-                        document_id=document.id, chunks=chunk_objects, session=session
+                    embedding_result = await rag_service.ingest_document(
+                        user_id=document.user_id,
+                        content=extracted_data["content_text"],
+                        metadata={
+                            "document_id": document.id,
+                            "filename": document.filename,
+                            "file_type": document.file_type,
+                            "source_type": "document",
+                        },
                     )
 
-                    logger.info(f"Document {document_id}: Generated embeddings - {embedding_stats}")
+                    logger.info(f"Document {document_id}: Ingested to Qdrant - {embedding_result}")
 
                     # Step 5: Update final status
                     document.processing_status = ProcessingStatus.COMPLETED
@@ -144,7 +150,7 @@ def process_document_task(self, document_id: int) -> Dict[str, Any]:
                         "document_id": document_id,
                         "status": "completed",
                         "chunks_created": len(chunk_objects),
-                        "embeddings_stored": embedding_stats.get("embeddings_stored", 0),
+                        "embeddings_stored": embedding_result.get("chunks_stored", 0),
                         "word_count": extracted_data["word_count"],
                         "page_count": extracted_data.get("page_count"),
                         "ocr_performed": extracted_data.get("ocr_performed", False),

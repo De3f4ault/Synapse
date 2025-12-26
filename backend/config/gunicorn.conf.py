@@ -13,15 +13,16 @@ bind = "0.0.0.0:8000"
 backlog = 2048
 
 # ============================================================================
-# Worker Processes
+# Worker Processes (OPTIMIZED for resource-constrained systems)
 # ============================================================================
 # Worker class - MUST use uvicorn for ASGI/FastAPI support
 worker_class = "uvicorn.workers.UvicornWorker"
 
 # Number of workers
-# Formula: (2 x CPU cores) + 1
-# For local dev, you can reduce this or use environment variable
-workers = int(os.getenv("GUNICORN_WORKERS", multiprocessing.cpu_count() * 2 + 1))
+# Original formula: (2 x CPU cores) + 1 = 17 for 8-thread CPU (too aggressive)
+# Optimized: 3 workers balances performance and memory usage
+# Can be overridden via GUNICORN_WORKERS environment variable
+workers = int(os.getenv("GUNICORN_WORKERS", 3))
 
 # Worker threads (per worker)
 threads = 1  # Keep at 1 for async workers
@@ -69,6 +70,7 @@ tmp_upload_dir = None
 # ============================================================================
 # keyfile = None
 # certfile = None
+
 
 # ============================================================================
 # Server Hooks

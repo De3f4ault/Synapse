@@ -93,6 +93,11 @@ celery_app.conf.update(
         # OCR tasks - dedicated queue (CPU-intensive)
         "ocr.process_document": {"queue": "ocr"},
         "ocr.batch_process": {"queue": "ocr"},
+        # Embedding tasks - for pgvector sync
+        "embedding.generate_note_embedding": {"queue": "embeddings"},
+        "embedding.generate_flashcard_embedding": {"queue": "embeddings"},
+        "embedding.batch_backfill_notes": {"queue": "embeddings"},
+        "embedding.batch_backfill_flashcards": {"queue": "embeddings"},
     },
     # Queues
     task_queues=(
@@ -104,6 +109,8 @@ celery_app.conf.update(
         Queue("rag", Exchange("rag"), routing_key="rag", priority=7),
         # OCR queue - CPU-intensive, lower priority
         Queue("ocr", Exchange("ocr"), routing_key="ocr", priority=4),
+        # Embeddings queue - for pgvector sync (medium priority)
+        Queue("embeddings", Exchange("embeddings"), routing_key="embeddings", priority=6),
     ),
     # Beat schedule for periodic tasks (with expires to prevent pileup)
     beat_schedule={

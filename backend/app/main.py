@@ -129,6 +129,18 @@ async def lifespan(app: FastAPI):
             logger.error("rag_init_failed", error=str(e), exc_info=True)
             # Non-critical for now, continue startup
 
+        # ==================== SETUP EMBEDDING HOOKS ====================
+        try:
+            from app.services.background.embedding_hooks import setup_embedding_hooks
+
+            setup_embedding_hooks()
+            logger.info(
+                "embedding_hooks_initialized",
+                description="Note/Flashcard create/update will auto-trigger embedding generation",
+            )
+        except Exception as e:
+            logger.warning("embedding_hooks_init_failed", error=str(e))
+
         logger.info(
             "application_started",
             app_name=settings.APP_NAME,

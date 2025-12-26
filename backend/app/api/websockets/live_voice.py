@@ -27,9 +27,10 @@ from typing import Optional
 import structlog
 import asyncio
 import base64
-import json
-
 from app.core.config import settings
+from app.db.session import AsyncSessionLocal
+from app.models.chat_session import ChatSession
+from app.models.chat_message import ChatMessage, MessageRole
 
 logger = structlog.get_logger(__name__)
 
@@ -73,6 +74,9 @@ def get_live_config(system_instruction: Optional[str] = None, enable_search: boo
     """
     config = {
         "response_modalities": ["AUDIO"],
+        # Enable live transcription of user speech (input) and AI speech (output)
+        "input_audio_transcription": {},
+        "output_audio_transcription": {},
         "speech_config": {
             "voice_config": {
                 "prebuilt_voice_config": {
@@ -116,6 +120,9 @@ class LiveVoiceSession:
         self.gemini_session = None
         self.running = False
         self._receive_task: Optional[asyncio.Task] = None
+        # Transcript accumulation for saving conversations
+        self._input_transcripts: list[str] = []
+        self._output_transcripts: list[str] = []
 
     async def start(self, system_instruction: Optional[str] = None, enable_search: bool = True):
         """
@@ -267,6 +274,8 @@ class LiveVoiceSession:
 
                             # Input transcription
                             if sc.input_transcription:
+                                # Accumulate for saving
+                                self._input_transcripts.append(sc.input_transcription.text)
                                 await self._send_to_client(
                                     {
                                         "type": "input_transcript",
@@ -276,6 +285,8 @@ class LiveVoiceSession:
 
                             # Output transcription
                             if sc.output_transcription:
+                                # Accumulate for saving
+                                self._output_transcripts.append(sc.output_transcription.text)
                                 await self._send_to_client(
                                     {
                                         "type": "output_transcript",
@@ -365,9 +376,63 @@ class LiveVoiceSession:
             self.logger.error("client_send_error", error=str(e))
             self.running = False
 
+    async def save_conversation(self):
+        """Save accumulated transcripts to database as a chat session."""
+        # Combine transcripts
+        user_text = " ".join(self._input_transcripts).strip()
+        ai_text = " ".join(self._output_transcripts).strip()
+
+        # Only save if there was actual conversation
+        if not user_text and not ai_text:
+            self.logger.info("no_transcripts_to_save")
+            return
+
+        try:
+            async with AsyncSessionLocal() as db:
+                # Create chat session
+                title = (
+                    (user_text[:50] + "...")
+                    if len(user_text) > 50
+                    else (user_text or "Voice conversation")
+                )
+                session = ChatSession(
+                    user_id=self.user_id,
+                    title=title,
+                )
+                db.add(session)
+                await db.flush()  # Get session ID
+
+                # Add user message if any
+                if user_text:
+                    user_msg = ChatMessage(
+                        session_id=session.id,
+                        role=MessageRole.USER,
+                        content=user_text,
+                        model_used="voice-input",
+                    )
+                    db.add(user_msg)
+
+                # Add AI response if any
+                if ai_text:
+                    ai_msg = ChatMessage(
+                        session_id=session.id,
+                        role=MessageRole.ASSISTANT,
+                        content=ai_text,
+                        model_used="gemini-live",
+                    )
+                    db.add(ai_msg)
+
+                await db.commit()
+                self.logger.info("voice_conversation_saved", session_id=session.id)
+
+        except Exception as e:
+            self.logger.error("save_conversation_error", error=str(e))
+
     async def stop(self):
-        """Stop the session gracefully."""
+        """Stop the session gracefully and save conversation."""
         self.running = False
+        # Save conversation to database
+        await self.save_conversation()
 
 
 async def validate_token(token: str) -> dict:
