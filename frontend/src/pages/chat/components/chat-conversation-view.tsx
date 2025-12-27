@@ -4,6 +4,7 @@ import { XIcon } from "lucide-react";
 import { ChatMessage } from "./chat-message";
 import { ChatInputBox } from "./chat-input-box";
 import type { ChatMessageResponse } from "@/api/generated";
+import { MessageRole } from "@/api/generated";
 
 interface ChatConversationViewProps {
   messages: ChatMessageResponse[];
@@ -13,6 +14,9 @@ interface ChatConversationViewProps {
   onReset: () => void;
   onVoiceClick?: () => void;
   isSending?: boolean;
+  isStreaming?: boolean;
+  streamingContent?: string;
+  streamingThinking?: string;
 }
 
 export function ChatConversationView({
@@ -23,13 +27,32 @@ export function ChatConversationView({
   onReset,
   onVoiceClick,
   isSending = false,
+  isStreaming = false,
+  streamingContent = "",
+  streamingThinking = "",
 }: ChatConversationViewProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll to bottom when new messages arrive
+  // Auto-scroll to bottom when new messages arrive or streaming updates
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, streamingContent]);
+
+  // Create temporary streaming message
+  const streamingMessage: ChatMessageResponse | null =
+    isStreaming && (streamingContent || streamingThinking)
+      ? {
+        id: -1, // Temporary negative ID
+        session_id: messages[0]?.session_id || 0,
+        role: MessageRole.ASSISTANT,
+        content: streamingContent,
+        tokens: 0,
+        model_used: null,
+        function_calls: null,
+        grounding_sources: null,
+        created_at: new Date().toISOString(),
+      }
+      : null;
 
   return (
     <div className="flex h-full flex-col">
@@ -48,6 +71,13 @@ export function ChatConversationView({
           {messages.map((msg) => (
             <ChatMessage key={msg.id} message={msg} />
           ))}
+          {streamingMessage && (
+            <ChatMessage
+              message={streamingMessage}
+              isStreaming={true}
+              thinking={streamingThinking}
+            />
+          )}
           <div ref={messagesEndRef} />
         </div>
       </div>

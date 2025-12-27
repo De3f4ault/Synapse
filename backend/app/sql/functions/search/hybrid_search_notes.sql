@@ -134,7 +134,16 @@ v_main_sql := 'WITH ' || v_bm25_sql || ', ' || v_semantic_sql || ',
 RETURN QUERY EXECUTE v_main_sql;
 END;
 $func$;
-COMMENT ON FUNCTION developer_schema.hybrid_search_notes IS 'Hybrid search combining BM25 (pg_search) and semantic (pgvector) search using Reciprocal Rank Fusion.
+COMMENT ON FUNCTION developer_schema.hybrid_search_notes(
+    INT,
+    TEXT,
+    VECTOR(384),
+    INT,
+    INT,
+    TEXT,
+    REAL,
+    REAL
+) IS 'Hybrid search combining BM25 (pg_search) and semantic (pgvector) search using Reciprocal Rank Fusion.
 Uses two-stage approach for BM25 to avoid pg_search RANK() OVER limitations.
 Parameters:
   - p_user_id: Filter results by user

@@ -70,34 +70,231 @@ class GeminiProvider(BaseProvider):
         self.client = genai.Client(api_key=self.api_key)
         self.logger = logger.bind(provider="gemini")
 
+    # =========================================================================
+    # CONTEXT CACHING (Cost Optimization for Large Documents)
+    # =========================================================================
+
     async def create_context_cache(
         self,
-        name: str,
-        content: Any,
-        model: str = "gemini-2.5-pro",
-        ttl_minutes: int = 60,
+        display_name: str,
+        contents: Any,
+        model: str = "gemini-2.0-flash-001",
+        system_instruction: Optional[str] = None,
+        ttl_seconds: int = 3600,
     ) -> str:
         """
-        Create a context cache for large content
+        Create a context cache for large content (documents, videos, etc.)
 
-        NOTE: Context caching requires the new SDK's caching API.
-        This is a placeholder until google-genai SDK adds caching support.
+        Context caching reduces costs by storing frequently-used content
+        server-side, avoiding repeated token transmission.
 
         Args:
-            name: Unique name for the cache
-            content: Content to cache (file object, text, etc)
-            model: Model to use with cache
-            ttl_minutes: Time to live in minutes
+            display_name: Human-readable name for the cache
+            contents: Content to cache (text, file object, or list of parts)
+            model: Model to use - MUST be versioned (e.g., "gemini-2.0-flash-001")
+            system_instruction: Optional system instruction to cache with content
+            ttl_seconds: Time to live in seconds (default 1 hour)
 
         Returns:
-            Cache name/resource identifier
+            Cache resource name (use this in generate_with_cache)
+
+        Example:
+            cache_name = await provider.create_context_cache(
+                display_name="biology_textbook",
+                contents=document_text,
+                system_instruction="You are a biology tutor",
+                ttl_seconds=3600
+            )
         """
-        # TODO: Implement with new SDK when caching support is added
-        self.logger.warning(
-            "context_cache_not_implemented",
-            message="Context caching requires google-generativeai SDK which was removed. Use direct content passing instead.",
-        )
-        raise NotImplementedError("Context caching not yet supported with google-genai SDK")
+        from google.genai import types
+
+        try:
+            # Build cache config
+            cache_config = types.CreateCachedContentConfig(
+                display_name=display_name,
+                contents=contents if isinstance(contents, list) else [contents],
+                ttl=f"{ttl_seconds}s",
+            )
+
+            # Add system instruction if provided
+            if system_instruction:
+                cache_config.system_instruction = system_instruction
+
+            # Create cache synchronously (SDK doesn't have async caches.create)
+            cache = self.client.caches.create(model=model, config=cache_config)
+
+            self.logger.info(
+                "context_cache_created",
+                cache_name=cache.name,
+                display_name=display_name,
+                model=model,
+                ttl_seconds=ttl_seconds,
+            )
+
+            return cache.name
+
+        except Exception as e:
+            self.logger.error(
+                "context_cache_creation_failed", display_name=display_name, error=str(e)
+            )
+            raise
+
+    async def get_cache(self, cache_name: str) -> Optional[Dict[str, Any]]:
+        """
+        Get cache metadata by name.
+
+        Args:
+            cache_name: Cache resource name
+
+        Returns:
+            Cache metadata dict or None if not found
+        """
+        try:
+            cache = self.client.caches.get(name=cache_name)
+            return {
+                "name": cache.name,
+                "display_name": cache.display_name,
+                "model": cache.model,
+                "create_time": str(cache.create_time) if cache.create_time else None,
+                "expire_time": str(cache.expire_time) if cache.expire_time else None,
+                "usage_metadata": cache.usage_metadata,
+            }
+        except Exception as e:
+            self.logger.warning("cache_get_failed", cache_name=cache_name, error=str(e))
+            return None
+
+    async def list_caches(self) -> List[Dict[str, Any]]:
+        """
+        List all cached content.
+
+        Returns:
+            List of cache metadata dicts
+        """
+        caches = []
+        try:
+            for cache in self.client.caches.list():
+                caches.append(
+                    {
+                        "name": cache.name,
+                        "display_name": cache.display_name,
+                        "model": cache.model,
+                        "expire_time": str(cache.expire_time) if cache.expire_time else None,
+                    }
+                )
+            self.logger.debug("caches_listed", count=len(caches))
+        except Exception as e:
+            self.logger.error("cache_list_failed", error=str(e))
+        return caches
+
+    async def update_cache_ttl(self, cache_name: str, ttl_seconds: int) -> bool:
+        """
+        Update cache TTL.
+
+        Args:
+            cache_name: Cache resource name
+            ttl_seconds: New TTL in seconds
+
+        Returns:
+            True if successful
+        """
+        from google.genai import types
+
+        try:
+            self.client.caches.update(
+                name=cache_name, config=types.UpdateCachedContentConfig(ttl=f"{ttl_seconds}s")
+            )
+            self.logger.info("cache_ttl_updated", cache_name=cache_name, ttl=ttl_seconds)
+            return True
+        except Exception as e:
+            self.logger.error("cache_ttl_update_failed", cache_name=cache_name, error=str(e))
+            return False
+
+    async def delete_cache(self, cache_name: str) -> bool:
+        """
+        Delete a cache.
+
+        Args:
+            cache_name: Cache resource name
+
+        Returns:
+            True if successful
+        """
+        try:
+            self.client.caches.delete(cache_name)
+            self.logger.info("cache_deleted", cache_name=cache_name)
+            return True
+        except Exception as e:
+            self.logger.error("cache_delete_failed", cache_name=cache_name, error=str(e))
+            return False
+
+    async def generate_with_cache(
+        self,
+        cache_name: str,
+        prompt: str,
+        config: Optional[GenerationConfig] = None,
+    ) -> ProviderResponse:
+        """
+        Generate content using a cached context.
+
+        Args:
+            cache_name: Cache resource name from create_context_cache
+            prompt: User prompt (only the new query, not the cached content)
+            config: Optional generation config
+
+        Returns:
+            ProviderResponse with generated text and usage showing cache hits
+        """
+        from google.genai import types
+
+        config = config or GenerationConfig()
+
+        try:
+            # Get model from cache
+            cache = self.client.caches.get(name=cache_name)
+            model_name = cache.model
+
+            # Build generation config with cached content
+            gen_config = types.GenerateContentConfig(
+                cached_content=cache_name,
+                temperature=config.temperature,
+                max_output_tokens=config.max_tokens,
+            )
+
+            # Generate using cache
+            response = await self.client.aio.models.generate_content(
+                model=model_name, contents=prompt, config=gen_config
+            )
+
+            text = response.text if response.text else ""
+
+            # Extract usage with cache hit info
+            usage = {}
+            if hasattr(response, "usage_metadata") and response.usage_metadata:
+                usage = {
+                    "prompt_tokens": getattr(response.usage_metadata, "prompt_token_count", 0),
+                    "cached_tokens": getattr(
+                        response.usage_metadata, "cached_content_token_count", 0
+                    ),
+                    "completion_tokens": getattr(
+                        response.usage_metadata, "candidates_token_count", 0
+                    ),
+                    "total_tokens": getattr(response.usage_metadata, "total_token_count", 0),
+                }
+
+            self.logger.info(
+                "cached_generation_completed",
+                cache_name=cache_name,
+                cached_tokens=usage.get("cached_tokens", 0),
+                response_length=len(text),
+            )
+
+            return ProviderResponse(
+                text=text, tool_calls=[], finish_reason="stop", usage=usage, model=model_name
+            )
+
+        except Exception as e:
+            self.logger.error("cached_generation_failed", cache_name=cache_name, error=str(e))
+            raise
 
     def _resolve_model_name(self, model_name: str) -> str:
         """Resolve model aliases to actual model names"""
@@ -287,10 +484,11 @@ class GeminiProvider(BaseProvider):
                 "top_k": config.top_k,
             }
 
-            # Use async streaming
-            async for chunk in self.client.aio.models.generate_content_stream(
+            # Use async streaming (await to get the async generator)
+            stream = await self.client.aio.models.generate_content_stream(
                 model=model_name, contents=prompt, config=gen_config
-            ):
+            )
+            async for chunk in stream:
                 if chunk.text:
                     yield chunk.text
 
@@ -330,21 +528,19 @@ class GeminiProvider(BaseProvider):
         try:
             gemini_tools = self._convert_tools_to_gemini(tools) if tools else None
 
+            # Build config dict - tools go in config, not as separate arg
             gen_config = {"temperature": temperature, "max_output_tokens": 8192}
+            if gemini_tools:
+                gen_config["tools"] = gemini_tools
 
             # Track usage and tool calls
             total_text = ""
             tool_calls = []
 
-            # Use async streaming with tools
-            if gemini_tools:
-                stream = self.client.aio.models.generate_content_stream(
-                    model=model_name, contents=prompt, config=gen_config, tools=gemini_tools
-                )
-            else:
-                stream = self.client.aio.models.generate_content_stream(
-                    model=model_name, contents=prompt, config=gen_config
-                )
+            # Use async streaming (tools are in config)
+            stream = await self.client.aio.models.generate_content_stream(
+                model=model_name, contents=prompt, config=gen_config
+            )
 
             async for chunk in stream:
                 if not chunk.candidates:

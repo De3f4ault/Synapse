@@ -35,10 +35,7 @@ class AgentFactory:
         agent = await factory.create_default("tutor")
     """
 
-    def __init__(
-        self,
-        tool_registry: Optional[ToolRegistry] = None
-    ):
+    def __init__(self, tool_registry: Optional[ToolRegistry] = None):
         """
         Initialize factory
 
@@ -51,11 +48,7 @@ class AgentFactory:
         # Agent class registry
         self._agent_classes: Dict[str, Type[BaseAgent]] = {}
 
-    def register_agent_class(
-        self,
-        name: str,
-        agent_class: Type[BaseAgent]
-    ) -> None:
+    def register_agent_class(self, name: str, agent_class: Type[BaseAgent]) -> None:
         """
         Register agent class for factory creation
 
@@ -71,7 +64,7 @@ class AgentFactory:
         agent_name: str,
         config: Optional[Dict[str, Any]] = None,
         tools: Optional[List[str]] = None,
-        middleware: Optional[List[Any]] = None
+        middleware: Optional[List[Any]] = None,
     ) -> BaseAgent:
         """
         Create agent instance
@@ -98,10 +91,7 @@ class AgentFactory:
 
         # Build agent config
         agent_config = await self._build_config(
-            agent_name,
-            config or {},
-            tools or [],
-            middleware or []
+            agent_name, config or {}, tools or [], middleware or []
         )
 
         # Instantiate agent
@@ -112,7 +102,7 @@ class AgentFactory:
             "agent_created",
             agent=agent_name,
             tools_count=len(agent_config.tools),
-            middleware_count=len(agent_config.middleware)
+            middleware_count=len(agent_config.middleware),
         )
 
         return agent
@@ -134,7 +124,7 @@ class AgentFactory:
         agent_name: str,
         config_overrides: Dict[str, Any],
         tool_names: List[str],
-        middleware_instances: List[Any]
+        middleware_instances: List[Any],
     ) -> AgentConfig:
         """
         Build complete agent configuration
@@ -154,8 +144,14 @@ class AgentFactory:
         # Apply overrides
         base_config.update(config_overrides)
 
-        # Load tools
-        tools = self._load_tools(tool_names)
+        # Combine default tools with explicitly provided tools
+        all_tool_names = list(base_config.get("default_tools", []))
+        for tool_name in tool_names:
+            if tool_name not in all_tool_names:
+                all_tool_names.append(tool_name)
+
+        # Load tools from registry
+        tools = self._load_tools(all_tool_names)
 
         # Build AgentConfig
         return AgentConfig(
@@ -174,7 +170,7 @@ class AgentFactory:
             middleware=middleware_instances,
             enable_memory=base_config.get("enable_memory", False),
             memory_type=base_config.get("memory_type", "buffer"),
-            verbose=base_config.get("verbose", False)
+            verbose=base_config.get("verbose", False),
         )
 
     def _get_default_config(self, agent_name: str) -> Dict[str, Any]:
@@ -194,11 +190,16 @@ class AgentFactory:
                 "capabilities": [
                     AgentCapability.CHAT,
                     AgentCapability.TOOL_USE,
-                    AgentCapability.MEMORY
+                    AgentCapability.MEMORY,
                 ],
                 "model": "gemini-2.5-flash",
                 "temperature": 0.3,  # Slightly creative for teaching
                 "max_iterations": 8,
+                "default_tools": [
+                    "search_notes",  # RAG: Search user's notes
+                    "search_flashcards",  # RAG: Search flashcards
+                    "analyze_document",  # RAG: Deep document analysis
+                ],
             },
             "document": {
                 "display_name": "Document Analyst",
@@ -206,7 +207,7 @@ class AgentFactory:
                 "capabilities": [
                     AgentCapability.CHAT,
                     AgentCapability.TOOL_USE,
-                    AgentCapability.FILE_ACCESS
+                    AgentCapability.FILE_ACCESS,
                 ],
                 "model": "gemini-2.5-pro",  # Use Pro for complex analysis
                 "temperature": 0.0,
@@ -215,10 +216,7 @@ class AgentFactory:
             "quiz": {
                 "display_name": "Quiz Generator",
                 "description": "Generates high-quality quiz questions",
-                "capabilities": [
-                    AgentCapability.CHAT,
-                    AgentCapability.TOOL_USE
-                ],
+                "capabilities": [AgentCapability.CHAT, AgentCapability.TOOL_USE],
                 "model": "gemini-2.5-flash",
                 "temperature": 0.5,  # Creative for varied questions
                 "max_iterations": 5,
@@ -231,12 +229,12 @@ class AgentFactory:
                     AgentCapability.TOOL_USE,
                     AgentCapability.MEMORY,
                     AgentCapability.PLANNING,
-                    AgentCapability.FILE_ACCESS
+                    AgentCapability.FILE_ACCESS,
                 ],
                 "model": "gemini-2.5-flash",  # Latest model for best performance
                 "temperature": 0.4,  # Balanced creativity
                 "max_iterations": 12,  # Allow complex operations
-            }
+            },
         }
 
         return defaults.get(agent_name, {})
@@ -257,11 +255,7 @@ class AgentFactory:
                 tool = self.tool_registry.get_tool(tool_name)
                 tools.append(tool)
             except Exception as e:
-                self.logger.warning(
-                    "tool_load_failed",
-                    tool=tool_name,
-                    error=str(e)
-                )
+                self.logger.warning("tool_load_failed", tool=tool_name, error=str(e))
         return tools
 
     def get_available_agents(self) -> List[str]:
@@ -286,10 +280,7 @@ def get_agent_factory() -> AgentFactory:
     return _factory
 
 
-async def create_agent(
-    agent_name: str,
-    **kwargs
-) -> BaseAgent:
+async def create_agent(agent_name: str, **kwargs) -> BaseAgent:
     """
     Convenience function to create agent
 

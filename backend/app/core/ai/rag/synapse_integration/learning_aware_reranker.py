@@ -1,13 +1,11 @@
 """Learning-Aware Reranker - Boosts weak areas for personalized learning."""
 
-from typing import List, Optional, Any
+from typing import List, Optional, Any, Dict
 from llama_index.core.postprocessor.types import BaseNodePostprocessor
 from llama_index.core.schema import NodeWithScore, QueryBundle
 from pydantic import PrivateAttr, Field
 import structlog
-
-from .context_bridge import get_synapse_bridge
-
+import asyncio
 
 logger = structlog.get_logger(__name__)
 
@@ -33,7 +31,8 @@ class LearningAwareReranker(BaseNodePostprocessor):
         default=1.2, description="Multiplier for recently studied topics"
     )
     mastery_penalty: float = Field(default=0.8, description="Multiplier for mastered topics")
-    _synapse: Any = PrivateAttr()
+    _synapse: Any = PrivateAttr(default=None)
+    _context_cache: Dict[int, Dict] = PrivateAttr(default_factory=dict)
 
     def __init__(
         self,
@@ -41,7 +40,6 @@ class LearningAwareReranker(BaseNodePostprocessor):
         weak_area_boost: float = 1.5,
         recent_topic_boost: float = 1.2,
         mastery_penalty: float = 0.8,
-        use_mock: bool = True,
         **kwargs,
     ):
         """
@@ -52,7 +50,6 @@ class LearningAwareReranker(BaseNodePostprocessor):
             weak_area_boost: Multiplier for weak area content (1.3-2.0 recommended)
             recent_topic_boost: Multiplier for recently studied topics
             mastery_penalty: Multiplier for mastered topics (<1.0 to demote)
-            use_mock: Use mock SYNAPSE data
             **kwargs: Additional BaseNodePostprocessor arguments
         """
         super().__init__(
@@ -63,8 +60,7 @@ class LearningAwareReranker(BaseNodePostprocessor):
             **kwargs,
         )
 
-        # Get SYNAPSE bridge
-        self._synapse = get_synapse_bridge(use_mock=use_mock)
+        # Private attrs are already initialized by PrivateAttr(default=...)
 
         logger.info(
             "learning_aware_reranker_initialized",
@@ -72,6 +68,51 @@ class LearningAwareReranker(BaseNodePostprocessor):
             weak_boost=weak_area_boost,
             recent_boost=recent_topic_boost,
         )
+
+    def _get_bridge(self):
+        """Get or create the SYNAPSE context bridge (lazy init)."""
+        if self._synapse is None:
+            from .context_bridge import SynapseContextBridge
+
+            self._synapse = SynapseContextBridge()
+        return self._synapse
+
+    async def _get_context_async(self, user_id: int) -> Dict:
+        """Get user context asynchronously."""
+        # Check cache first
+        if user_id in self._context_cache:
+            return self._context_cache[user_id]
+
+        bridge = self._get_bridge()
+        context = await bridge.get_user_context(user_id)
+
+        # Cache for this request batch
+        self._context_cache[user_id] = context
+        return context
+
+    def _get_context_sync(self, user_id: int) -> Dict:
+        """Get user context synchronously (wraps async)."""
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                # We're in an async context, need to run in executor
+                # Return empty context to avoid blocking
+                return self._get_empty_context(user_id)
+            else:
+                return loop.run_until_complete(self._get_context_async(user_id))
+        except RuntimeError:
+            # No event loop, create one
+            return asyncio.run(self._get_context_async(user_id))
+
+    def _get_empty_context(self, user_id: int) -> Dict:
+        """Return empty context as fallback."""
+        return {
+            "user_id": user_id,
+            "weak_areas": [],
+            "mastery_scores": {},
+            "recent_topics": [],
+            "preferences": {},
+        }
 
     def _postprocess_nodes(
         self, nodes: List[NodeWithScore], query_bundle: Optional[QueryBundle] = None
@@ -91,7 +132,10 @@ class LearningAwareReranker(BaseNodePostprocessor):
             return nodes
 
         # Extract user_id from query metadata
-        user_id = query_bundle.custom_embedding_strs.get("user_id")
+        user_id = None
+        if hasattr(query_bundle, "custom_embedding_strs") and query_bundle.custom_embedding_strs:
+            user_id = query_bundle.custom_embedding_strs.get("user_id")
+
         if not user_id:
             logger.warning("no_user_id_for_learning_reranking")
             return nodes  # Fall back to original ranking
@@ -100,17 +144,18 @@ class LearningAwareReranker(BaseNodePostprocessor):
 
         logger.info("learning_reranking_start", user_id=user_id, candidates=len(nodes))
 
-        # Get user learning context
-        context = self._synapse.get_user_context(user_id)
+        # Get user learning context (sync wrapper)
+        context = self._get_context_sync(user_id)
+
         weak_topics = set(
             topic.lower()
-            for topic, score in context["mastery_scores"].items()
+            for topic, score in context.get("mastery_scores", {}).items()
             if score < 0.5  # Weak area threshold
         )
-        recent_topics = set(t.lower() for t in context["recent_topics"][:3])  # Top 3 recent
+        recent_topics = set(t.lower() for t in context.get("recent_topics", [])[:3])  # Top 3 recent
         mastered_topics = set(
             topic.lower()
-            for topic, score in context["mastery_scores"].items()
+            for topic, score in context.get("mastery_scores", {}).items()
             if score > 0.75  # Mastery threshold
         )
 
@@ -126,7 +171,7 @@ class LearningAwareReranker(BaseNodePostprocessor):
         for node in nodes:
             # Extract text content
             content = node.node.get_content().lower()
-            original_score = node.score
+            original_score = node.score or 0.0
 
             # Calculate boost
             boost_factor = 1.0

@@ -159,7 +159,7 @@ class RAGPipeline:
         )
         self.context_integration = None
         if self.enable_feedback_loops:
-            self.context_integration = get_context_integration(use_real=False)  # Mock for now
+            self.context_integration = get_context_integration()  # Uses real ContextEngine now
             logger.info("feedback_loops_enabled")
 
         # Initialize metadata tools (Phase 2)

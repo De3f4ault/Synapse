@@ -44,6 +44,12 @@ from .link_tools import (
     GetKnowledgeGraphTool,
     SuggestLinksTool,
 )
+from .rag_tools import (
+    SearchNotesTool as RAGSearchNotesTool,
+    SearchFlashcardsTool as RAGSearchFlashcardsTool,
+    AnalyzeDocumentTool as RAGAnalyzeDocumentTool,
+    register_rag_tools,
+)
 
 __all__ = [
     # Base
@@ -81,5 +87,9 @@ __all__ = [
     "CreateLinkTool",
     "GetKnowledgeGraphTool",
     "SuggestLinksTool",
+    # RAG tools (use RAGPipeline for intelligent retrieval)
+    "RAGSearchNotesTool",
+    "RAGSearchFlashcardsTool",
+    "RAGAnalyzeDocumentTool",
+    "register_rag_tools",
 ]
-

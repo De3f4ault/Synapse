@@ -1,17 +1,15 @@
 """
 WebSocket Routes - Centralized WebSocket Endpoint Registration
 
-UPDATED: Added unified endpoint for channel-based routing
-All WebSocket endpoints are registered here for easy management and discovery.
+UPDATED: Unified endpoint architecture
+All chat now handled via /ws/unified with channel subscriptions.
+Legacy dedicated endpoints removed in favor of channel-based routing.
 """
 
-from fastapi import FastAPI, WebSocket, Query, Depends
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import FastAPI, WebSocket, Query
 
-from app.api.deps import get_db
 from .unified import unified_websocket_endpoint
 from .dashboard import dashboard_websocket_endpoint
-from .chat import chat_websocket
 from .activity import activity_websocket_endpoint
 from .study import study_websocket_endpoint
 from .live_voice import live_voice_websocket_endpoint
@@ -70,27 +68,9 @@ def register_websocket_routes(app: FastAPI):
         """
         await dashboard_websocket_endpoint(websocket, token)
 
-    @app.websocket("/ws/chat/{session_id}")
-    async def chat_ws(
-        websocket: WebSocket,
-        session_id: str,
-        token: str = Query(..., description="JWT authentication token"),
-        db: AsyncSession = Depends(get_db),
-    ):
-        """
-        Chat WebSocket endpoint with AI streaming.
-
-        **LEGACY**: Prefer /ws/unified with channel subscription for new implementations.
-
-        Provides real-time chat with AI tutor including:
-        - Streaming responses
-        - Thinking process
-        - Source citations
-        - Function calls
-
-        Authentication via query parameter: ws://host/ws/chat/123?token=xxx
-        """
-        await chat_websocket(websocket, session_id, token, db)
+    # REMOVED: Legacy /ws/chat/{session_id} endpoint
+    # All chat now handled via /ws/unified with channel subscriptions
+    # Example: {"type": "subscribe", "channel": "chat:123"}
 
     @app.websocket("/ws/activity")
     async def activity_ws(

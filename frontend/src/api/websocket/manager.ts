@@ -87,6 +87,9 @@ export class WebSocketManager {
 
         // NEW: Flush message queue
         this.flushMessageQueue();
+
+        // NEW: Resubscribe to all channels after reconnect
+        this.resubscribeAllChannels();
       };
 
       this.ws.onmessage = (event) => {
@@ -275,6 +278,32 @@ export class WebSocketManager {
     queue.forEach((message) => {
       console.log("[WS Manager] Sending queued:", message.type);
       this.send(message);
+    });
+  }
+
+  /**
+   * NEW: Resubscribe to all channels after reconnection
+   * 
+   * When WebSocket reconnects, the backend creates a new session_id and
+   * all channel subscriptions are lost. This method resends subscribe
+   * messages for all channels that the client is still interested in.
+   */
+  private resubscribeAllChannels(): void {
+    const channels = Array.from(this.subscriptions.keys());
+
+    if (channels.length === 0) {
+      console.log("[WS Manager] No channels to resubscribe");
+      return;
+    }
+
+    console.log("[WS Manager] Resubscribing to", channels.length, "channels:", channels);
+
+    channels.forEach((channel) => {
+      console.log("[WS Manager] Sending resubscribe:", channel);
+      this.send({
+        type: "subscribe",
+        channel,
+      });
     });
   }
 

@@ -29,14 +29,14 @@ export type WebSocketState =
 
 interface ChatWSMessage {
   type:
-    | "subscribed"
-    | "thinking"
-    | "token"
-    | "sources"
-    | "complete"
-    | "error"
-    | "tool_call"
-    | "tool_result";
+  | "subscribed"
+  | "thinking"
+  | "token"
+  | "sources"
+  | "complete"
+  | "error"
+  | "tool_call"
+  | "tool_result";
   channel?: string;
   data?: any;
   event?: string;
@@ -146,17 +146,31 @@ export const useChatStreaming = ({
            * - Backend has accurate token counts
            * - Backend has metadata (grounding sources, function calls)
            * - Avoids stale data and race conditions
+           * 
+           * IMPORTANT: Clear streaming state AFTER invalidation + a small delay
+           * to allow React Query to refetch. This prevents the "flash" where
+           * the streaming content disappears before the real message appears.
            */
           if (sessionId) {
             console.log("[Chat] Invalidating queries to fetch final message");
-            queryClient.invalidateQueries({
-              queryKey: ["chat-messages", sessionId],
-              exact: true,
-            });
-          }
 
-          // Clear streaming state after invalidation
-          clearStreamingState();
+            // Small delay to ensure backend has completed DB save
+            // OPTIMIZED: Reduced to 100ms - DB commits are fast, no need for 300ms
+            setTimeout(async () => {
+              // Invalidate and wait for refetch
+              // Query key is ["chat-messages", sessionId, limit]
+              await queryClient.invalidateQueries({
+                queryKey: ["chat-messages", sessionId],
+              });
+
+              // Clear streaming state AFTER refetch completes
+              console.log("[Chat] Clearing streaming state after refetch");
+              clearStreamingState();
+            }, 100);  // Reduced from 300ms
+          } else {
+            // No session, just clear immediately
+            clearStreamingState();
+          }
           break;
 
         case "error":
@@ -314,7 +328,7 @@ export const useChatStreaming = ({
           (old = []) => [...old, optimisticUserMessage],
         );
 
-        // Send message via WebSocket
+        // Send message via WebSocket (unified endpoint format)
         manager.send({
           type: "message",
           channel,
@@ -356,6 +370,16 @@ export const useChatStreaming = ({
   }, [manager, autoConnect]);
 
   // Subscribe/unsubscribe based on sessionId
+  // FIXED: Use refs in callbacks to avoid dependency issues
+  const subscribeToChannelRef = useRef(subscribeToChannel);
+  const unsubscribeFromChannelRef = useRef(unsubscribeFromChannel);
+
+  // Keep refs updated
+  useEffect(() => {
+    subscribeToChannelRef.current = subscribeToChannel;
+    unsubscribeFromChannelRef.current = unsubscribeFromChannel;
+  });
+
   useEffect(() => {
     console.log("[Chat] Effect triggered:", {
       sessionId,
@@ -367,41 +391,35 @@ export const useChatStreaming = ({
     isMountedRef.current = true;
 
     if (!sessionId || !autoConnect) {
-      unsubscribeFromChannel();
+      unsubscribeFromChannelRef.current();
       return;
     }
 
-    const channel = getChannel(sessionId);
+    const channel = `chat:${sessionId}`;
 
     // Only subscribe if connected
     if (manager.isConnected()) {
-      subscribeToChannel(channel);
+      subscribeToChannelRef.current(channel);
     } else {
       // Wait for connection
       console.log("[Chat] Waiting for WebSocket connection...");
       const unsub = manager.onStateChange((state) => {
         if (state === "connected" && isMountedRef.current) {
-          subscribeToChannel(channel);
+          subscribeToChannelRef.current(channel);
           unsub();
         }
       });
       return () => {
         unsub();
-        unsubscribeFromChannel();
+        unsubscribeFromChannelRef.current();
       };
     }
 
     return () => {
-      unsubscribeFromChannel();
+      unsubscribeFromChannelRef.current();
     };
-  }, [
-    sessionId,
-    autoConnect,
-    manager,
-    getChannel,
-    subscribeToChannel,
-    unsubscribeFromChannel,
-  ]);
+    // FIXED: Only depend on sessionId, autoConnect, and manager - not callback functions
+  }, [sessionId, autoConnect, manager]);
 
   // Cleanup on unmount
   useEffect(() => {

@@ -8,7 +8,8 @@ import { useState } from "react";
 import { ChatWelcomeScreen } from "./chat-welcome-screen";
 import { ChatConversationView } from "./chat-conversation-view";
 import { LiveVoiceOverlay } from "./live-voice-overlay";
-import { useChatMessages, useSendMessage } from "../hooks/useChatMessages";
+import { useChatMessages } from "../hooks/useChatMessages";
+import { useChatStreaming } from "../hooks/useChatStreaming";
 
 interface ChatMainProps {
   sessionId: number;
@@ -21,19 +22,33 @@ export function ChatMain({ sessionId }: ChatMainProps) {
   // Fetch messages for this session
   const { data: messages = [], isLoading } = useChatMessages(sessionId);
 
-  // Send message mutation
-  const sendMessageMutation = useSendMessage(sessionId);
+  // WebSocket streaming
+  const {
+    isStreaming,
+    streamingContent,
+    streamingThinking,
+    sendMessage: sendStreamingMessage,
+    isConnected,
+  } = useChatStreaming({
+    sessionId,
+    autoConnect: true,
+  });
 
   const isConversationStarted = messages.length > 0;
 
   const handleSend = () => {
     if (!message.trim()) return;
+    if (!isConnected) {
+      console.error("[ChatMain] Cannot send - WebSocket not connected");
+      return;
+    }
 
-    sendMessageMutation.mutate(message, {
-      onSuccess: () => {
-        setMessage("");
-      },
-    });
+    try {
+      sendStreamingMessage(message);
+      setMessage("");
+    } catch (error) {
+      console.error("[ChatMain] Failed to send message:", error);
+    }
   };
 
   const handleReset = () => {
@@ -64,7 +79,10 @@ export function ChatMain({ sessionId }: ChatMainProps) {
           onSend={handleSend}
           onReset={handleReset}
           onVoiceClick={handleVoiceClick}
-          isSending={sendMessageMutation.isPending}
+          isSending={isStreaming}
+          isStreaming={isStreaming}
+          streamingContent={streamingContent}
+          streamingThinking={streamingThinking}
         />
       ) : (
         <ChatWelcomeScreen

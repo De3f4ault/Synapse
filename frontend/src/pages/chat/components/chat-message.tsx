@@ -1,13 +1,16 @@
 import { cn } from "@/lib/utils";
 import { Logo } from "@/components/ui/logo";
+import { Loader2 } from "lucide-react";
 
 import type { ChatMessageResponse } from "@/api/generated";
 
 interface ChatMessageProps {
   message: ChatMessageResponse;
+  isStreaming?: boolean;
+  thinking?: string;
 }
 
-export function ChatMessage({ message }: ChatMessageProps) {
+export function ChatMessage({ message, isStreaming = false, thinking = "" }: ChatMessageProps) {
   const isUser = message.role === "user";
   const BotIcon = Logo; // Using Logo as Bot Icon
 
@@ -39,6 +42,14 @@ export function ChatMessage({ message }: ChatMessageProps) {
           isUser ? "items-end" : "items-start",
         )}
       >
+        {/* Thinking indicator */}
+        {thinking && (
+          <div className="flex items-center gap-2 px-3 py-1.5 text-xs text-muted-foreground bg-muted/30 rounded-full mb-1">
+            <Loader2 className="size-3 animate-spin" />
+            <span className="opacity-70">Thinking...</span>
+          </div>
+        )}
+
         <div
           className={cn(
             "rounded-2xl px-4 py-3 text-sm shadow-sm border",
@@ -49,14 +60,18 @@ export function ChatMessage({ message }: ChatMessageProps) {
         >
           <p className="text-sm leading-relaxed whitespace-pre-wrap">
             {message.content}
+            {/* Streaming cursor */}
+            {isStreaming && !isUser && (
+              <span className="inline-block ml-1 w-[2px] h-4 bg-primary animate-pulse" />
+            )}
           </p>
         </div>
         <span className="text-[10px] text-muted-foreground px-1 opacity-50">
           {message.created_at
             ? new Date(message.created_at).toLocaleTimeString([], {
-                hour: "2-digit",
-                minute: "2-digit",
-              })
+              hour: "2-digit",
+              minute: "2-digit",
+            })
             : "Just now"}
         </span>
       </div>
