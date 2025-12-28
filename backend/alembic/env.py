@@ -30,14 +30,30 @@ if config.config_file_name is not None:
 target_metadata = Base.metadata
 
 
+# Indexes managed outside Alembic (ParadeDB BM25, DiskANN, partial indexes)
+# These are created by app/sql/indexes/create_hybrid_indexes.sql
+EXTERNAL_INDEXES = {
+    "notes_bm25_idx",
+    "notes_embedding_diskann_idx",
+    "notes_user_id_idx",
+    "flashcards_bm25_idx",
+    "flashcards_embedding_diskann_idx",
+    "flashcards_deck_id_idx",
+}
+
+
 def include_object(object, name, type_, reflected, compare_to):
     """
-    Exclude alembic_version table from autogenerate detection.
+    Exclude alembic_version table and externally-managed indexes from autogenerate.
 
-    This prevents Alembic from trying to drop its own version table
-    when using version_table_schema with custom schemas.
+    This prevents Alembic from:
+    - Trying to drop its own version table
+    - Generating migrations for indexes managed by create_hybrid_indexes.sql
     """
     if type_ == "table" and name == "alembic_version":
+        return False
+    # Skip indexes managed by external SQL scripts
+    if type_ == "index" and name in EXTERNAL_INDEXES:
         return False
     return True
 
@@ -48,7 +64,7 @@ def run_migrations_offline() -> None:
     Generates SQL scripts without database connection.
     """
     # Convert async URL to sync URL for Alembic
-    sync_url = settings.DATABASE_URL.replace('+asyncpg', '+psycopg2')
+    sync_url = settings.DATABASE_URL.replace("+asyncpg", "+psycopg2")
 
     context.configure(
         url=sync_url,
@@ -69,7 +85,7 @@ def run_migrations_online() -> None:
     Executes migrations against live database.
     """
     # Convert async URL to sync URL for Alembic
-    sync_url = settings.DATABASE_URL.replace('+asyncpg', '+psycopg2')
+    sync_url = settings.DATABASE_URL.replace("+asyncpg", "+psycopg2")
 
     # Create synchronous engine
     connectable = create_engine(
@@ -79,9 +95,7 @@ def run_migrations_online() -> None:
 
     with connectable.connect() as connection:
         # Create schema if it doesn't exist (outside transaction)
-        connection.execute(
-            text(f"CREATE SCHEMA IF NOT EXISTS {settings.DATABASE_SCHEMA}")
-        )
+        connection.execute(text(f"CREATE SCHEMA IF NOT EXISTS {settings.DATABASE_SCHEMA}"))
         connection.commit()
 
         context.configure(
@@ -95,9 +109,7 @@ def run_migrations_online() -> None:
 
         with context.begin_transaction():
             # Set search_path INSIDE transaction for proper schema targeting
-            connection.execute(
-                text(f"SET search_path TO {settings.DATABASE_SCHEMA}, public")
-            )
+            connection.execute(text(f"SET search_path TO {settings.DATABASE_SCHEMA}, public"))
             context.run_migrations()
 
 
