@@ -1,33 +1,63 @@
 /**
- * ChatPage - Auto-Navigation & Retractable Sidebar
+ * ChatPage is an orchestration boundary.
+ * It must never own state, logic, or side effects.
  *
- * Features:
- * - Auto-redirects to latest session
- * - Auto-creates first session if none exist
- * - Retractable sidebar with localStorage persistence
+ * Responsibilities:
+ * ✅ Read route params
+ * ✅ Decide which modules are active
+ * ✅ Wire modules together via public APIs only
+ *
+ * Forbidden:
+ * ❌ Zustand selectors (beyond composition)
+ * ❌ React Query hooks (beyond routing)
+ * ❌ WebSocket logic
+ * ❌ Message mutation
+ * ❌ UI conditionals beyond layout
  */
 
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ChatSidebar } from "./components/chat-sidebar";
-import { ChatMain } from "./components/chat-main";
+
+// Module public APIs only - no deep imports
+import { ChatSidebar } from "./sidebar";
+import { ChatMain, useChatSessions, useCreateSession } from "./core";
+import { useIsVoiceActive, LiveVoiceOverlay } from "./voice";
+
+// Layout and providers
+import { ChatProviders } from "./ChatProviders";
 import { GridPattern } from "@/components/ui/grid-pattern";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { MenuIcon, PanelLeftIcon } from "lucide-react";
-import { useChatSessions, useCreateSession } from "./hooks/useChatSession";
 import { cn } from "@/lib/utils";
 
-export const ChatPage: React.FC = () => {
+// ==================== ROUTE HOOK ====================
+
+function useChatRoute() {
   const { sessionId } = useParams<{ sessionId: string }>();
+  return {
+    sessionId: sessionId ? parseInt(sessionId) : undefined,
+    rawSessionId: sessionId,
+  };
+}
+
+// ==================== CHAT PAGE ====================
+
+export const ChatPage: React.FC = () => {
+  const { sessionId } = useChatRoute();
   const navigate = useNavigate();
+
+  // UI state (local only - not domain state)
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [voiceOverlayOpen, setVoiceOverlayOpen] = useState(false);
 
-  // Fetch sessions and handle auto-navigation
+  // Auto-navigation hooks (via module public APIs)
   const { data: sessions = [], isLoading } = useChatSessions();
   const createSessionMutation = useCreateSession();
-  const numericSessionId = sessionId ? parseInt(sessionId) : undefined;
+
+  // Voice mode check (via module public API)
+  const isVoiceActive = useIsVoiceActive();
 
   // Load sidebar state from localStorage
   useEffect(() => {
@@ -37,7 +67,7 @@ export const ChatPage: React.FC = () => {
     }
   }, []);
 
-  // Ref to track if session creation is in progress (prevents infinite loop)
+  // Ref to track if session creation is in progress
   const creatingSessionRef = useRef(false);
 
   // Auto-navigation logic
@@ -57,23 +87,21 @@ export const ChatPage: React.FC = () => {
           navigate(`/chat/${latest.id}`, { replace: true });
         }
       } else if (!creatingSessionRef.current && !createSessionMutation.isPending) {
-        // No sessions exist - create first one (with guard to prevent infinite loop)
+        // No sessions exist - create first one
         creatingSessionRef.current = true;
         createSessionMutation.mutate(
           { title: "New Conversation" },
           {
-            onSuccess: (newSession) => {
+            onSuccess: (newSession: { id: number }) => {
               navigate(`/chat/${newSession.id}`, { replace: true });
             },
             onSettled: () => {
-              // Reset the ref after mutation completes (success or error)
               creatingSessionRef.current = false;
             },
           },
         );
       }
     }
-    // NOTE: createSessionMutation intentionally excluded to prevent infinite loop
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId, sessions, isLoading, navigate]);
 
@@ -84,8 +112,8 @@ export const ChatPage: React.FC = () => {
     localStorage.setItem("sidebarCollapsed", JSON.stringify(newState));
   };
 
-  // Show loading state during auto-navigation
-  if (isLoading || !numericSessionId) {
+  // Loading state
+  if (isLoading || !sessionId) {
     return (
       <div className="h-screen flex items-center justify-center bg-background">
         <div className="text-center space-y-2">
@@ -96,65 +124,75 @@ export const ChatPage: React.FC = () => {
     );
   }
 
+  // ==================== RENDER ====================
+
   return (
-    <div className="flex h-screen overflow-hidden nm-bg nm-constellation-bg">
-      {/* Desktop Sidebar - Retractable */}
-      <div
-        className={cn(
-          "hidden md:block transition-all duration-300 ease-in-out",
-          sidebarCollapsed ? "w-0" : "w-64",
-        )}
-      >
-        <div className={cn("h-full", sidebarCollapsed && "opacity-0")}>
-          <ChatSidebar currentSessionId={numericSessionId} />
-        </div>
-      </div>
-
-      {/* Mobile Sidebar (Drawer) */}
-      <Sheet open={mobileSidebarOpen} onOpenChange={setMobileSidebarOpen}>
-        <SheetContent
-          side="left"
-          className="w-64 p-0 border-none [&>button]:hidden"
+    <ChatProviders sessionId={sessionId}>
+      <div className="flex h-screen overflow-hidden nm-bg nm-constellation-bg">
+        {/* Desktop Sidebar - Retractable */}
+        <div
+          className={cn(
+            "hidden md:block transition-all duration-300 ease-in-out",
+            sidebarCollapsed ? "w-0" : "w-64",
+          )}
         >
-          <ChatSidebar currentSessionId={numericSessionId} />
-        </SheetContent>
-      </Sheet>
-
-      {/* Main Content Area */}
-      <div className="flex flex-1 flex-col overflow-hidden relative">
-        {/* Floating Header Actions */}
-        <div className="absolute top-4 left-4 z-50 flex items-center gap-2 pointer-events-none">
-          {/* Desktop Toggle */}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggleSidebar}
-            className="hidden md:flex pointer-events-auto hover:bg-muted/50 rounded-full"
-          >
-            <PanelLeftIcon className="size-5 text-muted-foreground" />
-          </Button>
-
-          {/* Mobile Hamburger */}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setMobileSidebarOpen(true)}
-            className="md:hidden pointer-events-auto hover:bg-muted/50 rounded-full"
-          >
-            <MenuIcon className="size-5 text-muted-foreground" />
-          </Button>
-        </div>
-
-        {/* Chat Interface with Grid Background */}
-        <div className="flex-1 overflow-hidden relative">
-          <GridPattern className="pointer-events-none" />
-
-          <div className="relative z-10 h-full">
-            <ChatMain sessionId={numericSessionId} />
+          <div className={cn("h-full", sidebarCollapsed && "opacity-0")}>
+            <ChatSidebar currentSessionId={sessionId} />
           </div>
         </div>
+
+        {/* Mobile Sidebar (Drawer) */}
+        <Sheet open={mobileSidebarOpen} onOpenChange={setMobileSidebarOpen}>
+          <SheetContent
+            side="left"
+            className="w-64 p-0 border-none [&>button]:hidden"
+          >
+            <ChatSidebar currentSessionId={sessionId} />
+          </SheetContent>
+        </Sheet>
+
+        {/* Main Content Area */}
+        <div className="flex flex-1 flex-col overflow-hidden relative">
+          {/* Floating Header Actions */}
+          <div className="absolute top-4 left-4 z-50 flex items-center gap-2 pointer-events-none">
+            {/* Desktop Toggle */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleSidebar}
+              className="hidden md:flex pointer-events-auto hover:bg-muted/50 rounded-full"
+            >
+              <PanelLeftIcon className="size-5 text-muted-foreground" />
+            </Button>
+
+            {/* Mobile Hamburger */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setMobileSidebarOpen(true)}
+              className="md:hidden pointer-events-auto hover:bg-muted/50 rounded-full"
+            >
+              <MenuIcon className="size-5 text-muted-foreground" />
+            </Button>
+          </div>
+
+          {/* Chat Interface with Grid Background */}
+          <div className="flex-1 overflow-hidden relative">
+            <GridPattern className="pointer-events-none" />
+
+            <div className="relative z-10 h-full">
+              <ChatMain sessionId={sessionId} />
+            </div>
+          </div>
+        </div>
+
+        {/* Voice Mode Overlay */}
+        <LiveVoiceOverlay
+          isOpen={voiceOverlayOpen || isVoiceActive}
+          onClose={() => setVoiceOverlayOpen(false)}
+        />
       </div>
-    </div>
+    </ChatProviders>
   );
 };
 

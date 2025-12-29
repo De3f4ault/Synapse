@@ -1,10 +1,15 @@
-import React from 'react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import rehypeHighlight from 'rehype-highlight';
+/**
+ * MarkdownViewer - Thin wrapper around shared MarkdownRenderer
+ *
+ * NOTE: This file exists for backwards compatibility.
+ * New code should import directly from @/shared/rendering.
+ *
+ * Provides theme prop for document-specific theming.
+ */
 
-// Import syntax highlighting theme
-import 'highlight.js/styles/github-dark.css';
+import React from 'react';
+import { MarkdownRenderer } from '@/shared/rendering';
+import { cn } from '@/lib/utils';
 
 export type MarkdownTheme = 'light' | 'sepia' | 'twilight' | 'dark';
 
@@ -22,7 +27,8 @@ const themeClasses: Record<MarkdownTheme, { bg: string; prose: string }> = {
 };
 
 /**
- * Markdown viewer with GFM support and syntax highlighting
+ * Markdown viewer with theme support
+ * @deprecated Use MarkdownRenderer from @/shared/rendering directly
  */
 export const MarkdownViewer: React.FC<MarkdownViewerProps> = ({
     content,
@@ -32,62 +38,12 @@ export const MarkdownViewer: React.FC<MarkdownViewerProps> = ({
     const { bg, prose } = themeClasses[theme];
 
     return (
-        <div className={`w-full h-full overflow-auto ${bg} ${className}`}>
+        <div className={cn('w-full h-full overflow-auto', bg, className)}>
             <div className="max-w-4xl mx-auto p-8">
-                <article className={`prose prose-sm lg:prose-base ${prose} max-w-none`}>
-                    <ReactMarkdown
-                        remarkPlugins={[remarkGfm]}
-                        rehypePlugins={[rehypeHighlight]}
-                        components={{
-                            // Custom styling for code blocks
-                            pre: ({ children, ...props }) => (
-                                <pre
-                                    className="rounded-lg overflow-x-auto bg-zinc-900 p-4"
-                                    {...props}
-                                >
-                                    {children}
-                                </pre>
-                            ),
-                            code: ({ className, children, ...props }) => {
-                                const isInline = !className;
-                                return isInline ? (
-                                    <code
-                                        className="bg-zinc-800 text-cyan-400 px-1.5 py-0.5 rounded text-sm"
-                                        {...props}
-                                    >
-                                        {children}
-                                    </code>
-                                ) : (
-                                    <code className={className} {...props}>
-                                        {children}
-                                    </code>
-                                );
-                            },
-                            // Enhanced table styling
-                            table: ({ children, ...props }) => (
-                                <div className="overflow-x-auto">
-                                    <table className="min-w-full" {...props}>
-                                        {children}
-                                    </table>
-                                </div>
-                            ),
-                            // Link styling
-                            a: ({ children, href, ...props }) => (
-                                <a
-                                    href={href}
-                                    className="text-cyan-400 hover:text-cyan-300 underline"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    {...props}
-                                >
-                                    {children}
-                                </a>
-                            ),
-                        }}
-                    >
-                        {content || '*No content available*'}
-                    </ReactMarkdown>
-                </article>
+                <MarkdownRenderer
+                    content={content || '*No content available*'}
+                    className={prose}
+                />
             </div>
         </div>
     );

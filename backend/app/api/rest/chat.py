@@ -10,9 +10,11 @@ Complete implementation with TutorAgent integration and user context.
 
 from typing import List, Optional
 from datetime import datetime
+import json
 from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File
+from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, func, delete
+from sqlalchemy import select, and_, func, delete, text
 from pydantic import BaseModel, Field
 import structlog
 from app.core.ai.agents.factory import create_agent
@@ -77,6 +79,11 @@ class ChatMessageResponse(BaseModel):
     function_calls: Optional[dict] = None
     grounding_sources: Optional[dict] = None
     created_at: datetime
+    # Branching fields
+    parent_message_id: Optional[int] = None
+    version: int = 1
+    is_active: bool = True
+    has_children: bool = False
 
 
 # File upload response
@@ -208,6 +215,149 @@ async def generate_ai_response(
             "function_calls": None,
             "grounding_sources": None,
         }
+
+
+# ============================================================================
+# Conversation Search Endpoint
+# ============================================================================
+
+
+class ConversationSearchResult(BaseModel):
+    """Search result for a conversation."""
+
+    session_id: int
+    session_title: str
+    message_id: Optional[int] = None  # None for title-only matches
+    message_role: str
+    message_content: str
+    message_snippet: str
+    relevance_score: float
+    match_type: str = "exact"  # exact, prefix, bm25, substring, fuzzy
+    match_context: str = "title"  # title, user_message, assistant_message
+    created_at: datetime
+
+
+@router.get(
+    "/search",
+    response_model=List[ConversationSearchResult],
+    summary="Search conversations",
+    description="Production-grade full-text search with fuzzy matching",
+)
+async def search_conversations(
+    q: str = Query(..., min_length=2, max_length=500, description="Search query"),
+    limit: int = Query(20, ge=1, le=100, description="Max results"),
+    include_inactive: bool = Query(False, description="Include inactive branch messages"),
+    fuzzy: bool = Query(True, description="Enable fuzzy/substring matching"),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Intelligent conversation search with 6-stage ranking:
+    1. Exact title match (score: 10)
+    2. Title prefix match (score: 8)
+    3. BM25 full-word (score: 5+)
+    4. Substring (score: 3/2)
+    5. Fuzzy (word_similarity)
+
+    Results include match_type and match_context for grouping.
+    """
+    try:
+        result = await db.execute(
+            text("""
+                SELECT * FROM developer_schema.search_conversations_v3(
+                    :user_id,
+                    :query,
+                    :limit,
+                    :include_inactive
+                )
+                ORDER BY relevance_score DESC
+            """),
+            {
+                "user_id": current_user.id,
+                "query": q,
+                "limit": limit,
+                "include_inactive": include_inactive,
+            },
+        )
+
+        rows = result.mappings().all()
+
+        results = [
+            ConversationSearchResult(
+                session_id=row["session_id"],
+                session_title=row["session_title"],
+                message_id=row["message_id"],
+                message_role=row["message_role"],
+                message_content=row["message_content"],
+                message_snippet=row["message_snippet"] or row["message_content"][:150],
+                relevance_score=float(row["relevance_score"]) if row["relevance_score"] else 0.0,
+                match_type=row["match_type"] or "exact",
+                match_context=row["match_context"] or "title",
+                created_at=row["created_at"],
+            )
+            for row in rows
+        ]
+
+        logger.info(
+            f"Search '{q[:30]}' returned {len(results)} results (types: {set(r.match_type for r in results)})"
+        )
+
+        return results
+
+    except Exception as e:
+        logger.error(f"Conversation search error: {e}", exc_info=True)
+        return []
+
+
+@router.get(
+    "/search/suggest",
+    response_model=List[str],
+    summary="Search suggestions",
+    description="Get autocomplete suggestions based on conversation content",
+)
+async def search_suggestions(
+    q: str = Query(..., min_length=1, max_length=100, description="Prefix to autocomplete"),
+    limit: int = Query(10, ge=1, le=50, description="Max suggestions"),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Get autocomplete suggestions for the search box.
+    Returns distinct words from user's conversations that match the prefix.
+    """
+    try:
+        result = await db.execute(
+            text("""
+                WITH words AS (
+                    SELECT DISTINCT 
+                        unnest(string_to_array(lower(m.content), ' ')) as word
+                    FROM developer_schema.chat_messages m
+                    INNER JOIN developer_schema.chat_sessions s ON m.session_id = s.id
+                    WHERE s.user_id = :user_id
+                      AND s.deleted_at IS NULL
+                      AND m.is_active = true
+                )
+                SELECT word
+                FROM words
+                WHERE word LIKE :prefix || '%'
+                  AND length(word) >= 3
+                  AND length(word) <= 30
+                ORDER BY length(word), word
+                LIMIT :limit
+            """),
+            {
+                "user_id": current_user.id,
+                "prefix": q.lower(),
+                "limit": limit,
+            },
+        )
+
+        suggestions = [row[0] for row in result.fetchall()]
+        return suggestions
+
+    except Exception as e:
+        logger.error(f"Search suggestions error: {e}", exc_info=True)
+        return []
 
 
 # ============================================================================
@@ -773,6 +923,492 @@ async def regenerate_message(
         function_calls=old_message.function_calls,
         grounding_sources=old_message.grounding_sources,
         created_at=old_message.created_at,
+        parent_message_id=old_message.parent_message_id,
+        version=old_message.version,
+        is_active=old_message.is_active,
+    )
+
+
+# ============================================================================
+# Conversation Branching Endpoints
+# ============================================================================
+
+
+class EditMessageRequest(BaseModel):
+    """Request to edit a message (creates a branch)."""
+
+    content: str = Field(..., min_length=1, max_length=5000, description="New message content")
+
+
+class ConversationTreeResponse(BaseModel):
+    """Conversation tree structure."""
+
+    session_id: int
+    messages: List[ChatMessageResponse]
+    branch_points: List[int] = Field(
+        default_factory=list, description="Message IDs that have multiple children"
+    )
+
+
+@router.post(
+    "/messages/{message_id}/edit",
+    response_model=List[ChatMessageResponse],
+    summary="Edit message (creates branch)",
+    description="Edit a user message, creating a new branch. Returns new message + AI response.",
+)
+async def edit_message(
+    message_id: int,
+    edit_data: EditMessageRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Edit a user message, creating a new branch in the conversation tree.
+
+    Flow:
+    1. Verify message ownership and that it's a user message
+    2. Mark original message and its descendants as inactive
+    3. Create new message with edited content (same parent as original)
+    4. Generate new AI response
+    5. Return both new messages
+    """
+    # Get original message with session verification
+    result = await db.execute(
+        select(ChatMessage)
+        .join(ChatSession)
+        .where(
+            and_(
+                ChatMessage.id == message_id,
+                ChatMessage.role == MessageRole.USER,
+                ChatSession.user_id == current_user.id,
+                ChatSession.deleted_at.is_(None),
+            )
+        )
+    )
+    original_message = result.scalar_one_or_none()
+
+    if not original_message:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Message not found or not a user message",
+        )
+
+    # Mark original message and its descendants as inactive
+    # This preserves the branch but switches to the new path
+    original_message.is_active = False
+
+    # Get descendants and mark them inactive too
+    descendants_result = await db.execute(
+        select(ChatMessage).where(
+            and_(
+                ChatMessage.session_id == original_message.session_id,
+                ChatMessage.created_at > original_message.created_at,
+                ChatMessage.is_active == True,
+            )
+        )
+    )
+    descendants = descendants_result.scalars().all()
+    for desc in descendants:
+        desc.is_active = False
+
+    # Create new edited message (same parent as original)
+    new_user_message = ChatMessage(
+        session_id=original_message.session_id,
+        role=MessageRole.USER,
+        content=edit_data.content,
+        tokens=estimate_tokens(edit_data.content),
+        parent_message_id=original_message.parent_message_id,
+        version=original_message.version + 1,
+        is_active=True,
+    )
+    db.add(new_user_message)
+    await db.flush()
+
+    logger.info(f"Created edited message {new_user_message.id} branching from {message_id}")
+
+    # Fetch conversation history up to the branch point
+    history_result = await db.execute(
+        select(ChatMessage)
+        .where(
+            and_(
+                ChatMessage.session_id == original_message.session_id,
+                ChatMessage.created_at < original_message.created_at,
+                ChatMessage.is_active == True,
+            )
+        )
+        .order_by(ChatMessage.created_at.asc())
+        .limit(50)
+    )
+    history_messages = history_result.scalars().all()
+
+    chat_history = [{"role": msg.role.value, "content": msg.content} for msg in history_messages]
+
+    # Generate new AI response
+    from app.core.ai.orchestrator import get_orchestrator
+
+    orchestrator = get_orchestrator()
+    orchestration_result = await orchestrator.handle_message(
+        message=edit_data.content,
+        user_id=current_user.id,
+        session_id=original_message.session_id,
+        context={},
+        chat_history=chat_history,
+    )
+
+    # Create AI response message
+    new_ai_message = ChatMessage(
+        session_id=original_message.session_id,
+        role=MessageRole.ASSISTANT,
+        content=orchestration_result.output,
+        tokens=orchestration_result.tokens_used or estimate_tokens(orchestration_result.output),
+        model_used=f"gemini-2.5-flash ({orchestration_result.agent_used})",
+        parent_message_id=new_user_message.id,
+        is_active=True,
+    )
+    db.add(new_ai_message)
+
+    await db.commit()
+    await db.refresh(new_user_message)
+    await db.refresh(new_ai_message)
+
+    logger.info(
+        f"Branch created: edited {message_id} -> new path {new_user_message.id} -> {new_ai_message.id}"
+    )
+
+    return [
+        ChatMessageResponse(
+            id=new_user_message.id,
+            session_id=new_user_message.session_id,
+            role=new_user_message.role,
+            content=new_user_message.content,
+            tokens=new_user_message.tokens,
+            model_used=None,
+            created_at=new_user_message.created_at,
+            parent_message_id=new_user_message.parent_message_id,
+            version=new_user_message.version,
+            is_active=new_user_message.is_active,
+        ),
+        ChatMessageResponse(
+            id=new_ai_message.id,
+            session_id=new_ai_message.session_id,
+            role=new_ai_message.role,
+            content=new_ai_message.content,
+            tokens=new_ai_message.tokens,
+            model_used=new_ai_message.model_used,
+            created_at=new_ai_message.created_at,
+            parent_message_id=new_ai_message.parent_message_id,
+            version=new_ai_message.version,
+            is_active=new_ai_message.is_active,
+        ),
+    ]
+
+
+@router.get(
+    "/sessions/{session_id}/tree",
+    response_model=ConversationTreeResponse,
+    summary="Get conversation tree",
+    description="Get full conversation tree including all branches",
+)
+async def get_conversation_tree(
+    session_id: int,
+    include_inactive: bool = Query(False, description="Include inactive (archived) branches"),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Get the full conversation tree structure.
+
+    Returns all messages with their parent relationships,
+    allowing the frontend to reconstruct the tree.
+    """
+    # Verify session ownership
+    session_result = await db.execute(
+        select(ChatSession).where(
+            and_(
+                ChatSession.id == session_id,
+                ChatSession.user_id == current_user.id,
+                ChatSession.deleted_at.is_(None),
+            )
+        )
+    )
+    session = session_result.scalar_one_or_none()
+
+    if not session:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
+
+    # Build query for messages
+    query = select(ChatMessage).where(ChatMessage.session_id == session_id)
+
+    if not include_inactive:
+        query = query.where(ChatMessage.is_active == True)
+
+    query = query.order_by(ChatMessage.created_at.asc())
+
+    messages_result = await db.execute(query)
+    messages = messages_result.scalars().all()
+
+    # Find branch points (messages with multiple children)
+    # Count children for each parent_message_id
+    children_count_result = await db.execute(
+        select(ChatMessage.parent_message_id, func.count(ChatMessage.id).label("child_count"))
+        .where(ChatMessage.session_id == session_id)
+        .group_by(ChatMessage.parent_message_id)
+        .having(func.count(ChatMessage.id) > 1)
+    )
+    branch_points = [
+        row.parent_message_id
+        for row in children_count_result.all()
+        if row.parent_message_id is not None
+    ]
+
+    # Build response with has_children computed
+    message_ids_with_children = set()
+    for msg in messages:
+        if msg.parent_message_id:
+            message_ids_with_children.add(msg.parent_message_id)
+
+    return ConversationTreeResponse(
+        session_id=session_id,
+        messages=[
+            ChatMessageResponse(
+                id=msg.id,
+                session_id=msg.session_id,
+                role=msg.role,
+                content=msg.content,
+                tokens=msg.tokens,
+                model_used=msg.model_used,
+                function_calls=msg.function_calls if isinstance(msg.function_calls, dict) else None,
+                grounding_sources=msg.grounding_sources
+                if isinstance(msg.grounding_sources, dict)
+                else None,
+                created_at=msg.created_at,
+                parent_message_id=msg.parent_message_id,
+                version=msg.version,
+                is_active=msg.is_active,
+                has_children=msg.id in message_ids_with_children,
+            )
+            for msg in messages
+        ],
+        branch_points=branch_points,
+    )
+
+
+@router.post(
+    "/messages/{message_id}/switch-branch",
+    response_model=dict,
+    summary="Switch active branch",
+    description="Switch to a different branch at a branch point",
+)
+async def switch_branch(
+    message_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Switch to a different branch by making a message and its descendants active.
+
+    Deactivates the currently active sibling branch.
+    """
+    # Get target message
+    result = await db.execute(
+        select(ChatMessage)
+        .join(ChatSession)
+        .where(
+            and_(
+                ChatMessage.id == message_id,
+                ChatSession.user_id == current_user.id,
+                ChatSession.deleted_at.is_(None),
+            )
+        )
+    )
+    target_message = result.scalar_one_or_none()
+
+    if not target_message:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Message not found")
+
+    # Get sibling messages (same parent) and deactivate them
+    if target_message.parent_message_id:
+        siblings_result = await db.execute(
+            select(ChatMessage).where(
+                and_(
+                    ChatMessage.parent_message_id == target_message.parent_message_id,
+                    ChatMessage.id != message_id,
+                )
+            )
+        )
+        siblings = siblings_result.scalars().all()
+
+        for sibling in siblings:
+            sibling.is_active = False
+            # Also deactivate sibling's descendants
+            desc_result = await db.execute(
+                select(ChatMessage).where(
+                    and_(
+                        ChatMessage.session_id == target_message.session_id,
+                        ChatMessage.created_at > sibling.created_at,
+                        ChatMessage.parent_message_id == sibling.id,
+                    )
+                )
+            )
+            for desc in desc_result.scalars().all():
+                desc.is_active = False
+
+    # Activate target message and its descendants
+    target_message.is_active = True
+
+    # Recursively activate descendants of target
+    async def activate_descendants(parent_id: int):
+        desc_result = await db.execute(
+            select(ChatMessage).where(ChatMessage.parent_message_id == parent_id)
+        )
+        for desc in desc_result.scalars().all():
+            desc.is_active = True
+            await activate_descendants(desc.id)
+
+    await activate_descendants(message_id)
+
+    await db.commit()
+
+    logger.info(f"Switched to branch starting at message {message_id}")
+
+    return {"message": "Branch switched successfully", "active_message_id": message_id}
+
+
+# ============================================================================
+# Conversation Export Endpoint
+# ============================================================================
+
+
+@router.get(
+    "/sessions/{session_id}/export",
+    summary="Export conversation",
+    description="Export conversation history as JSON or Markdown",
+)
+async def export_conversation(
+    session_id: int,
+    format: str = Query("json", pattern="^(json|markdown)$", description="Export format"),
+    include_full_tree: bool = Query(False, description="Include all branches (not just active)"),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Export conversation history for download.
+
+    Formats:
+    - json: Machine-readable, re-importable
+    - markdown: Human-readable, shareable
+
+    Options:
+    - include_full_tree: Export all branches vs only active path
+    """
+    # Verify session ownership
+    session_result = await db.execute(
+        select(ChatSession).where(
+            and_(
+                ChatSession.id == session_id,
+                ChatSession.user_id == current_user.id,
+                ChatSession.deleted_at.is_(None),
+            )
+        )
+    )
+    session = session_result.scalar_one_or_none()
+
+    if not session:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
+
+    # Get messages
+    query = select(ChatMessage).where(ChatMessage.session_id == session_id)
+
+    if not include_full_tree:
+        query = query.where(ChatMessage.is_active == True)
+
+    query = query.order_by(ChatMessage.created_at.asc())
+
+    messages_result = await db.execute(query)
+    messages = messages_result.scalars().all()
+
+    if format == "json":
+        # JSON export
+        export_data = {
+            "session": {
+                "id": session.id,
+                "title": session.title,
+                "created_at": session.created_at.isoformat(),
+                "updated_at": session.updated_at.isoformat(),
+                "total_tokens_used": session.total_tokens_used,
+            },
+            "messages": [
+                {
+                    "id": msg.id,
+                    "role": msg.role.value,
+                    "content": msg.content,
+                    "tokens": msg.tokens,
+                    "model_used": msg.model_used,
+                    "created_at": msg.created_at.isoformat(),
+                    "parent_message_id": msg.parent_message_id,
+                    "version": msg.version,
+                    "is_active": msg.is_active,
+                }
+                for msg in messages
+            ],
+            "exported_at": datetime.utcnow().isoformat(),
+            "export_options": {
+                "include_full_tree": include_full_tree,
+            },
+        }
+
+        content = json.dumps(export_data, indent=2, ensure_ascii=False)
+        filename = f"conversation_{session_id}_{datetime.utcnow().strftime('%Y%m%d')}.json"
+        media_type = "application/json"
+
+    else:
+        # Markdown export
+        lines = [
+            f"# {session.title}",
+            "",
+            f"*Exported on {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}*",
+            "",
+            "---",
+            "",
+        ]
+
+        for msg in messages:
+            role_emoji = "👤" if msg.role.value == "user" else "🤖"
+            role_name = "User" if msg.role.value == "user" else "Assistant"
+            timestamp = msg.created_at.strftime("%Y-%m-%d %H:%M")
+
+            lines.append(f"### {role_emoji} {role_name}")
+            lines.append(f"*{timestamp}*")
+            lines.append("")
+            lines.append(msg.content)
+            lines.append("")
+            lines.append("---")
+            lines.append("")
+
+        # Add metadata footer
+        lines.append("")
+        lines.append("## Metadata")
+        lines.append("")
+        lines.append(f"- **Session ID**: {session.id}")
+        lines.append(f"- **Messages**: {len(messages)}")
+        lines.append(f"- **Total Tokens**: {session.total_tokens_used}")
+        if include_full_tree:
+            lines.append("- **Export Type**: Full conversation tree (including branches)")
+        else:
+            lines.append("- **Export Type**: Active branch only")
+
+        content = "\n".join(lines)
+        filename = f"conversation_{session_id}_{datetime.utcnow().strftime('%Y%m%d')}.md"
+        media_type = "text/markdown"
+
+    logger.info(f"Exported conversation {session_id} as {format} for user {current_user.id}")
+
+    return Response(
+        content=content,
+        media_type=media_type,
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+        },
     )
 
 

@@ -16,5 +16,9 @@ export type ChatMessageResponse = {
     function_calls?: (Record<string, any> | null);
     grounding_sources?: (Record<string, any> | null);
     created_at: string;
+    parent_message_id?: (number | null);
+    version?: number;
+    is_active?: boolean;
+    has_children?: boolean;
 };
 

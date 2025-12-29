@@ -31,8 +31,7 @@ import { QUERY_KEYS } from "@/lib/constants";
 import { useToast } from "@/hooks/use-toast";
 import { useDebounce } from "@/hooks/useDebounce";
 import { cn } from "@/lib/utils";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
+import { MarkdownRenderer } from "@/shared/rendering";
 import type { NoteResponse } from "@/api/generated";
 
 /**
@@ -295,7 +294,7 @@ export function NoteEditor({
             className={cn(
               "text-lg font-medium",
               errors.title &&
-                "border-destructive focus-visible:ring-destructive",
+              "border-destructive focus-visible:ring-destructive",
             )}
           />
           <AnimatePresence>
@@ -352,7 +351,7 @@ export function NoteEditor({
                 className={cn(
                   "font-mono text-sm resize-none",
                   errors.content &&
-                    "border-destructive focus-visible:ring-destructive",
+                  "border-destructive focus-visible:ring-destructive",
                 )}
               />
               <AnimatePresence>
@@ -387,11 +386,9 @@ export function NoteEditor({
           {/* Preview Tab */}
           <TabsContent value="preview" className="mt-4">
             <Card>
-              <CardContent className="prose prose-sm dark:prose-invert max-w-none p-6">
+              <CardContent className="p-6">
                 {content ? (
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                    {content}
-                  </ReactMarkdown>
+                  <MarkdownRenderer content={content} />
                 ) : (
                   <p className="text-muted-foreground italic">
                     No content to preview yet...

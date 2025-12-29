@@ -11,16 +11,20 @@ from pydantic import BaseModel, Field
 class ChatSessionCreate(BaseModel):
     """Chat session creation schema."""
 
-    title: Optional[str] = Field(default=None, max_length=500, description="Session title (auto-generated if not provided)")
+    title: Optional[str] = Field(
+        default=None, max_length=500, description="Session title (auto-generated if not provided)"
+    )
     document_id: Optional[int] = Field(default=None, description="Document ID to chat about")
-    context_modules: List[str] = Field(default_factory=list, description="Modules to include in context")
+    context_modules: List[str] = Field(
+        default_factory=list, description="Modules to include in context"
+    )
 
     class Config:
         json_schema_extra = {
             "example": {
                 "title": "Biology Study Session",
                 "document_id": None,
-                "context_modules": ["flashcards", "notes"]
+                "context_modules": ["flashcards", "notes"],
             }
         }
 
@@ -52,7 +56,7 @@ class ChatSessionResponse(BaseModel):
                 "total_tokens_used": 15000,
                 "total_cost": 0.015,
                 "created_at": "2025-11-06T10:00:00Z",
-                "updated_at": "2025-11-06T12:00:00Z"
+                "updated_at": "2025-11-06T12:00:00Z",
             }
         }
 
@@ -65,10 +69,7 @@ class ChatMessageCreate(BaseModel):
 
     class Config:
         json_schema_extra = {
-            "example": {
-                "session_id": 1,
-                "content": "Can you explain photosynthesis?"
-            }
+            "example": {"session_id": 1, "content": "Can you explain photosynthesis?"}
         }
 
 
@@ -81,10 +82,24 @@ class ChatMessageResponse(BaseModel):
     role: str = Field(description="Message role (user, assistant, system)")
     content: str = Field(description="Message content")
     tokens: int = Field(description="Tokens in message")
-    model_used: Optional[str] = Field(default=None, description="AI model used (for assistant messages)")
-    function_calls: Optional[Dict[str, Any]] = Field(default=None, description="Function calls made")
-    grounding_sources: Optional[Dict[str, Any]] = Field(default=None, description="Grounding sources")
+    model_used: Optional[str] = Field(
+        default=None, description="AI model used (for assistant messages)"
+    )
+    function_calls: Optional[Dict[str, Any]] = Field(
+        default=None, description="Function calls made"
+    )
+    grounding_sources: Optional[Dict[str, Any]] = Field(
+        default=None, description="Grounding sources"
+    )
     created_at: datetime = Field(description="Message time")
+
+    # Branching fields
+    parent_message_id: Optional[int] = Field(
+        default=None, description="Parent message ID (for branched messages)"
+    )
+    version: int = Field(default=1, description="Message version (increments on edit/regenerate)")
+    is_active: bool = Field(default=True, description="Whether message is on active branch")
+    has_children: bool = Field(default=False, description="Whether message has child messages")
 
     class Config:
         from_attributes = True
@@ -96,23 +111,18 @@ class ChatMessageResponse(BaseModel):
                 "content": "Photosynthesis is the process by which plants convert light energy...",
                 "tokens": 150,
                 "model_used": "gemini-1.5-flash",
-                "function_calls": {
-                    "search_notes": {
-                        "query": "photosynthesis",
-                        "results": 3
-                    }
-                },
+                "function_calls": {"search_notes": {"query": "photosynthesis", "results": 3}},
                 "grounding_sources": {
                     "sources": [
                         {
                             "type": "note",
                             "id": 5,
                             "title": "Plant Biology Basics",
-                            "snippet": "Photosynthesis converts light..."
+                            "snippet": "Photosynthesis converts light...",
                         }
                     ]
                 },
-                "created_at": "2025-11-06T12:00:00Z"
+                "created_at": "2025-11-06T12:00:00Z",
             }
         }
 
@@ -131,23 +141,23 @@ class ChatHistoryResponse(BaseModel):
                     "user_id": 1,
                     "title": "Biology Study Session",
                     "message_count": 12,
-                    "total_tokens_used": 15000
+                    "total_tokens_used": 15000,
                 },
                 "messages": [
                     {
                         "id": 1,
                         "role": "user",
                         "content": "Can you explain photosynthesis?",
-                        "tokens": 8
+                        "tokens": 8,
                     },
                     {
                         "id": 2,
                         "role": "assistant",
                         "content": "Photosynthesis is...",
                         "tokens": 150,
-                        "model_used": "gemini-1.5-flash"
-                    }
-                ]
+                        "model_used": "gemini-1.5-flash",
+                    },
+                ],
             }
         }
 
@@ -155,6 +165,7 @@ class ChatHistoryResponse(BaseModel):
 # ============================================================================
 #  File Upload Schemas
 # ============================================================================
+
 
 class FileUploadResponse(BaseModel):
     """File upload response for chat."""
@@ -176,7 +187,7 @@ class FileUploadResponse(BaseModel):
                 "file_size": 1024000,
                 "url": "/api/v1/documents/123",
                 "preview_url": "/api/v1/documents/123/preview",
-                "uploaded_at": "2025-11-06T12:00:00Z"
+                "uploaded_at": "2025-11-06T12:00:00Z",
             }
         }
 
@@ -184,6 +195,7 @@ class FileUploadResponse(BaseModel):
 # ============================================================================
 # Model Selection Schemas
 # ============================================================================
+
 
 class AIModelResponse(BaseModel):
     """AI model information."""
@@ -205,7 +217,7 @@ class AIModelResponse(BaseModel):
                 "capabilities": ["text", "code", "reasoning"],
                 "max_tokens": 8192,
                 "supports_vision": False,
-                "supports_search": False
+                "supports_search": False,
             }
         }
 
@@ -214,10 +226,13 @@ class AIModelResponse(BaseModel):
 # WebSocket Message Schemas
 # ============================================================================
 
+
 class WSChatMessage(BaseModel):
     """WebSocket chat message schema (client -> server)."""
 
-    type: str = Field(default="message", pattern="^(message|ping|stop)$", description="Message type")
+    type: str = Field(
+        default="message", pattern="^(message|ping|stop)$", description="Message type"
+    )
     content: str = Field(min_length=1, max_length=50000, description="Message content")
     context: Optional[Dict[str, Any]] = Field(default=None, description="Context configuration")
 
@@ -226,10 +241,7 @@ class WSChatMessage(BaseModel):
             "example": {
                 "type": "message",
                 "content": "Explain mitochondria",
-                "context": {
-                    "modules": ["flashcards", "notes"],
-                    "focus": "weak_areas"
-                }
+                "context": {"modules": ["flashcards", "notes"], "focus": "weak_areas"},
             }
         }
 
@@ -249,7 +261,7 @@ class WSChatToken(BaseModel):
                 "type": "token",
                 "text": "Mitochondria",
                 "model": "gemini-1.5-flash",
-                "streaming": True
+                "streaming": True,
             }
         }
 
@@ -269,7 +281,7 @@ class WSChatThinking(BaseModel):
                 "type": "thinking",
                 "text": "Let me analyze the key concepts...",
                 "model": "gemini-2.0-flash-thinking",
-                "streaming": True
+                "streaming": True,
             }
         }
 
@@ -290,9 +302,9 @@ class WSChatSources(BaseModel):
                         "type": "note",
                         "id": 5,
                         "title": "Biology Notes",
-                        "snippet": "Mitochondria are..."
+                        "snippet": "Mitochondria are...",
                     }
-                ]
+                ],
             }
         }
 
@@ -309,10 +321,7 @@ class WSChatToolCall(BaseModel):
             "example": {
                 "type": "tool_call",
                 "tool": "search_flashcards",
-                "args": {
-                    "query": "mitochondria",
-                    "limit": 5
-                }
+                "args": {"query": "mitochondria", "limit": 5},
             }
         }
 
@@ -325,8 +334,12 @@ class WSChatComplete(BaseModel):
     total_tokens: int = Field(description="Total tokens used")
     model_used: str = Field(description="Model used")
     success: bool = Field(default=True, description="Generation succeeded")
-    function_calls: Optional[Dict[str, Any]] = Field(default=None, description="Function calls made")
-    grounding_sources: Optional[Dict[str, Any]] = Field(default=None, description="Grounding sources used")
+    function_calls: Optional[Dict[str, Any]] = Field(
+        default=None, description="Function calls made"
+    )
+    grounding_sources: Optional[Dict[str, Any]] = Field(
+        default=None, description="Grounding sources used"
+    )
 
     class Config:
         json_schema_extra = {
@@ -335,12 +348,8 @@ class WSChatComplete(BaseModel):
                 "total_tokens": 250,
                 "model_used": "gemini-1.5-flash",
                 "success": True,
-                "function_calls": {
-                    "search_notes": {"results": 3}
-                },
-                "grounding_sources": {
-                    "sources": [{"type": "note", "id": 5}]
-                }
+                "function_calls": {"search_notes": {"results": 3}},
+                "grounding_sources": {"sources": [{"type": "note", "id": 5}]},
             }
         }
 
@@ -359,9 +368,7 @@ class WSChatError(BaseModel):
                 "type": "error",
                 "code": "QUOTA_EXCEEDED",
                 "message": "Gemini quota exceeded",
-                "details": {
-                    "retry_after": "2025-11-07T00:00:00Z"
-                }
+                "details": {"retry_after": "2025-11-07T00:00:00Z"},
             }
         }
 
@@ -374,14 +381,7 @@ class WSChatConnected(BaseModel):
     user_id: int = Field(description="User ID")
 
     class Config:
-        json_schema_extra = {
-            "example": {
-                "type": "connected",
-                "session_id": 1,
-                "user_id": 42
-            }
-        }
-
+        json_schema_extra = {"example": {"type": "connected", "session_id": 1, "user_id": 42}}
 
 
 class WSChatPong(BaseModel):
@@ -390,8 +390,4 @@ class WSChatPong(BaseModel):
     type: str = Field(default="pong", description="Message type")
 
     class Config:
-        json_schema_extra = {
-            "example": {
-                "type": "pong"
-            }
-        }
+        json_schema_extra = {"example": {"type": "pong"}}
