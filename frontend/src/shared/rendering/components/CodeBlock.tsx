@@ -42,7 +42,7 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({
     const normalizedLang = language.toLowerCase().replace(/^language-/, '');
 
     return (
-        <div className={cn('group relative rounded-lg overflow-hidden', className)}>
+        <div className={cn('group relative rounded-lg overflow-hidden not-prose', className)}>
             {/* Header with language/filename and copy button */}
             <div className="flex items-center justify-between px-4 py-2 bg-zinc-800 border-b border-zinc-700">
                 <div className="flex items-center gap-2 text-sm text-zinc-400">
@@ -81,12 +81,16 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({
                 language={normalizedLang}
                 style={oneDark}
                 showLineNumbers={showLineNumbers}
+                wrapLongLines={true}
                 customStyle={{
                     margin: 0,
                     padding: '1rem',
                     fontSize: '0.875rem',
                     lineHeight: '1.5',
-                    background: '#1e1e1e',
+                    background: '#1e1e1e', // Custom dark background
+                }}
+                codeTagProps={{
+                    style: { background: 'transparent' }
                 }}
                 lineNumberStyle={{
                     minWidth: '2.5em',

@@ -79,13 +79,8 @@ export function WebSocketProvider({ children }: WebSocketProviderProps) {
     };
   }, [isAuthenticated, token, manager]);
 
-  // Reconnect when token changes (token refresh)
-  useEffect(() => {
-    if (isAuthenticated && token && connectionState === "connected") {
-      console.log("[WebSocket Provider] Token changed, reconnecting...");
-      manager.reconnect();
-    }
-  }, [token]); // Only watch token changes, not connectionState to avoid loop
+  // Token refresh handling is now done in the first useEffect
+  // Removed separate token-change effect that caused duplicate reconnections
 
   const reconnect = useCallback(() => {
     manager.reconnect();

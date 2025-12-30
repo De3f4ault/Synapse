@@ -67,6 +67,12 @@ export interface CitationBlock {
     sequenceId?: number;
 }
 
+export interface MermaidBlock {
+    type: 'mermaid';
+    content: string;
+    sequenceId?: number;
+}
+
 // ==================== UNION TYPE ====================
 
 export type RenderBlock =
@@ -75,7 +81,8 @@ export type RenderBlock =
     | LatexBlock
     | TableBlock
     | ExpandableBlock
-    | CitationBlock;
+    | CitationBlock
+    | MermaidBlock;
 
 // ==================== TYPE GUARDS ====================
 
@@ -101,6 +108,10 @@ export function isExpandableBlock(block: RenderBlock): block is ExpandableBlock 
 
 export function isCitationBlock(block: RenderBlock): block is CitationBlock {
     return block.type === 'citation';
+}
+
+export function isMermaidBlock(block: RenderBlock): block is MermaidBlock {
+    return block.type === 'mermaid';
 }
 
 // ==================== FACTORY FUNCTIONS ====================
@@ -133,4 +144,8 @@ export function createTableBlock(rows: string[][], headers?: string[]): TableBlo
 
 export function createCitationBlock(sources: SourceRef[]): CitationBlock {
     return { type: 'citation', sources, sequenceId: nextSequenceId() };
+}
+
+export function createMermaidBlock(content: string): MermaidBlock {
+    return { type: 'mermaid', content, sequenceId: nextSequenceId() };
 }

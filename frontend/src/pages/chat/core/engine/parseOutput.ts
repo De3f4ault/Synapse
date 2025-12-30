@@ -12,6 +12,7 @@ import {
     RenderBlock,
     createMarkdownBlock,
     createCodeBlock,
+    createMermaidBlock,
     resetSequenceId,
 } from '@/shared/rendering/schema';
 
@@ -36,6 +37,7 @@ const CODE_FENCE_REGEX = /```(\w*)\n([\s\S]*?)```/g;
  * - Splits on code fences
  * - Creates markdown blocks for text
  * - Creates code blocks for fenced code
+ * - Creates mermaid blocks for 'mermaid' language fences
  *
  * Future extensions:
  * - LaTeX detection
@@ -69,8 +71,15 @@ export function parseOutput(content: string, options: ParseOptions = {}): Render
             }
         }
 
-        // Add code block
-        blocks.push(createCodeBlock((code ?? '').trim(), language || 'text'));
+        // Add block based on language
+        const trimmedCode = (code ?? '').trim();
+        const normalizedLang = (language || 'text').toLowerCase();
+
+        if (normalizedLang === 'mermaid') {
+            blocks.push(createMermaidBlock(trimmedCode));
+        } else {
+            blocks.push(createCodeBlock(trimmedCode, language || 'text'));
+        }
 
         lastIndex = matchStart + fullMatch.length;
     }

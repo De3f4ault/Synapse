@@ -36,6 +36,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import GlassCard from "@/components/ui/GlassCard";
 import {
   useChatSessions,
   useDeleteSession,
@@ -73,7 +74,7 @@ export function ChatSidebar({ currentSessionId, className }: ChatSidebarProps) {
   // Renaming state
   const [renamingId, setRenamingId] = useState<number | null>(null);
   const [renameValue, setRenameValue] = useState("");
-  const [sourceFilter, setSourceFilter] = useState<SessionFilter>("all");
+  const [sourceFilter, setSourceFilter] = useState<SessionFilter>("chat");
 
   // Search state
   const [searchQuery, setSearchQuery] = useState("");
@@ -151,245 +152,247 @@ export function ChatSidebar({ currentSessionId, className }: ChatSidebarProps) {
   };
 
   return (
-    <div
+    <GlassCard
       className={cn(
-        "flex h-full w-full flex-col bg-black/20 backdrop-blur-xl border-r border-white/10",
+        "flex h-full w-full flex-col bg-zinc-950/40 backdrop-blur-3xl border-r border-white/10 rounded-none shadow-2xl",
         className,
       )}
     >
-      {/* Header / New Chat */}
-      <div className="p-4 border-b border-white/10">
-        <Button
-          onClick={handleCreateSession}
-          className="w-full justify-start gap-2 bg-white/5 hover:bg-white/10 text-white border border-white/10 shadow-lg hover:shadow-cyan-500/20 transition-all duration-300 group"
-        >
-          <Plus className="size-4 group-hover:text-cyan-400 transition-colors" />
-          <span>New Chat</span>
-        </Button>
-      </div>
+      <div className="flex flex-col h-full w-full">
+        {/* Header / New Chat */}
+        <div className="p-4 border-b border-white/10 shrink-0">
+          <Button
+            onClick={handleCreateSession}
+            className="w-full justify-start gap-2 bg-white/5 hover:bg-white/10 text-white border border-white/10 shadow-lg hover:shadow-cyan-500/20 transition-all duration-300 group"
+          >
+            <Plus className="size-4 group-hover:text-cyan-400 transition-colors" />
+            <span>New Chat</span>
+          </Button>
+        </div>
 
-      {/* Search - Refined */}
-      <div className="p-3">
-        <div className="relative group">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-500 group-focus-within:text-cyan-400 transition-colors" />
-          <Input
-            placeholder="Search conversations..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9 pr-4 h-9 bg-white/5 border-white/5 focus:border-cyan-500/50 focus:ring-0 text-xs transition-all"
-          />
-          {isSearching && (
-            <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 size-4 text-cyan-400 animate-spin" />
+        {/* Search - Refined */}
+        <div className="p-3 shrink-0">
+          <div className="relative group">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-500 group-focus-within:text-cyan-400 transition-colors" />
+            <Input
+              placeholder="Search conversations..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 pr-4 h-9 bg-white/5 border-white/5 focus:border-cyan-500/50 focus:ring-0 text-xs transition-all"
+            />
+            {isSearching && (
+              <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 size-4 text-cyan-400 animate-spin" />
+            )}
+          </div>
+        </div>
+
+        <Separator className="bg-white/5 shrink-0" />
+
+        {/* Source Filter Toggle */}
+        <div className="px-3 py-2 flex gap-1 shrink-0">
+          <button
+            onClick={() => setSourceFilter("all")}
+            className={cn(
+              "flex-1 py-1.5 px-2 rounded-md text-[10px] font-medium uppercase tracking-wide transition-all",
+              sourceFilter === "all"
+                ? "bg-primary/20 text-primary border border-primary/30"
+                : "text-slate-500 hover:text-slate-400 hover:bg-white/5"
+            )}
+          >
+            All
+          </button>
+          <button
+            onClick={() => setSourceFilter("dashboard")}
+            className={cn(
+              "flex-1 py-1.5 px-2 rounded-md text-[10px] font-medium uppercase tracking-wide transition-all flex items-center justify-center gap-1",
+              sourceFilter === "dashboard"
+                ? "bg-cyan-500/20 text-cyan-400 border border-cyan-500/30"
+                : "text-slate-500 hover:text-slate-400 hover:bg-white/5"
+            )}
+          >
+            <Bot size={10} />
+            Dashboard
+          </button>
+          <button
+            onClick={() => setSourceFilter("chat")}
+            className={cn(
+              "flex-1 py-1.5 px-2 rounded-md text-[10px] font-medium uppercase tracking-wide transition-all flex items-center justify-center gap-1",
+              sourceFilter === "chat"
+                ? "bg-purple-500/20 text-purple-400 border border-purple-500/30"
+                : "text-slate-500 hover:text-slate-400 hover:bg-white/5"
+            )}
+          >
+            <ChatIcon size={10} />
+            Chat
+          </button>
+        </div>
+
+        <Separator className="bg-white/5 shrink-0" />
+
+        {/* Sessions List */}
+        <div className="flex-1 overflow-y-auto scrollbar-hide p-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:'none'] [scrollbar-width:'none']">
+          {/* Intelligent Grouped Search Results */}
+          {searchQuery.length >= 2 && (
+            <>
+              <SearchResultsPanel
+                results={searchResults}
+                query={searchQuery}
+                isLoading={isSearching}
+                searchMode="global"
+                recentSessions={recentChats.slice(0, 5).map(s => ({ id: s.id, title: s.title || 'Untitled' }))}
+                onQueryChange={setSearchQuery}
+                onResultClick={(session, query) => {
+                  // Pass query in URL for auto-activation of IDE search
+                  const params = new URLSearchParams();
+                  params.set('q', query);
+                  navigate(`/chat/${session.sessionId}?${params.toString()}`);
+                }}
+              />
+              {searchResults.length > 0 && <Separator className="bg-white/5 my-2" />}
+            </>
+          )}
+
+          {/* Recent Chats */}
+          {recentChats.length > 0 && (
+            <div className="space-y-1">
+              <div className="px-3 py-2">
+                <p className="text-[10px] font-mono text-slate-500 uppercase tracking-widest">
+                  History
+                </p>
+              </div>
+              {recentChats.map((session) => {
+                const isActive = currentSessionId === session.id;
+                const isRenaming = renamingId === session.id;
+
+                return (
+                  <div
+                    key={session.id}
+                    className={cn(
+                      "group relative flex items-center rounded-lg overflow-hidden transition-all duration-200",
+                      isActive ? "bg-white/10" : "hover:bg-white/5",
+                    )}
+                  >
+                    {isRenaming ? (
+                      <div className="flex-1 flex items-center gap-1 p-1 pl-2">
+                        <Input
+                          autoFocus
+                          value={renameValue}
+                          onChange={(e) => setRenameValue(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") saveRename(session.id);
+                            if (e.key === "Escape") cancelRename();
+                          }}
+                          className="h-7 text-xs bg-black/50 border-cyan-500/50 focus-visible:ring-0"
+                        />
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-7 w-7 text-green-400 hover:bg-green-500/20"
+                          onClick={() => saveRename(session.id)}
+                        >
+                          <Check size={14} />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-7 w-7 text-red-400 hover:bg-red-500/20"
+                          onClick={cancelRename}
+                        >
+                          <X size={14} />
+                        </Button>
+                      </div>
+                    ) : (
+                      <>
+                        <Button
+                          variant="ghost"
+                          className={cn(
+                            "flex-1 justify-start gap-3 px-3 py-2 h-auto text-left font-normal",
+                            isActive
+                              ? "text-cyan-400"
+                              : "text-slate-400 group-hover:text-slate-200",
+                          )}
+                          onClick={() => navigate(`/chat/${session.id}`)}
+                        >
+                          <MessageCircle
+                            className={cn(
+                              "size-4 shrink-0 transition-colors",
+                              isActive && "fill-cyan-500/20 stroke-cyan-400",
+                            )}
+                          />
+                          <span className="truncate text-sm">
+                            {session.title || "New Conversation"}
+                          </span>
+                        </Button>
+
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className={cn(
+                                "h-8 w-8 mr-1 opacity-0 group-hover:opacity-100 data-[state=open]:opacity-100 transition-opacity",
+                                isActive && "opacity-100",
+                              )}
+                            >
+                              <MoreVertical className="size-4 text-slate-500" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent
+                            align="end"
+                            className="w-48 bg-[#0a0a0a] border-white/10 text-slate-300"
+                          >
+                            <DropdownMenuItem
+                              onClick={(e) => startRenaming(session, e)}
+                              className="focus:bg-white/10 focus:text-white cursor-pointer"
+                            >
+                              <Pencil className="size-4 mr-2" />
+                              <span>Rename</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem className="focus:bg-white/10 focus:text-white cursor-pointer">
+                              <Share2 className="size-4 mr-2" />
+                              <span>Share</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="focus:bg-white/10 focus:text-white cursor-pointer"
+                              onClick={(e) => handleExport(session.id, 'json', e)}
+                            >
+                              <Download className="size-4 mr-2" />
+                              <span>Export JSON</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="focus:bg-white/10 focus:text-white cursor-pointer"
+                              onClick={(e) => handleExport(session.id, 'markdown', e)}
+                            >
+                              <Download className="size-4 mr-2" />
+                              <span>Export Markdown</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator className="bg-white/10" />
+                            <DropdownMenuItem
+                              className="text-red-400 focus:bg-red-500/10 focus:text-red-300 cursor-pointer"
+                              onClick={(e) => handleDeleteSession(session.id, e)}
+                            >
+                              <Trash2 className="size-4 mr-2" />
+                              <span>Delete</span>
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Empty State */}
+          {sessions.length === 0 && (
+            <div className="text-center py-12 px-4 opacity-50">
+              <MessageCircle className="mx-auto h-8 w-8 mb-2 text-slate-600" />
+              <p className="text-xs text-slate-500">No conversations yet</p>
+            </div>
           )}
         </div>
       </div>
-
-      <Separator className="bg-white/5" />
-
-      {/* Source Filter Toggle */}
-      <div className="px-3 py-2 flex gap-1">
-        <button
-          onClick={() => setSourceFilter("all")}
-          className={cn(
-            "flex-1 py-1.5 px-2 rounded-md text-[10px] font-medium uppercase tracking-wide transition-all",
-            sourceFilter === "all"
-              ? "bg-primary/20 text-primary border border-primary/30"
-              : "text-slate-500 hover:text-slate-400 hover:bg-white/5"
-          )}
-        >
-          All
-        </button>
-        <button
-          onClick={() => setSourceFilter("dashboard")}
-          className={cn(
-            "flex-1 py-1.5 px-2 rounded-md text-[10px] font-medium uppercase tracking-wide transition-all flex items-center justify-center gap-1",
-            sourceFilter === "dashboard"
-              ? "bg-cyan-500/20 text-cyan-400 border border-cyan-500/30"
-              : "text-slate-500 hover:text-slate-400 hover:bg-white/5"
-          )}
-        >
-          <Bot size={10} />
-          Dashboard
-        </button>
-        <button
-          onClick={() => setSourceFilter("chat")}
-          className={cn(
-            "flex-1 py-1.5 px-2 rounded-md text-[10px] font-medium uppercase tracking-wide transition-all flex items-center justify-center gap-1",
-            sourceFilter === "chat"
-              ? "bg-purple-500/20 text-purple-400 border border-purple-500/30"
-              : "text-slate-500 hover:text-slate-400 hover:bg-white/5"
-          )}
-        >
-          <ChatIcon size={10} />
-          Chat
-        </button>
-      </div>
-
-      <Separator className="bg-white/5" />
-
-      {/* Sessions List */}
-      <div className="flex-1 overflow-y-auto custom-scrollbar p-2">
-        {/* Intelligent Grouped Search Results */}
-        {searchQuery.length >= 2 && (
-          <>
-            <SearchResultsPanel
-              results={searchResults}
-              query={searchQuery}
-              isLoading={isSearching}
-              searchMode="global"
-              recentSessions={recentChats.slice(0, 5).map(s => ({ id: s.id, title: s.title || 'Untitled' }))}
-              onQueryChange={setSearchQuery}
-              onResultClick={(session, query) => {
-                // Pass query in URL for auto-activation of IDE search
-                const params = new URLSearchParams();
-                params.set('q', query);
-                navigate(`/chat/${session.sessionId}?${params.toString()}`);
-              }}
-            />
-            {searchResults.length > 0 && <Separator className="bg-white/5 my-2" />}
-          </>
-        )}
-
-        {/* Recent Chats */}
-        {recentChats.length > 0 && (
-          <div className="space-y-1">
-            <div className="px-3 py-2">
-              <p className="text-[10px] font-mono text-slate-500 uppercase tracking-widest">
-                History
-              </p>
-            </div>
-            {recentChats.map((session) => {
-              const isActive = currentSessionId === session.id;
-              const isRenaming = renamingId === session.id;
-
-              return (
-                <div
-                  key={session.id}
-                  className={cn(
-                    "group relative flex items-center rounded-lg overflow-hidden transition-all duration-200",
-                    isActive ? "bg-white/10" : "hover:bg-white/5",
-                  )}
-                >
-                  {isRenaming ? (
-                    <div className="flex-1 flex items-center gap-1 p-1 pl-2">
-                      <Input
-                        autoFocus
-                        value={renameValue}
-                        onChange={(e) => setRenameValue(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") saveRename(session.id);
-                          if (e.key === "Escape") cancelRename();
-                        }}
-                        className="h-7 text-xs bg-black/50 border-cyan-500/50 focus-visible:ring-0"
-                      />
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-7 w-7 text-green-400 hover:bg-green-500/20"
-                        onClick={() => saveRename(session.id)}
-                      >
-                        <Check size={14} />
-                      </Button>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-7 w-7 text-red-400 hover:bg-red-500/20"
-                        onClick={cancelRename}
-                      >
-                        <X size={14} />
-                      </Button>
-                    </div>
-                  ) : (
-                    <>
-                      <Button
-                        variant="ghost"
-                        className={cn(
-                          "flex-1 justify-start gap-3 px-3 py-2 h-auto text-left font-normal",
-                          isActive
-                            ? "text-cyan-400"
-                            : "text-slate-400 group-hover:text-slate-200",
-                        )}
-                        onClick={() => navigate(`/chat/${session.id}`)}
-                      >
-                        <MessageCircle
-                          className={cn(
-                            "size-4 shrink-0 transition-colors",
-                            isActive && "fill-cyan-500/20 stroke-cyan-400",
-                          )}
-                        />
-                        <span className="truncate text-sm">
-                          {session.title || "New Conversation"}
-                        </span>
-                      </Button>
-
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className={cn(
-                              "h-8 w-8 mr-1 opacity-0 group-hover:opacity-100 data-[state=open]:opacity-100 transition-opacity",
-                              isActive && "opacity-100",
-                            )}
-                          >
-                            <MoreVertical className="size-4 text-slate-500" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent
-                          align="end"
-                          className="w-48 bg-[#0a0a0a] border-white/10 text-slate-300"
-                        >
-                          <DropdownMenuItem
-                            onClick={(e) => startRenaming(session, e)}
-                            className="focus:bg-white/10 focus:text-white cursor-pointer"
-                          >
-                            <Pencil className="size-4 mr-2" />
-                            <span>Rename</span>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem className="focus:bg-white/10 focus:text-white cursor-pointer">
-                            <Share2 className="size-4 mr-2" />
-                            <span>Share</span>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            className="focus:bg-white/10 focus:text-white cursor-pointer"
-                            onClick={(e) => handleExport(session.id, 'json', e)}
-                          >
-                            <Download className="size-4 mr-2" />
-                            <span>Export JSON</span>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            className="focus:bg-white/10 focus:text-white cursor-pointer"
-                            onClick={(e) => handleExport(session.id, 'markdown', e)}
-                          >
-                            <Download className="size-4 mr-2" />
-                            <span>Export Markdown</span>
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator className="bg-white/10" />
-                          <DropdownMenuItem
-                            className="text-red-400 focus:bg-red-500/10 focus:text-red-300 cursor-pointer"
-                            onClick={(e) => handleDeleteSession(session.id, e)}
-                          >
-                            <Trash2 className="size-4 mr-2" />
-                            <span>Delete</span>
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {/* Empty State */}
-        {sessions.length === 0 && (
-          <div className="text-center py-12 px-4 opacity-50">
-            <MessageCircle className="mx-auto h-8 w-8 mb-2 text-slate-600" />
-            <p className="text-xs text-slate-500">No conversations yet</p>
-          </div>
-        )}
-      </div>
-    </div>
+    </GlassCard>
   );
 }

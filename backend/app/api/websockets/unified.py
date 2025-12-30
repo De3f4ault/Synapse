@@ -206,11 +206,28 @@ async def unified_websocket_endpoint(
                 logger.info("unified_websocket_disconnect", user_id=user.id, session_id=session_id)
                 break
 
+            except asyncio.CancelledError:
+                # Server shutdown or task cancellation - exit gracefully
+                logger.info("unified_websocket_cancelled", user_id=user.id, session_id=session_id)
+                break
+
             except Exception as e:
+                error_str = str(e).lower()
                 logger.error(
                     "unified_websocket_error", user_id=user.id, error=str(e), session_id=session_id
                 )
-                if "connection closed" in str(e).lower():
+                # Break on any connection-related errors to prevent infinite loops
+                if any(
+                    phrase in error_str
+                    for phrase in [
+                        "connection closed",
+                        "not connected",
+                        "accept",
+                        "websocket",
+                        "disconnect",
+                        "closed",
+                    ]
+                ):
                     break
 
     except Exception as e:

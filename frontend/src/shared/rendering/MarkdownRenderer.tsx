@@ -2,14 +2,21 @@
  * MarkdownRenderer - Smart Structurally, Dumb Semantically
  *
  * INVARIANT: Stateless, session-agnostic.
- * INVARIANT: Understands structure (code fences, tables), not meaning (citations, context).
+ * INVARIANT: Understands structure (code fences, tables, math), not meaning (citations, context).
  *
- * Plugin architecture allows extending without modifying core.
+ * Features:
+ * - Code blocks with syntax highlighting and copy buttons
+ * - Tables with Claude-style clean rendering (compact inline code in cells)
+ * - LaTeX/math rendering via KaTeX
+ * - GFM (GitHub Flavored Markdown) support
  */
 
 import React, { useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import 'katex/dist/katex.min.css';
 import { CodeBlock } from './components/CodeBlock';
 import { cn } from '@/lib/utils';
 
@@ -23,7 +30,30 @@ interface MarkdownRendererProps {
     onLink?: (href: string, children: React.ReactNode) => React.ReactNode;
 }
 
-// ==================== COMPONENT ====================
+// ==================== HELPER COMPONENTS ====================
+
+// Context to detect if we're inside a table
+const TableContext = React.createContext(false);
+
+// Inline code component (used inside tables and for short code)
+const InlineCode: React.FC<{ children: React.ReactNode; isInTable?: boolean }> = ({
+    children,
+    isInTable = false
+}) => (
+    <code
+        className={cn(
+            "px-1.5 py-0.5 rounded font-mono text-sm",
+            isInTable
+                ? "bg-rose-500/10 text-rose-200 border border-rose-500/20 whitespace-pre-wrap break-words inline-block min-w-0 max-w-full"
+                : "bg-zinc-800/80 text-cyan-400"
+        )}
+        style={isInTable ? { fontSize: '12.5px' } : undefined}
+    >
+        {children}
+    </code>
+);
+
+// ==================== MAIN COMPONENT ====================
 
 export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
     content,
@@ -34,20 +64,43 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
     // Build components config based on plugins
     const components = useMemo(() => ({
         // Code blocks with syntax highlighting
-        code({ node, inline, className: codeClassName, children, ...props }: any) {
+        code({ className: codeClassName, children }: any) {
+            const isInsideTable = React.useContext(TableContext);
             const match = /language-(\w+)/.exec(codeClassName || '');
-            const language = match ? match[1] : 'text';
+            const language = match ? match[1] : '';
             const codeContent = String(children).replace(/\n$/, '');
 
-            // Inline code
-            if (inline) {
+            // Determine if this is inline code or a code block
+            const hasLanguage = !!match;
+            const isMultiLine = codeContent.includes('\n');
+            const isLongContent = codeContent.length > 80;
+            const isBlock = hasLanguage || isMultiLine || isLongContent;
+
+            // Inside tables: ALWAYS render as inline code (Claude-style) unless it's a very large block
+            if (isInsideTable) {
+                // Even multi-line code in tables should often be compact, but if it has a language, 
+                // we might still want syntax highlighting? Claude uses simple text for code in tables usually.
+                // Let's stick to the inline style for consistency with the request "inner code within the table"
+                return <InlineCode isInTable={true}>{children}</InlineCode>;
+            }
+
+            // Inline code - simple styled span
+            if (!isBlock) {
+                return <InlineCode>{children}</InlineCode>;
+            }
+
+            // Special case: markdown code blocks should be RENDERED, not shown as code
+            if (language === 'markdown' || language === 'md') {
                 return (
-                    <code
-                        className="bg-zinc-800 text-cyan-400 px-1.5 py-0.5 rounded text-sm font-mono"
-                        {...props}
-                    >
-                        {children}
-                    </code>
+                    <div className="my-4 p-4 bg-zinc-900/50 rounded-lg border border-zinc-700/50">
+                        <ReactMarkdown
+                            remarkPlugins={[remarkGfm, remarkMath]}
+                            rehypePlugins={[rehypeKatex]}
+                            components={components}
+                        >
+                            {codeContent}
+                        </ReactMarkdown>
+                    </div>
                 );
             }
 
@@ -56,11 +109,13 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
                 return onCodeBlock(language, codeContent);
             }
 
-            return <CodeBlock content={codeContent} language={language} />;
+            return <CodeBlock content={codeContent} language={language || 'text'} showLineNumbers={isMultiLine} />;
         },
 
         // Pre wrapper - handled by code block
         pre({ children }: any) {
+            // In tables, pre should not wrap code blocks in extra div logic if we can avoid it, 
+            // but since we handle 'code' above, this mostly just passes children.
             return <>{children}</>;
         },
 
@@ -84,21 +139,55 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
             );
         },
 
-        // Tables with responsive wrapper
+        // Tables - Phase 4: Hybrid Premium (DeepSeek/Claude inspired)
         table({ children, ...props }: any) {
             return (
-                <div className="overflow-x-auto my-4">
-                    <table className="min-w-full border-collapse" {...props}>
-                        {children}
-                    </table>
-                </div>
+                <TableContext.Provider value={true}>
+                    <div className="my-8 w-full overflow-hidden rounded-lg border border-white/5 bg-white/[0.01]">
+                        <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-zinc-800 scrollbar-track-transparent pb-1">
+                            <table
+                                className="w-full text-left text-sm border-collapse"
+                                {...props}
+                            >
+                                {children}
+                            </table>
+                        </div>
+                    </div>
+                </TableContext.Provider>
+            );
+        },
+
+        thead({ children, ...props }: any) {
+            return (
+                <thead className="border-b border-white/5 bg-white/[0.01]" {...props}>
+                    {children}
+                </thead>
+            );
+        },
+
+        tbody({ children, ...props }: any) {
+            return (
+                <tbody className="divide-y divide-white/5" {...props}>
+                    {children}
+                </tbody>
+            );
+        },
+
+        tr({ children, ...props }: any) {
+            return (
+                <tr
+                    className="group transition-colors hover:bg-white/[0.02]"
+                    {...props}
+                >
+                    {children}
+                </tr>
             );
         },
 
         th({ children, ...props }: any) {
             return (
                 <th
-                    className="border border-zinc-700 bg-zinc-800 px-4 py-2 text-left font-semibold"
+                    className="py-3 px-4 text-xs font-medium uppercase tracking-wider text-zinc-500 select-none align-top whitespace-nowrap"
                     {...props}
                 >
                     {children}
@@ -106,9 +195,17 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
             );
         },
 
+        // Table cells - simplified with proper text handling
         td({ children, ...props }: any) {
             return (
-                <td className="border border-zinc-700 px-4 py-2" {...props}>
+                <td
+                    className="py-3 px-4 align-top text-zinc-300 leading-relaxed min-w-[120px] first:font-medium first:text-zinc-200"
+                    style={{
+                        wordBreak: 'break-word',
+                        maxWidth: '400px',
+                    }}
+                    {...props}
+                >
                     {children}
                 </td>
             );
@@ -129,7 +226,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
         // Lists
         ul({ children, ...props }: any) {
             return (
-                <ul className="list-disc list-inside my-2 space-y-1" {...props}>
+                <ul className="list-disc list-inside my-2 space-y-1 pl-2" {...props}>
                     {children}
                 </ul>
             );
@@ -137,16 +234,24 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
 
         ol({ children, ...props }: any) {
             return (
-                <ol className="list-decimal list-inside my-2 space-y-1" {...props}>
+                <ol className="list-decimal list-inside my-2 space-y-1 pl-2" {...props}>
                     {children}
                 </ol>
+            );
+        },
+
+        li({ children, ...props }: any) {
+            return (
+                <li className="text-zinc-300" {...props}>
+                    {children}
+                </li>
             );
         },
 
         // Headings
         h1({ children, ...props }: any) {
             return (
-                <h1 className="text-2xl font-bold mt-6 mb-3" {...props}>
+                <h1 className="text-2xl font-bold mt-6 mb-3 text-white" {...props}>
                     {children}
                 </h1>
             );
@@ -154,7 +259,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
 
         h2({ children, ...props }: any) {
             return (
-                <h2 className="text-xl font-semibold mt-5 mb-2" {...props}>
+                <h2 className="text-xl font-semibold mt-5 mb-2 text-white" {...props}>
                     {children}
                 </h2>
             );
@@ -162,16 +267,24 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
 
         h3({ children, ...props }: any) {
             return (
-                <h3 className="text-lg font-medium mt-4 mb-2" {...props}>
+                <h3 className="text-lg font-medium mt-4 mb-2 text-zinc-100" {...props}>
                     {children}
                 </h3>
+            );
+        },
+
+        h4({ children, ...props }: any) {
+            return (
+                <h4 className="text-base font-medium mt-3 mb-1.5 text-zinc-200" {...props}>
+                    {children}
+                </h4>
             );
         },
 
         // Paragraphs
         p({ children, ...props }: any) {
             return (
-                <p className="my-2 leading-relaxed" {...props}>
+                <p className="my-2 leading-relaxed text-zinc-300" {...props}>
                     {children}
                 </p>
             );
@@ -204,7 +317,8 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
     return (
         <div className={cn('prose prose-invert prose-zinc max-w-none', className)}>
             <ReactMarkdown
-                remarkPlugins={[remarkGfm]}
+                remarkPlugins={[remarkGfm, remarkMath]}
+                rehypePlugins={[rehypeKatex]}
                 components={components}
             >
                 {content || ''}

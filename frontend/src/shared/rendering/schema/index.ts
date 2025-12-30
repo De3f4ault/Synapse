@@ -10,6 +10,7 @@ export type {
     TableBlock,
     ExpandableBlock,
     CitationBlock,
+    MermaidBlock,
     SourceRef,
 } from './outputBlocks';
 
@@ -20,11 +21,13 @@ export {
     isTableBlock,
     isExpandableBlock,
     isCitationBlock,
+    isMermaidBlock,
     createMarkdownBlock,
     createCodeBlock,
     createLatexBlock,
     createTableBlock,
     createCitationBlock,
+    createMermaidBlock,
     nextSequenceId,
     resetSequenceId,
 } from './outputBlocks';

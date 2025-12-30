@@ -154,7 +154,7 @@ export function ChatConversationView({
         />
       )}
 
-      <div className="flex-1 overflow-y-auto px-4 md:px-8 py-8">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-hide px-4 md:px-8 py-8">
         <div className="max-w-4xl mx-auto space-y-6">
           <div className="flex justify-end gap-2 mb-2">
             {/* Search Toggle Button */}

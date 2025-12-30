@@ -26,6 +26,12 @@ TUTOR_BASE_PROMPT = """You are an AI tutor for SYNAPSE, a personalized learning 
 5. Create flashcards for key concepts
 6. Adapt difficulty to student's level
 7. Connect new knowledge to existing understanding
+
+**Capabilities & Formatting:**
+- Use **Mermaid Diagrams** for flows/systems: ```mermaid graph TD...``` 
+- Use **LaTeX** for math: $$ E = mc^2 $$
+- Use **Markdown Tables** for structured data
+- Use **Code Blocks** for programming examples
 """
 
 # Socratic questioning patterns
@@ -85,7 +91,7 @@ LEVEL_BASED_STRATEGIES = {
 - Encourage critical thinking
 - Focus on synthesis and creation
 - Minimal guidance, maximum discovery
-"""
+""",
 }
 
 # Response templates for common scenarios
@@ -109,9 +115,7 @@ RESPONSE_TEMPLATES = {
 
 
 def get_tutor_prompt_with_context(
-    user_context: Dict,
-    topic: Optional[str] = None,
-    student_level: str = "intermediate"
+    user_context: Dict, topic: Optional[str] = None, student_level: str = "intermediate"
 ) -> str:
     """
     Build tutor prompt with user-specific context
@@ -138,8 +142,8 @@ def get_tutor_prompt_with_context(
     if weak_areas:
         prompt += "**Student's Current Weak Areas:**\n"
         for area in weak_areas[:3]:
-            topic_name = area.get('topic', 'Unknown')
-            accuracy = area.get('accuracy', 0)
+            topic_name = area.get("topic", "Unknown")
+            accuracy = area.get("accuracy", 0)
             prompt += f"- {topic_name}: {accuracy:.1%} accuracy (needs attention)\n"
         prompt += "\n**Priority**: Gently guide toward these topics when relevant.\n\n"
 
@@ -166,10 +170,7 @@ def get_tutor_prompt_with_context(
     return prompt
 
 
-def get_socratic_question(
-    category: str,
-    context: Optional[str] = None
-) -> str:
+def get_socratic_question(category: str, context: Optional[str] = None) -> str:
     """
     Get a Socratic question pattern
 
@@ -180,10 +181,7 @@ def get_socratic_question(
     Returns:
         Question prompt
     """
-    patterns = SOCRATIC_QUESTION_PATTERNS.get(
-        category,
-        SOCRATIC_QUESTION_PATTERNS["clarification"]
-    )
+    patterns = SOCRATIC_QUESTION_PATTERNS.get(category, SOCRATIC_QUESTION_PATTERNS["clarification"])
 
     # Return first pattern (could randomize in production)
     base_question = patterns[0]
@@ -209,9 +207,7 @@ def get_response_template(scenario: str) -> str:
 
 
 def build_explanation_prompt(
-    concept: str,
-    student_level: str = "intermediate",
-    use_analogy: bool = True
+    concept: str, student_level: str = "intermediate", use_analogy: bool = True
 ) -> str:
     """
     Build prompt for explaining a concept
@@ -246,23 +242,18 @@ PROMPT_FRAGMENTS = {
     "start_assessment": """
 Before we begin, I'd like to understand what you already know about this topic.
 """,
-
     "offer_flashcards": """
 I notice this is an important concept. Would you like me to create flashcards to help you remember it?
 """,
-
     "check_understanding": """
 Let me check your understanding: [ask specific question]
 """,
-
     "provide_hint": """
 Here's a hint that might help: [provide minimal hint]
 """,
-
     "connect_concepts": """
 Notice how this connects to [related concept] that we discussed earlier.
 """,
-
     "encourage_struggle": """
 I can see you're thinking hard about this - that's exactly how learning happens! Let's break it down.
 """,

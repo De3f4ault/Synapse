@@ -1,8 +1,11 @@
+import { memo } from "react";
 import { cn } from "@/lib/utils";
 import { Logo } from "@/components/ui/logo";
 import { Loader2 } from "lucide-react";
 import { HighlightedText } from "../../search/components/HighlightedText";
 import { MarkdownRenderer } from "@/shared/rendering";
+import { MermaidBlock } from "@/shared/rendering/components/MermaidBlock";
+import { parseOutput } from "../engine/parseOutput";
 
 import type { ChatMessageResponse } from "@/api/generated";
 import type { SearchOccurrence } from "../../search/types";
@@ -15,13 +18,13 @@ interface ChatMessageProps {
   currentOccurrenceId?: string | null;
 }
 
-export function ChatMessage({
+const ChatMessageComponent = ({
   message,
   isStreaming = false,
   thinking = "",
   occurrences = [],
   currentOccurrenceId = null,
-}: ChatMessageProps) {
+}: ChatMessageProps) => {
   const isUser = message.role === "user";
   const BotIcon = Logo;
 
@@ -53,8 +56,9 @@ export function ChatMessage({
     // AI messages: rich markdown rendering
     // TODO: When search highlighting is needed for markdown,
     // implement block-level highlighting in MarkdownRenderer
+    // AI messages: block-based rendering (Engine)
+    // If we have search highlights, we fall back to simple text for now (TODO: block-level highlighting)
     if (hasHighlights) {
-      // Fall back to plain text with highlighting for now
       return (
         <div className="text-sm leading-relaxed">
           <HighlightedText
@@ -66,13 +70,39 @@ export function ChatMessage({
       );
     }
 
-    // Full markdown rendering for AI without search highlights
+    // Engine: Parse content into blocks
+    // Note: We're calling parsing inside render. Ideally memoized, but component is memoized.
+    const blocks = parseOutput(content);
+
     return (
-      <div className="text-sm">
-        <MarkdownRenderer content={content} />
-        {/* Streaming cursor */}
+      <div className="text-sm w-full min-w-0 flex flex-col gap-4">
+        {blocks.map((block, index) => {
+          // Provide a unique key based on content and index to avoid re-render issues
+          const key = `${block.type}-${index}`;
+
+          switch (block.type) {
+            case 'mermaid':
+              return <MermaidBlock key={key} content={block.content} />;
+
+            case 'code':
+              // Reconstruct markdown for code blocks to maintain consistent styling via MarkdownRenderer
+              return (
+                <MarkdownRenderer key={key} content={`\`\`\`${block.language}\n${block.content}\n\`\`\``} />
+              );
+
+            case 'markdown':
+              return <MarkdownRenderer key={key} content={block.content} className="break-words" />;
+
+            default:
+              // Other block types (Table, Citation, etc.) are not yet produced by parseOutput.
+              // Handle them or return null to satisfy TypeScript.
+              return null;
+          }
+        })}
+
+        {/* Streaming cursor (appended to last block or strictly at bottom) */}
         {isStreaming && (
-          <span className="inline-block ml-1 w-[2px] h-4 bg-primary animate-pulse align-middle" />
+          <div className="h-4 w-1 bg-cyan-400 animate-pulse mt-1" />
         )}
       </div>
     );
@@ -96,7 +126,9 @@ export function ChatMessage({
         {isUser ? (
           <div className="h-4 w-4 rounded-full bg-primary/50" />
         ) : (
-          <BotIcon className="h-5 w-5 text-primary p-0.5" />
+          <div className="size-8 rounded-full flex items-center justify-center p-0.5">
+            <BotIcon className={cn("size-full", isStreaming && "text-cyan-400 animate-pulse")} />
+          </div>
         )}
       </div>
 
@@ -117,7 +149,7 @@ export function ChatMessage({
 
         <div
           className={cn(
-            "rounded-2xl px-4 py-3 shadow-sm border overflow-hidden",
+            "rounded-2xl px-4 py-3 shadow-sm border overflow-hidden min-w-0",
             isUser
               ? "bg-primary/10 border-primary/20 text-foreground rounded-tr-sm"
               : "bg-card border-border/50 text-foreground/90 rounded-tl-sm",
@@ -136,5 +168,28 @@ export function ChatMessage({
       </div>
     </div>
   );
-}
+};
+
+export const ChatMessage = memo(ChatMessageComponent, (prev, next) => {
+  // Custom comparator to handle new array references for 'occurrences'
+  if (prev.message.id !== next.message.id) return false;
+  if (prev.message.content !== next.message.content) return false;
+  if (prev.isStreaming !== next.isStreaming) return false;
+  if (prev.thinking !== next.thinking) return false;
+  if (prev.currentOccurrenceId !== next.currentOccurrenceId) return false;
+
+  // Check occurrences array content equality
+  if (prev.occurrences === next.occurrences) return true;
+  if (!prev.occurrences || !next.occurrences) return false;
+  if (prev.occurrences.length !== next.occurrences.length) return false;
+
+  // If lengths match, check simplified equality (usually IDs if available, or just assume mismatch if length matches and strict eq fails, but for search results, strict eq failing usually means user typed query, so re-render is fine. BUT when typing in chat input, filter() always returns new array even if search results didn't change.)
+  // Wait, occurrences come from search state. If search query didn't change, occurrences content is same.
+  // So if search state is stable, filter returns new array but SAME item references?
+  // Let's check filter(). Yes, items are same references.
+  // So we can check strict equality of first item.
+  if (prev.occurrences.length > 0 && prev.occurrences[0] !== next.occurrences[0]) return false;
+
+  return true;
+});
 
