@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Target, Sparkles, BookOpen } from "lucide-react";
+import { Target, Sparkles } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { DueItems } from "./components/queue/DueItems";
 import { Recommendations } from "./components/recommendations/Recommendations";
@@ -9,11 +9,10 @@ import { StudyStats } from "./components/shared/StudyStats";
 import { StreakIndicator } from "./components/shared/StreakIndicator";
 import { useDueItemsStats } from "./hooks/useDueItems";
 import { useRecommendations } from "./hooks/useRecommendations";
-import { AuthenticationService, UsersService } from "@/api/generated";
+import { UsersService } from "@/api/generated";
 import { cn } from "@/lib/utils";
 import type {
   StudyItem,
-  StudySessionResponse,
   StudyStreak,
 } from "./types/study.types";
 
@@ -52,7 +51,7 @@ export function StudyPage() {
     setActiveSession({ items, type: "recommended" });
   };
 
-  const handleSessionComplete = (session: StudySessionResponse) => {
+  const handleSessionComplete = () => {
     setActiveSession(null);
   };
 

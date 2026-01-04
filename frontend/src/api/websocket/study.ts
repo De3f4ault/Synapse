@@ -3,7 +3,6 @@ import { getAuthToken } from "../client";
 import type {
   StudyWSMessage,
   StudyClientMessage,
-  WebSocketOptions,
   WebSocketState,
 } from "./types";
 
@@ -17,13 +16,23 @@ export class StudyWebSocketClient {
   private ws: WebSocket | null = null;
   private sessionId: number;
   private url: string;
-  private options: Required<WebSocketOptions>;
+  private options: Required<{
+    autoReconnect: boolean;
+    reconnectDelay: number;
+    maxReconnectAttempts: number;
+    connectionTimeout: number;
+  }>;
   private reconnectAttempts = 0;
   private reconnectTimer: NodeJS.Timeout | null = null;
   private messageHandlers: Set<(message: StudyWSMessage) => void> = new Set();
   private stateHandlers: Set<(state: WebSocketState) => void> = new Set();
 
-  constructor(sessionId: number, options: WebSocketOptions = {}) {
+  constructor(sessionId: number, options: Partial<{
+    autoReconnect: boolean;
+    reconnectDelay: number;
+    maxReconnectAttempts: number;
+    connectionTimeout: number;
+  }> = {}) {
     this.sessionId = sessionId;
 
     // Get WebSocket URL from environment

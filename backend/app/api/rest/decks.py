@@ -688,3 +688,118 @@ Return ONLY valid JSON in this exact format:
         logger.error("flashcard_generation_failed", error=str(e))
         await db.rollback()
         raise HTTPException(status_code=500, detail=f"Failed to generate flashcards: {str(e)}")
+
+
+# ============================================================================
+# Bulk Import Endpoint
+# ============================================================================
+
+
+class ImportCard(BaseModel):
+    """Card data for import."""
+
+    front: str = Field(..., min_length=1)
+    back: str = Field(..., min_length=1)
+
+
+class ImportRequest(BaseModel):
+    """Import request."""
+
+    cards: List[ImportCard] = Field(..., min_length=1, max_length=1000)
+
+
+class ImportResult(BaseModel):
+    """Structured import result."""
+
+    imported: int
+    skipped_duplicates: int
+    errors: List[str]
+    message: str
+
+
+@router.post(
+    "/{deck_id}/import",
+    response_model=ImportResult,
+    status_code=status.HTTP_201_CREATED,
+    summary="Import flashcards",
+    description="Bulk import flashcards into a deck",
+)
+async def import_flashcards(
+    deck_id: int,
+    import_data: ImportRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Bulk import flashcards into a deck with transaction safety and duplicate detection.
+    """
+    # Verify deck ownership
+    result = await db.execute(
+        select(Deck).where(
+            and_(Deck.id == deck_id, Deck.user_id == current_user.id, Deck.deleted_at.is_(None))
+        )
+    )
+    deck = result.scalar_one_or_none()
+
+    if not deck:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Deck not found")
+
+    errors: List[str] = []
+    skipped_duplicates = 0
+
+    try:
+        # Query existing front_text values for duplicate detection (case-normalized)
+        existing_result = await db.execute(
+            select(func.lower(Flashcard.front_text)).where(
+                and_(Flashcard.deck_id == deck.id, Flashcard.deleted_at.is_(None))
+            )
+        )
+        existing_fronts = {row[0].strip() for row in existing_result.fetchall()}
+
+        # Build flashcard objects for bulk insert, skipping duplicates
+        flashcards = []
+        for i, card in enumerate(import_data.cards):
+            try:
+                front_normalized = card.front.strip().lower()
+
+                # Check for duplicate
+                if front_normalized in existing_fronts:
+                    skipped_duplicates += 1
+                    continue
+
+                # Track this front to avoid duplicates within the import batch
+                existing_fronts.add(front_normalized)
+
+                flashcards.append(
+                    Flashcard(
+                        deck_id=deck.id,
+                        user_id=current_user.id,
+                        front_text=card.front.strip(),
+                        back_text=card.back.strip(),
+                    )
+                )
+            except Exception as e:
+                errors.append(f"Card {i + 1}: {str(e)}")
+
+        # Bulk insert with explicit transaction
+        if flashcards:
+            db.add_all(flashcards)
+            await db.commit()
+
+        # Build message
+        msg_parts = [f"Successfully imported {len(flashcards)} flashcards"]
+        if skipped_duplicates > 0:
+            msg_parts.append(f"{skipped_duplicates} duplicates skipped")
+        if errors:
+            msg_parts.append(f"{len(errors)} errors")
+
+        return ImportResult(
+            imported=len(flashcards),
+            skipped_duplicates=skipped_duplicates,
+            errors=errors,
+            message=" | ".join(msg_parts),
+        )
+
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to import flashcards: {str(e)}")

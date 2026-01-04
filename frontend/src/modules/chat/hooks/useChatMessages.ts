@@ -44,6 +44,7 @@ export const useSendMessage = (sessionId: number | undefined) => {
             ChatService.sendMessageApiV1ChatSessionsSessionIdMessagesPost(
                 sessionId!,
                 {
+                    session_id: sessionId!,
                     content,
                 },
             ),

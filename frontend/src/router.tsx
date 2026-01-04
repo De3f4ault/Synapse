@@ -33,9 +33,9 @@ const DashboardPage = React.lazy(() =>
 );
 
 // Flashcards
-const DecksPage = React.lazy(() =>
-  import("@/pages/flashcards/DecksPage").then((module) => ({
-    default: module.DecksPage,
+const FlashcardsPage = React.lazy(() =>
+  import("@/pages/flashcards/FlashcardsPage").then((module) => ({
+    default: module.FlashcardsPage,
   })),
 );
 const DeckDetailPage = React.lazy(() =>
@@ -205,7 +205,7 @@ export function Router() {
             <Route path="/dashboard" element={<DashboardPage />} />
 
             {/* ========== FLASHCARDS (Mnemosyne Protocol) ========== */}
-            <Route path="/flashcards" element={<DecksPage />} />
+            <Route path="/flashcards" element={<FlashcardsPage />} />
             <Route path="/flashcards/create" element={<CreateDeckPage />} />
             <Route path="/flashcards/:deckId" element={<DeckDetailPage />} />
             <Route path="/flashcards/:deckId/review" element={<ReviewPage />} />

@@ -1,10 +1,11 @@
 /**
- * DeckDetailPage - Standardized Neumorphic Design
- * Aligned with DecksPage, ReviewPage, CreateDeckPage patterns
+ * DeckDetailPage - Deck Overview & Card Management
+ * 
+ * REFACTORED: Uses modular imports with solid dark styling.
  */
 
-import { useParams, useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
+import { useParams, useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import {
   ArrowLeft,
   Play,
@@ -23,20 +24,21 @@ import {
   Flame,
   Edit,
   Trash2,
-} from "lucide-react";
-import { useDeck, useDeckStats, useUpdateDeck } from "./hooks/useDecks";
-import { useDeleteCard } from "./hooks/useCards";
-import { useQuery } from "@tanstack/react-query";
-import { queryKeys } from "@/lib/queryKeys";
-import { FlashcardsService } from "@/api/generated";
-import { DeckSettings } from "./components/deck/DeckSettings";
-import {
-  NeumorphicCard,
-  NeumorphicButton,
-  NeumorphicBadge,
-} from "@/components/neumorphic";
-import { cn } from "@/lib/utils";
-import type { Flashcard, LearningState } from "./types/flashcards.types";
+  Loader2,
+  Upload, // Added Upload Icon
+} from 'lucide-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query'; // Added useQueryClient
+import { queryKeys } from '@/lib/queryKeys';
+import { FlashcardsService } from '@/api/generated';
+import { cn } from '@/lib/utils';
+import { useState } from 'react'; // Added useState
+
+// Module imports
+import { useDeck } from './list';
+import { useActiveDeck, type Flashcard, type LearningState } from './core';
+import { DarkCard, EmptyState } from './shared';
+// Import Modal
+import { ImportModal } from './components/ImportModal';
 
 // Animation variants
 const containerVariants = {
@@ -49,10 +51,10 @@ const containerVariants = {
 
 const itemVariants = {
   hidden: { opacity: 0, y: 15 },
-  visible: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 100 } },
+  visible: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 100 } },
 };
 
-// Stat Card Component - Neumorphic Style
+// Stat Card Component
 function StatCard({
   icon: Icon,
   value,
@@ -62,44 +64,35 @@ function StatCard({
   icon: React.ElementType;
   value: number;
   label: string;
-  color: "cyan" | "purple" | "red" | "emerald" | "amber";
+  color: 'cyan' | 'purple' | 'red' | 'emerald' | 'amber';
 }) {
   const colorClasses = {
-    cyan: "text-cyan-400",
-    purple: "text-purple-400",
-    red: "text-red-400",
-    emerald: "text-emerald-400",
-    amber: "text-amber-400",
+    cyan: 'text-cyan-400 border-cyan-500/20',
+    purple: 'text-purple-400 border-purple-500/20',
+    red: 'text-red-400 border-red-500/20',
+    emerald: 'text-emerald-400 border-emerald-500/20',
+    amber: 'text-amber-400 border-amber-500/20',
   };
 
   return (
-    <NeumorphicCard className="p-5 text-center flex flex-col justify-center items-center h-32">
-      <div
-        className={cn(
-          "w-10 h-10 rounded-full nm-inset flex items-center justify-center mb-3",
-          colorClasses[color],
-        )}
-      >
+    <DarkCard className={`p-5 text-center border ${colorClasses[color]}`}>
+      <div className={`w-10 h-10 rounded-full bg-white/5 flex items-center justify-center mb-3 mx-auto ${colorClasses[color].split(' ')[0]}`}>
         <Icon className="w-5 h-5" />
       </div>
       <div className="text-2xl font-bold text-white mb-1">{value}</div>
       <div className="text-[10px] font-bold uppercase tracking-[0.15em] text-slate-500">
         {label}
       </div>
-    </NeumorphicCard>
+    </DarkCard>
   );
 }
 
-// Mastery Progress Component - Simplified Neumorphic
+// Mastery Progress Component
 function MasteryProgress({ percentage }: { percentage: number }) {
   return (
-    <NeumorphicCard className="p-8 flex flex-col items-center">
+    <DarkCard className="p-8 flex flex-col items-center">
       <div className="relative w-40 h-40 flex items-center justify-center mb-4">
-        {/* Circular progress background */}
-        <svg
-          className="w-full h-full transform -rotate-90"
-          viewBox="0 0 100 100"
-        >
+        <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
           <circle
             cx="50"
             cy="50"
@@ -119,23 +112,15 @@ function MasteryProgress({ percentage }: { percentage: number }) {
             strokeDasharray={264}
             initial={{ strokeDashoffset: 264 }}
             animate={{ strokeDashoffset: 264 - (percentage / 100) * 264 }}
-            transition={{ duration: 1, ease: "easeOut" }}
+            transition={{ duration: 1, ease: 'easeOut' }}
           />
           <defs>
-            <linearGradient
-              id="progressGradient"
-              x1="0%"
-              y1="0%"
-              x2="100%"
-              y2="100%"
-            >
+            <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="100%">
               <stop offset="0%" stopColor="#22d3ee" />
               <stop offset="100%" stopColor="#8b5cf6" />
             </linearGradient>
           </defs>
         </svg>
-
-        {/* Center content */}
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <span className="text-4xl font-black text-white">{percentage}%</span>
           <div className="flex items-center gap-1 mt-1">
@@ -146,11 +131,11 @@ function MasteryProgress({ percentage }: { percentage: number }) {
           </div>
         </div>
       </div>
-    </NeumorphicCard>
+    </DarkCard>
   );
 }
 
-// Card Item Component - Neumorphic Style
+// Card Item Component
 function CardItem({
   card,
   index,
@@ -162,16 +147,13 @@ function CardItem({
   onEdit: (id: number) => void;
   onDelete: (id: number) => void;
 }) {
-  const stateColors: Record<
-    LearningState,
-    { variant: "cyan" | "purple" | "emerald" | "coral" }
-  > = {
-    new: { variant: "purple" },
-    learning: { variant: "coral" },
-    review: { variant: "cyan" },
-    mastered: { variant: "emerald" },
+  const stateColors: Record<LearningState, string> = {
+    new: 'text-purple-400 border-purple-500/30',
+    learning: 'text-amber-400 border-amber-500/30',
+    review: 'text-cyan-400 border-cyan-500/30',
+    mastered: 'text-emerald-400 border-emerald-500/30',
   };
-  const colorConfig = stateColors[card.learning_state] || stateColors.new;
+  const colorClass = stateColors[card.learning_state] || stateColors.new;
 
   return (
     <motion.div
@@ -179,17 +161,13 @@ function CardItem({
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.03 }}
     >
-      <NeumorphicCard className="p-4 group hover:border-white/10 transition-all">
+      <DarkCard hoverable className="p-4 group">
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-2">
-              <NeumorphicBadge
-                variant="outline"
-                color={colorConfig.variant}
-                className="text-[10px]"
-              >
+              <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${colorClass}`}>
                 {card.learning_state}
-              </NeumorphicBadge>
+              </span>
               {card.accuracy && card.accuracy > 0.8 && (
                 <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
               )}
@@ -203,7 +181,7 @@ function CardItem({
           <div className="flex flex-col items-end gap-2">
             {/* Accuracy bar */}
             <div className="flex items-center gap-2">
-              <div className="w-16 h-1.5 rounded-full nm-inset overflow-hidden">
+              <div className="w-16 h-1.5 rounded-full bg-white/10 overflow-hidden">
                 <motion.div
                   className="h-full bg-gradient-to-r from-cyan-500 to-emerald-500"
                   initial={{ width: 0 }}
@@ -218,59 +196,54 @@ function CardItem({
 
             {/* Actions */}
             <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-              <NeumorphicButton
-                variant="ghost"
-                size="icon"
+              <button
                 onClick={() => onEdit(card.id)}
-                className="w-7 h-7"
+                className="p-1.5 rounded-lg bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
               >
                 <Edit className="w-3.5 h-3.5" />
-              </NeumorphicButton>
-              <NeumorphicButton
-                variant="ghost"
-                size="icon"
+              </button>
+              <button
                 onClick={() => onDelete(card.id)}
-                className="w-7 h-7 hover:text-red-400"
+                className="p-1.5 rounded-lg bg-white/5 text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
               >
                 <Trash2 className="w-3.5 h-3.5" />
-              </NeumorphicButton>
+              </button>
             </div>
           </div>
         </div>
-      </NeumorphicCard>
+      </DarkCard>
     </motion.div>
   );
 }
 
-// Quick Action Button Component - Neumorphic Style
+// Quick Action Button
 function QuickAction({
   icon: Icon,
   label,
   onClick,
-  variant = "default",
+  variant = 'default',
 }: {
   icon: React.ElementType;
   label: string;
   onClick: () => void;
-  variant?: "default" | "primary";
+  variant?: 'default' | 'primary';
 }) {
   return (
-    <NeumorphicButton
-      variant={variant === "primary" ? "primary" : "ghost"}
+    <button
       onClick={onClick}
-      className="w-full justify-start px-4 py-3 h-auto"
+      className={cn(
+        'w-full flex items-center px-4 py-3 rounded-xl transition-colors',
+        variant === 'primary'
+          ? 'bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/20'
+          : 'bg-white/5 border border-white/10 text-slate-300 hover:bg-white/10'
+      )}
     >
-      <div
-        className={cn(
-          "w-8 h-8 rounded-lg nm-inset flex items-center justify-center mr-3",
-          variant === "primary" ? "text-cyan-400" : "text-slate-400",
-        )}
-      >
+      <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center mr-3">
         <Icon className="w-4 h-4" />
       </div>
       <span className="text-sm font-medium flex-1 text-left">{label}</span>
       <ChevronRight className="w-4 h-4 text-slate-600" />
-    </NeumorphicButton>
+    </button>
   );
 }
 
@@ -278,7 +251,17 @@ function QuickAction({
 export function DeckDetailPage() {
   const { deckId } = useParams<{ deckId: string }>();
   const navigate = useNavigate();
-  const id = parseInt(deckId || "0", 10);
+  const id = parseInt(deckId || '0', 10);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const queryClient = useQueryClient();
+
+  // Sync with core store
+  useActiveDeck({ deckId: id });
+
+  const handleImportSuccess = () => {
+    queryClient.invalidateQueries({ queryKey: queryKeys.decks.detail(id) });
+    queryClient.invalidateQueries({ queryKey: queryKeys.decks.cards(id) });
+  };
 
   // Fetch deck and cards
   const { data: deck, isLoading: deckLoading } = useDeck(id);
@@ -288,24 +271,25 @@ export function DeckDetailPage() {
     enabled: !!id,
   });
   const cards = cardsResponse as Flashcard[] | undefined;
-  const stats = useDeckStats(id);
 
-  // Mutations
-  const { mutate: updateDeck } = useUpdateDeck();
-  const { mutate: deleteCard } = useDeleteCard();
+  // Calculate stats from cards
+  const stats = cards ? {
+    totalCards: cards.length,
+    dueCards: cards.filter(c => c.next_review && new Date(c.next_review) <= new Date()).length,
+    learningCards: cards.filter(c => c.learning_state === 'learning').length,
+    masteredCards: cards.filter(c => c.learning_state === 'mastered').length,
+    masteryPercent: cards.length > 0
+      ? Math.round((cards.filter(c => c.learning_state === 'mastered').length / cards.length) * 100)
+      : 0,
+  } : null;
 
   // Loading state
   if (deckLoading) {
     return (
       <div className="min-h-screen nm-bg nm-constellation-bg flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-16 h-16 rounded-full nm-inset flex items-center justify-center">
-            <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-            >
-              <Brain className="h-8 w-8 text-cyan-500" />
-            </motion.div>
+          <div className="w-16 h-16 rounded-full bg-white/5 border border-white/10 flex items-center justify-center">
+            <Loader2 className="h-8 w-8 text-cyan-500 animate-spin" />
           </div>
           <p className="text-slate-400 font-mono text-sm uppercase tracking-widest">
             Loading Deck...
@@ -319,22 +303,16 @@ export function DeckDetailPage() {
   if (!deck) {
     return (
       <div className="min-h-screen nm-bg nm-constellation-bg flex items-center justify-center">
-        <NeumorphicCard className="p-12 flex flex-col items-center text-center max-w-md">
-          <div className="w-20 h-20 rounded-full nm-inset flex items-center justify-center mb-6 text-red-400">
-            <Brain className="h-10 w-10" />
-          </div>
-          <h2 className="text-2xl font-bold text-white mb-2">Deck Not Found</h2>
-          <p className="text-slate-400 mb-6">
-            The requested deck could not be located.
-          </p>
-          <NeumorphicButton
-            onClick={() => navigate("/flashcards")}
-            variant="primary"
-          >
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Return to Flashcards
-          </NeumorphicButton>
-        </NeumorphicCard>
+        <EmptyState
+          icon={<Brain className="h-12 w-12" />}
+          title="Deck Not Found"
+          description="The requested deck could not be located."
+          action={{
+            label: "Return to Flashcards",
+            onClick: () => navigate("/flashcards"),
+          }}
+          variant="error"
+        />
       </div>
     );
   }
@@ -342,11 +320,10 @@ export function DeckDetailPage() {
   return (
     <div className="relative min-h-screen nm-bg nm-constellation-bg overflow-hidden flex flex-col">
       <style>{`
-                .scrollbar-hide::-webkit-scrollbar { display: none; }
-                .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
-            `}</style>
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+      `}</style>
 
-      {/* Main Content - Full Width Scrollable Area */}
       <motion.div
         className="flex-1 overflow-y-auto scrollbar-hide p-8 pb-32 space-y-8"
         variants={containerVariants}
@@ -355,17 +332,16 @@ export function DeckDetailPage() {
       >
         {/* Navigation */}
         <motion.div variants={itemVariants} className="flex items-center gap-4">
-          <NeumorphicButton
-            variant="ghost"
-            size="icon"
-            onClick={() => navigate("/flashcards")}
+          <button
+            onClick={() => navigate('/flashcards')}
+            className="p-2 rounded-lg bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
           >
             <ArrowLeft className="h-5 w-5" />
-          </NeumorphicButton>
+          </button>
           <div className="text-sm text-slate-500 font-mono">
             <span
               className="hover:text-cyan-400 cursor-pointer"
-              onClick={() => navigate("/flashcards")}
+              onClick={() => navigate('/flashcards')}
             >
               Flashcards
             </span>
@@ -376,106 +352,62 @@ export function DeckDetailPage() {
 
         {/* Hero Section */}
         <motion.div variants={itemVariants}>
-          <NeumorphicCard className="p-8">
-            {/* Header with deck info */}
+          <DarkCard padding="lg">
+            {/* Header */}
             <div className="mb-8">
-              <DeckSettings
-                deck={deck}
-                onUpdate={(data) => updateDeck({ deckId: id, data })}
-              />
+              <h1 className="text-2xl font-bold text-white mb-2">{deck.name}</h1>
+              <p className="text-slate-400">{deck.description || 'No description'}</p>
             </div>
 
             {/* Central Mastery & Stats */}
             <div className="flex flex-col lg:flex-row items-center gap-8">
-              {/* Mastery Progress */}
               <div className="flex-shrink-0">
                 <MasteryProgress percentage={stats?.masteryPercent || 0} />
               </div>
 
-              {/* Stats Grid */}
               <div className="flex-1 grid grid-cols-2 lg:grid-cols-4 gap-4 w-full">
-                <StatCard
-                  icon={Layers}
-                  value={stats?.totalCards || 0}
-                  label="Total Cards"
-                  color="cyan"
-                />
-                <StatCard
-                  icon={Flame}
-                  value={stats?.dueCards || 0}
-                  label="Due Now"
-                  color="red"
-                />
-                <StatCard
-                  icon={Activity}
-                  value={stats?.learningCards || 0}
-                  label="In Progress"
-                  color="purple"
-                />
-                <StatCard
-                  icon={Target}
-                  value={stats?.masteredCards || 0}
-                  label="Mastered"
-                  color="emerald"
-                />
+                <StatCard icon={Layers} value={stats?.totalCards || 0} label="Total Cards" color="cyan" />
+                <StatCard icon={Flame} value={stats?.dueCards || 0} label="Due Now" color="red" />
+                <StatCard icon={Activity} value={stats?.learningCards || 0} label="In Progress" color="purple" />
+                <StatCard icon={Target} value={stats?.masteredCards || 0} label="Mastered" color="emerald" />
               </div>
             </div>
 
             {/* Primary CTA */}
             <div className="flex justify-center mt-8">
-              <NeumorphicButton
+              <button
                 onClick={() => navigate(`/flashcards/${id}/review`)}
-                variant="primary"
-                size="lg"
-                className="px-12"
+                className="flex items-center gap-2 px-12 py-3 rounded-xl bg-cyan-600 text-white font-bold hover:bg-cyan-500 transition-colors shadow-lg shadow-cyan-500/20"
               >
-                <Play className="mr-2 h-5 w-5 fill-current" />
+                <Play className="h-5 w-5 fill-current" />
                 Start Review Session
-              </NeumorphicButton>
+              </button>
             </div>
-          </NeumorphicCard>
+          </DarkCard>
         </motion.div>
 
         {/* Quick Actions & Cards Grid */}
         <div className="grid lg:grid-cols-3 gap-6">
           {/* Quick Actions Panel */}
           <motion.div variants={itemVariants} className="lg:col-span-1">
-            <NeumorphicCard className="p-6 h-full">
+            <DarkCard padding="md" className="h-full">
               <div className="flex items-center gap-2 mb-6">
-                <div className="w-8 h-8 rounded-lg nm-inset flex items-center justify-center text-purple-400">
+                <div className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center text-purple-400">
                   <Wand2 className="w-4 h-4" />
                 </div>
                 <h3 className="text-lg font-bold text-white">Quick Actions</h3>
               </div>
 
               <div className="space-y-3">
-                <QuickAction
-                  icon={Plus}
-                  label="Add New Card"
-                  onClick={() => navigate(`/flashcards/${id}/cards/new`)}
-                  variant="primary"
-                />
-                <QuickAction
-                  icon={BookOpen}
-                  label="Browse All Cards"
-                  onClick={() => { }}
-                />
-                <QuickAction
-                  icon={BarChart3}
-                  label="View Analytics"
-                  onClick={() => { }}
-                />
-                <QuickAction
-                  icon={Sparkles}
-                  label="AI Study Tips"
-                  onClick={() => { }}
-                />
+                <QuickAction icon={BookOpen} label="Browse All Cards" onClick={() => { }} />
+                <QuickAction icon={BarChart3} label="View Analytics" onClick={() => { }} />
+                <QuickAction icon={Sparkles} label="AI Study Tips" onClick={() => { }} />
               </div>
 
               {/* AI Suggestion Banner */}
-              <div className="mt-6 p-4 rounded-xl nm-inset">
+              <DarkCard className="mt-6 p-4 bg-white/[0.02]">
                 <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-lg nm-inset flex items-center justify-center flex-shrink-0 text-emerald-400">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-400">
                     <TrendingUp className="w-4 h-4" />
                   </div>
                   <div>
@@ -483,101 +415,88 @@ export function DeckDetailPage() {
                       AI Insight
                     </p>
                     <p className="text-sm text-slate-400">
-                      You have {stats?.dueCards || 0} cards due. Consider a
-                      quick 10-min review session.
+                      You have {stats?.dueCards || 0} cards due. Consider a quick 10-min review session.
                     </p>
                   </div>
                 </div>
+              </DarkCard>
+
+              {/* Import Action (Footer) */}
+              <div className="mt-4 pt-4 border-t border-white/5">
+                <button
+                  onClick={() => setIsImportModalOpen(true)}
+                  className="w-full flex items-center justify-center gap-2 py-2 text-xs font-medium text-slate-500 hover:text-cyan-400 transition-colors uppercase tracking-wider"
+                >
+                  <Upload className="w-3 h-3" />
+                  Import from CSV
+                </button>
               </div>
-            </NeumorphicCard>
+            </DarkCard>
           </motion.div>
 
           {/* Cards Gallery */}
           <motion.div variants={itemVariants} className="lg:col-span-2">
-            <NeumorphicCard className="p-0 overflow-hidden">
+            <DarkCard padding="none" className="overflow-hidden">
               {/* Header */}
               <div className="p-6 border-b border-white/5 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl nm-inset flex items-center justify-center text-cyan-400">
+                  <div className="w-10 h-10 rounded-xl bg-cyan-500/10 flex items-center justify-center text-cyan-400">
                     <Layers className="w-5 h-5" />
                   </div>
                   <div>
                     <h3 className="text-lg font-bold text-white">Cards</h3>
-                    <p className="text-xs text-slate-500">
-                      {cards?.length || 0} cards in this deck
-                    </p>
+                    <p className="text-xs text-slate-500">{cards?.length || 0} cards in this deck</p>
                   </div>
                 </div>
-                <NeumorphicButton
+                <button
                   onClick={() => navigate(`/flashcards/${id}/cards/new`)}
-                  variant="primary"
-                  size="sm"
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-cyan-600 text-white text-sm font-medium hover:bg-cyan-500 transition-colors"
                 >
-                  <Plus className="mr-2 h-4 w-4" />
+                  <Plus className="h-4 w-4" />
                   Add Card
-                </NeumorphicButton>
+                </button>
               </div>
 
               {/* Cards List */}
-              <div className="p-4 max-h-[500px] overflow-y-auto scrollbar-hide">
+              <div className="p-4 max-h-[500px] overflow-y-auto scrollbar-hide space-y-3">
                 {cardsLoading ? (
                   <div className="text-center py-12">
-                    <motion.div
-                      animate={{ rotate: 360 }}
-                      transition={{
-                        duration: 1,
-                        repeat: Infinity,
-                        ease: "linear",
-                      }}
-                      className="w-8 h-8 border-2 border-cyan-500/30 border-t-cyan-500 rounded-full mx-auto"
-                    />
-                    <p className="text-slate-400 font-mono text-sm mt-4">
-                      Loading cards...
-                    </p>
+                    <Loader2 className="h-8 w-8 text-cyan-500 animate-spin mx-auto" />
+                    <p className="text-slate-400 font-mono text-sm mt-4">Loading cards...</p>
                   </div>
                 ) : !cards || cards.length === 0 ? (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="text-center py-16"
-                  >
-                    <div className="w-20 h-20 mx-auto mb-6 rounded-2xl nm-inset flex items-center justify-center">
-                      <Layers className="h-8 w-8 text-slate-600" />
-                    </div>
-                    <p className="text-slate-400 font-medium mb-2">
-                      No cards yet
-                    </p>
-                    <p className="text-slate-500 text-sm mb-6">
-                      Create your first card to begin
-                    </p>
-                    <NeumorphicButton
-                      variant="primary"
-                      onClick={() => navigate(`/flashcards/${id}/cards/new`)}
-                    >
-                      <Plus className="mr-2 h-4 w-4" />
-                      Create First Card
-                    </NeumorphicButton>
-                  </motion.div>
+                  <EmptyState
+                    icon={<Layers className="h-12 w-12" />}
+                    title="No cards yet"
+                    description="Create your first card to begin"
+                    action={{
+                      label: "Create First Card",
+                      onClick: () => navigate(`/flashcards/${id}/cards/new`),
+                    }}
+                  />
                 ) : (
-                  <div className="space-y-3">
-                    {cards.map((card, index) => (
-                      <CardItem
-                        key={card.id}
-                        card={card}
-                        index={index}
-                        onEdit={(cardId) =>
-                          navigate(`/flashcards/${id}/cards/${cardId}/edit`)
-                        }
-                        onDelete={(cardId) => deleteCard(cardId)}
-                      />
-                    ))}
-                  </div>
+                  cards.map((card, index) => (
+                    <CardItem
+                      key={card.id}
+                      card={card}
+                      index={index}
+                      onEdit={(cardId) => navigate(`/flashcards/${id}/cards/${cardId}/edit`)}
+                      onDelete={() => { }}
+                    />
+                  ))
                 )}
               </div>
-            </NeumorphicCard>
+            </DarkCard>
           </motion.div>
         </div>
       </motion.div>
+
+      <ImportModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        deckId={id}
+        onImportSuccess={handleImportSuccess}
+      />
     </div>
   );
 }

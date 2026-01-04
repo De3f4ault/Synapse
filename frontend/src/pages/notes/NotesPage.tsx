@@ -14,46 +14,45 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// Hooks
-import { useNotes } from "./hooks/useNotes";
-import { useNoteTree } from "./hooks/useNoteTree";
+// Module imports (from @/modules/notes)
+import { NoteTree, NoteCard, NoteStats, useNotesList } from "@/modules/notes";
 
-// Components
-import { NoteTree } from "./components/list/NoteTree";
-import { NoteCard } from "./components/list/NoteCard";
-import { NoteStats } from "./components/shared/NoteStats";
+// API hooks for mutations
+import { useCreateNote, useDeleteNote } from "@/api/hooks/useNotes";
 import { NeumorphicCard } from "@/components/neumorphic";
-
-type ViewMode = "tree" | "grid" | "list";
 
 /**
  * NotesPage - Main notes hub
- * Refactored to match DecksPage layout (Header + FABs)
+ * Orchestrates list, search, and navigation using modules/notes
  */
 export function NotesPage() {
   const navigate = useNavigate();
-  const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [showStats, setShowStats] = useState(false);
 
-  // Fetch notes
-  const { notes, isLoading, createNote, deleteNote, isCreating } = useNotes();
-
-  // Tree state management
+  // List state from module
   const {
-    filteredTree,
-    expandedFolders,
+    notes,
+    treeNotes,
+    isLoading,
+    viewMode,
+    setViewMode,
     searchQuery,
     setSearchQuery,
-    toggleFolder,
-    expandAll,
+    selectedId,
+    setSelectedId,
+    expandedIds,
+    toggleExpanded,
+    expandRoots,
     collapseAll,
-  } = useNoteTree(notes);
+  } = useNotesList();
 
-  const [selectedId, setSelectedId] = useState<number | null>(null);
+  // Mutations
+  const createNoteMutation = useCreateNote();
+  const deleteNoteMutation = useDeleteNote();
 
   // Handlers
   const handleCreateNote = () => {
-    createNote(
+    createNoteMutation.mutate(
       {
         title: "New Fragment",
         content: " ",
@@ -75,7 +74,7 @@ export function NotesPage() {
   const handleDeleteNote = (id: number, e: React.MouseEvent) => {
     e.stopPropagation();
     if (window.confirm("Archive this fragment permanently?")) {
-      deleteNote(id);
+      deleteNoteMutation.mutate(id);
     }
   };
 
@@ -163,7 +162,7 @@ export function NotesPage() {
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.2 }}
             >
-              {viewMode === "tree" && filteredTree && (
+              {viewMode === "tree" && treeNotes && (
                 <NeumorphicCard className="p-6">
                   <div className="flex justify-between items-center mb-6 border-b border-white/5 pb-4">
                     <h2 className="text-xs font-bold text-slate-400 uppercase tracking-widest pl-2">
@@ -171,7 +170,7 @@ export function NotesPage() {
                     </h2>
                     <div className="flex gap-3 text-xs">
                       <button
-                        onClick={expandAll}
+                        onClick={expandRoots}
                         className="text-slate-500 hover:text-cyan-400 transition-colors font-medium"
                       >
                         Expand All
@@ -186,10 +185,10 @@ export function NotesPage() {
                     </div>
                   </div>
                   <NoteTree
-                    items={filteredTree}
+                    items={treeNotes}
                     selectedId={selectedId}
-                    expandedIds={expandedFolders}
-                    toggleExpand={toggleFolder}
+                    expandedIds={expandedIds}
+                    toggleExpand={toggleExpanded}
                     onSelect={handleSelectNote}
                     onDelete={handleDeleteNote}
                   />
@@ -300,10 +299,10 @@ export function NotesPage() {
           }}
           whileTap={{ scale: 0.95 }}
           onClick={handleCreateNote}
-          disabled={isCreating}
+          disabled={createNoteMutation.isPending}
           className="h-14 px-8 rounded-full bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-xl shadow-cyan-500/20 flex items-center gap-2 font-bold tracking-wide text-base transition-all disabled:opacity-70"
         >
-          {isCreating ? (
+          {createNoteMutation.isPending ? (
             <Loader2 size={20} className="animate-spin" />
           ) : (
             <Plus size={20} strokeWidth={3} />

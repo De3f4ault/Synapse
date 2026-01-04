@@ -1,52 +1,73 @@
 /**
- * EditCardPage - Fragment Editor
- * Neumorphic Design
+ * EditCardPage - Card Editor
+ * 
+ * REFACTORED: Uses modular imports.
  */
 
-import { useNavigate, useParams } from "react-router-dom";
-import { motion } from "framer-motion";
-import { ArrowLeft, Loader2, Sparkles, X } from "lucide-react";
-import { useForm } from "react-hook-form";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { useCard, useUpdateCard } from "./hooks/useCards";
-import { cn } from "@/lib/utils";
-import type { FlashcardUpdateInput } from "./types/flashcards.types";
-import { NeumorphicButton, NeumorphicCard } from "@/components/neumorphic";
+import { useNavigate, useParams } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { ArrowLeft, Loader2, Sparkles, X, Brain } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { FlashcardsService } from '@/api/generated';
+import { queryKeys } from '@/lib/queryKeys';
+import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
+
+// Module imports
+import { DarkCard, EmptyState } from './shared';
+import type { FlashcardUpdateInput, Flashcard } from './core';
 
 export function EditCardPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { deckId, cardId } = useParams<{ deckId: string; cardId: string }>();
 
   // Fetch card data
-  const { data: card, isLoading, error } = useCard(Number(cardId));
+  const { data: card, isLoading, error } = useQuery({
+    queryKey: queryKeys.flashcards.detail(Number(cardId)),
+    queryFn: () => FlashcardsService.getCardApiV1CardsCardIdGet(Number(cardId)),
+    enabled: !!cardId,
+  });
 
   // Update mutation
-  const { mutate: updateCard, isPending } = useUpdateCard();
+  const { mutate: updateCard, isPending } = useMutation({
+    mutationFn: ({ cardId, data }: { cardId: number; data: FlashcardUpdateInput }) =>
+      FlashcardsService.updateCardApiV1CardsCardIdPut(cardId, data),
+    onSuccess: () => {
+      toast.success('Card updated');
+      queryClient.invalidateQueries({ queryKey: queryKeys.decks.cards(Number(deckId)) });
+      navigate(`/flashcards/${deckId}`);
+    },
+    onError: (error) => {
+      toast.error('Failed to update card', {
+        description: error instanceof Error ? error.message : 'Unknown error',
+      });
+    },
+  });
+
+  const typedCard = card as Flashcard | undefined;
 
   const {
     register,
     handleSubmit,
     formState: { errors, isDirty },
   } = useForm<FlashcardUpdateInput>({
-    values: card
+    values: typedCard
       ? {
-          front_text: card.front_text,
-          back_text: card.back_text,
-          front_media_url: card.front_media_url,
-          back_media_url: card.back_media_url,
-        }
+        front_text: typedCard.front_text,
+        back_text: typedCard.back_text,
+        front_media_url: typedCard.front_media_url,
+        back_media_url: typedCard.back_media_url,
+      }
       : undefined,
   });
 
   const onSubmit = (data: FlashcardUpdateInput) => {
     if (!cardId) return;
-    updateCard(
-      { cardId: Number(cardId), data },
-      {
-        onSuccess: () => navigate(`/flashcards/${deckId}`),
-      },
-    );
+    updateCard({ cardId: Number(cardId), data });
   };
 
   // Loading state
@@ -62,21 +83,19 @@ export function EditCardPage() {
   }
 
   // Error state
-  if (error || !card) {
+  if (error || !typedCard) {
     return (
       <div className="min-h-screen nm-bg p-6 flex items-center justify-center">
-        <NeumorphicCard className="p-8 max-w-md w-full text-center">
-          <h3 className="font-semibold text-red-400 mb-2">
-            Error Loading Card
-          </h3>
-          <p className="text-sm text-slate-400 mb-6">
-            {error?.message || "Card not found"}
-          </p>
-          <NeumorphicButton onClick={() => navigate(`/flashcards/${deckId}`)}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Deck
-          </NeumorphicButton>
-        </NeumorphicCard>
+        <EmptyState
+          icon={<Brain className="h-12 w-12" />}
+          title="Card Not Found"
+          description={error instanceof Error ? error.message : "Card not found"}
+          action={{
+            label: "Back to Deck",
+            onClick: () => navigate(`/flashcards/${deckId}`),
+          }}
+          variant="error"
+        />
       </div>
     );
   }
@@ -90,16 +109,15 @@ export function EditCardPage() {
           animate={{ opacity: 1, y: 0 }}
           className="flex items-center gap-4"
         >
-          <NeumorphicButton
-            variant="ghost"
-            size="icon"
+          <button
             onClick={() => navigate(`/flashcards/${deckId}`)}
+            className="p-2 rounded-lg bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
           >
             <ArrowLeft className="h-5 w-5" />
-          </NeumorphicButton>
+          </button>
           <div>
             <h1 className="text-3xl font-bold text-white tracking-tight">
-              Edit Memory Fragment
+              Edit Card
             </h1>
             <p className="text-slate-400 font-mono text-xs tracking-wider uppercase mt-1">
               MODIFY FLASHCARD DATA
@@ -108,100 +126,84 @@ export function EditCardPage() {
         </motion.div>
 
         {/* Editor Card */}
-        <NeumorphicCard className="p-8">
-          <motion.div
+        <DarkCard padding="lg">
+          <motion.form
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
+            onSubmit={handleSubmit(onSubmit)}
+            className="space-y-6"
           >
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-              {/* Front Text */}
-              <div className="space-y-2">
-                <Label
-                  htmlFor="front_text"
-                  className="text-xs font-bold text-slate-500 uppercase tracking-wider"
-                >
-                  Query Layer (Front) <span className="text-cyan-500">*</span>
-                </Label>
-                <Textarea
-                  id="front_text"
-                  rows={4}
-                  {...register("front_text", {
-                    required: "Front text is required",
-                  })}
-                  className={cn(
-                    "nm-input w-full bg-transparent resize-none",
-                    errors.front_text &&
-                      "border-red-500/50 focus:border-red-500",
-                  )}
-                />
-                {errors.front_text && (
-                  <p className="text-xs text-red-400 mt-1">
-                    {errors.front_text.message}
-                  </p>
+            {/* Front Text */}
+            <div className="space-y-2">
+              <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                Front (Question) <span className="text-cyan-500">*</span>
+              </Label>
+              <Textarea
+                {...register('front_text', { required: 'Front text is required' })}
+                rows={4}
+                className={cn(
+                  'w-full min-h-[100px] resize-y px-4 py-3 rounded-xl',
+                  'bg-[#0f0f16] border border-white/10 text-white',
+                  'placeholder:text-slate-500 focus:outline-none focus:border-cyan-500/50 transition-colors',
+                  errors.front_text && 'border-red-500/50 focus:border-red-500'
                 )}
-              </div>
+              />
+              {errors.front_text && (
+                <p className="text-xs text-red-400 mt-1">{errors.front_text.message}</p>
+              )}
+            </div>
 
-              {/* Back Text */}
-              <div className="space-y-2">
-                <Label
-                  htmlFor="back_text"
-                  className="text-xs font-bold text-slate-500 uppercase tracking-wider"
-                >
-                  Data Core (Back) <span className="text-purple-500">*</span>
-                </Label>
-                <Textarea
-                  id="back_text"
-                  rows={4}
-                  {...register("back_text", {
-                    required: "Back text is required",
-                  })}
-                  className={cn(
-                    "nm-input w-full bg-transparent resize-none",
-                    errors.back_text &&
-                      "border-red-500/50 focus:border-red-500",
-                  )}
-                />
-                {errors.back_text && (
-                  <p className="text-xs text-red-400 mt-1">
-                    {errors.back_text.message}
-                  </p>
+            {/* Back Text */}
+            <div className="space-y-2">
+              <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                Back (Answer) <span className="text-purple-500">*</span>
+              </Label>
+              <Textarea
+                {...register('back_text', { required: 'Back text is required' })}
+                rows={4}
+                className={cn(
+                  'w-full min-h-[100px] resize-y px-4 py-3 rounded-xl',
+                  'bg-[#0f0f16] border border-white/10 text-white',
+                  'placeholder:text-slate-500 focus:outline-none focus:border-purple-500/50 transition-colors',
+                  errors.back_text && 'border-red-500/50 focus:border-red-500'
                 )}
-              </div>
+              />
+              {errors.back_text && (
+                <p className="text-xs text-red-400 mt-1">{errors.back_text.message}</p>
+              )}
+            </div>
 
-              {/* Actions */}
-              <div className="flex gap-3 pt-4 border-t border-white/5">
-                <NeumorphicButton
-                  type="button"
-                  variant="ghost"
-                  onClick={() => navigate(`/flashcards/${deckId}`)}
-                  className="flex-1"
-                >
-                  <X className="mr-2 h-4 w-4" />
-                  Cancel
-                </NeumorphicButton>
-                <NeumorphicButton
-                  type="submit"
-                  disabled={isPending || !isDirty}
-                  variant="primary"
-                  className="flex-1"
-                >
-                  {isPending ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Updating...
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="mr-2 h-4 w-4" />
-                      Update Fragment
-                    </>
-                  )}
-                </NeumorphicButton>
-              </div>
-            </form>
-          </motion.div>
-        </NeumorphicCard>
+            {/* Actions */}
+            <div className="flex gap-3 pt-4 border-t border-white/5">
+              <button
+                type="button"
+                onClick={() => navigate(`/flashcards/${deckId}`)}
+                className="flex-1 py-3 rounded-xl bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 transition-colors flex items-center justify-center gap-2"
+              >
+                <X className="h-4 w-4" />
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isPending || !isDirty}
+                className="flex-1 py-3 rounded-xl bg-cyan-600 text-white font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-cyan-500 transition-colors"
+              >
+                {isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Updating...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-4 w-4" />
+                    Update Card
+                  </>
+                )}
+              </button>
+            </div>
+          </motion.form>
+        </DarkCard>
       </div>
     </div>
   );

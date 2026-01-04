@@ -1,82 +1,16 @@
 /**
  * AI Generation Hooks
  *
- * Unified hooks for AI-powered content generation:
- * - Quiz generation from topic
- * - Flashcard generation from topic
+ * Unified hooks for AI-powered content generation.
+ * 
+ * NOTE: Quiz generation has been moved to modules/quizzes/hub/hooks/useQuizHub.ts
+ * which uses the generated QuizzesService client.
  */
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queryKeys";
 import { toast } from "sonner";
 import { getAuthToken } from "@/api/client";
-
-// ============================================================================
-// Quiz Generation
-// ============================================================================
-
-interface QuizGenerateRequest {
-  topic: string;
-  document_id?: number;
-  num_questions?: number;
-  difficulty?: "easy" | "medium" | "hard";
-}
-
-interface QuizGenerateResponse {
-  quiz_id: number;
-  title: string;
-  description: string | null;
-  difficulty: string;
-  question_count: number;
-  status: string;
-  message: string;
-}
-
-/**
- * Hook for AI quiz generation
- */
-export const useGenerateQuiz = () => {
-  const queryClient = useQueryClient();
-
-  return useMutation<QuizGenerateResponse, Error, QuizGenerateRequest>({
-    mutationFn: async (data) => {
-      const token = getAuthToken();
-
-      const response = await fetch("/api/v1/quizzes/generate", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token && { Authorization: `Bearer ${token}` }),
-        },
-        credentials: "include",
-        body: JSON.stringify({
-          topic: data.topic,
-          document_id: data.document_id,
-          num_questions: data.num_questions || 10,
-          difficulty: data.difficulty || "medium",
-        }),
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.detail || "Failed to generate quiz");
-      }
-
-      return response.json();
-    },
-    onSuccess: (data) => {
-      toast.success("Quiz Generated!", {
-        description: data.message,
-      });
-      queryClient.invalidateQueries({ queryKey: queryKeys.quizzes.all });
-    },
-    onError: (error) => {
-      toast.error("Generation Failed", {
-        description: error.message,
-      });
-    },
-  });
-};
 
 // ============================================================================
 // Flashcard Generation
@@ -100,8 +34,9 @@ interface FlashcardGenerateResponse {
 
 /**
  * Hook for AI flashcard generation from topic
+ * NOTE: Named differently from useFlashcards.useGenerateFlashcards to avoid export conflict
  */
-export const useGenerateFlashcards = () => {
+export const useGenerateFlashcardsFromTopic = () => {
   const queryClient = useQueryClient();
 
   return useMutation<

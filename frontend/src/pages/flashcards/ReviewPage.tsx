@@ -1,283 +1,243 @@
-/**
- * ReviewPage - Imprint Card System
- * REFACTORED: Neumorphic Design
- */
-
-import { useParams, useNavigate } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
-import Confetti from "react-confetti";
-import { ChevronLeft, Trophy, Loader2, Clock, Brain, X } from "lucide-react";
-import { useDueCards } from "./hooks/useCards";
-import { useReviewSession, formatTime } from "./hooks/useReviewSession";
-import { CardFlip } from "./components/review/CardFlip";
-import { DifficultyButtons } from "./components/review/DifficultyButtons";
-import { FloatingPageDock } from "@/components/layout/FloatingPageDock";
+// ... ReviewPage ...
+import { useParams, useNavigate } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import Confetti from 'react-confetti';
+import { Trophy, Loader2, X } from 'lucide-react';
 import {
-  NeumorphicButton,
-  NeumorphicProgress,
-  NeumorphicCard,
-} from "@/components/neumorphic";
-import { cn } from "@/lib/utils";
-import type { ReviewQuality } from "./types/flashcards.types";
+  useStudySession,
+  useStudyShortcuts,
+  FlashcardView,
+  RatingControls,
+  AuroraBackground,
+} from './study';
+import { useActiveDeck } from './core';
+import { EmptyState } from './shared';
+
+// Minimalist time formatter
+function formatTime(ms: number): string {
+  const seconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+  return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+}
 
 export function ReviewPage() {
   const { deckId } = useParams<{ deckId: string }>();
   const navigate = useNavigate();
+  const parsedDeckId = deckId ? parseInt(deckId, 10) : 0;
 
-  // Fetch due cards
-  const { data: dueCards, isLoading } = useDueCards(
-    deckId ? parseInt(deckId, 10) : undefined,
-  );
+  useActiveDeck({ deckId: parsedDeckId });
 
-  // Review session hook
   const {
-    session,
+    isLoading,
+    isSessionActive,
+    isSessionComplete,
+    error,
     currentCard,
     isFlipped,
-    sessionEnded,
-    isPending,
-    elapsedTime,
-    flipCard,
-    reviewCard,
-    remainingCards,
     progress,
-  } = useReviewSession({
-    cards: dueCards || [],
-    deckId: deckId ? parseInt(deckId, 10) : undefined,
+    startSession,
+    flipCard,
+    submitReview,
+    endSession,
+  } = useStudySession({ deckId: parsedDeckId });
+
+  useStudyShortcuts({
+    enabled: isSessionActive && !!currentCard,
+    isFlipped,
+    onFlip: flipCard,
+    onRate: submitReview,
+    onEndSession: () => {
+      endSession();
+      navigate('/flashcards');
+    },
   });
 
-  // Loading state
+  const sessionStats = isSessionComplete ? endSession() : null;
+
+  // Loading State
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#e0e5ec] dark:bg-[#020202] flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="h-12 w-12 text-cyan-500 animate-spin" />
-          <p className="text-slate-400 font-mono text-sm tracking-widest">
-            INITIALIZING...
-          </p>
-        </div>
+      <div className="min-h-screen bg-[#050505] flex items-center justify-center">
+        <Loader2 className="h-8 w-8 text-slate-600 animate-spin" />
       </div>
     );
   }
 
-  // No cards available
-  if (!dueCards || dueCards.length === 0) {
+  // Error State
+  if (error) {
     return (
-      <div className="min-h-screen nm-bg flex flex-col items-center justify-center relative overflow-hidden nm-constellation-bg">
-        <NeumorphicCard className="p-12 flex flex-col items-center text-center max-w-lg">
-          <div className="w-24 h-24 rounded-full nm-inset flex items-center justify-center mb-6 text-emerald-500">
-            <Trophy className="h-10 w-10" />
-          </div>
-          <h2 className="text-3xl font-bold text-white mb-2 tracking-tight">
-            All Caught Up!
-          </h2>
-          <p className="text-slate-400 text-lg mb-8">
-            You've reviewed all pending cards. Neural pathways consolidated.
-          </p>
-          <NeumorphicButton
-            onClick={() => navigate("/flashcards")}
-            variant="primary"
-            size="lg"
+      <div className="min-h-screen bg-[#050505] flex items-center justify-center">
+        <EmptyState
+          icon={<Trophy className="h-12 w-12" />}
+          title="Session Complete"
+          description={error}
+          action={{
+            label: "Back to Hub",
+            onClick: () => navigate("/flashcards"),
+          }}
+          variant="error"
+        />
+      </div>
+    );
+  }
+
+  // Not Started
+  if (!isSessionActive && !isSessionComplete) {
+    return (
+      <AuroraBackground>
+        <div className="flex-1 flex flex-col items-center justify-center p-6 text-center z-10">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-8"
           >
-            <ChevronLeft className="mr-2 h-5 w-5" />
-            Return to Hub
-          </NeumorphicButton>
-        </NeumorphicCard>
-      </div>
+            <h1 className="text-5xl md:text-7xl font-bold text-white tracking-tight">
+              Ready to Focus?
+            </h1>
+            <p className="text-xl text-slate-400 max-w-md mx-auto">
+              {progress.total} cards queued for review.
+              Find your flow state.
+            </p>
+            <button
+              onClick={startSession}
+              className="px-8 py-4 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 font-medium hover:bg-cyan-500/20 hover:scale-105 transition-all duration-300"
+            >
+              Start Session
+            </button>
+          </motion.div>
+        </div>
+      </AuroraBackground>
     );
   }
 
-  // Session summary
-  if (sessionEnded) {
-    const totalReviewed = session.correct + session.incorrect;
-    const accuracy =
-      totalReviewed > 0 ? (session.correct / totalReviewed) * 100 : 0;
+  // Session Complete
+  if (isSessionComplete && sessionStats) {
+    const accuracy = sessionStats.totalReviewed > 0
+      ? (sessionStats.correct / sessionStats.totalReviewed) * 100
+      : 0;
 
     return (
-      <div className="min-h-screen nm-bg flex flex-col items-center justify-center relative overflow-hidden p-6 nm-constellation-bg">
-        {accuracy >= 70 && <Confetti numberOfPieces={300} recycle={false} />}
+      <div className="min-h-screen bg-[#050505] flex flex-col items-center justify-center relative overflow-hidden p-6">
+        {accuracy >= 70 && <Confetti numberOfPieces={200} recycle={false} />}
 
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="z-10 w-full max-w-3xl space-y-8"
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="max-w-xl w-full text-center space-y-12"
         >
-          <div className="text-center">
-            <div className="w-24 h-24 mx-auto nm-inset rounded-full flex items-center justify-center mb-6">
-              <Trophy size={40} className="text-yellow-400" />
+          <div>
+            <h1 className="text-4xl font-bold text-white mb-4">Session Complete</h1>
+            <div className="text-8xl font-bold text-transparent bg-clip-text bg-gradient-to-tr from-cyan-400 to-emerald-400">
+              {Math.round(accuracy)}%
             </div>
-            <h1 className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-purple-400 mb-2">
-              Session Complete
-            </h1>
-            <p className="text-slate-400 font-medium">
-              Memory consolidation successful
-            </p>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            <NeumorphicCard className="p-6 text-center flex flex-col justify-center items-center h-40">
-              <div className="text-xs text-slate-500 uppercase font-bold mb-2 tracking-wider">
-                Accuracy
-              </div>
-              <div
-                className={cn(
-                  "text-4xl font-bold",
-                  accuracy >= 80
-                    ? "text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.5)]"
-                    : accuracy >= 60
-                      ? "text-yellow-400"
-                      : "text-red-400",
-                )}
-              >
-                {Math.round(accuracy)}%
-              </div>
-            </NeumorphicCard>
-            <NeumorphicCard className="p-6 text-center flex flex-col justify-center items-center h-40">
-              <div className="text-xs text-slate-500 uppercase font-bold mb-2 tracking-wider">
-                Cards
-              </div>
-              <div className="text-4xl font-bold text-white">
-                {totalReviewed}
-              </div>
-            </NeumorphicCard>
-            <NeumorphicCard className="p-6 text-center flex flex-col justify-center items-center h-40">
-              <div className="text-xs text-slate-500 uppercase font-bold mb-2 tracking-wider">
-                Correct
-              </div>
-              <div className="text-4xl font-bold text-emerald-400">
-                {session.correct}
-              </div>
-            </NeumorphicCard>
-            <NeumorphicCard className="p-6 text-center flex flex-col justify-center items-center h-40">
-              <div className="text-xs text-slate-500 uppercase font-bold mb-2 tracking-wider">
-                Time
-              </div>
-              <div className="text-4xl font-bold text-cyan-400">
-                {formatTime(elapsedTime)}
-              </div>
-            </NeumorphicCard>
+          <div className="grid grid-cols-3 gap-4">
+            <div className="p-4 rounded-2xl bg-white/5 border border-white/10">
+              <div className="text-xs text-slate-500 uppercase tracking-widest mb-1">Reviewed</div>
+              <div className="text-2xl font-bold text-white">{sessionStats.totalReviewed}</div>
+            </div>
+            <div className="p-4 rounded-2xl bg-white/5 border border-white/10">
+              <div className="text-xs text-slate-500 uppercase tracking-widest mb-1">Correct</div>
+              <div className="text-2xl font-bold text-emerald-400">{sessionStats.correct}</div>
+            </div>
+            <div className="p-4 rounded-2xl bg-white/5 border border-white/10">
+              <div className="text-xs text-slate-500 uppercase tracking-widest mb-1">Duration</div>
+              <div className="text-2xl font-bold text-cyan-400">{formatTime(sessionStats.durationMs)}</div>
+            </div>
           </div>
 
-          <div className="flex gap-4 justify-center pt-8">
-            <NeumorphicButton
-              variant="primary"
-              size="lg"
-              onClick={() => navigate("/flashcards")}
-              className="px-12"
-            >
-              Finish Review
-            </NeumorphicButton>
-          </div>
+          <button
+            onClick={() => navigate('/flashcards')}
+            className="px-8 py-4 rounded-full bg-white text-black font-bold hover:scale-105 transition-transform"
+          >
+            Finish
+          </button>
         </motion.div>
       </div>
     );
   }
 
-  // Main Card Interface
+  // Active Session
   return (
-    <div className="h-screen nm-bg flex flex-col text-slate-200 relative overflow-hidden nm-constellation-bg">
-      {/* Header */}
-      <div className="h-20 flex items-center justify-between px-8 z-20">
-        <NeumorphicButton
-          variant="ghost"
+    <AuroraBackground>
+      {/* Top Controls (Minimal) */}
+      <div className="absolute top-0 left-0 right-0 p-6 flex justify-between items-start z-20 opacity-50 hover:opacity-100 transition-opacity">
+        <button
           onClick={() => {
-            if (confirm("End review session? Progress will be saved.")) {
-              navigate("/flashcards");
+            if (confirm('End session?')) {
+              endSession();
+              navigate('/flashcards');
             }
           }}
-          className="flex items-center gap-2"
+          className="p-2 rounded-full hover:bg-white/10 transition-colors"
         >
-          <X size={18} />
-          <span className="text-xs font-bold uppercase tracking-wider">
-            Exit
-          </span>
-        </NeumorphicButton>
+          <X size={20} className="text-slate-400" />
+        </button>
 
-        <div className="flex items-center gap-6">
-          <div className="flex items-center gap-2 px-4 py-2 rounded-full nm-inset">
-            <Clock size={14} className="text-slate-400" />
-            <span className="font-mono text-sm text-slate-300">
-              {formatTime(elapsedTime)}
-            </span>
+        <div className="flex flex-col items-end gap-1">
+          <div className="text-xs font-mono text-slate-500 tracking-widest">
+            {progress.current} / {progress.total}
           </div>
-          <div className="flex items-center gap-2 px-4 py-2 rounded-full nm-inset">
-            <Brain size={14} className="text-cyan-400" />
-            <span className="font-mono text-sm text-cyan-300">
-              {remainingCards} Left
-            </span>
+          <div className="w-32 h-1 bg-white/10 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-slate-500 transition-all duration-500"
+              style={{ width: `${(progress.completed / progress.total) * 100}%` }}
+            />
           </div>
         </div>
       </div>
 
-      {/* Progress Bar */}
-      <div className="px-8 w-full max-w-4xl mx-auto z-20">
-        <NeumorphicProgress value={progress} color="cyan" size="sm" />
-      </div>
-
-      {/* Main Card Area */}
-      <div className="flex-1 flex flex-col items-center justify-center p-6 relative z-10">
-        <div className="w-full max-w-3xl aspect-[16/10] relative">
-          {currentCard && (
-            <AnimatePresence mode="wait">
+      {/* Main Stage */}
+      <div className="flex-1 flex flex-col items-center justify-center p-4 z-10">
+        <div className="h-[65vh] w-full flex items-center justify-center">
+          <AnimatePresence mode="wait">
+            {currentCard && (
               <motion.div
                 key={currentCard.id}
-                initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 1.05 }}
-                transition={{ duration: 0.3 }}
-                className="w-full h-full"
+                exit={{ opacity: 0, scale: 1.1, filter: 'blur(10px)' }}
+                transition={{ duration: 0.4, ease: "easeOut" }}
+                className="w-full h-full flex items-center justify-center"
               >
-                <CardFlip
+                <FlashcardView
                   card={currentCard}
                   isFlipped={isFlipped}
                   onFlip={flipCard}
                 />
               </motion.div>
-            </AnimatePresence>
-          )}
+            )}
+          </AnimatePresence>
         </div>
-
-        {/* Keyboard Hints */}
-        {!isFlipped && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.5 }}
-            className="mt-8 text-slate-500 font-mono text-xs tracking-[0.2em] uppercase flex flex-col items-center gap-2"
-          >
-            <span>Press Space to Reveal</span>
-            <div className="w-1 h-1 rounded-full bg-slate-500/50" />
-          </motion.div>
-        )}
       </div>
 
-      {/* Controls Footer */}
-      <FloatingPageDock className="justify-center !bg-transparent !border-0 !shadow-none !backdrop-blur-none p-0 mb-8">
+      {/* Bottom Controls */}
+      <div className="h-32 flex items-center justify-center p-6 z-20">
         <AnimatePresence mode="wait">
           {isFlipped ? (
-            <div className="w-full max-w-3xl px-4">
-              <DifficultyButtons
-                onReview={(q) => reviewCard(q as ReviewQuality)}
-                disabled={isPending}
-              />
-            </div>
-          ) : (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 20 }}
             >
-              <NeumorphicButton
-                onClick={flipCard}
-                variant="primary"
-                className="px-16 h-14 text-lg tracking-wide rounded-full shadow-[0_10px_30px_-10px_rgba(6,182,212,0.5)]"
-              >
-                Show Answer
-              </NeumorphicButton>
+              <RatingControls onRate={submitReview} disabled={false} />
             </motion.div>
+          ) : (
+            <motion.button
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={flipCard}
+              className="px-8 py-4 rounded-full bg-white/5 border border-white/10 text-slate-300 font-medium hover:bg-white/10 transition-colors tracking-widest uppercase text-sm"
+            >
+              Reveal Answer
+            </motion.button>
           )}
         </AnimatePresence>
-      </FloatingPageDock>
-    </div>
+      </div>
+    </AuroraBackground>
   );
 }
+

@@ -19,7 +19,6 @@ import { useEffect, useRef, useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { getWebSocketManager } from '@/api/websocket/manager';
 import type { ChatMessageResponse } from '@/api/generated';
-import { MessageRole } from '@/api/generated';
 import { useChatStore } from '../state/chatStore';
 import {
     useConnectionState,
@@ -248,7 +247,7 @@ export function useChatStreaming({
                 const optimisticMessage: ChatMessageResponse = {
                     id: -Date.now(),
                     session_id: sessionId,
-                    role: MessageRole.USER,
+                    role: "user" as const,
                     content,
                     tokens: Math.ceil(content.length / 4),
                     model_used: null,

@@ -1,28 +1,69 @@
 import React from "react";
-import { useDashboardData } from "./hooks/useDashboardData";
-import { StatusCard } from "./components/widgets/StatusCard";
-import { ActivityGraph } from "./components/widgets/ActivityGraph";
-import { WeakAreasWidget } from "./components/widgets/WeakAreasWidget";
-import { MasteryWidget } from "./components/widgets/MasteryWidget";
-import { RecentFilesWidget } from "./components/widgets/RecentFilesWidget";
-import { DashboardAssistant } from "./components/widgets/dashboard-assistant";
+import { useNavigate } from "react-router-dom";
 import {
   Layers,
-  MessageSquare,
-  Zap,
-  Clock,
   Target,
   Activity,
+  Clock,
+  Zap,
+  MessageSquare,
 } from "lucide-react";
+
+// Core
+import { DashboardProviders } from "./core";
+
+// Metrics
+import { StatusCard, useMetrics } from "./metrics";
+
+// Charts
+import {
+  ActivityGraph,
+  MasteryChart,
+  useChartsData,
+} from "./charts";
+
+// Insights
+import { WeakAreasList, useInsights } from "./insights";
+
+// Activity
+import {
+  RecentContent,
+  useActivityData,
+  useRecentContent,
+} from "./activity";
+
+// Assistant
+import { DashboardAssistant } from "./assistant";
+
+// UI
 import { NeumorphicButton, NeumorphicCard } from "@/components/neumorphic";
-import { useNavigate } from "react-router-dom";
-import { Skeleton } from "@/components/ui/skeleton";
 
 export const DashboardPage: React.FC = () => {
-  const { data, isLoading, error } = useDashboardData();
+  return (
+    <DashboardProviders>
+      <DashboardContent />
+    </DashboardProviders>
+  );
+};
+
+function DashboardContent() {
   const navigate = useNavigate();
 
-  // Date formatter for the header
+  // Data Hooks
+  const { metrics, isLoading: isMetricsLoading, error: metricsError } = useMetrics();
+  const { data: chartsData, isLoading: isChartsLoading } = useChartsData();
+  const { isLoading: isActivityLoading } = useActivityData();
+  const { weakAreas, isLoading: isInsightsLoading } = useInsights();
+  const { data: recentContent, isLoading: isRecentLoading } = useRecentContent();
+
+  const isLoading =
+    isMetricsLoading ||
+    isChartsLoading ||
+    isActivityLoading ||
+    isInsightsLoading ||
+    isRecentLoading;
+
+  // Date formatter
   const today = new Date().toLocaleDateString("en-US", {
     weekday: "long",
     year: "numeric",
@@ -30,7 +71,7 @@ export const DashboardPage: React.FC = () => {
     day: "numeric",
   });
 
-  if (error) {
+  if (metricsError) {
     return (
       <div className="relative min-h-screen nm-bg nm-constellation-bg flex items-center justify-center">
         <NeumorphicCard className="p-8 text-center max-w-md flex flex-col items-center">
@@ -49,9 +90,9 @@ export const DashboardPage: React.FC = () => {
   return (
     <div className="relative min-h-screen nm-bg nm-constellation-bg overflow-hidden flex flex-col">
       <style>{`
-                .scrollbar-hide::-webkit-scrollbar { display: none; }
-                .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
-            `}</style>
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+      `}</style>
 
       {/* Main Content */}
       <div className="flex-1 overflow-y-auto scrollbar-hide p-8 pb-32 space-y-8">
@@ -81,7 +122,7 @@ export const DashboardPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Top Stats Row */}
+        {/* TOP STATS ROW */}
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
           {isLoading ? (
             Array(4)
@@ -96,29 +137,25 @@ export const DashboardPage: React.FC = () => {
             <>
               <StatusCard
                 title="Due Cards"
-                value={data?.overview?.due_cards || 0}
+                value={metrics?.dueCards || 0}
                 subtitle="Ready for review"
                 icon={Layers}
-                trend={(data?.overview?.due_cards || 0) > 0 ? "up" : "neutral"}
+                trend={(metrics?.dueCards || 0) > 0 ? "up" : "neutral"}
                 onClick={() => navigate("/flashcards")}
                 color="cyan"
               />
               <StatusCard
                 title="Accuracy"
-                value={`${(data?.overview?.overall_accuracy || 0).toFixed(1)}%`}
+                value={`${(metrics?.accuracy || 0).toFixed(1)}%`}
                 subtitle="Last 30 days"
                 icon={Target}
-                trend={
-                  (data?.overview?.overall_accuracy || 0) > 80
-                    ? "up"
-                    : "neutral"
-                }
+                trend={(metrics?.accuracy || 0) > 80 ? "up" : "neutral"}
                 trendValue="+2.5%"
                 color="purple"
               />
               <StatusCard
                 title="Study Streak"
-                value={`${data?.overview?.study_streak_days || 0} days`}
+                value={`${metrics?.streakDays || 0} days`}
                 subtitle="Keep it up!"
                 icon={Activity}
                 trend="up"
@@ -126,7 +163,7 @@ export const DashboardPage: React.FC = () => {
               />
               <StatusCard
                 title="Total Time"
-                value={`${Math.floor((data?.overview?.total_study_time_minutes || 0) / 60)}h`}
+                value={`${Math.floor((metrics?.totalStudyTimeMinutes || 0) / 60)}h`}
                 subtitle="Focused learning"
                 icon={Clock}
                 color="amber"
@@ -135,28 +172,28 @@ export const DashboardPage: React.FC = () => {
           )}
         </div>
 
-        {/* Main Bento Grid */}
+        {/* MAIN BENTO GRID */}
         <div className="grid gap-6 md:grid-cols-4 lg:grid-cols-4">
-          {/* Row 1: Graph + Mastery */}
+          {/* Row 1: Activity Graph + Mastery */}
           <div className="col-span-4 lg:col-span-3">
             <ActivityGraph
-              data={data?.performance || []}
-              isLoading={isLoading}
+              data={chartsData.performance}
+              isLoading={isChartsLoading}
             />
           </div>
 
           <div className="col-span-4 lg:col-span-1">
-            <MasteryWidget data={data?.topicMastery || []} />
+            <MasteryChart data={chartsData.topicMastery} />
           </div>
 
-          {/* Row 2: Weak Areas + Recents */}
+          {/* Row 2: Weak Areas + Recent Files */}
           <div className="col-span-4 lg:col-span-2">
-            <WeakAreasWidget data={data?.weakAreas || []} />
+            <WeakAreasList data={weakAreas} />
           </div>
           <div className="col-span-4 lg:col-span-2">
-            <RecentFilesWidget
-              documents={data?.documents || []}
-              notes={data?.notes || []}
+            <RecentContent
+              documents={recentContent.documents}
+              notes={recentContent.notes}
             />
           </div>
         </div>
@@ -166,6 +203,6 @@ export const DashboardPage: React.FC = () => {
       <DashboardAssistant />
     </div>
   );
-};
+}
 
 export default DashboardPage;

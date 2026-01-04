@@ -1,35 +1,40 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { motion } from "framer-motion";
-import { ArrowLeft, Save, Loader2, Plus, X } from "lucide-react";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import { useCreateDeck } from "@/api/hooks/useFlashcards";
-import {
-  deckCreateSchema,
-  type DeckCreateInput,
-} from "@/modules/flashcards/schemas/deckSchema";
-import {
-  NeumorphicCard,
-  NeumorphicButton,
-  NeumorphicBadge,
-} from "@/components/neumorphic";
-import { toast } from "sonner";
-import { cn } from "@/lib/utils";
-
 /**
- * CreateDeckPage - Neural Core Constructor
- * Neumorphic Design
+ * CreateDeckPage - Manual Deck Creation
+ * 
+ * REFACTORED: Uses modular imports.
  */
+
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { motion } from 'framer-motion';
+import { ArrowLeft, Save, Loader2, Plus, X } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
+
+// Module imports
+import { useCreateDeck, type DeckCreateInput } from './list';
+import { DarkCard } from './shared';
+
+// Schema
+import { z } from 'zod';
+
+const deckCreateSchema = z.object({
+  name: z.string().min(1, 'Name is required').max(100),
+  description: z.string().max(500).optional(),
+  tags: z.array(z.string()).nullable().optional(),
+  is_public: z.boolean().default(false),
+});
 
 export function CreateDeckPage() {
   const navigate = useNavigate();
   const { mutate: createDeck, isPending } = useCreateDeck();
   const [tags, setTags] = useState<string[]>([]);
-  const [tagInput, setTagInput] = useState("");
+  const [tagInput, setTagInput] = useState('');
 
   const {
     register,
@@ -40,52 +45,45 @@ export function CreateDeckPage() {
   } = useForm<DeckCreateInput>({
     resolver: zodResolver(deckCreateSchema),
     defaultValues: {
-      name: "",
-      description: "",
+      name: '',
+      description: '',
       tags: [],
       is_public: false,
     },
   });
 
-  const isPublic = watch("is_public");
+  const isPublic = watch('is_public');
 
   const onSubmit = (data: DeckCreateInput) => {
     createDeck(
-      { ...data, tags: tags.length > 0 ? tags : null },
+      { ...data, tags: tags.length > 0 ? tags : undefined },
       {
         onSuccess: (deck) => {
-          toast.success("Memory core constructed successfully");
+          toast.success('Deck created successfully');
           navigate(`/flashcards/${deck.id}`);
         },
         onError: (error) => {
-          toast.error("Failed to construct core", {
-            description:
-              error instanceof Error ? error.message : "Unknown error",
+          toast.error('Failed to create deck', {
+            description: error instanceof Error ? error.message : 'Unknown error',
           });
         },
-      },
+      }
     );
   };
 
   const addTag = () => {
-    if (
-      tagInput.trim() &&
-      tags.length < 10 &&
-      !tags.includes(tagInput.trim())
-    ) {
+    if (tagInput.trim() && tags.length < 10 && !tags.includes(tagInput.trim())) {
       const newTags = [...tags, tagInput.trim()];
       setTags(newTags);
-      setValue("tags", newTags, { shouldDirty: true });
-      setTagInput("");
+      setValue('tags', newTags, { shouldDirty: true });
+      setTagInput('');
     }
   };
 
   const removeTag = (tag: string) => {
     const newTags = tags.filter((t) => t !== tag);
     setTags(newTags);
-    setValue("tags", newTags.length > 0 ? newTags : null, {
-      shouldDirty: true,
-    });
+    setValue('tags', newTags.length > 0 ? newTags : undefined, { shouldDirty: true });
   };
 
   return (
@@ -93,17 +91,14 @@ export function CreateDeckPage() {
       <div className="w-full max-w-2xl space-y-8">
         {/* Header */}
         <div className="flex items-center gap-4">
-          <NeumorphicButton
-            variant="ghost"
-            size="icon"
-            onClick={() => navigate("/flashcards")}
+          <button
+            onClick={() => navigate('/flashcards')}
+            className="p-2 rounded-lg bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
           >
             <ArrowLeft className="h-5 w-5" />
-          </NeumorphicButton>
+          </button>
           <div>
-            <h1 className="text-3xl font-bold text-white tracking-tight">
-              Create New Deck
-            </h1>
+            <h1 className="text-3xl font-bold text-white tracking-tight">Create New Deck</h1>
             <p className="text-slate-400 font-mono text-xs tracking-wider uppercase mt-1">
               CONFIGURE DECK SETTINGS
             </p>
@@ -111,7 +106,7 @@ export function CreateDeckPage() {
         </div>
 
         {/* Form Card */}
-        <NeumorphicCard className="p-8">
+        <DarkCard padding="lg">
           <motion.form
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -121,49 +116,35 @@ export function CreateDeckPage() {
           >
             {/* Deck Name */}
             <div className="space-y-2">
-              <Label
-                htmlFor="name"
-                className="text-xs font-bold text-slate-500 uppercase tracking-wider"
-              >
+              <Label htmlFor="name" className="text-xs font-bold text-slate-500 uppercase tracking-wider">
                 Deck Name <span className="text-cyan-500">*</span>
               </Label>
               <input
                 id="name"
                 placeholder="e.g., Quantum Physics Fundamentals"
-                {...register("name")}
+                {...register('name')}
                 className={cn(
-                  "nm-input w-full",
-                  errors.name && "border-red-500/50 focus:border-red-500",
+                  'w-full px-4 py-3 rounded-xl bg-[#0f0f16] border border-white/10 text-white placeholder:text-slate-500 focus:outline-none focus:border-cyan-500/50 transition-colors',
+                  errors.name && 'border-red-500/50 focus:border-red-500'
                 )}
               />
               {errors.name && (
-                <p className="text-xs text-red-400 mt-1 flex items-center gap-1">
-                  <span className="w-1 h-1 rounded-full bg-red-500" />
-                  {errors.name?.message}
-                </p>
+                <p className="text-xs text-red-400 mt-1">{errors.name?.message}</p>
               )}
             </div>
 
             {/* Description */}
             <div className="space-y-2">
-              <Label
-                htmlFor="description"
-                className="text-xs font-bold text-slate-500 uppercase tracking-wider"
-              >
+              <Label htmlFor="description" className="text-xs font-bold text-slate-500 uppercase tracking-wider">
                 Description
               </Label>
               <Textarea
                 id="description"
                 placeholder="Describe the topics covered in this deck..."
                 rows={4}
-                {...register("description")}
-                className="nm-input w-full min-h-[100px] resize-y bg-transparent"
+                {...register('description')}
+                className="w-full min-h-[100px] resize-y px-4 py-3 rounded-xl bg-[#0f0f16] border border-white/10 text-white placeholder:text-slate-500 focus:outline-none focus:border-cyan-500/50 transition-colors"
               />
-              {errors.description && (
-                <p className="text-xs text-red-400 mt-1">
-                  {errors.description?.message}
-                </p>
-              )}
             </div>
 
             {/* Tags */}
@@ -172,13 +153,12 @@ export function CreateDeckPage() {
                 Tags ({tags.length}/10)
               </Label>
 
-              {/* Tag Input */}
               <div className="flex gap-2">
                 <input
                   value={tagInput}
                   onChange={(e) => setTagInput(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter") {
+                    if (e.key === 'Enter') {
                       e.preventDefault();
                       addTag();
                     }
@@ -186,28 +166,24 @@ export function CreateDeckPage() {
                   placeholder="Add a tag..."
                   maxLength={50}
                   disabled={tags.length >= 10}
-                  className="nm-input flex-1"
+                  className="flex-1 px-4 py-2 rounded-xl bg-[#0f0f16] border border-white/10 text-white placeholder:text-slate-500 focus:outline-none focus:border-cyan-500/50 transition-colors"
                 />
-                <NeumorphicButton
+                <button
                   type="button"
                   onClick={addTag}
                   disabled={!tagInput.trim() || tags.length >= 10}
-                  size="icon"
-                  variant="primary"
+                  className="px-4 py-2 rounded-xl bg-cyan-600 text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-cyan-500 transition-colors"
                 >
                   <Plus className="h-4 w-4" />
-                </NeumorphicButton>
+                </button>
               </div>
 
-              {/* Tag List */}
               {tags.length > 0 && (
                 <div className="flex flex-wrap gap-2">
                   {tags.map((tag) => (
-                    <NeumorphicBadge
+                    <span
                       key={tag}
-                      variant="outline"
-                      color="cyan"
-                      className="px-3 py-1 flex items-center gap-2"
+                      className="px-3 py-1 rounded-lg bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-sm flex items-center gap-2"
                     >
                       {tag}
                       <button
@@ -217,66 +193,58 @@ export function CreateDeckPage() {
                       >
                         <X className="h-3 w-3" />
                       </button>
-                    </NeumorphicBadge>
+                    </span>
                   ))}
                 </div>
               )}
             </div>
 
             {/* Public Toggle */}
-            <div className="flex items-center justify-between p-4 rounded-xl nm-inset">
+            <div className="flex items-center justify-between p-4 rounded-xl bg-white/[0.02] border border-white/5">
               <div>
-                <Label
-                  htmlFor="is_public"
-                  className="text-xs font-bold text-slate-300 uppercase tracking-wider cursor-pointer"
-                >
+                <Label htmlFor="is_public" className="text-xs font-bold text-slate-300 uppercase tracking-wider cursor-pointer">
                   Public Deck
                 </Label>
-                <p className="text-xs text-slate-500 mt-1 font-mono">
+                <p className="text-xs text-slate-500 mt-1">
                   Allow other users to find and study this deck
                 </p>
               </div>
               <Switch
                 id="is_public"
                 checked={isPublic}
-                onCheckedChange={(checked) =>
-                  setValue("is_public", checked, { shouldDirty: true })
-                }
-                className="data-[state=checked]:bg-cyan-500"
+                onCheckedChange={(checked) => setValue('is_public', checked, { shouldDirty: true })}
               />
             </div>
 
             {/* Actions */}
             <div className="flex gap-3 pt-6 border-t border-white/5">
-              <NeumorphicButton
+              <button
                 type="button"
-                variant="ghost"
-                onClick={() => navigate("/flashcards")}
-                className="flex-1"
+                onClick={() => navigate('/flashcards')}
+                className="flex-1 py-3 rounded-xl bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
               >
                 Cancel
-              </NeumorphicButton>
-              <NeumorphicButton
+              </button>
+              <button
                 type="submit"
                 disabled={isPending || !isDirty}
-                variant="primary"
-                className="flex-1"
+                className="flex-1 py-3 rounded-xl bg-cyan-600 text-white font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-cyan-500 transition-colors"
               >
                 {isPending ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2 className="h-4 w-4 animate-spin" />
                     Creating...
                   </>
                 ) : (
                   <>
-                    <Save className="mr-2 h-4 w-4" />
+                    <Save className="h-4 w-4" />
                     Save Deck
                   </>
                 )}
-              </NeumorphicButton>
+              </button>
             </div>
           </motion.form>
-        </NeumorphicCard>
+        </DarkCard>
       </div>
     </div>
   );

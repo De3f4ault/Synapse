@@ -1,0 +1,1966 @@
+.
+├── backend
+│   ├── alembic
+│   │   ├── env.py
+│   │   ├── script.py.mako
+│   │   └── versions
+│   │       ├── 052d2385be9e_initial_schema.py
+│   │       ├── 29017093e61c_add_document_notes_sector_summary_fields.py
+│   │       ├── add_activity_log_table.py
+│   │       ├── add_conversation_branching.py
+│   │       ├── add_document_content_hash.py
+│   │       ├── add_embedding_columns.py
+│   │       ├── add_links_table.py
+│   │       ├── add_ocr_performed.py
+│   │       ├── add_synapse_tasks.py
+│   │       ├── c368ad399481_add_content_text_to_documents.py
+│   │       ├── update_json_to_jsonb.py
+│   │       └── webhook_subscriptions_v1_add_webhooks_table.py
+│   ├── alembic.ini
+│   ├── app
+│   │   ├── api
+│   │   │   ├── deps.py
+│   │   │   ├── graphql
+│   │   │   │   ├── __init__.py
+│   │   │   │   ├── mutations.py
+│   │   │   │   ├── queries.py
+│   │   │   │   ├── schema.py
+│   │   │   │   └── types.py
+│   │   │   ├── __init__.py
+│   │   │   ├── rest
+│   │   │   │   ├── analytics.py
+│   │   │   │   ├── auth.py
+│   │   │   │   ├── chat.py
+│   │   │   │   ├── decks.py
+│   │   │   │   ├── documents.py
+│   │   │   │   ├── flashcards.py
+│   │   │   │   ├── health.py
+│   │   │   │   ├── __init__.py
+│   │   │   │   ├── links.py
+│   │   │   │   ├── notes.py
+│   │   │   │   ├── quizzes.py
+│   │   │   │   ├── rag.py
+│   │   │   │   ├── router.py
+│   │   │   │   ├── search.py
+│   │   │   │   ├── study.py
+│   │   │   │   ├── users.py
+│   │   │   │   └── webhooks.py
+│   │   │   ├── webhooks
+│   │   │   │   ├── __init__.py
+│   │   │   │   ├── management.py
+│   │   │   │   └── receivers.py
+│   │   │   └── websockets
+│   │   │       ├── activity.py
+│   │   │       ├── channels.py
+│   │   │       ├── chat.py
+│   │   │       ├── dashboard.py
+│   │   │       ├── events.py
+│   │   │       ├── __init__.py
+│   │   │       ├── live_voice.py
+│   │   │       ├── manager.py
+│   │   │       ├── protocol.py
+│   │   │       ├── routes.py
+│   │   │       ├── study.py
+│   │   │       ├── types.py
+│   │   │       └── unified.py
+│   │   ├── core
+│   │   │   ├── ai
+│   │   │   │   ├── agents
+│   │   │   │   │   ├── base_agent.py
+│   │   │   │   │   ├── factory.py
+│   │   │   │   │   ├── implementations
+│   │   │   │   │   │   ├── dashboard_agent.py
+│   │   │   │   │   │   ├── document_agent.py
+│   │   │   │   │   │   ├── __init__.py
+│   │   │   │   │   │   ├── quiz_agent.py
+│   │   │   │   │   │   └── tutor_agent.py
+│   │   │   │   │   ├── __init__.py
+│   │   │   │   │   ├── middleware
+│   │   │   │   │   │   ├── context_injection.py
+│   │   │   │   │   │   ├── __init__.py
+│   │   │   │   │   │   ├── quota_check.py
+│   │   │   │   │   │   └── webhook_trigger.py
+│   │   │   │   │   ├── monitoring
+│   │   │   │   │   │   ├── alerts.py
+│   │   │   │   │   │   ├── escalation.py
+│   │   │   │   │   │   ├── __init__.py
+│   │   │   │   │   │   └── redis_counters.py
+│   │   │   │   │   ├── prompts
+│   │   │   │   │   │   ├── document_prompts.py
+│   │   │   │   │   │   ├── __init__.py
+│   │   │   │   │   │   └── tutor_prompts.py
+│   │   │   │   │   └── registry.py
+│   │   │   │   ├── context
+│   │   │   │   │   └── dashboard_context_builder.py
+│   │   │   │   ├── __init__.py
+│   │   │   │   ├── orchestrator.py
+│   │   │   │   ├── providers
+│   │   │   │   │   ├── base.py
+│   │   │   │   │   ├── cache_manager.py
+│   │   │   │   │   ├── gemini_files.py
+│   │   │   │   │   ├── gemini.py
+│   │   │   │   │   └── __init__.py
+│   │   │   │   ├── quota_manager.py
+│   │   │   │   ├── rag
+│   │   │   │   │   ├── caching
+│   │   │   │   │   │   ├── __init__.py
+│   │   │   │   │   │   └── redis_manager.py
+│   │   │   │   │   ├── chunking
+│   │   │   │   │   │   ├── __init__.py
+│   │   │   │   │   │   └── strategies
+│   │   │   │   │   │       ├── advanced_semantic_chunker.py
+│   │   │   │   │   │       ├── __init__.py
+│   │   │   │   │   │       └── semantic_chunker.py
+│   │   │   │   │   ├── config
+│   │   │   │   │   │   ├── __init__.py
+│   │   │   │   │   │   ├── llamaindex_config.py
+│   │   │   │   │   │   ├── model_config.py
+│   │   │   │   │   │   ├── rag_config.py
+│   │   │   │   │   │   ├── redis_config.py
+│   │   │   │   │   │   └── vector_store_config.py
+│   │   │   │   │   ├── embeddings
+│   │   │   │   │   │   ├── __init__.py
+│   │   │   │   │   │   └── models
+│   │   │   │   │   │       ├── all_minilm.py
+│   │   │   │   │   │       ├── base_embedder.py
+│   │   │   │   │   │       └── __init__.py
+│   │   │   │   │   ├── ingestion
+│   │   │   │   │   │   ├── __init__.py
+│   │   │   │   │   │   └── parsers
+│   │   │   │   │   │       ├── base_parser.py
+│   │   │   │   │   │       ├── __init__.py
+│   │   │   │   │   │       └── pdf_parser.py
+│   │   │   │   │   ├── __init__.py
+│   │   │   │   │   ├── llama_index
+│   │   │   │   │   │   ├── __init__.py
+│   │   │   │   │   │   └── query_engine.py
+│   │   │   │   │   ├── metadata
+│   │   │   │   │   │   ├── difficulty_classifier.py
+│   │   │   │   │   │   ├── __init__.py
+│   │   │   │   │   │   └── topic_tagger.py
+│   │   │   │   │   ├── pipeline
+│   │   │   │   │   │   ├── __init__.py
+│   │   │   │   │   │   └── rag_pipeline.py
+│   │   │   │   │   ├── query_enhancement
+│   │   │   │   │   │   ├── __init__.py
+│   │   │   │   │   │   ├── llm_expander.py
+│   │   │   │   │   │   ├── query_analyzer.py
+│   │   │   │   │   │   └── weak_area_expander.py
+│   │   │   │   │   ├── README.md
+│   │   │   │   │   ├── reranking
+│   │   │   │   │   │   ├── cross_encoder.py
+│   │   │   │   │   │   ├── __init__.py
+│   │   │   │   │   │   ├── llamaindex_reranker.py
+│   │   │   │   │   │   ├── models
+│   │   │   │   │   │   │   ├── cross_encoder.py
+│   │   │   │   │   │   │   └── __init__.py
+│   │   │   │   │   │   └── synapse_reranker.py
+│   │   │   │   │   ├── retrieval
+│   │   │   │   │   │   ├── fusion
+│   │   │   │   │   │   │   ├── __init__.py
+│   │   │   │   │   │   │   └── rrf.py
+│   │   │   │   │   │   ├── __init__.py
+│   │   │   │   │   │   └── retrievers
+│   │   │   │   │   │       ├── bm25_retriever.py
+│   │   │   │   │   │       ├── hybrid_retriever.py
+│   │   │   │   │   │       ├── __init__.py
+│   │   │   │   │   │       └── llamaindex_vector_retriever.py
+│   │   │   │   │   ├── synapse_integration
+│   │   │   │   │   │   ├── context_bridge.py
+│   │   │   │   │   │   ├── __init__.py
+│   │   │   │   │   │   ├── learning_aware_reranker.py
+│   │   │   │   │   │   └── real_context_engine.py
+│   │   │   │   │   ├── tests
+│   │   │   │   │   │   ├── __init__.py
+│   │   │   │   │   │   └── integration
+│   │   │   │   │   │       ├── __init__.py
+│   │   │   │   │   │       └── test_basic_pipeline.py
+│   │   │   │   │   └── vector_store
+│   │   │   │   │       ├── __init__.py
+│   │   │   │   │       ├── operations
+│   │   │   │   │       │   ├── __init__.py
+│   │   │   │   │       │   ├── search.py
+│   │   │   │   │       │   └── upsert.py
+│   │   │   │   │       └── qdrant
+│   │   │   │   │           ├── client.py
+│   │   │   │   │           ├── collection_manager.py
+│   │   │   │   │           ├── __init__.py
+│   │   │   │   │           └── schema.py
+│   │   │   │   ├── routing
+│   │   │   │   │   ├── __init__.py
+│   │   │   │   │   └── intent_router.py
+│   │   │   │   ├── streaming_handler.py
+│   │   │   │   ├── tools
+│   │   │   │   │   ├── base.py
+│   │   │   │   │   ├── context_tools.py
+│   │   │   │   │   ├── document_tools.py
+│   │   │   │   │   ├── flashcard_tools.py
+│   │   │   │   │   ├── __init__.py
+│   │   │   │   │   ├── link_tools.py
+│   │   │   │   │   ├── note_tools.py
+│   │   │   │   │   ├── quiz_tools.py
+│   │   │   │   │   ├── rag_tools.py
+│   │   │   │   │   ├── registry.py
+│   │   │   │   │   └── study_tools.py
+│   │   │   │   └── workflows
+│   │   │   │       ├── checkpointer.py
+│   │   │   │       ├── human_review.py
+│   │   │   │       ├── __init__.py
+│   │   │   │       └── multi_agent_collab.py
+│   │   │   ├── config.py
+│   │   │   ├── context
+│   │   │   │   ├── engine.py
+│   │   │   │   ├── __init__.py
+│   │   │   │   ├── priority_manager.py
+│   │   │   │   ├── schemas.py
+│   │   │   │   └── sql_executor.py
+│   │   │   ├── dependencies.py
+│   │   │   ├── events
+│   │   │   │   ├── dispatcher.py
+│   │   │   │   ├── handlers.py
+│   │   │   │   ├── __init__.py
+│   │   │   │   ├── subscribers
+│   │   │   │   │   ├── analytics_updater.py
+│   │   │   │   │   ├── base.py
+│   │   │   │   │   ├── cache_invalidator.py
+│   │   │   │   │   └── __init__.py
+│   │   │   │   ├── triggers.py
+│   │   │   │   └── webhooks
+│   │   │   │       ├── __init__.py
+│   │   │   │       ├── retry.py
+│   │   │   │       ├── sender.py
+│   │   │   │       └── validator.py
+│   │   │   ├── exceptions.py
+│   │   │   ├── __init__.py
+│   │   │   ├── middleware
+│   │   │   │   ├── authentication.py
+│   │   │   │   ├── compression.py
+│   │   │   │   ├── cors.py
+│   │   │   │   ├── error_handler.py
+│   │   │   │   ├── __init__.py
+│   │   │   │   ├── logging.py
+│   │   │   │   └── rate_limiting.py
+│   │   │   ├── module_system
+│   │   │   │   ├── base.py
+│   │   │   │   ├── capabilities.py
+│   │   │   │   ├── __init__.py
+│   │   │   │   ├── loader.py
+│   │   │   │   └── registry.py
+│   │   │   ├── realtime
+│   │   │   │   ├── alerts.py
+│   │   │   │   ├── counters.py
+│   │   │   │   ├── __init__.py
+│   │   │   │   ├── metrics.py
+│   │   │   │   └── pubsub.py
+│   │   │   └── security.py
+│   │   ├── db
+│   │   │   ├── base.py
+│   │   │   ├── __init__.py
+│   │   │   ├── session.py
+│   │   │   ├── sql_loader.py
+│   │   │   └── types.py
+│   │   ├── __init__.py
+│   │   ├── main.py
+│   │   ├── models
+│   │   │   ├── activity_log.py
+│   │   │   ├── agent_metric.py
+│   │   │   ├── ai_usage.py
+│   │   │   ├── base.py
+│   │   │   ├── chat_message.py
+│   │   │   ├── chat_session.py
+│   │   │   ├── deck.py
+│   │   │   ├── document_chunk.py
+│   │   │   ├── document.py
+│   │   │   ├── flashcard.py
+│   │   │   ├── __init__.py
+│   │   │   ├── link.py
+│   │   │   ├── mixins.py
+│   │   │   ├── note.py
+│   │   │   ├── note_version.py
+│   │   │   ├── quiz_attempt.py
+│   │   │   ├── quiz.py
+│   │   │   ├── quiz_question.py
+│   │   │   ├── review.py
+│   │   │   ├── study_session.py
+│   │   │   ├── synapse_task.py
+│   │   │   ├── tag.py
+│   │   │   ├── user.py
+│   │   │   ├── webhook_event.py
+│   │   │   └── webhook.py
+│   │   ├── modules
+│   │   │   ├── activity
+│   │   │   │   ├── __init__.py
+│   │   │   │   ├── repository.py
+│   │   │   │   └── service.py
+│   │   │   ├── chat
+│   │   │   │   ├── constants.py
+│   │   │   │   ├── __init__.py
+│   │   │   │   ├── module.py
+│   │   │   │   └── service.py
+│   │   │   ├── documents
+│   │   │   │   ├── constants.py
+│   │   │   │   ├── __init__.py
+│   │   │   │   ├── module.py
+│   │   │   │   ├── processing.py
+│   │   │   │   ├── repository.py
+│   │   │   │   └── service.py
+│   │   │   ├── flashcards
+│   │   │   │   ├── constants.py
+│   │   │   │   ├── __init__.py
+│   │   │   │   ├── module.py
+│   │   │   │   ├── repository.py
+│   │   │   │   └── service.py
+│   │   │   ├── __init__.py
+│   │   │   ├── notes
+│   │   │   │   ├── constants.py
+│   │   │   │   ├── __init__.py
+│   │   │   │   ├── module.py
+│   │   │   │   ├── repository.py
+│   │   │   │   └── service.py
+│   │   │   ├── quizzes
+│   │   │   │   ├── constants.py
+│   │   │   │   ├── __init__.py
+│   │   │   │   ├── module.py
+│   │   │   │   ├── repository.py
+│   │   │   │   └── service.py
+│   │   │   └── study
+│   │   │       ├── __init__.py
+│   │   │       ├── repository.py
+│   │   │       └── service.py
+│   │   ├── schemas
+│   │   │   ├── auth.py
+│   │   │   ├── chat.py
+│   │   │   ├── common.py
+│   │   │   ├── context.py
+│   │   │   ├── document.py
+│   │   │   ├── flashcard.py
+│   │   │   ├── __init__.py
+│   │   │   ├── note.py
+│   │   │   ├── quiz.py
+│   │   │   ├── rag.py
+│   │   │   ├── user.py
+│   │   │   └── webhook.py
+│   │   ├── services
+│   │   │   ├── analytics
+│   │   │   │   ├── client.py
+│   │   │   │   ├── __init__.py
+│   │   │   │   ├── queries.py
+│   │   │   │   └── reports.py
+│   │   │   ├── background
+│   │   │   │   ├── celery_app.py
+│   │   │   │   ├── document_processor.py
+│   │   │   │   ├── embedding_hooks.py
+│   │   │   │   ├── embedding_tasks.py
+│   │   │   │   ├── __init__.py
+│   │   │   │   ├── ocr_tasks.py
+│   │   │   │   ├── rag_tasks.py
+│   │   │   │   ├── signals.py
+│   │   │   │   ├── tasks.py
+│   │   │   │   ├── webhook_delivery.py
+│   │   │   │   └── webhook_handlers.py
+│   │   │   ├── cache
+│   │   │   │   ├── client.py
+│   │   │   │   ├── __init__.py
+│   │   │   │   ├── invalidation.py
+│   │   │   │   └── manager.py
+│   │   │   ├── email
+│   │   │   │   ├── __init__.py
+│   │   │   │   ├── sender.py
+│   │   │   │   └── templates
+│   │   │   │       ├── verification.html
+│   │   │   │       └── weekly_report.html
+│   │   │   ├── __init__.py
+│   │   │   ├── link_service.py
+│   │   │   ├── ocr
+│   │   │   │   ├── config.py
+│   │   │   │   ├── __init__.py
+│   │   │   │   └── processor.py
+│   │   │   ├── rag
+│   │   │   │   └── __init__.py
+│   │   │   ├── search
+│   │   │   │   ├── fulltext.py
+│   │   │   │   ├── hybrid_search_service.py
+│   │   │   │   ├── hybrid_v2.py
+│   │   │   │   ├── __init__.py
+│   │   │   │   ├── ranking.py
+│   │   │   │   └── unified_retrieval.py
+│   │   │   ├── security
+│   │   │   │   ├── encryption.py
+│   │   │   │   └── __init__.py
+│   │   │   └── storage
+│   │   │       ├── __init__.py
+│   │   │       ├── local.py
+│   │   │       └── manager.py
+│   │   ├── sql
+│   │   │   ├── functions
+│   │   │   │   ├── analytics
+│   │   │   │   │   ├── learning_velocity.sql
+│   │   │   │   │   ├── retention_analysis.sql
+│   │   │   │   │   └── user_performance.sql
+│   │   │   │   ├── context
+│   │   │   │   │   ├── build_user_context.sql
+│   │   │   │   │   ├── calculate_mastery.sql
+│   │   │   │   │   └── detect_weak_areas.sql
+│   │   │   │   ├── flashcards
+│   │   │   │   │   ├── calculate_sm2.sql
+│   │   │   │   │   ├── get_due_cards.sql
+│   │   │   │   │   └── record_review.sql
+│   │   │   │   ├── hybrid_search.sql
+│   │   │   │   ├── notes
+│   │   │   │   │   └── get_note_hierarchy.sql
+│   │   │   │   └── search
+│   │   │   │       ├── hybrid_search_notes.sql
+│   │   │   │       ├── search_conversations.sql
+│   │   │   │       ├── search_conversations_v2.sql
+│   │   │   │       ├── search_conversations_v3.sql
+│   │   │   │       ├── search_documents_fts.sql
+│   │   │   │       ├── search_flashcards_fts.sql
+│   │   │   │       ├── search_notes_fts.sql
+│   │   │   │       └── unified_search.sql
+│   │   │   ├── indexes
+│   │   │   │   ├── chat_messages_bm25_index.sql
+│   │   │   │   └── create_hybrid_indexes.sql
+│   │   │   ├── migrations
+│   │   │   │   ├── create_functions.sql
+│   │   │   │   └── create_views.sql
+│   │   │   ├── setup_analytics.sql
+│   │   │   └── views
+│   │   │       ├── chat_session_stats.sql
+│   │   │       ├── document_stats.sql
+│   │   │       ├── learning_insights.sql
+│   │   │       ├── module_performance.sql
+│   │   │       └── user_dashboard_stats.sql
+│   │   └── utils
+│   │       ├── datetime.py
+│   │       ├── decorators.py
+│   │       ├── __init__.py
+│   │       ├── logging.py
+│   │       ├── text.py
+│   │       ├── tokens.py
+│   │       └── validators.py
+│   ├── celerybeat-schedule
+│   ├── config
+│   │   ├── gunicorn.conf.py
+│   │   ├── llama_index.yaml
+│   │   ├── logging.yaml
+│   │   ├── nginx.conf
+│   │   ├── redis.conf
+│   │   ├── redis-optimized.conf
+│   │   └── supervisord.conf
+│   ├── data
+│   │   ├── celerybeat-schedule.db
+│   │   ├── duckdb
+│   │   │   └── analytics.duckdb
+│   │   ├── lancedb
+│   │   ├── logs
+│   │   ├── qdrant
+│   │   │   ├── snapshots
+│   │   │   │   └── tmp
+│   │   │   │       └── upload
+│   │   │   └── storage
+│   │   │       ├── aliases
+│   │   │       │   └── data.json
+│   │   │       ├── collections
+│   │   │       │   └── synapse_v2_user_1_documents
+│   │   │       │       ├── 0
+│   │   │       │       │   ├── newest_clocks.json
+│   │   │       │       │   ├── replica_state.json
+│   │   │       │       │   ├── segments
+│   │   │       │       │   │   ├── 40c73ed9-01e6-464f-b7f6-112e1177aa89
+│   │   │       │       │   │   │   ├── payload_index
+│   │   │       │       │   │   │   │   ├── config.json
+│   │   │       │       │   │   │   │   ├── e0r9pb54r1ev6ks5opmbk52k-source_t-map
+│   │   │       │       │   │   │   │   │   ├── bitmask.dat
+│   │   │       │       │   │   │   │   │   ├── config.json
+│   │   │       │       │   │   │   │   │   ├── gaps.dat
+│   │   │       │       │   │   │   │   │   ├── page_0.dat
+│   │   │       │       │   │   │   │   │   └── tracker.dat
+│   │   │       │       │   │   │   │   ├── e0r9pb54r1ev6ks5opmbk52k-source_t-null
+│   │   │       │       │   │   │   │   │   ├── has_values
+│   │   │       │       │   │   │   │   │   │   ├── flags_a.dat
+│   │   │       │       │   │   │   │   │   │   └── status.dat
+│   │   │       │       │   │   │   │   │   └── is_null
+│   │   │       │       │   │   │   │   │       ├── flags_a.dat
+│   │   │       │       │   │   │   │   │       └── status.dat
+│   │   │       │       │   │   │   │   ├── r7tlo3ni1p2qtihqtpgtps8m-source_i-map
+│   │   │       │       │   │   │   │   │   ├── bitmask.dat
+│   │   │       │       │   │   │   │   │   ├── config.json
+│   │   │       │       │   │   │   │   │   ├── gaps.dat
+│   │   │       │       │   │   │   │   │   ├── page_0.dat
+│   │   │       │       │   │   │   │   │   └── tracker.dat
+│   │   │       │       │   │   │   │   ├── r7tlo3ni1p2qtihqtpgtps8m-source_i-null
+│   │   │       │       │   │   │   │   │   ├── has_values
+│   │   │       │       │   │   │   │   │   │   ├── flags_a.dat
+│   │   │       │       │   │   │   │   │   │   └── status.dat
+│   │   │       │       │   │   │   │   │   └── is_null
+│   │   │       │       │   │   │   │   │       ├── flags_a.dat
+│   │   │       │       │   │   │   │   │       └── status.dat
+│   │   │       │       │   │   │   │   ├── v2emmqb08kp43f2r16qd1m5d-user_id-map
+│   │   │       │       │   │   │   │   │   ├── bitmask.dat
+│   │   │       │       │   │   │   │   │   ├── config.json
+│   │   │       │       │   │   │   │   │   ├── gaps.dat
+│   │   │       │       │   │   │   │   │   ├── page_0.dat
+│   │   │       │       │   │   │   │   │   └── tracker.dat
+│   │   │       │       │   │   │   │   ├── v2emmqb08kp43f2r16qd1m5d-user_id-null
+│   │   │       │       │   │   │   │   │   ├── has_values
+│   │   │       │       │   │   │   │   │   │   ├── flags_a.dat
+│   │   │       │       │   │   │   │   │   │   └── status.dat
+│   │   │       │       │   │   │   │   │   └── is_null
+│   │   │       │       │   │   │   │   │       ├── flags_a.dat
+│   │   │       │       │   │   │   │   │       └── status.dat
+│   │   │       │       │   │   │   │   └── v2emmqb08kp43f2r16qd1m5d-user_id-numeric
+│   │   │       │       │   │   │   │       ├── bitmask.dat
+│   │   │       │       │   │   │   │       ├── config.json
+│   │   │       │       │   │   │   │       ├── gaps.dat
+│   │   │       │       │   │   │   │       ├── page_0.dat
+│   │   │       │       │   │   │   │       └── tracker.dat
+│   │   │       │       │   │   │   ├── payload_storage
+│   │   │       │       │   │   │   │   ├── bitmask.dat
+│   │   │       │       │   │   │   │   ├── config.json
+│   │   │       │       │   │   │   │   ├── gaps.dat
+│   │   │       │       │   │   │   │   ├── page_0.dat
+│   │   │       │       │   │   │   │   └── tracker.dat
+│   │   │       │       │   │   │   ├── segment.json
+│   │   │       │       │   │   │   ├── vector_storage
+│   │   │       │       │   │   │   │   ├── deleted
+│   │   │       │       │   │   │   │   │   ├── flags_a.dat
+│   │   │       │       │   │   │   │   │   └── status.dat
+│   │   │       │       │   │   │   │   └── vectors
+│   │   │       │       │   │   │   │       ├── config.json
+│   │   │       │       │   │   │   │       └── status.dat
+│   │   │       │       │   │   │   └── version.info
+│   │   │       │       │   │   ├── 488eb1d8-6034-47e2-8bac-9af3b2e18ff9
+│   │   │       │       │   │   │   ├── mutable_id_tracker.mappings
+│   │   │       │       │   │   │   ├── mutable_id_tracker.versions
+│   │   │       │       │   │   │   ├── payload_index
+│   │   │       │       │   │   │   │   ├── config.json
+│   │   │       │       │   │   │   │   ├── e0r9pb54r1ev6ks5opmbk52k-source_t-map
+│   │   │       │       │   │   │   │   │   ├── bitmask.dat
+│   │   │       │       │   │   │   │   │   ├── config.json
+│   │   │       │       │   │   │   │   │   ├── gaps.dat
+│   │   │       │       │   │   │   │   │   ├── page_0.dat
+│   │   │       │       │   │   │   │   │   └── tracker.dat
+│   │   │       │       │   │   │   │   ├── e0r9pb54r1ev6ks5opmbk52k-source_t-null
+│   │   │       │       │   │   │   │   │   ├── has_values
+│   │   │       │       │   │   │   │   │   │   ├── flags_a.dat
+│   │   │       │       │   │   │   │   │   │   └── status.dat
+│   │   │       │       │   │   │   │   │   └── is_null
+│   │   │       │       │   │   │   │   │       ├── flags_a.dat
+│   │   │       │       │   │   │   │   │       └── status.dat
+│   │   │       │       │   │   │   │   ├── r7tlo3ni1p2qtihqtpgtps8m-source_i-map
+│   │   │       │       │   │   │   │   │   ├── bitmask.dat
+│   │   │       │       │   │   │   │   │   ├── config.json
+│   │   │       │       │   │   │   │   │   ├── gaps.dat
+│   │   │       │       │   │   │   │   │   ├── page_0.dat
+│   │   │       │       │   │   │   │   │   └── tracker.dat
+│   │   │       │       │   │   │   │   ├── r7tlo3ni1p2qtihqtpgtps8m-source_i-null
+│   │   │       │       │   │   │   │   │   ├── has_values
+│   │   │       │       │   │   │   │   │   │   ├── flags_a.dat
+│   │   │       │       │   │   │   │   │   │   └── status.dat
+│   │   │       │       │   │   │   │   │   └── is_null
+│   │   │       │       │   │   │   │   │       ├── flags_a.dat
+│   │   │       │       │   │   │   │   │       └── status.dat
+│   │   │       │       │   │   │   │   ├── v2emmqb08kp43f2r16qd1m5d-user_id-map
+│   │   │       │       │   │   │   │   │   ├── bitmask.dat
+│   │   │       │       │   │   │   │   │   ├── config.json
+│   │   │       │       │   │   │   │   │   ├── gaps.dat
+│   │   │       │       │   │   │   │   │   ├── page_0.dat
+│   │   │       │       │   │   │   │   │   └── tracker.dat
+│   │   │       │       │   │   │   │   ├── v2emmqb08kp43f2r16qd1m5d-user_id-null
+│   │   │       │       │   │   │   │   │   ├── has_values
+│   │   │       │       │   │   │   │   │   │   ├── flags_a.dat
+│   │   │       │       │   │   │   │   │   │   └── status.dat
+│   │   │       │       │   │   │   │   │   └── is_null
+│   │   │       │       │   │   │   │   │       ├── flags_a.dat
+│   │   │       │       │   │   │   │   │       └── status.dat
+│   │   │       │       │   │   │   │   └── v2emmqb08kp43f2r16qd1m5d-user_id-numeric
+│   │   │       │       │   │   │   │       ├── bitmask.dat
+│   │   │       │       │   │   │   │       ├── config.json
+│   │   │       │       │   │   │   │       ├── gaps.dat
+│   │   │       │       │   │   │   │       ├── page_0.dat
+│   │   │       │       │   │   │   │       └── tracker.dat
+│   │   │       │       │   │   │   ├── payload_storage
+│   │   │       │       │   │   │   │   ├── bitmask.dat
+│   │   │       │       │   │   │   │   ├── config.json
+│   │   │       │       │   │   │   │   ├── gaps.dat
+│   │   │       │       │   │   │   │   ├── page_0.dat
+│   │   │       │       │   │   │   │   └── tracker.dat
+│   │   │       │       │   │   │   ├── segment.json
+│   │   │       │       │   │   │   ├── vector_storage
+│   │   │       │       │   │   │   │   ├── deleted
+│   │   │       │       │   │   │   │   │   ├── flags_a.dat
+│   │   │       │       │   │   │   │   │   └── status.dat
+│   │   │       │       │   │   │   │   └── vectors
+│   │   │       │       │   │   │   │       ├── chunk_0.mmap
+│   │   │       │       │   │   │   │       ├── config.json
+│   │   │       │       │   │   │   │       └── status.dat
+│   │   │       │       │   │   │   └── version.info
+│   │   │       │       │   │   ├── 6970341a-538f-40d3-bd91-894cf5f9192e
+│   │   │       │       │   │   │   ├── payload_index
+│   │   │       │       │   │   │   │   ├── config.json
+│   │   │       │       │   │   │   │   ├── e0r9pb54r1ev6ks5opmbk52k-source_t-map
+│   │   │       │       │   │   │   │   │   ├── bitmask.dat
+│   │   │       │       │   │   │   │   │   ├── config.json
+│   │   │       │       │   │   │   │   │   ├── gaps.dat
+│   │   │       │       │   │   │   │   │   ├── page_0.dat
+│   │   │       │       │   │   │   │   │   └── tracker.dat
+│   │   │       │       │   │   │   │   ├── e0r9pb54r1ev6ks5opmbk52k-source_t-null
+│   │   │       │       │   │   │   │   │   ├── has_values
+│   │   │       │       │   │   │   │   │   │   ├── flags_a.dat
+│   │   │       │       │   │   │   │   │   │   └── status.dat
+│   │   │       │       │   │   │   │   │   └── is_null
+│   │   │       │       │   │   │   │   │       ├── flags_a.dat
+│   │   │       │       │   │   │   │   │       └── status.dat
+│   │   │       │       │   │   │   │   ├── r7tlo3ni1p2qtihqtpgtps8m-source_i-map
+│   │   │       │       │   │   │   │   │   ├── bitmask.dat
+│   │   │       │       │   │   │   │   │   ├── config.json
+│   │   │       │       │   │   │   │   │   ├── gaps.dat
+│   │   │       │       │   │   │   │   │   ├── page_0.dat
+│   │   │       │       │   │   │   │   │   └── tracker.dat
+│   │   │       │       │   │   │   │   ├── r7tlo3ni1p2qtihqtpgtps8m-source_i-null
+│   │   │       │       │   │   │   │   │   ├── has_values
+│   │   │       │       │   │   │   │   │   │   ├── flags_a.dat
+│   │   │       │       │   │   │   │   │   │   └── status.dat
+│   │   │       │       │   │   │   │   │   └── is_null
+│   │   │       │       │   │   │   │   │       ├── flags_a.dat
+│   │   │       │       │   │   │   │   │       └── status.dat
+│   │   │       │       │   │   │   │   ├── v2emmqb08kp43f2r16qd1m5d-user_id-map
+│   │   │       │       │   │   │   │   │   ├── bitmask.dat
+│   │   │       │       │   │   │   │   │   ├── config.json
+│   │   │       │       │   │   │   │   │   ├── gaps.dat
+│   │   │       │       │   │   │   │   │   ├── page_0.dat
+│   │   │       │       │   │   │   │   │   └── tracker.dat
+│   │   │       │       │   │   │   │   ├── v2emmqb08kp43f2r16qd1m5d-user_id-null
+│   │   │       │       │   │   │   │   │   ├── has_values
+│   │   │       │       │   │   │   │   │   │   ├── flags_a.dat
+│   │   │       │       │   │   │   │   │   │   └── status.dat
+│   │   │       │       │   │   │   │   │   └── is_null
+│   │   │       │       │   │   │   │   │       ├── flags_a.dat
+│   │   │       │       │   │   │   │   │       └── status.dat
+│   │   │       │       │   │   │   │   └── v2emmqb08kp43f2r16qd1m5d-user_id-numeric
+│   │   │       │       │   │   │   │       ├── bitmask.dat
+│   │   │       │       │   │   │   │       ├── config.json
+│   │   │       │       │   │   │   │       ├── gaps.dat
+│   │   │       │       │   │   │   │       ├── page_0.dat
+│   │   │       │       │   │   │   │       └── tracker.dat
+│   │   │       │       │   │   │   ├── payload_storage
+│   │   │       │       │   │   │   │   ├── bitmask.dat
+│   │   │       │       │   │   │   │   ├── config.json
+│   │   │       │       │   │   │   │   ├── gaps.dat
+│   │   │       │       │   │   │   │   ├── page_0.dat
+│   │   │       │       │   │   │   │   └── tracker.dat
+│   │   │       │       │   │   │   ├── segment.json
+│   │   │       │       │   │   │   ├── vector_storage
+│   │   │       │       │   │   │   │   ├── deleted
+│   │   │       │       │   │   │   │   │   ├── flags_a.dat
+│   │   │       │       │   │   │   │   │   └── status.dat
+│   │   │       │       │   │   │   │   └── vectors
+│   │   │       │       │   │   │   │       ├── config.json
+│   │   │       │       │   │   │   │       └── status.dat
+│   │   │       │       │   │   │   └── version.info
+│   │   │       │       │   │   └── a574b5c9-0737-403a-9692-b8bd6be015d7
+│   │   │       │       │   │       ├── payload_index
+│   │   │       │       │   │       │   ├── config.json
+│   │   │       │       │   │       │   ├── e0r9pb54r1ev6ks5opmbk52k-source_t-map
+│   │   │       │       │   │       │   │   ├── bitmask.dat
+│   │   │       │       │   │       │   │   ├── config.json
+│   │   │       │       │   │       │   │   ├── gaps.dat
+│   │   │       │       │   │       │   │   ├── page_0.dat
+│   │   │       │       │   │       │   │   └── tracker.dat
+│   │   │       │       │   │       │   ├── e0r9pb54r1ev6ks5opmbk52k-source_t-null
+│   │   │       │       │   │       │   │   ├── has_values
+│   │   │       │       │   │       │   │   │   ├── flags_a.dat
+│   │   │       │       │   │       │   │   │   └── status.dat
+│   │   │       │       │   │       │   │   └── is_null
+│   │   │       │       │   │       │   │       ├── flags_a.dat
+│   │   │       │       │   │       │   │       └── status.dat
+│   │   │       │       │   │       │   ├── r7tlo3ni1p2qtihqtpgtps8m-source_i-map
+│   │   │       │       │   │       │   │   ├── bitmask.dat
+│   │   │       │       │   │       │   │   ├── config.json
+│   │   │       │       │   │       │   │   ├── gaps.dat
+│   │   │       │       │   │       │   │   ├── page_0.dat
+│   │   │       │       │   │       │   │   └── tracker.dat
+│   │   │       │       │   │       │   ├── r7tlo3ni1p2qtihqtpgtps8m-source_i-null
+│   │   │       │       │   │       │   │   ├── has_values
+│   │   │       │       │   │       │   │   │   ├── flags_a.dat
+│   │   │       │       │   │       │   │   │   └── status.dat
+│   │   │       │       │   │       │   │   └── is_null
+│   │   │       │       │   │       │   │       ├── flags_a.dat
+│   │   │       │       │   │       │   │       └── status.dat
+│   │   │       │       │   │       │   ├── v2emmqb08kp43f2r16qd1m5d-user_id-map
+│   │   │       │       │   │       │   │   ├── bitmask.dat
+│   │   │       │       │   │       │   │   ├── config.json
+│   │   │       │       │   │       │   │   ├── gaps.dat
+│   │   │       │       │   │       │   │   ├── page_0.dat
+│   │   │       │       │   │       │   │   └── tracker.dat
+│   │   │       │       │   │       │   ├── v2emmqb08kp43f2r16qd1m5d-user_id-null
+│   │   │       │       │   │       │   │   ├── has_values
+│   │   │       │       │   │       │   │   │   ├── flags_a.dat
+│   │   │       │       │   │       │   │   │   └── status.dat
+│   │   │       │       │   │       │   │   └── is_null
+│   │   │       │       │   │       │   │       ├── flags_a.dat
+│   │   │       │       │   │       │   │       └── status.dat
+│   │   │       │       │   │       │   └── v2emmqb08kp43f2r16qd1m5d-user_id-numeric
+│   │   │       │       │   │       │       ├── bitmask.dat
+│   │   │       │       │   │       │       ├── config.json
+│   │   │       │       │   │       │       ├── gaps.dat
+│   │   │       │       │   │       │       ├── page_0.dat
+│   │   │       │       │   │       │       └── tracker.dat
+│   │   │       │       │   │       ├── payload_storage
+│   │   │       │       │   │       │   ├── bitmask.dat
+│   │   │       │       │   │       │   ├── config.json
+│   │   │       │       │   │       │   ├── gaps.dat
+│   │   │       │       │   │       │   ├── page_0.dat
+│   │   │       │       │   │       │   └── tracker.dat
+│   │   │       │       │   │       ├── segment.json
+│   │   │       │       │   │       ├── vector_storage
+│   │   │       │       │   │       │   ├── deleted
+│   │   │       │       │   │       │   │   ├── flags_a.dat
+│   │   │       │       │   │       │   │   └── status.dat
+│   │   │       │       │   │       │   └── vectors
+│   │   │       │       │   │       │       ├── config.json
+│   │   │       │       │   │       │       └── status.dat
+│   │   │       │       │   │       └── version.info
+│   │   │       │       │   ├── shard_config.json
+│   │   │       │       │   └── wal
+│   │   │       │       │       ├── first-index
+│   │   │       │       │       ├── open-1
+│   │   │       │       │       └── open-2
+│   │   │       │       ├── config.json
+│   │   │       │       ├── payload_index.json
+│   │   │       │       ├── shard_key_mapping.json
+│   │   │       │       └── version.info
+│   │   │       └── raft_state.json
+│   │   └── uploads
+│   │       ├── 4165cede-052a-4652-91cf-b3316389fa30.pdf
+│   │       ├── 4165cede-052a-4652-91cf-b3316389fa30.pdf_thumb.png
+│   │       ├── 48c32d12-ee6a-46ec-9958-175d358925c0.pdf
+│   │       ├── 48c32d12-ee6a-46ec-9958-175d358925c0.pdf_thumb.png
+│   │       ├── 4f3d9c95-4123-4a6c-b79b-0d29b0c82d02.pdf
+│   │       ├── 655690fa-f6e0-4537-a44b-9b49c0fd2705.pdf
+│   │       ├── 655690fa-f6e0-4537-a44b-9b49c0fd2705.pdf_thumb.png
+│   │       ├── 7689e198-1446-4b88-af1b-a989e7931d2a.pdf
+│   │       ├── 7689e198-1446-4b88-af1b-a989e7931d2a.pdf_thumb.png
+│   │       ├── a4f88e3b-e2e8-4e8e-be5e-53b12635d7d3.pdf
+│   │       ├── a4f88e3b-e2e8-4e8e-be5e-53b12635d7d3.pdf_thumb.png
+│   │       ├── b031015e-44e0-4b56-8e80-9098713fd7c5.pdf
+│   │       ├── b031015e-44e0-4b56-8e80-9098713fd7c5.pdf_thumb.png
+│   │       ├── c11c2b82-2b00-45f1-81ca-ef8df516b882.pdf
+│   │       ├── c11c2b82-2b00-45f1-81ca-ef8df516b882.pdf_thumb.png
+│   │       ├── c600372d-c6fc-4b6c-98c1-3d93cb731fc8.pdf
+│   │       ├── c600372d-c6fc-4b6c-98c1-3d93cb731fc8.pdf_thumb.png
+│   │       ├── c72936a6-c4c2-4d54-9b54-2f5b575a14ca.pdf
+│   │       ├── c72936a6-c4c2-4d54-9b54-2f5b575a14ca.pdf_thumb.png
+│   │       ├── c8ea08a9-f18d-49bf-acdf-6a383b6fed57.pdf
+│   │       ├── c8ea08a9-f18d-49bf-acdf-6a383b6fed57.pdf_thumb.png
+│   │       ├── cfcdecb2-7117-4ad2-8f4a-30a9ebcf2ec6.pdf
+│   │       ├── cfcdecb2-7117-4ad2-8f4a-30a9ebcf2ec6.pdf_thumb.png
+│   │       ├── ddc4c392-afd6-4245-b10d-a5ba1b00ba1f.pdf
+│   │       ├── ddc4c392-afd6-4245-b10d-a5ba1b00ba1f.pdf_thumb.png
+│   │       ├── dea3a6bd-5017-4b3a-804f-65c3b564a0b8.pdf
+│   │       └── dea3a6bd-5017-4b3a-804f-65c3b564a0b8.pdf_thumb.png
+│   ├── docs
+│   │   ├── CELERY_DEPLOYMENT.md
+│   │   ├── CELERY_QUICKSTART.md
+│   │   ├── DEPLOYMENT.md
+│   │   ├── MULTI_DISTRO_SUPPORT.md
+│   │   ├── OCR_SETUP.md
+│   │   ├── RAG_INTEGRATION_GUIDE.md
+│   │   ├── RAG_LLAMAINDEX_INTEGRATION.md
+│   │   ├── RAG_QUICK_REFERENCE.md
+│   │   ├── RAG_REDIS_DECISION.md
+│   │   └── RAG_REDIS_SETUP.md
+│   ├── logs
+│   │   ├── celery-beat.err.log
+│   │   ├── celery-beat.out.log
+│   │   ├── celery-cpu-worker.err.log
+│   │   ├── celery-cpu-worker.out.log
+│   │   ├── celery-io-worker.err.log
+│   │   ├── celery-io-worker.out.log
+│   │   ├── supervisord.log
+│   │   ├── synapse-api.err.log
+│   │   └── synapse-api.out.log
+│   ├── Makefile
+│   ├── pyproject.toml
+│   ├── README.md
+│   ├── requirements.txt
+│   └── scripts
+│       ├── fix-env.sh
+│       ├── init_db.py
+│       ├── __init__.py
+│       └── start-production.sh
+├── frontend
+│   ├── chat_implementation.md
+│   ├── components.json
+│   ├── dist
+│   │   ├── assets
+│   │   │   ├── activity-Dcv_ktBv.js
+│   │   │   ├── activity-Dcv_ktBv.js.map
+│   │   │   ├── architectureDiagram-VXUJARFQ-p5fx2OVJ.js
+│   │   │   ├── architectureDiagram-VXUJARFQ-p5fx2OVJ.js.map
+│   │   │   ├── arrow-left-rSQYhqsM.js
+│   │   │   ├── arrow-left-rSQYhqsM.js.map
+│   │   │   ├── arrow-right-n1NEQAVw.js
+│   │   │   ├── arrow-right-n1NEQAVw.js.map
+│   │   │   ├── AuthenticationService-BqU0CYE5.js
+│   │   │   ├── AuthenticationService-BqU0CYE5.js.map
+│   │   │   ├── _baseUniq-DRlHj2y2.js
+│   │   │   ├── _baseUniq-DRlHj2y2.js.map
+│   │   │   ├── blockDiagram-VD42YOAC-dmbI4okZ.js
+│   │   │   ├── blockDiagram-VD42YOAC-dmbI4okZ.js.map
+│   │   │   ├── brain-BVWXWsUi.js
+│   │   │   ├── brain-BVWXWsUi.js.map
+│   │   │   ├── brain-circuit-B7Gi3lZU.js
+│   │   │   ├── brain-circuit-B7Gi3lZU.js.map
+│   │   │   ├── c4Diagram-YG6GDRKO-B5IcjxhO.js
+│   │   │   ├── c4Diagram-YG6GDRKO-B5IcjxhO.js.map
+│   │   │   ├── channel-DSiaEIWh.js
+│   │   │   ├── channel-DSiaEIWh.js.map
+│   │   │   ├── ChatPage-ZCT_2bGG.js
+│   │   │   ├── ChatPage-ZCT_2bGG.js.map
+│   │   │   ├── ChatService-B79KNe8q.js
+│   │   │   ├── ChatService-B79KNe8q.js.map
+│   │   │   ├── check-DbQGIafM.js
+│   │   │   ├── check-DbQGIafM.js.map
+│   │   │   ├── chevron-left-CuzAntBu.js
+│   │   │   ├── chevron-left-CuzAntBu.js.map
+│   │   │   ├── chevron-up-Diw_9Dei.js
+│   │   │   ├── chevron-up-Diw_9Dei.js.map
+│   │   │   ├── chunk-4BX2VUAB-4LWIMWGl.js
+│   │   │   ├── chunk-4BX2VUAB-4LWIMWGl.js.map
+│   │   │   ├── chunk-55IACEB6-D_2s0eBI.js
+│   │   │   ├── chunk-55IACEB6-D_2s0eBI.js.map
+│   │   │   ├── chunk-B4BG7PRW-DspS36u5.js
+│   │   │   ├── chunk-B4BG7PRW-DspS36u5.js.map
+│   │   │   ├── chunk-DI55MBZ5-CfPuo0Q6.js
+│   │   │   ├── chunk-DI55MBZ5-CfPuo0Q6.js.map
+│   │   │   ├── chunk-FMBD7UC4-Cvcvs8N8.js
+│   │   │   ├── chunk-FMBD7UC4-Cvcvs8N8.js.map
+│   │   │   ├── chunk-QN33PNHL-tdoiXsJ7.js
+│   │   │   ├── chunk-QN33PNHL-tdoiXsJ7.js.map
+│   │   │   ├── chunk-QZHKN3VN-tPcjCFOR.js
+│   │   │   ├── chunk-QZHKN3VN-tPcjCFOR.js.map
+│   │   │   ├── chunk-TZMSLE5B-CRAKzeOo.js
+│   │   │   ├── chunk-TZMSLE5B-CRAKzeOo.js.map
+│   │   │   ├── circle-check-DHCrS92c.js
+│   │   │   ├── circle-check-DHCrS92c.js.map
+│   │   │   ├── classDiagram-2ON5EDUG-B4O6l01h.js
+│   │   │   ├── classDiagram-2ON5EDUG-B4O6l01h.js.map
+│   │   │   ├── classDiagram-v2-WZHVMYZB-B4O6l01h.js
+│   │   │   ├── classDiagram-v2-WZHVMYZB-B4O6l01h.js.map
+│   │   │   ├── clock-CWP-_9Hi.js
+│   │   │   ├── clock-CWP-_9Hi.js.map
+│   │   │   ├── clone-B_q4hSwH.js
+│   │   │   ├── clone-B_q4hSwH.js.map
+│   │   │   ├── code-q8cRD6uJ.js
+│   │   │   ├── code-q8cRD6uJ.js.map
+│   │   │   ├── _commonjs-dynamic-modules-TDtrdbi3.js
+│   │   │   ├── _commonjs-dynamic-modules-TDtrdbi3.js.map
+│   │   │   ├── copy-Czdx1P23.js
+│   │   │   ├── copy-Czdx1P23.js.map
+│   │   │   ├── cose-bilkent-S5V4N54A-OYWXMy3M.js
+│   │   │   ├── cose-bilkent-S5V4N54A-OYWXMy3M.js.map
+│   │   │   ├── CreateCardPage-CTdxiciS.js
+│   │   │   ├── CreateCardPage-CTdxiciS.js.map
+│   │   │   ├── CreateDeckPage-CU8u0tPo.js
+│   │   │   ├── CreateDeckPage-CU8u0tPo.js.map
+│   │   │   ├── cytoscape.esm-BQaXIfA_.js
+│   │   │   ├── cytoscape.esm-BQaXIfA_.js.map
+│   │   │   ├── dagre-6UL2VRFP-7yOf9XvQ.js
+│   │   │   ├── dagre-6UL2VRFP-7yOf9XvQ.js.map
+│   │   │   ├── DashboardPage-BezEyG9Q.js
+│   │   │   ├── DashboardPage-BezEyG9Q.js.map
+│   │   │   ├── DeckDetailPage-_-B0DB04.js
+│   │   │   ├── DeckDetailPage-_-B0DB04.js.map
+│   │   │   ├── DecksPage-BxiHOnZ8.js
+│   │   │   ├── DecksPage-BxiHOnZ8.js.map
+│   │   │   ├── diagram-PSM6KHXK-EqCy43Q9.js
+│   │   │   ├── diagram-PSM6KHXK-EqCy43Q9.js.map
+│   │   │   ├── diagram-QEK2KX5R-D-FwPtzG.js
+│   │   │   ├── diagram-QEK2KX5R-D-FwPtzG.js.map
+│   │   │   ├── diagram-S2PKOQOG-Blzj9TbV.js
+│   │   │   ├── diagram-S2PKOQOG-Blzj9TbV.js.map
+│   │   │   ├── DocumentsPage-C7H0jYmg.js
+│   │   │   ├── DocumentsPage-C7H0jYmg.js.map
+│   │   │   ├── DocumentsService-BpWZmCVM.js
+│   │   │   ├── DocumentsService-BpWZmCVM.js.map
+│   │   │   ├── DOCXViewer-c01CqggN.js
+│   │   │   ├── DOCXViewer-c01CqggN.js.map
+│   │   │   ├── EditCardPage-BGj4XsGZ.js
+│   │   │   ├── EditCardPage-BGj4XsGZ.js.map
+│   │   │   ├── editor-vendor-Br4IFlFB.js
+│   │   │   ├── editor-vendor-Br4IFlFB.js.map
+│   │   │   ├── ellipsis-vertical-CQ-FRRIZ.js
+│   │   │   ├── ellipsis-vertical-CQ-FRRIZ.js.map
+│   │   │   ├── en-US-D8UQXs-H.js
+│   │   │   ├── en-US-D8UQXs-H.js.map
+│   │   │   ├── EPUBViewer-CpHEiAXE.js
+│   │   │   ├── EPUBViewer-CpHEiAXE.js.map
+│   │   │   ├── erDiagram-Q2GNP2WA-C8r6rBFC.js
+│   │   │   ├── erDiagram-Q2GNP2WA-C8r6rBFC.js.map
+│   │   │   ├── eye-CZSZMWuX.js
+│   │   │   ├── eye-CZSZMWuX.js.map
+│   │   │   ├── filter-Zz6TgFtX.js
+│   │   │   ├── filter-Zz6TgFtX.js.map
+│   │   │   ├── flame-DSbjV3mz.js
+│   │   │   ├── flame-DSbjV3mz.js.map
+│   │   │   ├── FlashcardsService-CnJLmiwA.js
+│   │   │   ├── FlashcardsService-CnJLmiwA.js.map
+│   │   │   ├── FloatingPageDock-DVOExlK6.js
+│   │   │   ├── FloatingPageDock-DVOExlK6.js.map
+│   │   │   ├── flowDiagram-NV44I4VS-fZGI8Wf2.js
+│   │   │   ├── flowDiagram-NV44I4VS-fZGI8Wf2.js.map
+│   │   │   ├── ganttDiagram-JELNMOA3-vJM6M1V8.js
+│   │   │   ├── ganttDiagram-JELNMOA3-vJM6M1V8.js.map
+│   │   │   ├── GatekeeperUI-BGT7A-zC.js
+│   │   │   ├── GatekeeperUI-BGT7A-zC.js.map
+│   │   │   ├── gitGraphDiagram-NY62KEGX-DTDnlL-N.js
+│   │   │   ├── gitGraphDiagram-NY62KEGX-DTDnlL-N.js.map
+│   │   │   ├── GlassCard-ZetUrEmF.js
+│   │   │   ├── GlassCard-ZetUrEmF.js.map
+│   │   │   ├── graph-CXn41lxE.js
+│   │   │   ├── graph-CXn41lxE.js.map
+│   │   │   ├── HTMLViewer-K78tBAOc.js
+│   │   │   ├── HTMLViewer-K78tBAOc.js.map
+│   │   │   ├── index-B4BDQYKn.js
+│   │   │   ├── index-B4BDQYKn.js.map
+│   │   │   ├── index-B4HlFNEp.js
+│   │   │   ├── index-B4HlFNEp.js.map
+│   │   │   ├── index-Cfn9WYoh.js
+│   │   │   ├── index-Cfn9WYoh.js.map
+│   │   │   ├── index-wrK3vLI5.css
+│   │   │   ├── infoDiagram-WHAUD3N6-B6fSNEvZ.js
+│   │   │   ├── infoDiagram-WHAUD3N6-B6fSNEvZ.js.map
+│   │   │   ├── input-B2jkNYh0.js
+│   │   │   ├── input-B2jkNYh0.js.map
+│   │   │   ├── journeyDiagram-XKPGCS4Q-DKM3amJn.js
+│   │   │   ├── journeyDiagram-XKPGCS4Q-DKM3amJn.js.map
+│   │   │   ├── kanban-definition-3W4ZIXB7-BNN2K0d3.js
+│   │   │   ├── kanban-definition-3W4ZIXB7-BNN2K0d3.js.map
+│   │   │   ├── KaTeX_AMS-Regular-BQhdFMY1.woff2
+│   │   │   ├── KaTeX_AMS-Regular-DMm9YOAa.woff
+│   │   │   ├── KaTeX_AMS-Regular-DRggAlZN.ttf
+│   │   │   ├── KaTeX_Caligraphic-Bold-ATXxdsX0.ttf
+│   │   │   ├── KaTeX_Caligraphic-Bold-BEiXGLvX.woff
+│   │   │   ├── KaTeX_Caligraphic-Bold-Dq_IR9rO.woff2
+│   │   │   ├── KaTeX_Caligraphic-Regular-CTRA-rTL.woff
+│   │   │   ├── KaTeX_Caligraphic-Regular-Di6jR-x-.woff2
+│   │   │   ├── KaTeX_Caligraphic-Regular-wX97UBjC.ttf
+│   │   │   ├── KaTeX_Fraktur-Bold-BdnERNNW.ttf
+│   │   │   ├── KaTeX_Fraktur-Bold-BsDP51OF.woff
+│   │   │   ├── KaTeX_Fraktur-Bold-CL6g_b3V.woff2
+│   │   │   ├── KaTeX_Fraktur-Regular-CB_wures.ttf
+│   │   │   ├── KaTeX_Fraktur-Regular-CTYiF6lA.woff2
+│   │   │   ├── KaTeX_Fraktur-Regular-Dxdc4cR9.woff
+│   │   │   ├── KaTeX_Main-Bold-Cx986IdX.woff2
+│   │   │   ├── KaTeX_Main-BoldItalic-DxDJ3AOS.woff2
+│   │   │   ├── KaTeX_Main-BoldItalic-DzxPMmG6.ttf
+│   │   │   ├── KaTeX_Main-BoldItalic-SpSLRI95.woff
+│   │   │   ├── KaTeX_Main-Bold-Jm3AIy58.woff
+│   │   │   ├── KaTeX_Main-Bold-waoOVXN0.ttf
+│   │   │   ├── KaTeX_Main-Italic-3WenGoN9.ttf
+│   │   │   ├── KaTeX_Main-Italic-BMLOBm91.woff
+│   │   │   ├── KaTeX_Main-Italic-NWA7e6Wa.woff2
+│   │   │   ├── KaTeX_Main-Regular-B22Nviop.woff2
+│   │   │   ├── KaTeX_Main-Regular-Dr94JaBh.woff
+│   │   │   ├── KaTeX_Main-Regular-ypZvNtVU.ttf
+│   │   │   ├── KaTeX_Math-BoldItalic-B3XSjfu4.ttf
+│   │   │   ├── KaTeX_Math-BoldItalic-CZnvNsCZ.woff2
+│   │   │   ├── KaTeX_Math-BoldItalic-iY-2wyZ7.woff
+│   │   │   ├── KaTeX_Math-Italic-DA0__PXp.woff
+│   │   │   ├── KaTeX_Math-Italic-flOr_0UB.ttf
+│   │   │   ├── KaTeX_Math-Italic-t53AETM-.woff2
+│   │   │   ├── KaTeX_SansSerif-Bold-CFMepnvq.ttf
+│   │   │   ├── KaTeX_SansSerif-Bold-D1sUS0GD.woff2
+│   │   │   ├── KaTeX_SansSerif-Bold-DbIhKOiC.woff
+│   │   │   ├── KaTeX_SansSerif-Italic-C3H0VqGB.woff2
+│   │   │   ├── KaTeX_SansSerif-Italic-DN2j7dab.woff
+│   │   │   ├── KaTeX_SansSerif-Italic-YYjJ1zSn.ttf
+│   │   │   ├── KaTeX_SansSerif-Regular-BNo7hRIc.ttf
+│   │   │   ├── KaTeX_SansSerif-Regular-CS6fqUqJ.woff
+│   │   │   ├── KaTeX_SansSerif-Regular-DDBCnlJ7.woff2
+│   │   │   ├── KaTeX_Script-Regular-C5JkGWo-.ttf
+│   │   │   ├── KaTeX_Script-Regular-D3wIWfF6.woff2
+│   │   │   ├── KaTeX_Script-Regular-D5yQViql.woff
+│   │   │   ├── KaTeX_Size1-Regular-C195tn64.woff
+│   │   │   ├── KaTeX_Size1-Regular-Dbsnue_I.ttf
+│   │   │   ├── KaTeX_Size1-Regular-mCD8mA8B.woff2
+│   │   │   ├── KaTeX_Size2-Regular-B7gKUWhC.ttf
+│   │   │   ├── KaTeX_Size2-Regular-Dy4dx90m.woff2
+│   │   │   ├── KaTeX_Size2-Regular-oD1tc_U0.woff
+│   │   │   ├── KaTeX_Size3-Regular-CTq5MqoE.woff
+│   │   │   ├── KaTeX_Size3-Regular-DgpXs0kz.ttf
+│   │   │   ├── KaTeX_Size4-Regular-BF-4gkZK.woff
+│   │   │   ├── KaTeX_Size4-Regular-Dl5lxZxV.woff2
+│   │   │   ├── KaTeX_Size4-Regular-DWFBv043.ttf
+│   │   │   ├── KaTeX_Typewriter-Regular-C0xS9mPB.woff
+│   │   │   ├── KaTeX_Typewriter-Regular-CO6r4hn1.woff2
+│   │   │   ├── KaTeX_Typewriter-Regular-D3Ib7_Hf.ttf
+│   │   │   ├── KnowledgeGraphPage-BKivB_xY.js
+│   │   │   ├── KnowledgeGraphPage-BKivB_xY.js.map
+│   │   │   ├── label-DjHWTR_J.js
+│   │   │   ├── label-DjHWTR_J.js.map
+│   │   │   ├── layers-B5ZJuAGT.js
+│   │   │   ├── layers-B5ZJuAGT.js.map
+│   │   │   ├── layout-DiVQ6ONE.js
+│   │   │   ├── layout-DiVQ6ONE.js.map
+│   │   │   ├── lightbulb-Bx2Xix-W.js
+│   │   │   ├── lightbulb-Bx2Xix-W.js.map
+│   │   │   ├── link-C9UF3gpA.js
+│   │   │   ├── link-C9UF3gpA.js.map
+│   │   │   ├── loader-circle-BIo1x9te.js
+│   │   │   ├── loader-circle-BIo1x9te.js.map
+│   │   │   ├── LoginPage-D5VjJ2ix.js
+│   │   │   ├── LoginPage-D5VjJ2ix.js.map
+│   │   │   ├── logo-BV1m59CX.js
+│   │   │   ├── logo-BV1m59CX.js.map
+│   │   │   ├── MarkdownRenderer-C7hmT8iX.js
+│   │   │   ├── MarkdownRenderer-C7hmT8iX.js.map
+│   │   │   ├── MarkdownRenderer-DWnSZQSX.css
+│   │   │   ├── MarkdownViewer-CTu7zK6D.js
+│   │   │   ├── MarkdownViewer-CTu7zK6D.js.map
+│   │   │   ├── maximize-2-CK3qBYWX.js
+│   │   │   ├── maximize-2-CK3qBYWX.js.map
+│   │   │   ├── min-BV5lJHRk.js
+│   │   │   ├── min-BV5lJHRk.js.map
+│   │   │   ├── mindmap-definition-VGOIOE7T-DooGG1Hp.js
+│   │   │   ├── mindmap-definition-VGOIOE7T-DooGG1Hp.js.map
+│   │   │   ├── NoteDetailPage-CMCWph9U.js
+│   │   │   ├── NoteDetailPage-CMCWph9U.js.map
+│   │   │   ├── NotesPage-MRhhq4LV.js
+│   │   │   ├── NotesPage-MRhhq4LV.js.map
+│   │   │   ├── NotesService-CygM2A57.js
+│   │   │   ├── NotesService-CygM2A57.js.map
+│   │   │   ├── NotFoundPage-DRAHsuTw.js
+│   │   │   ├── NotFoundPage-DRAHsuTw.js.map
+│   │   │   ├── PDFViewer-CJcKS1eY.css
+│   │   │   ├── PDFViewer-Cq0TIgey.js
+│   │   │   ├── PDFViewer-Cq0TIgey.js.map
+│   │   │   ├── pieDiagram-ADFJNKIX-BrSc4fP9.js
+│   │   │   ├── pieDiagram-ADFJNKIX-BrSc4fP9.js.map
+│   │   │   ├── play-Cag7qe13.js
+│   │   │   ├── play-Cag7qe13.js.map
+│   │   │   ├── progress-_KxWTtuX.js
+│   │   │   ├── progress-_KxWTtuX.js.map
+│   │   │   ├── purify.es-A66Cw1IH.js
+│   │   │   ├── purify.es-A66Cw1IH.js.map
+│   │   │   ├── quadrantDiagram-AYHSOK5B-BNltYPMR.js
+│   │   │   ├── quadrantDiagram-AYHSOK5B-BNltYPMR.js.map
+│   │   │   ├── queryKeys-BzTkX2gd.js
+│   │   │   ├── queryKeys-BzTkX2gd.js.map
+│   │   │   ├── query-vendor-BckQVSZU.js
+│   │   │   ├── query-vendor-BckQVSZU.js.map
+│   │   │   ├── QuizTakePage-CZG65ioh.js
+│   │   │   ├── QuizTakePage-CZG65ioh.js.map
+│   │   │   ├── QuizzesPage-Dzpv9XJ2.js
+│   │   │   ├── QuizzesPage-Dzpv9XJ2.js.map
+│   │   │   ├── QuizzesService-D430G-V5.js
+│   │   │   ├── QuizzesService-D430G-V5.js.map
+│   │   │   ├── react-vendor-B7FnPyzq.js
+│   │   │   ├── react-vendor-B7FnPyzq.js.map
+│   │   │   ├── refresh-cw-CiaGySg_.js
+│   │   │   ├── refresh-cw-CiaGySg_.js.map
+│   │   │   ├── RegisterPage-7fbo9mvA.js
+│   │   │   ├── RegisterPage-7fbo9mvA.js.map
+│   │   │   ├── request-CU3-Fs6_.js
+│   │   │   ├── request-CU3-Fs6_.js.map
+│   │   │   ├── requirementDiagram-UZGBJVZJ-DOGNDQ7w.js
+│   │   │   ├── requirementDiagram-UZGBJVZJ-DOGNDQ7w.js.map
+│   │   │   ├── ReviewPage-Cn6n1iv7.js
+│   │   │   ├── ReviewPage-Cn6n1iv7.js.map
+│   │   │   ├── rotate-ccw-B4rbLMCy.js
+│   │   │   ├── rotate-ccw-B4rbLMCy.js.map
+│   │   │   ├── sankeyDiagram-TZEHDZUN-DNJqFz7T.js
+│   │   │   ├── sankeyDiagram-TZEHDZUN-DNJqFz7T.js.map
+│   │   │   ├── save-DRNM3MSH.js
+│   │   │   ├── save-DRNM3MSH.js.map
+│   │   │   ├── sequenceDiagram-WL72ISMW-r_S2M60x.js
+│   │   │   ├── sequenceDiagram-WL72ISMW-r_S2M60x.js.map
+│   │   │   ├── sheet-BKnby3xH.js
+│   │   │   ├── sheet-BKnby3xH.js.map
+│   │   │   ├── sparkles-DO6T_ZDC.js
+│   │   │   ├── sparkles-DO6T_ZDC.js.map
+│   │   │   ├── SpreadsheetViewer-DcqIM-3B.js
+│   │   │   ├── SpreadsheetViewer-DcqIM-3B.js.map
+│   │   │   ├── stateDiagram-FKZM4ZOC-Brt8aqgI.js
+│   │   │   ├── stateDiagram-FKZM4ZOC-Brt8aqgI.js.map
+│   │   │   ├── stateDiagram-v2-4FDKWEC3-BVUj-Nqo.js
+│   │   │   ├── stateDiagram-v2-4FDKWEC3-BVUj-Nqo.js.map
+│   │   │   ├── StudyPage-6qjjd-Ju.js
+│   │   │   ├── StudyPage-6qjjd-Ju.js.map
+│   │   │   ├── target-CcUPOToj.js
+│   │   │   ├── target-CcUPOToj.js.map
+│   │   │   ├── textarea-BmRQ40Ue.js
+│   │   │   ├── textarea-BmRQ40Ue.js.map
+│   │   │   ├── timeline-definition-IT6M3QCI-DWF4oMNn.js
+│   │   │   ├── timeline-definition-IT6M3QCI-DWF4oMNn.js.map
+│   │   │   ├── trash-2-DXUpC6lI.js
+│   │   │   ├── trash-2-DXUpC6lI.js.map
+│   │   │   ├── treemap-KMMF4GRG-DBXdQ-0P.js
+│   │   │   ├── treemap-KMMF4GRG-DBXdQ-0P.js.map
+│   │   │   ├── trending-up-BJ4e-GrT.js
+│   │   │   ├── trending-up-BJ4e-GrT.js.map
+│   │   │   ├── triangle-alert-ClWGTt02.js
+│   │   │   ├── triangle-alert-ClWGTt02.js.map
+│   │   │   ├── trophy-G-TJBn8G.js
+│   │   │   ├── trophy-G-TJBn8G.js.map
+│   │   │   ├── ui-vendor-CK8qGe-x.js
+│   │   │   ├── ui-vendor-CK8qGe-x.js.map
+│   │   │   ├── useAIGeneration-Ks-CgEcI.js
+│   │   │   ├── useAIGeneration-Ks-CgEcI.js.map
+│   │   │   ├── useCards-iWK8Oto9.js
+│   │   │   ├── useCards-iWK8Oto9.js.map
+│   │   │   ├── useDecks-BLPR0ksD.js
+│   │   │   ├── useDecks-BLPR0ksD.js.map
+│   │   │   ├── useNotes-CNqzjwmr.js
+│   │   │   ├── useNotes-CNqzjwmr.js.map
+│   │   │   ├── wand-sparkles-DVQ8pZW2.js
+│   │   │   ├── wand-sparkles-DVQ8pZW2.js.map
+│   │   │   ├── xychartDiagram-PRI3JC2R-BJo8V-eI.js
+│   │   │   ├── xychartDiagram-PRI3JC2R-BJo8V-eI.js.map
+│   │   │   ├── zap-eEbtqkv4.js
+│   │   │   ├── zap-eEbtqkv4.js.map
+│   │   │   ├── zoom-out-DRv4Bxbg.js
+│   │   │   └── zoom-out-DRv4Bxbg.js.map
+│   │   └── index.html
+│   ├── index.html
+│   ├── Makefile
+│   ├── openapi.json
+│   ├── openapi-ts.config.ts
+│   ├── package.json
+│   ├── package-lock.json
+│   ├── postcss.config.js
+│   ├── README.md
+│   ├── src
+│   │   ├── api
+│   │   │   ├── client.ts
+│   │   │   ├── generated
+│   │   │   │   ├── core
+│   │   │   │   │   ├── ApiError.ts
+│   │   │   │   │   ├── ApiRequestOptions.ts
+│   │   │   │   │   ├── ApiResult.ts
+│   │   │   │   │   ├── CancelablePromise.ts
+│   │   │   │   │   ├── OpenAPI.ts
+│   │   │   │   │   └── request.ts
+│   │   │   │   ├── index.ts
+│   │   │   │   ├── models
+│   │   │   │   │   ├── AIModelResponse.ts
+│   │   │   │   │   ├── AnswerResult.ts
+│   │   │   │   │   ├── AnswerSubmit.ts
+│   │   │   │   │   ├── app__api__rest__links__MessageResponse.ts
+│   │   │   │   │   ├── BatchIngestRequest.ts
+│   │   │   │   │   ├── BatchIngestResponse.ts
+│   │   │   │   │   ├── Body_upload_chat_file_api_v1_chat_files_upload_post.ts
+│   │   │   │   │   ├── Body_upload_document_api_v1_documents_upload_post.ts
+│   │   │   │   │   ├── ChatMessageCreate.ts
+│   │   │   │   │   ├── ChatMessageResponse.ts
+│   │   │   │   │   ├── ChatSessionCreate.ts
+│   │   │   │   │   ├── ChatSessionResponse.ts
+│   │   │   │   │   ├── ChatSessionUpdate.ts
+│   │   │   │   │   ├── ConnectedEntityResponse.ts
+│   │   │   │   │   ├── ConversationSearchResult.ts
+│   │   │   │   │   ├── ConversationTreeResponse.ts
+│   │   │   │   │   ├── DashboardOverview.ts
+│   │   │   │   │   ├── DeckCreate.ts
+│   │   │   │   │   ├── DeckResponse.ts
+│   │   │   │   │   ├── DeckUpdate.ts
+│   │   │   │   │   ├── DocumentChunkResponse.ts
+│   │   │   │   │   ├── DocumentIngestRequest.ts
+│   │   │   │   │   ├── DocumentIngestResponse.ts
+│   │   │   │   │   ├── DocumentResponse.ts
+│   │   │   │   │   ├── DocumentUpdateRequest.ts
+│   │   │   │   │   ├── EditMessageRequest.ts
+│   │   │   │   │   ├── EntityLinksResponse.ts
+│   │   │   │   │   ├── EntityType.ts
+│   │   │   │   │   ├── FeedbackRequest.ts
+│   │   │   │   │   ├── FeedbackResponse.ts
+│   │   │   │   │   ├── FileUploadResponse.ts
+│   │   │   │   │   ├── FlashcardCreate.ts
+│   │   │   │   │   ├── FlashcardGenerateFromTopicRequest.ts
+│   │   │   │   │   ├── FlashcardGenerateRequest.ts
+│   │   │   │   │   ├── FlashcardGenerateResponse.ts
+│   │   │   │   │   ├── FlashcardHybridResponse.ts
+│   │   │   │   │   ├── FlashcardHybridResult.ts
+│   │   │   │   │   ├── FlashcardResponse.ts
+│   │   │   │   │   ├── FlashcardUpdate.ts
+│   │   │   │   │   ├── GraphEdge.ts
+│   │   │   │   │   ├── GraphNode.ts
+│   │   │   │   │   ├── GraphStats.ts
+│   │   │   │   │   ├── HealthResponse.ts
+│   │   │   │   │   ├── HeatmapData.ts
+│   │   │   │   │   ├── HTTPValidationError.ts
+│   │   │   │   │   ├── HybridSearchResponse.ts
+│   │   │   │   │   ├── HybridSearchResult.ts
+│   │   │   │   │   ├── ImportCard.ts
+│   │   │   │   │   ├── ImportRequest.ts
+│   │   │   │   │   ├── KnowledgeGraphResponse.ts
+│   │   │   │   │   ├── LinkCreate.ts
+│   │   │   │   │   ├── LinkResponse.ts
+│   │   │   │   │   ├── LinkType.ts
+│   │   │   │   │   ├── LinkUpdate.ts
+│   │   │   │   │   ├── LLMEnhancementStrategy.ts
+│   │   │   │   │   ├── MessageRole.ts
+│   │   │   │   │   ├── NoteCreate.ts
+│   │   │   │   │   ├── NoteFormat.ts
+│   │   │   │   │   ├── NoteHybridResponse.ts
+│   │   │   │   │   ├── NoteHybridResult.ts
+│   │   │   │   │   ├── NoteResponse.ts
+│   │   │   │   │   ├── NoteSearchResult.ts
+│   │   │   │   │   ├── NoteTreeNode.ts
+│   │   │   │   │   ├── NoteUpdate.ts
+│   │   │   │   │   ├── NoteVersionResponse.ts
+│   │   │   │   │   ├── PasswordChange.ts
+│   │   │   │   │   ├── PerformanceTrend.ts
+│   │   │   │   │   ├── ProcessingStatusResponse.ts
+│   │   │   │   │   ├── ProcessingStatus.ts
+│   │   │   │   │   ├── QueryChunk.ts
+│   │   │   │   │   ├── QueryRequest.ts
+│   │   │   │   │   ├── QueryResponse.ts
+│   │   │   │   │   ├── QuestionCreate.ts
+│   │   │   │   │   ├── QuestionResponse.ts
+│   │   │   │   │   ├── QuestionType.ts
+│   │   │   │   │   ├── QuizAttemptStart.ts
+│   │   │   │   │   ├── QuizCreate.ts
+│   │   │   │   │   ├── QuizDifficulty.ts
+│   │   │   │   │   ├── QuizGenerateRequest.ts
+│   │   │   │   │   ├── QuizGenerateResponse.ts
+│   │   │   │   │   ├── QuizResponse.ts
+│   │   │   │   │   ├── QuizResultResponse.ts
+│   │   │   │   │   ├── ReviewResult.ts
+│   │   │   │   │   ├── ReviewSubmit.ts
+│   │   │   │   │   ├── SearchResponse.ts
+│   │   │   │   │   ├── SearchResult.ts
+│   │   │   │   │   ├── ServiceStatus.ts
+│   │   │   │   │   ├── SourceType.ts
+│   │   │   │   │   ├── StudyItemResponse.ts
+│   │   │   │   │   ├── StudySessionCreate.ts
+│   │   │   │   │   ├── StudySessionResponse.ts
+│   │   │   │   │   ├── StudySessionType.ts
+│   │   │   │   │   ├── SummaryResponse.ts
+│   │   │   │   │   ├── TaskStatusResponse.ts
+│   │   │   │   │   ├── TaskStatus.ts
+│   │   │   │   │   ├── TokenResponse.ts
+│   │   │   │   │   ├── TopicMastery.ts
+│   │   │   │   │   ├── UserLogin.ts
+│   │   │   │   │   ├── UserRegister.ts
+│   │   │   │   │   ├── UserResponse.ts
+│   │   │   │   │   ├── UserStatistics.ts
+│   │   │   │   │   ├── UserUpdate.ts
+│   │   │   │   │   ├── ValidationError.ts
+│   │   │   │   │   ├── WeakArea.ts
+│   │   │   │   │   ├── WebhookCreate.ts
+│   │   │   │   │   ├── WebhookResponse.ts
+│   │   │   │   │   ├── WebhookTestRequest.ts
+│   │   │   │   │   ├── WebhookTestResponse.ts
+│   │   │   │   │   └── WebhookUpdate.ts
+│   │   │   │   └── services
+│   │   │   │       ├── AnalyticsService.ts
+│   │   │   │       ├── AuthenticationService.ts
+│   │   │   │       ├── ChatService.ts
+│   │   │   │       ├── DocumentsService.ts
+│   │   │   │       ├── FlashcardsService.ts
+│   │   │   │       ├── HealthService.ts
+│   │   │   │       ├── LinksService.ts
+│   │   │   │       ├── NotesService.ts
+│   │   │   │       ├── QuizzesService.ts
+│   │   │   │       ├── RagService.ts
+│   │   │   │       ├── RootService.ts
+│   │   │   │       ├── SearchService.ts
+│   │   │   │       ├── StudyService.ts
+│   │   │   │       ├── UsersService.ts
+│   │   │   │       └── WebhooksService.ts
+│   │   │   ├── hooks
+│   │   │   │   ├── index.ts
+│   │   │   │   ├── useAIGeneration.ts
+│   │   │   │   ├── useAnalytics.ts
+│   │   │   │   ├── useAuth.ts
+│   │   │   │   ├── useChat.ts
+│   │   │   │   ├── useDocuments.ts
+│   │   │   │   ├── useFlashcards.ts
+│   │   │   │   ├── useNotes.ts
+│   │   │   │   ├── useQuizzes.ts
+│   │   │   │   └── useStudy.ts
+│   │   │   └── websocket
+│   │   │       ├── chat.ts
+│   │   │       ├── context
+│   │   │       │   └── WebSocketProvider.tsx
+│   │   │       ├── hooks
+│   │   │       │   ├── useWebSocketChannel.ts
+│   │   │       │   ├── useWebSocketEvent.ts
+│   │   │       │   └── useWebSocket.ts
+│   │   │       ├── manager.ts
+│   │   │       ├── study.ts
+│   │   │       └── types.ts
+│   │   ├── App.tsx
+│   │   ├── components
+│   │   │   ├── auth
+│   │   │   │   ├── AuthProvider.tsx
+│   │   │   │   ├── GatekeeperUI.tsx
+│   │   │   │   └── ProtectedRoute.tsx
+│   │   │   ├── common
+│   │   │   │   ├── AnimatedCounter.tsx
+│   │   │   │   ├── AnimatedList.tsx
+│   │   │   │   ├── ConfirmDialog.tsx
+│   │   │   │   ├── EmptyState.tsx
+│   │   │   │   ├── ErrorBoundary.tsx
+│   │   │   │   ├── ErrorState.tsx
+│   │   │   │   ├── GradientCard.tsx
+│   │   │   │   ├── LoadingSpinner.tsx
+│   │   │   │   ├── ProgressIndicator.tsx
+│   │   │   │   ├── QuickActions.tsx
+│   │   │   │   ├── RetryBoundary.tsx
+│   │   │   │   ├── SkeletonCard.tsx
+│   │   │   │   ├── SkeletonList.tsx
+│   │   │   │   ├── SkeletonTable.tsx
+│   │   │   │   ├── StatCard.tsx
+│   │   │   │   └── StatusBadge.tsx
+│   │   │   ├── custom
+│   │   │   │   ├── index.ts
+│   │   │   │   ├── SimpleDialog.tsx
+│   │   │   │   └── SimpleDropdownMenu.tsx
+│   │   │   ├── feedback
+│   │   │   │   ├── Alert.tsx
+│   │   │   │   ├── ConfirmationModal.tsx
+│   │   │   │   ├── FeedbackButton.tsx
+│   │   │   │   ├── index.ts
+│   │   │   │   └── Toast.tsx
+│   │   │   ├── forms
+│   │   │   │   ├── FormCheckbox.tsx
+│   │   │   │   ├── FormField.tsx
+│   │   │   │   ├── FormRadioGroup.tsx
+│   │   │   │   ├── FormSelect.tsx
+│   │   │   │   ├── FormTextarea.tsx
+│   │   │   │   └── index.ts
+│   │   │   ├── layout
+│   │   │   │   ├── AppShell.tsx
+│   │   │   │   ├── Breadcrumbs.tsx
+│   │   │   │   ├── FloatingPageDock.tsx
+│   │   │   │   ├── Header.tsx
+│   │   │   │   ├── index.ts
+│   │   │   │   ├── LoadingScreen.tsx
+│   │   │   │   ├── MobileNav.tsx
+│   │   │   │   ├── NotificationCenter.tsx
+│   │   │   │   ├── PageTransition.tsx
+│   │   │   │   └── SearchCommand.tsx
+│   │   │   ├── neumorphic
+│   │   │   │   └── index.tsx
+│   │   │   └── ui
+│   │   │       ├── alert.tsx
+│   │   │       ├── avatar.tsx
+│   │   │       ├── badge.tsx
+│   │   │       ├── button.tsx
+│   │   │       ├── card.tsx
+│   │   │       ├── checkbox.tsx
+│   │   │       ├── collapsible.tsx
+│   │   │       ├── command.tsx
+│   │   │       ├── dialog.tsx
+│   │   │       ├── dropdown-menu.tsx
+│   │   │       ├── GlassCard.tsx
+│   │   │       ├── grid-pattern.tsx
+│   │   │       ├── input.tsx
+│   │   │       ├── label.tsx
+│   │   │       ├── logo.tsx
+│   │   │       ├── popover.tsx
+│   │   │       ├── progress.tsx
+│   │   │       ├── radio-group.tsx
+│   │   │       ├── scroll-area.tsx
+│   │   │       ├── select.tsx
+│   │   │       ├── separator.tsx
+│   │   │       ├── sheet.tsx
+│   │   │       ├── sidebar.tsx
+│   │   │       ├── skeleton.tsx
+│   │   │       ├── switch.tsx
+│   │   │       ├── table.tsx
+│   │   │       ├── tabs.tsx
+│   │   │       ├── textarea.tsx
+│   │   │       ├── toaster.tsx
+│   │   │       ├── toast.tsx
+│   │   │       └── tooltip.tsx
+│   │   ├── hooks
+│   │   │   ├── index.ts
+│   │   │   ├── useAnnounce.ts
+│   │   │   ├── useDebounce.ts
+│   │   │   ├── useLocalStorage.ts
+│   │   │   ├── useMediaQuery.ts
+│   │   │   ├── useNetworkStatus.ts
+│   │   │   ├── usePrefersReducedMotion.ts
+│   │   │   ├── useQueryError.ts
+│   │   │   ├── use-toast.ts
+│   │   │   └── use-window-size.ts
+│   │   ├── lib
+│   │   │   ├── constants.ts
+│   │   │   ├── queryKeys.ts
+│   │   │   ├── utils.ts
+│   │   │   └── validators.ts
+│   │   ├── main.tsx
+│   │   ├── modules
+│   │   │   ├── chat
+│   │   │   │   ├── components
+│   │   │   │   │   ├── ChatInterface.tsx
+│   │   │   │   │   ├── ChatMessage.tsx
+│   │   │   │   │   ├── ContextPanel.tsx
+│   │   │   │   │   ├── MessageInput.tsx
+│   │   │   │   │   ├── MessageList.tsx
+│   │   │   │   │   └── StreamingMessage.tsx
+│   │   │   │   ├── hooks
+│   │   │   │   │   ├── useChatMessages.ts
+│   │   │   │   │   ├── useChatSession.ts
+│   │   │   │   │   ├── useChatStreaming.ts
+│   │   │   │   │   ├── useChatWebSocket.ts
+│   │   │   │   │   ├── useStreamingMessage.ts
+│   │   │   │   │   └── useTitleGeneration.ts
+│   │   │   │   └── index.ts
+│   │   │   ├── documents
+│   │   │   │   ├── components
+│   │   │   │   │   ├── ChunkExplorer.tsx
+│   │   │   │   │   ├── DocumentUploader.tsx
+│   │   │   │   │   ├── DocumentViewer.tsx
+│   │   │   │   │   └── ProcessingStatus.tsx
+│   │   │   │   ├── hooks
+│   │   │   │   │   └── useDocumentUpload.ts
+│   │   │   │   ├── index.ts
+│   │   │   │   └── schemas
+│   │   │   │       ├── documentSchema.ts
+│   │   │   │       └── index.ts
+│   │   │   ├── notes
+│   │   │   │   ├── ai
+│   │   │   │   │   ├── components
+│   │   │   │   │   │   └── AIInsightsPanel.tsx
+│   │   │   │   │   ├── hooks
+│   │   │   │   │   │   └── useNoteAI.ts
+│   │   │   │   │   └── index.ts
+│   │   │   │   ├── core
+│   │   │   │   │   ├── engine
+│   │   │   │   │   │   ├── events.ts
+│   │   │   │   │   │   ├── invariants.ts
+│   │   │   │   │   │   ├── lifecycle.ts
+│   │   │   │   │   │   └── types.ts
+│   │   │   │   │   ├── hooks
+│   │   │   │   │   │   ├── index.ts
+│   │   │   │   │   │   └── useActiveNote.ts
+│   │   │   │   │   ├── index.ts
+│   │   │   │   │   └── state
+│   │   │   │   │       ├── index.ts
+│   │   │   │   │       ├── noteSelectors.ts
+│   │   │   │   │       └── noteStore.ts
+│   │   │   │   ├── editor
+│   │   │   │   │   ├── components
+│   │   │   │   │   │   ├── EditorToolbar.tsx
+│   │   │   │   │   │   ├── MarkdownPreview.tsx
+│   │   │   │   │   │   └── NoteEditor.tsx
+│   │   │   │   │   ├── engine
+│   │   │   │   │   │   ├── markdown.ts
+│   │   │   │   │   │   └── selection.ts
+│   │   │   │   │   ├── hooks
+│   │   │   │   │   │   ├── useEditorShortcuts.ts
+│   │   │   │   │   │   └── useNoteEditor.ts
+│   │   │   │   │   ├── index.ts
+│   │   │   │   │   └── state
+│   │   │   │   │       └── editorStore.ts
+│   │   │   │   ├── index.ts
+│   │   │   │   ├── list
+│   │   │   │   │   ├── components
+│   │   │   │   │   │   ├── NoteCard.tsx
+│   │   │   │   │   │   ├── NoteSearch.tsx
+│   │   │   │   │   │   └── NoteTree.tsx
+│   │   │   │   │   ├── hooks
+│   │   │   │   │   │   └── useNotesList.ts
+│   │   │   │   │   ├── index.ts
+│   │   │   │   │   └── state
+│   │   │   │   │       └── listStore.ts
+│   │   │   │   ├── schemas
+│   │   │   │   │   ├── index.ts
+│   │   │   │   │   └── noteSchema.ts
+│   │   │   │   ├── shared
+│   │   │   │   │   ├── components
+│   │   │   │   │   │   └── NoteStats.tsx
+│   │   │   │   │   └── index.ts
+│   │   │   │   └── versions
+│   │   │   │       ├── components
+│   │   │   │       │   └── VersionHistory.tsx
+│   │   │   │       ├── hooks
+│   │   │   │       │   └── useNoteVersions.ts
+│   │   │   │       └── index.ts
+│   │   │   ├── quizzes
+│   │   │   │   ├── components
+│   │   │   │   │   ├── QuestionCard.tsx
+│   │   │   │   │   ├── QuizBuilder.tsx
+│   │   │   │   │   ├── QuizTaker.tsx
+│   │   │   │   │   └── Results.tsx
+│   │   │   │   ├── hooks
+│   │   │   │   │   └── useQuizAttempt.ts
+│   │   │   │   ├── index.ts
+│   │   │   │   └── schemas
+│   │   │   │       ├── index.ts
+│   │   │   │       └── quizSchema.ts
+│   │   │   └── study
+│   │   │       ├── components
+│   │   │       │   ├── DueItems.tsx
+│   │   │       │   ├── Recommendations.tsx
+│   │   │       │   └── StudySession.tsx
+│   │   │       ├── hooks
+│   │   │       │   └── useStudySession.ts
+│   │   │       └── index.ts
+│   │   ├── pages
+│   │   │   ├── auth
+│   │   │   │   ├── LoginPage.tsx
+│   │   │   │   └── RegisterPage.tsx
+│   │   │   ├── chat
+│   │   │   │   ├── ARCHITECTURE.md
+│   │   │   │   ├── ChatLayout.tsx
+│   │   │   │   ├── ChatPage.tsx
+│   │   │   │   ├── ChatProviders.tsx
+│   │   │   │   ├── core
+│   │   │   │   │   ├── components
+│   │   │   │   │   │   ├── ChatConversationView.tsx
+│   │   │   │   │   │   ├── ChatInputBox.tsx
+│   │   │   │   │   │   ├── ChatMain.tsx
+│   │   │   │   │   │   ├── ChatMessage.tsx
+│   │   │   │   │   │   ├── ChatWelcomeScreen.tsx
+│   │   │   │   │   │   ├── CitationBadge.tsx
+│   │   │   │   │   │   ├── index.ts
+│   │   │   │   │   │   └── SourcesFooter.tsx
+│   │   │   │   │   ├── engine
+│   │   │   │   │   │   ├── index.ts
+│   │   │   │   │   │   ├── parseOutput.ts
+│   │   │   │   │   │   └── types.ts
+│   │   │   │   │   ├── hooks
+│   │   │   │   │   │   ├── index.ts
+│   │   │   │   │   │   ├── useChatMessages.ts
+│   │   │   │   │   │   └── useChatStreaming.ts
+│   │   │   │   │   ├── index.ts
+│   │   │   │   │   └── state
+│   │   │   │   │       ├── chatSelectors.ts
+│   │   │   │   │       ├── chatStore.ts
+│   │   │   │   │       └── index.ts
+│   │   │   │   ├── index.ts
+│   │   │   │   ├── search
+│   │   │   │   │   ├── components
+│   │   │   │   │   │   ├── HighlightedText.tsx
+│   │   │   │   │   │   ├── index.ts
+│   │   │   │   │   │   ├── JumpToDropdown.tsx
+│   │   │   │   │   │   ├── NoResultsRecovery.tsx
+│   │   │   │   │   │   ├── SearchBar.tsx
+│   │   │   │   │   │   ├── SearchHeatmap.tsx
+│   │   │   │   │   │   └── SearchResultsPanel.tsx
+│   │   │   │   │   ├── engine
+│   │   │   │   │   │   ├── buildIndex.ts
+│   │   │   │   │   │   ├── index.ts
+│   │   │   │   │   │   ├── navigateResults.ts
+│   │   │   │   │   │   ├── searchIndex.ts
+│   │   │   │   │   │   └── types.ts
+│   │   │   │   │   ├── hooks
+│   │   │   │   │   │   ├── index.ts
+│   │   │   │   │   │   ├── useConversationSearch.ts
+│   │   │   │   │   │   └── useRecentSearches.ts
+│   │   │   │   │   ├── index.ts
+│   │   │   │   │   ├── state
+│   │   │   │   │   │   ├── index.ts
+│   │   │   │   │   │   ├── searchSelectors.ts
+│   │   │   │   │   │   └── searchStore.ts
+│   │   │   │   │   ├── types.ts
+│   │   │   │   │   └── utils
+│   │   │   │   │       ├── index.ts
+│   │   │   │   │       └── scrollToOccurrence.ts
+│   │   │   │   ├── sidebar
+│   │   │   │   │   ├── components
+│   │   │   │   │   │   ├── ChatSidebar.tsx
+│   │   │   │   │   │   └── index.ts
+│   │   │   │   │   ├── engine
+│   │   │   │   │   │   ├── index.ts
+│   │   │   │   │   │   └── types.ts
+│   │   │   │   │   ├── hooks
+│   │   │   │   │   │   ├── index.ts
+│   │   │   │   │   │   └── useChatSessions.ts
+│   │   │   │   │   ├── index.ts
+│   │   │   │   │   └── state
+│   │   │   │   │       ├── index.ts
+│   │   │   │   │       ├── sidebarSelectors.ts
+│   │   │   │   │       └── sidebarStore.ts
+│   │   │   │   └── voice
+│   │   │   │       ├── components
+│   │   │   │       │   ├── AudioVisualizer.tsx
+│   │   │   │       │   ├── index.ts
+│   │   │   │       │   └── LiveVoiceOverlay.tsx
+│   │   │   │       ├── engine
+│   │   │   │       │   ├── index.ts
+│   │   │   │       │   └── types.ts
+│   │   │   │       ├── hooks
+│   │   │   │       │   ├── index.ts
+│   │   │   │       │   └── useLiveVoice.ts
+│   │   │   │       ├── index.ts
+│   │   │   │       └── state
+│   │   │   │           ├── index.ts
+│   │   │   │           ├── voiceSelectors.ts
+│   │   │   │           └── voiceStore.ts
+│   │   │   ├── dashboard
+│   │   │   │   ├── activity
+│   │   │   │   │   ├── components
+│   │   │   │   │   │   ├── ActivityFeed.tsx
+│   │   │   │   │   │   ├── ActivityHeatmap.tsx
+│   │   │   │   │   │   ├── ActivityItem.tsx
+│   │   │   │   │   │   ├── ActivitySparkline.tsx
+│   │   │   │   │   │   ├── index.ts
+│   │   │   │   │   │   └── RecentContent.tsx
+│   │   │   │   │   ├── hooks
+│   │   │   │   │   │   ├── index.ts
+│   │   │   │   │   │   ├── useActivityData.ts
+│   │   │   │   │   │   ├── useRecentContent.ts
+│   │   │   │   │   │   └── useSessionTracking.ts
+│   │   │   │   │   ├── index.ts
+│   │   │   │   │   ├── state
+│   │   │   │   │   │   ├── activityStore.ts
+│   │   │   │   │   │   └── index.ts
+│   │   │   │   │   └── utils
+│   │   │   │   │       └── sessionDetector.ts
+│   │   │   │   ├── ARCHITECTURE.md
+│   │   │   │   ├── assistant
+│   │   │   │   │   ├── components
+│   │   │   │   │   │   ├── ActionResultCard.tsx
+│   │   │   │   │   │   ├── AssistantHeader.tsx
+│   │   │   │   │   │   ├── AssistantInput.tsx
+│   │   │   │   │   │   ├── AssistantMessages.tsx
+│   │   │   │   │   │   ├── AssistantQuickActions.tsx
+│   │   │   │   │   │   ├── AssistantSidebar.tsx
+│   │   │   │   │   │   ├── DashboardAssistant.tsx
+│   │   │   │   │   │   └── index.ts
+│   │   │   │   │   ├── hooks
+│   │   │   │   │   │   ├── index.ts
+│   │   │   │   │   │   └── useAssistant.ts
+│   │   │   │   │   ├── index.ts
+│   │   │   │   │   └── state
+│   │   │   │   │       ├── assistantStore.ts
+│   │   │   │   │       └── index.ts
+│   │   │   │   ├── charts
+│   │   │   │   │   ├── components
+│   │   │   │   │   │   ├── ActivityGraph.tsx
+│   │   │   │   │   │   ├── index.ts
+│   │   │   │   │   │   ├── MasteryChart.tsx
+│   │   │   │   │   │   ├── PerformanceChart.tsx
+│   │   │   │   │   │   └── StudyHeatmap.tsx
+│   │   │   │   │   ├── hooks
+│   │   │   │   │   │   ├── index.ts
+│   │   │   │   │   │   └── useChartsData.ts
+│   │   │   │   │   ├── index.ts
+│   │   │   │   │   └── state
+│   │   │   │   │       ├── chartsStore.ts
+│   │   │   │   │       └── index.ts
+│   │   │   │   ├── core
+│   │   │   │   │   ├── DashboardProviders.tsx
+│   │   │   │   │   ├── engine
+│   │   │   │   │   │   ├── index.ts
+│   │   │   │   │   │   └── types.ts
+│   │   │   │   │   ├── hooks
+│   │   │   │   │   │   ├── index.ts
+│   │   │   │   │   │   └── useDashboardContext.ts
+│   │   │   │   │   ├── index.ts
+│   │   │   │   │   └── state
+│   │   │   │   │       ├── dashboardStore.ts
+│   │   │   │   │       └── index.ts
+│   │   │   │   ├── DashboardPage.tsx
+│   │   │   │   ├── hooks
+│   │   │   │   ├── index.ts
+│   │   │   │   ├── insights
+│   │   │   │   │   ├── components
+│   │   │   │   │   │   ├── index.ts
+│   │   │   │   │   │   └── WeakAreasList.tsx
+│   │   │   │   │   ├── engine
+│   │   │   │   │   │   ├── computeWeakAreas.ts
+│   │   │   │   │   │   ├── generateContextInsights.ts
+│   │   │   │   │   │   ├── generateMilestones.ts
+│   │   │   │   │   │   ├── index.ts
+│   │   │   │   │   │   ├── suggestNextActions.ts
+│   │   │   │   │   │   └── types.ts
+│   │   │   │   │   ├── hooks
+│   │   │   │   │   │   ├── index.ts
+│   │   │   │   │   │   └── useInsights.ts
+│   │   │   │   │   ├── index.ts
+│   │   │   │   │   └── state
+│   │   │   │   │       ├── index.ts
+│   │   │   │   │       └── insightsStore.ts
+│   │   │   │   ├── metrics
+│   │   │   │   │   ├── components
+│   │   │   │   │   │   ├── index.ts
+│   │   │   │   │   │   ├── StatCard.tsx
+│   │   │   │   │   │   ├── StatusCard.tsx
+│   │   │   │   │   │   └── StreakCard.tsx
+│   │   │   │   │   ├── hooks
+│   │   │   │   │   │   ├── index.ts
+│   │   │   │   │   │   └── useMetrics.ts
+│   │   │   │   │   └── index.ts
+│   │   │   │   ├── styles
+│   │   │   │   │   ├── animations.css
+│   │   │   │   │   └── graph.css
+│   │   │   │   └── utils
+│   │   │   ├── documents
+│   │   │   │   ├── core
+│   │   │   │   │   ├── engine
+│   │   │   │   │   │   ├── index.ts
+│   │   │   │   │   │   ├── lifecycle.ts
+│   │   │   │   │   │   └── types.ts
+│   │   │   │   │   ├── hooks
+│   │   │   │   │   │   ├── index.ts
+│   │   │   │   │   │   └── useSelectDocument.ts
+│   │   │   │   │   ├── index.ts
+│   │   │   │   │   └── state
+│   │   │   │   │       ├── documentSelectors.ts
+│   │   │   │   │       ├── documentStore.ts
+│   │   │   │   │       └── index.ts
+│   │   │   │   ├── DocumentsPage.tsx
+│   │   │   │   ├── index.ts
+│   │   │   │   ├── list
+│   │   │   │   │   ├── components
+│   │   │   │   │   │   ├── DocumentCard.tsx
+│   │   │   │   │   │   ├── DocumentGrid.tsx
+│   │   │   │   │   │   ├── DocumentTable.tsx
+│   │   │   │   │   │   └── index.ts
+│   │   │   │   │   ├── hooks
+│   │   │   │   │   │   ├── index.ts
+│   │   │   │   │   │   ├── useDocuments.ts
+│   │   │   │   │   │   └── useThumbnails.ts
+│   │   │   │   │   ├── index.ts
+│   │   │   │   │   └── state
+│   │   │   │   │       ├── index.ts
+│   │   │   │   │       └── listStore.ts
+│   │   │   │   ├── shared
+│   │   │   │   │   ├── components
+│   │   │   │   │   │   ├── DocumentStats.tsx
+│   │   │   │   │   │   ├── FilterBar.tsx
+│   │   │   │   │   │   └── index.ts
+│   │   │   │   │   ├── index.ts
+│   │   │   │   │   └── utils
+│   │   │   │   │       ├── chunkProcessing.ts
+│   │   │   │   │       └── index.ts
+│   │   │   │   ├── upload
+│   │   │   │   │   ├── components
+│   │   │   │   │   │   ├── DuplicateConflictModal.tsx
+│   │   │   │   │   │   ├── FileValidator.tsx
+│   │   │   │   │   │   ├── index.ts
+│   │   │   │   │   │   ├── UploadArea.tsx
+│   │   │   │   │   │   └── UploadProgress.tsx
+│   │   │   │   │   ├── engine
+│   │   │   │   │   │   ├── index.ts
+│   │   │   │   │   │   └── validation.ts
+│   │   │   │   │   ├── hooks
+│   │   │   │   │   │   ├── index.ts
+│   │   │   │   │   │   └── useDocumentUpload.ts
+│   │   │   │   │   ├── index.ts
+│   │   │   │   │   └── state
+│   │   │   │   │       ├── index.ts
+│   │   │   │   │       └── uploadStore.ts
+│   │   │   │   └── viewer
+│   │   │   │       ├── components
+│   │   │   │       │   ├── ChunkExplorer.tsx
+│   │   │   │       │   ├── DocumentViewer.tsx
+│   │   │   │       │   ├── DOCXViewer.tsx
+│   │   │   │       │   ├── EPUBViewer.tsx
+│   │   │   │       │   ├── HTMLViewer.tsx
+│   │   │   │       │   ├── index.ts
+│   │   │   │       │   ├── MarkdownViewer.tsx
+│   │   │   │       │   ├── PDFViewer.tsx
+│   │   │   │       │   ├── ProcessingStatus.tsx
+│   │   │   │       │   ├── SpreadsheetViewer.tsx
+│   │   │   │       │   ├── TextViewer.tsx
+│   │   │   │       │   └── ThemeSelector.tsx
+│   │   │   │       ├── hooks
+│   │   │   │       │   ├── index.ts
+│   │   │   │       │   └── useDocumentViewer.ts
+│   │   │   │       ├── index.ts
+│   │   │   │       └── state
+│   │   │   │           ├── index.ts
+│   │   │   │           └── viewerStore.ts
+│   │   │   ├── flashcards
+│   │   │   │   ├── components
+│   │   │   │   │   └── ImportModal.tsx
+│   │   │   │   ├── core
+│   │   │   │   │   ├── engine
+│   │   │   │   │   │   ├── index.ts
+│   │   │   │   │   │   ├── scheduling.ts
+│   │   │   │   │   │   └── types.ts
+│   │   │   │   │   ├── hooks
+│   │   │   │   │   │   ├── index.ts
+│   │   │   │   │   │   └── useActiveDeck.ts
+│   │   │   │   │   ├── index.ts
+│   │   │   │   │   └── state
+│   │   │   │   │       ├── flashcardSelectors.ts
+│   │   │   │   │       ├── flashcardStore.ts
+│   │   │   │   │       └── index.ts
+│   │   │   │   ├── create
+│   │   │   │   │   ├── components
+│   │   │   │   │   │   ├── DeckCreator.tsx
+│   │   │   │   │   │   ├── FlashcardEditor.tsx
+│   │   │   │   │   │   └── index.ts
+│   │   │   │   │   ├── engine
+│   │   │   │   │   │   ├── generator.ts
+│   │   │   │   │   │   └── index.ts
+│   │   │   │   │   ├── hooks
+│   │   │   │   │   │   ├── index.ts
+│   │   │   │   │   │   └── useFlashcardGenerator.ts
+│   │   │   │   │   └── index.ts
+│   │   │   │   ├── CreateCardPage.tsx
+│   │   │   │   ├── CreateDeckPage.tsx
+│   │   │   │   ├── DeckDetailPage.tsx
+│   │   │   │   ├── EditCardPage.tsx
+│   │   │   │   ├── FlashcardsPage.tsx
+│   │   │   │   ├── index.ts
+│   │   │   │   ├── list
+│   │   │   │   │   ├── components
+│   │   │   │   │   │   ├── DeckCard.tsx
+│   │   │   │   │   │   ├── DeckGrid.tsx
+│   │   │   │   │   │   ├── DeckTable.tsx
+│   │   │   │   │   │   └── index.ts
+│   │   │   │   │   ├── hooks
+│   │   │   │   │   │   ├── index.ts
+│   │   │   │   │   │   └── useDecks.ts
+│   │   │   │   │   ├── index.ts
+│   │   │   │   │   └── state
+│   │   │   │   │       ├── deckListStore.ts
+│   │   │   │   │       └── index.ts
+│   │   │   │   ├── ReviewPage.tsx
+│   │   │   │   ├── shared
+│   │   │   │   │   ├── components
+│   │   │   │   │   │   ├── DarkCard.tsx
+│   │   │   │   │   │   ├── EmptyState.tsx
+│   │   │   │   │   │   └── index.ts
+│   │   │   │   │   └── index.ts
+│   │   │   │   └── study
+│   │   │   │       ├── components
+│   │   │   │       │   ├── AnswerReveal.tsx
+│   │   │   │       │   ├── AuroraBackground.tsx
+│   │   │   │       │   ├── FlashcardView.tsx
+│   │   │   │       │   ├── index.ts
+│   │   │   │       │   └── RatingControls.tsx
+│   │   │   │       ├── hooks
+│   │   │   │       │   ├── index.ts
+│   │   │   │       │   ├── useStudySession.ts
+│   │   │   │       │   └── useStudyShortcuts.ts
+│   │   │   │       ├── index.ts
+│   │   │   │       └── state
+│   │   │   │           ├── index.ts
+│   │   │   │           └── studyStore.ts
+│   │   │   ├── knowledge
+│   │   │   │   ├── components
+│   │   │   │   │   ├── KnowledgeGraph.tsx
+│   │   │   │   │   ├── KnowledgeSidebar.tsx
+│   │   │   │   │   └── NodeDetailsPanel.tsx
+│   │   │   │   ├── hooks
+│   │   │   │   │   └── useKnowledgeGraph.ts
+│   │   │   │   ├── index.ts
+│   │   │   │   ├── KnowledgeGraphPage.tsx
+│   │   │   │   └── types.ts
+│   │   │   ├── notes
+│   │   │   │   ├── index.ts
+│   │   │   │   ├── NoteDetailPage.tsx
+│   │   │   │   └── NotesPage.tsx
+│   │   │   ├── NotFoundPage.tsx
+│   │   │   ├── quizzes
+│   │   │   │   ├── components
+│   │   │   │   │   ├── builder
+│   │   │   │   │   │   ├── QuestionEditor.tsx
+│   │   │   │   │   │   ├── QuestionTypeSelector.tsx
+│   │   │   │   │   │   └── QuizBuilder.tsx
+│   │   │   │   │   ├── list
+│   │   │   │   │   │   ├── QuizCard.tsx
+│   │   │   │   │   │   ├── QuizFilters.tsx
+│   │   │   │   │   │   └── QuizGrid.tsx
+│   │   │   │   │   ├── results
+│   │   │   │   │   │   ├── PerformanceChart.tsx
+│   │   │   │   │   │   ├── QuestionReview.tsx
+│   │   │   │   │   │   ├── QuizResultsView.tsx
+│   │   │   │   │   │   └── ResultsSummary.tsx
+│   │   │   │   │   ├── shared
+│   │   │   │   │   │   └── QuizStats.tsx
+│   │   │   │   │   └── taker
+│   │   │   │   │       ├── AnswerOptions.tsx
+│   │   │   │   │       ├── QuestionCard.tsx
+│   │   │   │   │       ├── QuizProgress.tsx
+│   │   │   │   │       └── QuizTimer.tsx
+│   │   │   │   ├── hooks
+│   │   │   │   │   ├── useQuizAttempt.ts
+│   │   │   │   │   ├── useQuizBuilder.ts
+│   │   │   │   │   └── useQuizzes.ts
+│   │   │   │   ├── index.ts
+│   │   │   │   ├── QuizTakePage.tsx
+│   │   │   │   ├── QuizzesPage.tsx
+│   │   │   │   ├── types
+│   │   │   │   │   └── quizzes.types.ts
+│   │   │   │   └── utils
+│   │   │   │       ├── questionValidator.ts
+│   │   │   │       └── quizScoring.ts
+│   │   │   └── study
+│   │   │       ├── components
+│   │   │       │   ├── queue
+│   │   │       │   │   ├── DueItems.tsx
+│   │   │       │   │   ├── ItemCard.tsx
+│   │   │       │   │   └── PriorityIndicator.tsx
+│   │   │       │   ├── recommendations
+│   │   │       │   │   ├── LearningPath.tsx
+│   │   │       │   │   ├── RecommendationCard.tsx
+│   │   │       │   │   ├── Recommendations.tsx
+│   │   │       │   │   └── SuggestedTopics.tsx
+│   │   │       │   ├── session
+│   │   │       │   │   ├── SessionControls.tsx
+│   │   │       │   │   ├── SessionTimer.tsx
+│   │   │       │   │   └── StudySession.tsx
+│   │   │       │   └── shared
+│   │   │       │       ├── StreakIndicator.tsx
+│   │   │       │       └── StudyStats.tsx
+│   │   │       ├── hooks
+│   │   │       │   ├── useDueItems.ts
+│   │   │       │   ├── useRecommendations.ts
+│   │   │       │   └── useStudySession.ts
+│   │   │       ├── index.ts
+│   │   │       ├── StudyPage.tsx
+│   │   │       ├── types
+│   │   │       │   └── study.types.ts
+│   │   │       └── utils
+│   │   │           ├── priorityEngine.ts
+│   │   │           └── sessionScheduler.ts
+│   │   ├── router.tsx
+│   │   ├── services
+│   │   │   └── noteAI.service.ts
+│   │   ├── shared
+│   │   │   └── rendering
+│   │   │       ├── components
+│   │   │       │   ├── CodeBlock.tsx
+│   │   │       │   ├── ExpandableBlock.tsx
+│   │   │       │   ├── index.ts
+│   │   │       │   ├── LatexBlock.tsx
+│   │   │       │   └── MermaidBlock.tsx
+│   │   │       ├── index.ts
+│   │   │       ├── MarkdownRenderer.tsx
+│   │   │       └── schema
+│   │   │           ├── index.ts
+│   │   │           └── outputBlocks.ts
+│   │   ├── stores
+│   │   │   ├── authStore.ts
+│   │   │   ├── notificationStore.ts
+│   │   │   ├── preferencesStore.ts
+│   │   │   ├── themeStore.ts
+│   │   │   └── uiStore.ts
+│   │   ├── styles
+│   │   │   ├── animations.css
+│   │   │   ├── glass.css
+│   │   │   ├── globals-chat.css
+│   │   │   ├── globals.css
+│   │   │   ├── markdown.css
+│   │   │   ├── neumorphic.css
+│   │   │   ├── scrollbar.css
+│   │   │   └── synapse-theme.css
+│   │   └── types
+│   │       ├── env.d.ts
+│   │       └── index.ts
+│   ├── tailwind.config.ts
+│   ├── tsconfig.json
+│   ├── tsconfig.node.json
+│   ├── type_check_output.txt
+│   └── vite.config.ts
+├── Makefile
+├── QUICKSTART.md
+├── README.md
+├── scripts
+│   ├── dev-start.sh
+│   └── health-check.sh
+└── structure.txt
+
+370 directories, 1594 files

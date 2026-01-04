@@ -1,13 +1,24 @@
 /**
- * Quizzes Module - Barrel Export
- * Public API for quizzes module
+ * Quizzes Module - Public API
+ *
+ * This is the entry point for the quizzes learning engine.
+ * Import from here, not from submodules directly.
  */
 
-// Components
-export { QuestionCard } from "./components/QuestionCard";
-export { QuizBuilder } from "./components/QuizBuilder";
-export { QuizTaker } from "./components/QuizTaker";
-export { Results } from "./components/Results";
+// Core (types, constants, lifecycle)
+export * from "./core";
 
-// Hooks
-export { useQuizAttempt } from "./hooks/useQuizAttempt";
+// Hub (discovery, creation)
+export { QuizHub, QuizCard, QuizGenerator, useQuizHub } from "./hub";
+
+// Attempt (active quiz engine)
+export { QuizSession, useQuizAttempt, ProgressBar, QuestionRenderer } from "./attempt";
+
+// Results (post-attempt)
+export {
+    QuizResults,
+    ResultsSummary,
+    QuestionReview,
+    AIInsights,
+    useQuizResults,
+} from "./results";

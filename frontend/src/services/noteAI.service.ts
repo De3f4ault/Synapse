@@ -47,6 +47,7 @@ export class NoteAIService {
         await ChatService.sendMessageApiV1ChatSessionsSessionIdMessagesPost(
           sessionId,
           {
+            session_id: sessionId,
             content: prompt,
           },
         );

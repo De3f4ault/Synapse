@@ -6,6 +6,8 @@
  * No React, no DOM, no side-effects.
  */
 
+import type { EntityIdentity } from "@/shared/core/entity";
+
 /**
  * WebSocket connection states
  */
@@ -58,6 +60,7 @@ export interface ChatMessage {
     model_used: string | null;
     function_calls: unknown | null;
     grounding_sources: GroundingSource[] | null;
+    entities?: EntityIdentity[];
     created_at: string;
 }
 

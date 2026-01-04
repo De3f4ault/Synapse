@@ -11,7 +11,6 @@ import { Badge } from "@/components/ui/badge";
 import { AlertCircle, Sparkles, Clock } from "lucide-react";
 import type { StudyPriority } from "../../types/study.types";
 import {
-  getPriorityColor,
   getPriorityBadgeVariant,
 } from "../../utils/priorityEngine";
 

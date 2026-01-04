@@ -2,6 +2,7 @@
 Global error handling middleware.
 Catches all unhandled exceptions and returns formatted error responses.
 """
+
 import traceback
 from typing import Union
 
@@ -17,10 +18,7 @@ from app.utils.logging import get_logger
 logger = get_logger(__name__)
 
 
-async def global_exception_handler(
-    request: Request,
-    exc: Exception
-) -> JSONResponse:
+async def global_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     """
     Global exception handler for all unhandled exceptions.
 
@@ -59,15 +57,24 @@ async def global_exception_handler(
             path=request.url.path,
         )
 
+        # Convert errors to JSON-safe format (exclude 'input' which may have datetime objects)
+        safe_errors = []
+        for err in exc.errors():
+            safe_err = {
+                "type": err.get("type"),
+                "loc": err.get("loc"),
+                "msg": err.get("msg"),
+                "url": err.get("url"),
+            }
+            safe_errors.append(safe_err)
+
         return JSONResponse(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             content={
                 "error": {
                     "code": "VALIDATION_ERROR",
                     "message": "Request validation failed",
-                    "details": {
-                        "validation_errors": exc.errors()
-                    }
+                    "details": {"validation_errors": safe_errors},
                 }
             },
         )
@@ -89,7 +96,7 @@ async def global_exception_handler(
             "error": {
                 "code": "INTERNAL_ERROR",
                 "message": "An internal error occurred",
-                "details": {}
+                "details": {},
             }
         }
     else:
@@ -98,10 +105,7 @@ async def global_exception_handler(
             "error": {
                 "code": "INTERNAL_ERROR",
                 "message": str(exc),
-                "details": {
-                    "type": type(exc).__name__,
-                    "traceback": traceback.format_exc()
-                }
+                "details": {"type": type(exc).__name__, "traceback": traceback.format_exc()},
             }
         }
 

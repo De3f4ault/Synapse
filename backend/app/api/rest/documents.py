@@ -7,10 +7,12 @@ Complete implementation with background processing task triggers.
 
 import os
 import uuid
+import hashlib
+import enum
 from typing import List, Optional
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_
+from sqlalchemy import select, and_, func
 from pydantic import BaseModel
 from datetime import datetime
 import logging
@@ -122,6 +124,26 @@ class MessageResponse(BaseModel):
     message: str
 
 
+# Duplicate Detection Models
+class ConflictType(str, enum.Enum):
+    """Types of document conflicts during upload."""
+
+    EXACT_DUPLICATE = "exact_duplicate"  # Same hash + same filename
+    SAME_CONTENT = "same_content"  # Same hash, different filename
+    SAME_FILENAME = "same_filename"  # Different hash, same filename
+
+
+class DuplicateConflictResponse(BaseModel):
+    """Response returned when a duplicate document is detected (409 Conflict)."""
+
+    conflict_type: ConflictType
+    existing_document_id: int
+    existing_filename: str
+    existing_file_size: int
+    existing_uploaded_at: datetime
+    message: str
+
+
 # ============================================================================
 # Helper Functions
 # ============================================================================
@@ -165,14 +187,15 @@ def generate_upload_path(user_id: int, filename: str) -> str:
     return os.path.join(UPLOAD_DIR, unique_filename)
 
 
-async def save_uploaded_file(file: UploadFile, filepath: str) -> int:
+async def save_uploaded_file(file: UploadFile, filepath: str) -> tuple[int, str]:
     """
-    Save uploaded file to disk.
+    Save uploaded file to disk while computing SHA256 hash.
 
     Returns:
-        int: File size in bytes
+        tuple[int, str]: (file_size_in_bytes, sha256_content_hash)
     """
     total_size = 0
+    sha256_hash = hashlib.sha256()
 
     with open(filepath, "wb") as f:
         while chunk := await file.read(8192):  # 8KB chunks
@@ -185,9 +208,10 @@ async def save_uploaded_file(file: UploadFile, filepath: str) -> int:
                     detail=f"File too large. Maximum size: {MAX_FILE_SIZE / 1024 / 1024}MB",
                 )
             f.write(chunk)
+            sha256_hash.update(chunk)  # Compute hash during streaming
             total_size += len(chunk)
 
-    return total_size
+    return total_size, sha256_hash.hexdigest()
 
 
 def generate_thumbnail(file_path: str, mime_type: str = "application/pdf") -> Optional[str]:
@@ -406,7 +430,13 @@ async def upload_document(
     3. Embedding generation
     4. Vector indexing
     5. Gemini Files API upload (if applicable)
+
+    Returns 409 Conflict with DuplicateConflictResponse if:
+    - Same content hash exists (exact duplicate or same content)
+    - Same filename exists (different content, same name)
     """
+    from fastapi.responses import JSONResponse
+
     # Validate file
     is_valid, error_msg = validate_file(file)
     if not is_valid:
@@ -415,9 +445,9 @@ async def upload_document(
     # Generate upload path
     filepath = generate_upload_path(current_user.id, file.filename)
 
-    # Save file
+    # Save file and compute SHA256 hash during streaming
     try:
-        file_size = await save_uploaded_file(file, filepath)
+        file_size, content_hash = await save_uploaded_file(file, filepath)
     except HTTPException:
         raise
     except Exception as e:
@@ -426,7 +456,81 @@ async def upload_document(
             detail=f"Failed to save file: {str(e)}",
         )
 
-    # Create document record
+    # Check for content hash collision (exact duplicate or same content)
+    hash_collision_result = await db.execute(
+        select(Document).where(
+            and_(
+                Document.content_hash == content_hash,
+                Document.user_id == current_user.id,
+                Document.deleted_at.is_(None),
+            )
+        )
+    )
+    hash_collision_doc = hash_collision_result.scalars().first()
+
+    # Check for filename collision (case-insensitive)
+    filename_collision_result = await db.execute(
+        select(Document).where(
+            and_(
+                func.lower(Document.filename) == file.filename.lower(),
+                Document.user_id == current_user.id,
+                Document.deleted_at.is_(None),
+            )
+        )
+    )
+    filename_collision_doc = filename_collision_result.scalars().first()
+
+    # Determine conflict type
+    if (
+        hash_collision_doc
+        and filename_collision_doc
+        and hash_collision_doc.id == filename_collision_doc.id
+    ):
+        # Exact duplicate: same hash + same filename
+        os.remove(filepath)  # Clean up uploaded file
+        conflict = DuplicateConflictResponse(
+            conflict_type=ConflictType.EXACT_DUPLICATE,
+            existing_document_id=hash_collision_doc.id,
+            existing_filename=hash_collision_doc.filename,
+            existing_file_size=hash_collision_doc.file_size,
+            existing_uploaded_at=hash_collision_doc.created_at,
+            message=f"This exact file '{file.filename}' already exists in your library.",
+        )
+        return JSONResponse(
+            status_code=status.HTTP_409_CONFLICT, content=conflict.model_dump(mode="json")
+        )
+
+    elif hash_collision_doc:
+        # Same content, different filename
+        os.remove(filepath)  # Clean up uploaded file
+        conflict = DuplicateConflictResponse(
+            conflict_type=ConflictType.SAME_CONTENT,
+            existing_document_id=hash_collision_doc.id,
+            existing_filename=hash_collision_doc.filename,
+            existing_file_size=hash_collision_doc.file_size,
+            existing_uploaded_at=hash_collision_doc.created_at,
+            message=f"This file's content already exists as '{hash_collision_doc.filename}'.",
+        )
+        return JSONResponse(
+            status_code=status.HTTP_409_CONFLICT, content=conflict.model_dump(mode="json")
+        )
+
+    elif filename_collision_doc:
+        # Different content, same filename
+        os.remove(filepath)  # Clean up uploaded file
+        conflict = DuplicateConflictResponse(
+            conflict_type=ConflictType.SAME_FILENAME,
+            existing_document_id=filename_collision_doc.id,
+            existing_filename=filename_collision_doc.filename,
+            existing_file_size=filename_collision_doc.file_size,
+            existing_uploaded_at=filename_collision_doc.created_at,
+            message=f"A different document named '{file.filename}' already exists.",
+        )
+        return JSONResponse(
+            status_code=status.HTTP_409_CONFLICT, content=conflict.model_dump(mode="json")
+        )
+
+    # No conflict - create document record
     file_type = get_file_extension(file.filename)[1:]  # Remove leading dot
 
     new_document = Document(
@@ -435,6 +539,7 @@ async def upload_document(
         file_path=filepath,
         file_type=file_type,
         file_size=file_size,
+        content_hash=content_hash,
         processing_status=ProcessingStatus.PENDING,
     )
 
@@ -569,11 +674,11 @@ async def get_document(
 )
 async def delete_document(
     document_id: int,
-    delete_file: bool = Query(False, description="Also delete physical file from storage"),
+    keep_file: bool = Query(False, description="Keep physical file on disk (default: delete it)"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Delete a document (soft delete with optional physical cleanup)."""
+    """Delete a document (soft delete + physical cleanup by default)."""
     result = await db.execute(
         select(Document).where(
             and_(
@@ -600,11 +705,120 @@ async def delete_document(
     # Delete from Gemini Files API if applicable
     await cleanup_gemini_file(doc)
 
-    # Optionally delete physical file
-    if delete_file:
+    # Delete physical file unless explicitly kept
+    if not keep_file:
         await cleanup_physical_file(doc.file_path)
+        # Clean up thumbnail if it exists
+        await cleanup_physical_file(f"{doc.file_path}_thumb.png")
 
     return MessageResponse(message="Document deleted successfully")
+
+
+@router.put(
+    "/{document_id}/replace",
+    response_model=DocumentResponse,
+    summary="Replace document",
+    description="Replace an existing document's file while preserving its ID and metadata",
+)
+async def replace_document(
+    document_id: int,
+    file: UploadFile = File(..., description="New document file"),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Replace an existing document's content while preserving its ID.
+
+    This endpoint:
+    1. Validates the new file
+    2. Computes new content hash
+    3. Updates the document record
+    4. Cleans up old file and downstream indexes
+    5. Triggers reprocessing
+    """
+    # Get existing document
+    result = await db.execute(
+        select(Document).where(
+            and_(
+                Document.id == document_id,
+                Document.user_id == current_user.id,
+                Document.deleted_at.is_(None),
+            )
+        )
+    )
+    doc = result.scalar_one_or_none()
+
+    if not doc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
+
+    # Validate new file
+    is_valid, error_msg = validate_file(file)
+    if not is_valid:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error_msg)
+
+    # Save new file
+    new_filepath = generate_upload_path(current_user.id, file.filename)
+    try:
+        file_size, content_hash = await save_uploaded_file(file, new_filepath)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to save file: {str(e)}",
+        )
+
+    # Store old file path for cleanup
+    old_filepath = doc.file_path
+
+    # Update document record
+    doc.filename = file.filename
+    doc.file_path = new_filepath
+    doc.file_type = get_file_extension(file.filename)[1:]
+    doc.file_size = file_size
+    doc.content_hash = content_hash
+    doc.processing_status = ProcessingStatus.PENDING
+    doc.gemini_file_uri = None
+    doc.gemini_file_expires_at = None
+    doc.content_text = None  # Clear cached text
+    doc.page_count = None
+    doc.word_count = None
+    doc.ai_summary = None
+
+    await db.commit()
+    await db.refresh(doc)
+
+    logger.info(f"Document replaced: {document_id} with {file.filename} by user {current_user.id}")
+
+    # Clean up old file
+    await cleanup_physical_file(old_filepath)
+    # Clean up old thumbnail if it exists
+    await cleanup_physical_file(f"{old_filepath}_thumb.png")
+
+    # Clean up old vector embeddings
+    await cleanup_document_vectors(document_id, current_user.id)
+
+    # Clean up old Gemini file
+    await cleanup_gemini_file(doc)
+
+    # Trigger reprocessing
+    await trigger_document_processing(document_id)
+
+    return DocumentResponse(
+        id=doc.id,
+        filename=doc.filename,
+        file_type=doc.file_type,
+        file_size=doc.file_size,
+        processing_status=doc.processing_status,
+        page_count=doc.page_count,
+        word_count=doc.word_count,
+        ocr_performed=doc.ocr_performed,
+        gemini_file_uri=doc.gemini_file_uri,
+        gemini_file_expired=doc.gemini_file_expired,
+        user_id=doc.user_id,
+        created_at=doc.created_at,
+        updated_at=doc.updated_at,
+    )
 
 
 @router.get(

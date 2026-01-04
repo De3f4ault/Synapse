@@ -106,7 +106,9 @@ class Flashcard(Base, TimestampMixin, SoftDeleteMixin):
 
     # Learning State
     learning_state: Mapped[LearningState] = mapped_column(
-        SQLEnum(LearningState, native_enum=False),
+        SQLEnum(
+            LearningState, native_enum=False, values_callable=lambda obj: [e.value for e in obj]
+        ),
         default=LearningState.NEW,
         nullable=False,
         doc="Current learning state of the card",

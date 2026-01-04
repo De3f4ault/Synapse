@@ -1,15 +1,17 @@
 /**
  * StudySession - Main study session component
+ * 
+ * Integrates with graph decay engine for memory reinforcement.
  */
 
-import { X, Brain, FileQuestion, BookOpen, Clock, Play } from "lucide-react";
+import { X, Brain, FileQuestion, BookOpen, Clock, Play, TrendingUp, TrendingDown, Sparkles } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useStudySession } from "../../hooks/useStudySession";
+import { useReviewReinforcement } from "../../hooks/useReviewReinforcement";
 import { SessionTimer } from "./SessionTimer";
 import type {
   StudyItem,
   StudySessionResponse,
-  StudySessionType,
 } from "../../types/study.types";
 import { cn } from "@/lib/utils";
 
@@ -37,6 +39,29 @@ export function StudySession({
     resumeSession,
     cancelSession,
   } = useStudySession(items);
+
+  // Graph reinforcement integration
+  const {
+    reinforceCorrect,
+    reinforceIncorrect,
+    sessionStats: graphStats,
+  } = useReviewReinforcement();
+
+  // Wrapped answer handler with graph reinforcement
+  const handleAnswerWithReinforcement = (isCorrect: boolean) => {
+    const item = currentItem;
+    if (!item) return;
+
+    // 1. Update local session state
+    handleAnswer(isCorrect);
+
+    // 2. Update graph (after API implicit in handleAnswer)
+    if (isCorrect) {
+      reinforceCorrect(item);
+    } else {
+      reinforceIncorrect(item);
+    }
+  };
 
   // Handle session completion
   if (session.status === "completed") {
@@ -71,7 +96,7 @@ export function StudySession({
           </p>
         </div>
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 w-full max-w-2xl mb-8">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 w-full max-w-2xl mb-6">
           <StatCard
             label="Completed"
             value={session.stats.completedItems}
@@ -93,6 +118,50 @@ export function StudySession({
             color="cyan"
           />
         </div>
+
+        {/* Graph Intelligence Stats */}
+        {(graphStats.strengthened > 0 || graphStats.weakened > 0) && (
+          <div className="w-full max-w-2xl mb-8">
+            <div className="flex items-center gap-2 mb-3">
+              <Sparkles size={14} className="text-purple-400" />
+              <span className="text-xs uppercase tracking-wider text-slate-500 font-bold">
+                Memory Intelligence
+              </span>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {graphStats.strengthened > 0 && (
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-emerald-500/5 border border-emerald-500/10">
+                  <div className="p-2 rounded-lg bg-emerald-500/10">
+                    <TrendingUp size={16} className="text-emerald-400" />
+                  </div>
+                  <div>
+                    <div className="text-lg font-bold text-emerald-400">
+                      {graphStats.strengthened}
+                    </div>
+                    <div className="text-[10px] text-slate-500 uppercase tracking-wider">
+                      Strengthened
+                    </div>
+                  </div>
+                </div>
+              )}
+              {graphStats.weakened > 0 && (
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-amber-500/5 border border-amber-500/10">
+                  <div className="p-2 rounded-lg bg-amber-500/10">
+                    <TrendingDown size={16} className="text-amber-400" />
+                  </div>
+                  <div>
+                    <div className="text-lg font-bold text-amber-400">
+                      {graphStats.weakened}
+                    </div>
+                    <div className="text-[10px] text-slate-500 uppercase tracking-wider">
+                      Needs Practice
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         <div className="flex gap-4">
           <button
@@ -230,14 +299,14 @@ export function StudySession({
               </button>
               <div className="flex gap-2">
                 <button
-                  onClick={() => handleAnswer(false)}
+                  onClick={() => handleAnswerWithReinforcement(false)}
                   className="flex-1 synapse-button hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/30 justify-center py-4 text-xs"
                   disabled={session.status === "paused"}
                 >
                   Incorrect
                 </button>
                 <button
-                  onClick={() => handleAnswer(true)}
+                  onClick={() => handleAnswerWithReinforcement(true)}
                   className="flex-1 synapse-button-primary justify-center py-4 flex items-center gap-2"
                   disabled={session.status === "paused"}
                 >

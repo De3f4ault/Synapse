@@ -76,6 +76,17 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.warning("sql_functions_load_failed", error=str(e))
 
+        # ==================== INITIALIZE PLATFORM ====================
+        try:
+            from app.platform import init_platform
+
+            init_platform()
+            logger.info(
+                "platform_initialized", modules=["notes", "documents", "flashcards", "quizzes"]
+            )
+        except Exception as e:
+            logger.warning("platform_init_failed", error=str(e))
+
         # ==================== REGISTER AI AGENTS ====================
         try:
             from app.core.ai.agents.factory import get_agent_factory

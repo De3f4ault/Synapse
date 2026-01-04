@@ -8,7 +8,6 @@ import { SearchBar } from "../../search/components/SearchBar";
 import { scrollToOccurrence } from "../../search/utils/scrollToOccurrence";
 import { useConversationSearch } from "../../search/hooks";
 import type { ChatMessageResponse } from "@/api/generated";
-import { MessageRole } from "@/api/generated";
 import type { SearchOccurrence } from "../../search/types";
 
 interface ChatConversationViewProps {
@@ -128,7 +127,7 @@ export function ChatConversationView({
       ? {
         id: -1, // Temporary negative ID
         session_id: messages[0]?.session_id || 0,
-        role: MessageRole.ASSISTANT,
+        role: "assistant" as const,
         content: streamingContent,
         tokens: 0,
         model_used: null,

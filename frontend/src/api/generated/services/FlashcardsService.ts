@@ -12,6 +12,8 @@ import type { FlashcardGenerateRequest } from '../models/FlashcardGenerateReques
 import type { FlashcardGenerateResponse } from '../models/FlashcardGenerateResponse';
 import type { FlashcardResponse } from '../models/FlashcardResponse';
 import type { FlashcardUpdate } from '../models/FlashcardUpdate';
+import type { ImportRequest } from '../models/ImportRequest';
+import type { ImportResult } from '../models/ImportResult';
 import type { ReviewResult } from '../models/ReviewResult';
 import type { ReviewSubmit } from '../models/ReviewSubmit';
 import type { CancelablePromise } from '../core/CancelablePromise';
@@ -230,6 +232,36 @@ export class FlashcardsService {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/api/v1/decks/generate-from-topic',
+            query: {
+                'token': token,
+            },
+            body: requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Import flashcards
+     * Bulk import flashcards into a deck
+     * @param deckId
+     * @param requestBody
+     * @param token Auth token for image/file requests
+     * @returns ImportResult Successful Response
+     * @throws ApiError
+     */
+    public static importFlashcardsApiV1DecksDeckIdImportPost(
+        deckId: number,
+        requestBody: ImportRequest,
+        token?: (string | null),
+    ): CancelablePromise<ImportResult> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/decks/{deck_id}/import',
+            path: {
+                'deck_id': deckId,
+            },
             query: {
                 'token': token,
             },

@@ -1,4 +1,4 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -12,7 +12,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useDueItems } from "@/api/hooks/useStudy";
 import { SkeletonCard } from "@/components/common/SkeletonCard";
-import { EmptyState } from "@/components/common/EmptyState";
+import { EmptyState } from "@/shared/ui";
 import { formatDistanceToNow } from "date-fns";
 import type { StudyItemResponse } from "@/api/generated";
 
@@ -59,17 +59,13 @@ export function DueItems({
   if (items.length === 0) {
     return (
       <EmptyState
-        icon={Clock}
+        icon={<Clock className="h-12 w-12" />}
         title="All Caught Up!"
         description="You have no items due for review right now"
-        action={
-          <Button variant="outline" onClick={() => refetch()}>
-            <RefreshCw
-              className={cn("h-4 w-4 mr-2", isRefetching && "animate-spin")}
-            />
-            Refresh
-          </Button>
-        }
+        action={{
+          label: "Refresh",
+          onClick: () => refetch(),
+        }}
       />
     );
   }

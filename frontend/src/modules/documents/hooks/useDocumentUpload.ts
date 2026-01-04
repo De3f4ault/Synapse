@@ -29,10 +29,12 @@ export function useDocumentUpload(options?: UseDocumentUploadOptions) {
   const [uploadedDocumentId, setUploadedDocumentId] = useState<number | null>(
     null,
   );
+  const [currentFile, setCurrentFile] = useState<File | null>(null);
 
   // Upload mutation
   const uploadMutation = useMutation({
     mutationFn: async (file: File) => {
+      setCurrentFile(file);
       // Validate file before upload
       if (file.size > DOCUMENTS.MAX_FILE_SIZE) {
         throw new Error(
@@ -80,8 +82,26 @@ export function useDocumentUpload(options?: UseDocumentUploadOptions) {
         });
 
         return response;
-      } catch (error) {
+      } catch (error: any) {
         clearInterval(progressInterval);
+
+        // Enhance duplicate file error message
+        if (error.status === 409 && error.body?.conflict_type) {
+          const type = error.body.conflict_type;
+          const filename = error.body.existing_filename;
+
+          if (type === "exact_duplicate") {
+            throw new Error(
+              `Duplicate: "${filename || "File"}" already exists in your library.`,
+            );
+          }
+          if (type === "same_content") {
+            throw new Error(
+              `Content exists: A file named "${filename}" has identical content.`
+            );
+          }
+        }
+
         throw error;
       }
     },
@@ -162,8 +182,9 @@ export function useDocumentUpload(options?: UseDocumentUploadOptions) {
     uploadMultiple,
     reset,
     uploadProgress,
+    currentFile,
     isUploading: uploadMutation.isPending,
-    uploadError: uploadMutation.error?.message,
+    uploadError: uploadMutation.error instanceof Error ? uploadMutation.error.message : null,
     uploadedDocument: uploadMutation.data,
     processingStatus: processingStatusQuery.data,
     isProcessing:

@@ -7,7 +7,6 @@ import { cn } from '@/lib/utils';
 import { nanoid } from 'nanoid';
 import { Dialog, DialogContent, DialogTrigger, DialogTitle, DialogClose } from '@/components/ui/dialog';
 import { TransformWrapper, TransformComponent, ReactZoomPanPinchContentRef } from 'react-zoom-pan-pinch';
-import { motion, AnimatePresence } from 'framer-motion';
 
 interface MermaidBlockProps {
     content: string;

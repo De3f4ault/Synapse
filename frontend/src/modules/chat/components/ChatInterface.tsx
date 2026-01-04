@@ -1,7 +1,7 @@
 import { useState, useCallback, forwardRef, useImperativeHandle } from "react";
 import { motion } from "framer-motion";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ChatService, MessageRole } from "@/api/generated";
+import { ChatService } from "@/api/generated";
 import { MessageList } from "./MessageList";
 import { MessageInput } from "./MessageInput";
 import { useChatWebSocket } from "../hooks/useChatWebSocket";
@@ -102,13 +102,13 @@ export const ChatInterface = forwardRef<
       mutationFn: (content: string) =>
         ChatService.sendMessageApiV1ChatSessionsSessionIdMessagesPost(
           sessionId,
-          { content },
+          { session_id: sessionId, content },
         ),
       onMutate: async (content) => {
         const userMessage: ChatMessageResponse = {
           id: Date.now(),
           session_id: sessionId,
-          role: MessageRole.USER,
+          role: "user",
           content,
           tokens: 0,
           model_used: null,
@@ -149,7 +149,7 @@ export const ChatInterface = forwardRef<
           const userMessage: ChatMessageResponse = {
             id: Date.now(),
             session_id: sessionId,
-            role: MessageRole.USER,
+            role: "user",
             content,
             tokens: 0,
             model_used: null,

@@ -6,12 +6,16 @@ import { HighlightedText } from "../../search/components/HighlightedText";
 import { MarkdownRenderer } from "@/shared/rendering";
 import { MermaidBlock } from "@/shared/rendering/components/MermaidBlock";
 import { parseOutput } from "../engine/parseOutput";
+import { ChatEntityPreview } from "./ChatEntityPreview";
+import { entityKey } from "@/shared/core/entity";
 
 import type { ChatMessageResponse } from "@/api/generated";
 import type { SearchOccurrence } from "../../search/types";
 
+import type { EntityIdentity } from "@/shared/core/entity";
+
 interface ChatMessageProps {
-  message: ChatMessageResponse;
+  message: ChatMessageResponse & { entities?: EntityIdentity[] };
   isStreaming?: boolean;
   thinking?: string;
   occurrences?: SearchOccurrence[];
@@ -149,15 +153,30 @@ const ChatMessageComponent = ({
 
         <div
           className={cn(
-            "rounded-2xl px-4 py-3 shadow-sm border overflow-hidden min-w-0",
+            "rounded-2xl px-4 py-3 shadow-sm border overflow-hidden min-w-0 transition-all duration-200",
             isUser
               ? "bg-primary/10 border-primary/20 text-foreground rounded-tr-sm"
               : "bg-card border-border/50 text-foreground/90 rounded-tl-sm",
           )}
         >
           {renderContent()}
+
+          {/* Referenced Entities */}
+          {message.entities && message.entities.length > 0 && (
+            <div className="mt-4 pt-3 border-t border-border/30 flex flex-col gap-2 animate-in fade-in slide-in-from-top-1">
+              <span className="text-[10px] uppercase tracking-wider text-muted-foreground/70 font-semibold mb-1">
+                Referenced Context
+              </span>
+              {message.entities.map((ref) => (
+                <ChatEntityPreview
+                  key={entityKey(ref)}
+                  entityRef={ref}
+                />
+              ))}
+            </div>
+          )}
         </div>
-        <span className="text-[10px] text-muted-foreground px-1 opacity-50">
+        <span className="text-[10px] text-muted-foreground px-1 opacity-50 flex items-center gap-1.5">
           {message.created_at
             ? new Date(message.created_at).toLocaleTimeString([], {
               hour: "2-digit",

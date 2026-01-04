@@ -12,34 +12,22 @@ import {
   AlertCircle,
   Columns,
   FileText,
-  Sun,
-  Moon,
 } from "lucide-react";
 import { toast } from "sonner";
-import { useThemeStore } from "@/stores/themeStore";
 
-// Hooks
-import { useNote, useNotes } from "./hooks/useNotes";
-import { useNoteEditor } from "./hooks/useNoteEditor";
+// Module imports (from @/modules/notes)
+import {
+  MarkdownPreview,
+  EditorToolbar,
+  AIInsightsPanel,
+  useNoteEditor,
+  useNoteAI,
+  type ToolDockAction,
+} from "@/modules/notes";
 
-// Components
-import { MarkdownPreview } from "./components/editor/MarkdownPreview";
-import { EditorToolbar } from "./components/editor/EditorToolbar";
-import { AIInsightsPanel } from "./components/editor/AIInsightsPanel";
+// API hooks
+import { useNote, useUpdateNote, useDeleteNote } from "@/api/hooks/useNotes";
 import { NeumorphicButton } from "@/components/neumorphic";
-
-// Services
-import { NoteAIService } from "@/services/noteAI.service";
-
-// Types
-import type { ToolDockAction } from "./types/notes.types";
-
-interface AIInsight {
-  type: "summary" | "tags" | "expansion" | "suggestions";
-  title: string;
-  content: string | string[];
-  timestamp: Date;
-}
 
 export function NoteDetailPage() {
   const { noteId } = useParams<{ noteId: string }>();
@@ -52,41 +40,46 @@ export function NoteDetailPage() {
 
   // State
   const [splitView, setSplitView] = useState(false);
-  const [aiInsights, setAiInsights] = useState<AIInsight[]>([]);
   const [showAIPanel, setShowAIPanel] = useState(false);
-  const { theme, toggleTheme } = useThemeStore();
 
   // Fetch note data
-  const { note, isLoading, error } = useNote(numericNoteId);
-  const { updateNote, deleteNote, isUpdating } = useNotes();
+  const { data: note, isLoading, error } = useNote(numericNoteId);
+  const updateNoteMutation = useUpdateNote();
+  const deleteNoteMutation = useDeleteNote();
 
-  // Editor state
+  // Editor state from module
   const {
     mode,
-    localNote,
-    hasUnsavedChanges,
-    aiStatus,
-    updateTitle,
-    updateContent,
+    title,
+    content,
+    isDirty,
     toggleMode,
+    setTitle: updateTitle,
+    setContent: updateContent,
     save,
-    startAIProcessing,
-    stopAIProcessing,
   } = useNoteEditor({
-    note,
-    onSave: (data) => {
+    note: note ?? null,
+    onSave: async (data) => {
       if (numericNoteId) {
-        updateNote({
+        await updateNoteMutation.mutateAsync({
           noteId: numericNoteId,
           data: {
             title: data.title,
             content: data.content,
-            tags: data.tags,
           },
         });
       }
     },
   });
+
+  // AI from module
+  const {
+    isProcessing: aiIsProcessing,
+    currentAction: aiAction,
+    insights: aiInsights,
+    summarize,
+    generateTags,
+  } = useNoteAI();
 
   // Auto-resize title
   useEffect(() => {
@@ -94,7 +87,7 @@ export function NoteDetailPage() {
       titleRef.current.style.height = "auto";
       titleRef.current.style.height = titleRef.current.scrollHeight + "px";
     }
-  }, [localNote?.title]);
+  }, [title]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -118,8 +111,6 @@ export function NoteDetailPage() {
 
   // Handle toolbar actions
   const handleAction = async (action: ToolDockAction) => {
-    if (!localNote) return;
-
     switch (action) {
       case "toggle_edit":
         toggleMode();
@@ -131,58 +122,27 @@ export function NoteDetailPage() {
 
       case "ai_summarize":
         try {
-          startAIProcessing("summarize");
-          const summary = await NoteAIService.summarize(localNote.content);
-
-          setAiInsights((prev) => [
-            ...prev,
-            {
-              type: "summary",
-              title: "AI Summary",
-              content: summary,
-              timestamp: new Date(),
-            },
-          ]);
+          await summarize(content);
           setShowAIPanel(true);
-
           toast.success("Summary generated");
         } catch (error) {
           toast.error("Failed to generate summary");
-        } finally {
-          stopAIProcessing();
         }
         break;
 
       case "ai_tags":
         try {
-          startAIProcessing("tags");
-          const tags = await NoteAIService.generateTags(
-            localNote.title,
-            localNote.content,
-          );
-
-          setAiInsights((prev) => [
-            ...prev,
-            {
-              type: "tags",
-              title: "Suggested Tags",
-              content: tags,
-              timestamp: new Date(),
-            },
-          ]);
+          const tags = await generateTags(title, content);
           setShowAIPanel(true);
-
           toast.success(`Generated ${tags.length} tags`);
         } catch (error) {
           toast.error("Failed to generate tags");
-        } finally {
-          stopAIProcessing();
         }
         break;
 
       case "delete":
         if (window.confirm("Delete this note permanently?")) {
-          deleteNote(numericNoteId, {
+          deleteNoteMutation.mutate(numericNoteId, {
             onSuccess: () => navigate("/notes"),
           });
         }
@@ -191,9 +151,8 @@ export function NoteDetailPage() {
   };
 
   // Handle saving AI insights to note
-  const handleSaveToNote = (content: string) => {
-    if (!localNote) return;
-    updateContent(localNote.content + content);
+  const handleSaveToNote = (insightContent: string) => {
+    updateContent(content + insightContent);
   };
 
   // Loading state
@@ -239,7 +198,7 @@ export function NoteDetailPage() {
 
         <div className="flex items-center gap-3">
           {/* Status */}
-          {hasUnsavedChanges && (
+          {isDirty && (
             <span className="text-xs text-amber-400 font-medium bg-amber-400/10 px-2 py-1 rounded-md border border-amber-400/20">
               Unsaved changes
             </span>
@@ -259,7 +218,7 @@ export function NoteDetailPage() {
           {/* Note Stats */}
           <div className="flex items-center gap-1.5 text-xs text-slate-500 bg-white/5 px-3 py-1.5 rounded-lg border border-white/5">
             <FileText size={12} />
-            <span>{localNote?.content?.split(/\s+/).length || 0} words</span>
+            <span>{content?.split(/\s+/).length || 0} words</span>
           </div>
         </div>
       </div>
@@ -272,11 +231,11 @@ export function NoteDetailPage() {
             {/* Edit Pane */}
             <div className="flex-1 overflow-y-auto border-r border-white/5 scrollbar-hide">
               <div className="max-w-3xl mx-auto px-12 py-8 pb-32">
-                {mode === "edit" && localNote && (
+                {mode === "edit" && (
                   <>
                     <textarea
                       ref={titleRef}
-                      value={localNote.title}
+                      value={title}
                       onChange={(e) => updateTitle(e.target.value)}
                       placeholder="Note title..."
                       className="w-full bg-transparent text-4xl font-bold text-white placeholder:text-slate-600 border-none outline-none resize-none mb-6 caret-cyan-400"
@@ -284,7 +243,7 @@ export function NoteDetailPage() {
                     />
                     <textarea
                       ref={contentRef}
-                      value={localNote.content}
+                      value={content}
                       onChange={(e) => updateContent(e.target.value)}
                       placeholder="Start writing..."
                       className="w-full bg-transparent text-base text-slate-300 placeholder:text-slate-700 border-none outline-none resize-none font-serif leading-relaxed caret-cyan-400"
@@ -312,11 +271,11 @@ export function NoteDetailPage() {
           /* Single View */
           <div className="h-full overflow-y-auto scrollbar-hide">
             <div className="max-w-4xl mx-auto px-20 py-12 pb-40">
-              {mode === "edit" && localNote ? (
+              {mode === "edit" ? (
                 <>
                   <textarea
                     ref={titleRef}
-                    value={localNote.title}
+                    value={title}
                     onChange={(e) => updateTitle(e.target.value)}
                     placeholder="Note title..."
                     className="w-full bg-transparent text-5xl font-bold text-white placeholder:text-slate-600 border-none outline-none resize-none mb-8 caret-cyan-400"
@@ -324,7 +283,7 @@ export function NoteDetailPage() {
                   />
                   <textarea
                     ref={contentRef}
-                    value={localNote.content}
+                    value={content}
                     onChange={(e) => updateContent(e.target.value)}
                     placeholder="Start writing..."
                     className="w-full bg-transparent text-lg text-slate-300 placeholder:text-slate-700 border-none outline-none resize-none font-serif leading-relaxed caret-cyan-400"
@@ -352,9 +311,9 @@ export function NoteDetailPage() {
         <EditorToolbar
           mode={mode}
           onAction={handleAction}
-          isProcessing={aiStatus.isProcessing}
-          hasUnsavedChanges={hasUnsavedChanges}
-          isSaving={isUpdating}
+          isProcessing={aiIsProcessing}
+          hasUnsavedChanges={isDirty}
+          isSaving={updateNoteMutation.isPending}
           textareaRef={contentRef}
         />
       </div>
@@ -369,7 +328,7 @@ export function NoteDetailPage() {
 
       {/* AI Processing Overlay */}
       <AnimatePresence>
-        {aiStatus.isProcessing && (
+        {aiIsProcessing && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -379,9 +338,9 @@ export function NoteDetailPage() {
             <div className="bg-[#1e2024] border border-white/10 rounded-2xl p-8 flex flex-col items-center gap-4 shadow-2xl">
               <Loader2 className="h-10 w-10 animate-spin text-cyan-400" />
               <p className="text-sm font-medium text-slate-300">
-                {aiStatus.action === "summarize" && "Generating summary..."}
-                {aiStatus.action === "tags" && "Generating tags..."}
-                {aiStatus.action === "expand" && "Expanding content..."}
+                {aiAction === "summarize" && "Generating summary..."}
+                {aiAction === "tags" && "Generating tags..."}
+                {aiAction === "expand" && "Expanding content..."}
               </p>
             </div>
           </motion.div>

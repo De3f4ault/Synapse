@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ProcessingStatusBadge } from "./ProcessingStatus";
-import { cn, formatFileSize, formatRelativeTime } from "@/lib/utils";
+import { formatFileSize, formatRelativeTime } from "@/lib/utils";
 import {
   FileText,
   FileType,

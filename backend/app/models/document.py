@@ -59,6 +59,14 @@ class Document(Base, TimestampMixin, SoftDeleteMixin, UserOwnedMixin):
 
     file_size: Mapped[int] = mapped_column(Integer, nullable=False, doc="File size in bytes")
 
+    # Content Hash for Deduplication (SHA256)
+    content_hash: Mapped[Optional[str]] = mapped_column(
+        String(64),
+        nullable=True,  # Nullable for migration; backfill existing docs later
+        index=True,
+        doc="SHA256 hash of file content for duplicate detection",
+    )
+
     # Gemini Files API Integration
     gemini_file_uri: Mapped[Optional[str]] = mapped_column(
         String(500), nullable=True, default=None, doc="URI of file uploaded to Gemini Files API"

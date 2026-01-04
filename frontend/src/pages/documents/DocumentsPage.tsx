@@ -1,50 +1,54 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Loader2, Grid, AlignLeft, Upload, X, Search } from "lucide-react";
+import { Loader2, Grid, AlignLeft, Upload, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// Import hooks
-import { useDocuments } from "./hooks/useDocuments";
-import { useDocumentUpload } from "./hooks/useDocumentUpload";
-import { useDocumentViewer } from "./hooks/useDocumentViewer";
+// Module public APIs only - no deep imports
+import { SECTOR_SUGGESTIONS } from "./core";
+import { useDocuments, DocumentGrid, DocumentTable, useListStore } from "./list";
+import { useUploadQueue, UploadQueueBar } from "./upload";
+import { useDocumentViewer, DocumentViewer } from "./viewer";
 
-// Import components
-import { DocumentGrid } from "./components/list/DocumentGrid";
-import { DocumentTable } from "./components/list/DocumentTable";
-import { UploadArea } from "./components/upload/UploadArea";
-import { UploadProgress } from "./components/upload/UploadProgress";
-import { DocumentViewer } from "./components/viewer/DocumentViewer";
+// Layout
 import { FloatingPageDock } from "@/components/layout/FloatingPageDock";
 
-// Import types
-import type { ViewMode } from "./types/documents.types";
-import { SECTOR_SUGGESTIONS } from "./types/documents.types";
-
 /**
- * OMNI-KINETIC Documents Interface (v7.2)
- * Refactored with modular component structure
+ * OMNI-KINETIC Documents Interface (v9.0)
+ * 
+ * Redesigned with inline upload queue (Paperless-ngx style)
+ * - No overlay upload mode
+ * - Inline conflict resolution 
+ * - Per-file progress tracking
  */
 
 const SECTORS = ["All", ...SECTOR_SUGGESTIONS] as const;
 type SectorFilter = (typeof SECTORS)[number];
 
 /**
- * Main Documents Page Component
+ * Main Documents Page Component - Pure Orchestration
  */
 export function DocumentsPage() {
-  const [viewMode, setViewMode] = useState<ViewMode>("grid");
+  // UI state from list store
+  const viewMode = useListStore((state) => state.viewMode);
+  const setViewMode = useListStore((state) => state.setViewMode);
+
+  // Local UI state
   const [activeSector, setActiveSector] = useState<SectorFilter>("All");
   const [search, setSearch] = useState("");
-  const [uploadMode, setUploadMode] = useState(false);
 
   const logAction = (msg: string) => console.log("DOC_LOG:", msg);
 
-  // Hooks
+  // Module hooks
   const { documents, isLoading, deleteDocument } = useDocuments();
-  const { uploadProgress, getRootProps, getInputProps, isDragActive } =
-    useDocumentUpload({
-      logAction,
-    });
+  const {
+    isProcessing,
+    getRootProps,
+    getInputProps,
+    isDragActive,
+    replaceFile,
+    keepBothFile,
+  } = useUploadQueue({ logAction });
+
   const { selectedDocument, isViewerOpen, openViewer, closeViewer } =
     useDocumentViewer();
 
@@ -56,46 +60,43 @@ export function DocumentsPage() {
   );
 
   return (
-    <div className="h-full flex flex-col relative overflow-hidden nm-bg nm-constellation-bg">
-      {/* Minimal Header (Optional, purely for context if needed, or rely on content interactions) */}
+    <div
+      {...getRootProps({ onClick: (e) => e.stopPropagation() })}
+      className="h-full flex flex-col relative overflow-hidden nm-bg nm-constellation-bg"
+    >
+      {/* Hidden file input */}
+      <input {...getInputProps()} />
+
+      {/* Full-screen Drop Zone Overlay */}
+      <AnimatePresence>
+        {isDragActive && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 z-50 bg-background/90 backdrop-blur-md flex items-center justify-center"
+          >
+            <motion.div
+              initial={{ scale: 0.9 }}
+              animate={{ scale: 1 }}
+              className="text-center"
+            >
+              <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-primary/20 flex items-center justify-center">
+                <Upload size={40} className="text-primary" />
+              </div>
+              <h3 className="text-2xl font-bold text-white mb-2">Drop files here</h3>
+              <p className="text-slate-400">PDF, DOCX, TXT, MD supported</p>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Minimal Header */}
       <div className="p-6 pb-0">
         <h1 className="text-3xl font-bold tracking-tight text-foreground/20 select-none">
           Documents
         </h1>
       </div>
-
-      {/* Upload Area (Overlay) */}
-      <AnimatePresence>
-        {uploadMode && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            className="absolute inset-0 z-30 bg-background/90 backdrop-blur-sm p-8 flex flex-col"
-          >
-            <div className="flex justify-between items-center mb-6 max-w-4xl mx-auto w-full">
-              <h3 className="text-xl font-bold">Upload Files</h3>
-              <button
-                onClick={() => setUploadMode(false)}
-                className="p-2 hover:bg-muted rounded-full transition-colors"
-              >
-                <X size={24} />
-              </button>
-            </div>
-            <div className="flex-1 max-w-4xl mx-auto w-full">
-              <UploadArea
-                getRootProps={getRootProps}
-                getInputProps={getInputProps}
-                isDragActive={isDragActive}
-                onCancel={() => setUploadMode(false)}
-              />
-              <div className="mt-6">
-                <UploadProgress uploadProgress={uploadProgress} />
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* Content Area */}
       <div className="flex-1 overflow-y-auto px-6 pt-4 pb-24">
@@ -186,15 +187,22 @@ export function DocumentsPage() {
             </button>
           </div>
 
-          <button
-            onClick={() => setUploadMode(!uploadMode)}
-            className="ml-2 h-10 w-10 flex items-center justify-center rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shadow-lg"
-          >
+          {/* Click to browse files */}
+          <label className="ml-2 h-10 w-10 flex items-center justify-center rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shadow-lg cursor-pointer">
             <Upload size={18} />
-          </button>
+            <input {...getInputProps()} className="sr-only" />
+          </label>
         </div>
       </FloatingPageDock>
 
+      {/* Upload Queue Bar (Bottom) */}
+      <UploadQueueBar
+        onReplaceFile={({ id, file, documentId }) => replaceFile(id, file, documentId)}
+        onKeepBothFile={({ id, file }) => keepBothFile(id, file)}
+        isProcessing={isProcessing}
+      />
+
+      {/* Document Viewer Modal */}
       <AnimatePresence>
         {isViewerOpen && selectedDocument && (
           <DocumentViewer

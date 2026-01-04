@@ -22,94 +22,28 @@ from app.api.deps import get_db, get_current_user
 from app.models.user import User
 from app.models.chat_session import ChatSession
 from app.models.chat_message import ChatMessage, MessageRole
+from app.schemas.chat import (
+    ChatSessionCreate,
+    ChatSessionResponse,
+    ChatMessageCreate,
+    ChatMessageResponse,
+    FileUploadResponse,
+    AIModelResponse,
+)
 
 logger = structlog.get_logger(__name__)
 router = APIRouter()
 
 
 # ============================================================================
-# Schemas
+# Schemas (Local helpers)
 # ============================================================================
-
-
-class ChatSessionCreate(BaseModel):
-    """Chat session creation."""
-
-    title: Optional[str] = Field(None, max_length=500, description="Custom session title")
-    document_id: Optional[int] = Field(None, description="Optional document for context")
-    context_modules: Optional[List[str]] = Field(
-        default_factory=lambda: ["flashcards", "notes"],
-        description="Modules to include in context building",
-    )
 
 
 class ChatSessionUpdate(BaseModel):
     """Chat session update."""
 
     title: str = Field(..., min_length=1, max_length=200, description="Session title")
-
-
-class ChatSessionResponse(BaseModel):
-    """Chat session response."""
-
-    id: int
-    title: str
-    document_id: Optional[int]
-    message_count: int
-    total_tokens: int
-    created_at: datetime
-    updated_at: datetime
-
-
-class ChatMessageCreate(BaseModel):
-    """Chat message creation."""
-
-    content: str = Field(..., min_length=1, max_length=5000, description="Message content")
-
-
-class ChatMessageResponse(BaseModel):
-    """Chat message response."""
-
-    id: int
-    session_id: int
-    role: MessageRole
-    content: str
-    tokens: int
-    model_used: Optional[str]
-    function_calls: Optional[dict] = None
-    grounding_sources: Optional[dict] = None
-    created_at: datetime
-    # Branching fields
-    parent_message_id: Optional[int] = None
-    version: int = 1
-    is_active: bool = True
-    has_children: bool = False
-
-
-# File upload response
-class FileUploadResponse(BaseModel):
-    """File upload response for chat."""
-
-    id: str
-    filename: str
-    file_type: str
-    file_size: int
-    url: str
-    preview_url: Optional[str] = None
-    uploaded_at: datetime
-
-
-# AI Model response
-class AIModelResponse(BaseModel):
-    """AI model information."""
-
-    id: str
-    name: str
-    description: str
-    capabilities: List[str]
-    max_tokens: int
-    supports_vision: bool
-    supports_search: bool
 
 
 # ============================================================================
@@ -400,10 +334,15 @@ async def list_sessions(
     return [
         ChatSessionResponse(
             id=session.id,
+            user_id=session.user_id,
             title=session.title,
             document_id=session.document_id,
+            context_modules=session.context_modules.get("modules", [])
+            if session.context_modules
+            else [],
             message_count=count,
-            total_tokens=session.total_tokens_used,
+            total_tokens_used=session.total_tokens_used,
+            total_cost=float(session.total_cost or 0.0),
             created_at=session.created_at,
             updated_at=session.updated_at,
         )
@@ -442,10 +381,13 @@ async def create_session(
 
     return ChatSessionResponse(
         id=new_session.id,
+        user_id=new_session.user_id,
         title=new_session.title,
         document_id=new_session.document_id,
+        context_modules=session_data.context_modules or ["flashcards", "notes"],
         message_count=0,
-        total_tokens=0,
+        total_tokens_used=0,
+        total_cost=0.0,
         created_at=new_session.created_at,
         updated_at=new_session.updated_at,
     )
@@ -490,10 +432,15 @@ async def get_session(
 
     return ChatSessionResponse(
         id=session.id,
+        user_id=session.user_id,
         title=session.title,
         document_id=session.document_id,
+        context_modules=session.context_modules.get("modules", [])
+        if session.context_modules
+        else [],
         message_count=message_count,
-        total_tokens=session.total_tokens_used,
+        total_tokens_used=session.total_tokens_used,
+        total_cost=float(session.total_cost or 0.0),
         created_at=session.created_at,
         updated_at=session.updated_at,
     )
@@ -584,10 +531,15 @@ async def update_session(
 
     return ChatSessionResponse(
         id=session.id,
+        user_id=session.user_id,
         title=session.title,
         document_id=session.document_id,
+        context_modules=session.context_modules.get("modules", [])
+        if session.context_modules
+        else [],
         message_count=message_count,
-        total_tokens=session.total_tokens_used,
+        total_tokens_used=session.total_tokens_used,
+        total_cost=float(session.total_cost or 0.0),
         created_at=session.created_at,
         updated_at=session.updated_at,
     )

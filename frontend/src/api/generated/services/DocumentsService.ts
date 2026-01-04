@@ -3,6 +3,7 @@
 /* tslint:disable */
 /* eslint-disable */
 import type { app__api__rest__links__MessageResponse } from '../models/app__api__rest__links__MessageResponse';
+import type { Body_replace_document_api_v1_documents__document_id__replace_put } from '../models/Body_replace_document_api_v1_documents__document_id__replace_put';
 import type { Body_upload_document_api_v1_documents_upload_post } from '../models/Body_upload_document_api_v1_documents_upload_post';
 import type { DocumentChunkResponse } from '../models/DocumentChunkResponse';
 import type { DocumentResponse } from '../models/DocumentResponse';
@@ -99,14 +100,14 @@ export class DocumentsService {
      * Delete document
      * Delete a document and all its chunks
      * @param documentId
-     * @param deleteFile Also delete physical file from storage
+     * @param keepFile Keep physical file on disk (default: delete it)
      * @param token Auth token for image/file requests
      * @returns app__api__rest__links__MessageResponse Successful Response
      * @throws ApiError
      */
     public static deleteDocumentApiV1DocumentsDocumentIdDelete(
         documentId: number,
-        deleteFile: boolean = false,
+        keepFile: boolean = false,
         token?: (string | null),
     ): CancelablePromise<app__api__rest__links__MessageResponse> {
         return __request(OpenAPI, {
@@ -116,7 +117,7 @@ export class DocumentsService {
                 'document_id': documentId,
             },
             query: {
-                'delete_file': deleteFile,
+                'keep_file': keepFile,
                 'token': token,
             },
             errors: {
@@ -149,6 +150,36 @@ export class DocumentsService {
             },
             body: requestBody,
             mediaType: 'application/json',
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Replace document
+     * Replace an existing document's file while preserving its ID and metadata
+     * @param documentId
+     * @param formData
+     * @param token Auth token for image/file requests
+     * @returns DocumentResponse Successful Response
+     * @throws ApiError
+     */
+    public static replaceDocumentApiV1DocumentsDocumentIdReplacePut(
+        documentId: number,
+        formData: Body_replace_document_api_v1_documents__document_id__replace_put,
+        token?: (string | null),
+    ): CancelablePromise<DocumentResponse> {
+        return __request(OpenAPI, {
+            method: 'PUT',
+            url: '/api/v1/documents/{document_id}/replace',
+            path: {
+                'document_id': documentId,
+            },
+            query: {
+                'token': token,
+            },
+            formData: formData,
+            mediaType: 'multipart/form-data',
             errors: {
                 422: `Validation Error`,
             },

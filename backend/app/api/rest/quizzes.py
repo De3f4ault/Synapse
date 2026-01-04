@@ -114,6 +114,27 @@ class QuizResultResponse(BaseModel):
     answers: List[AnswerResult]
 
 
+class PartialAnswer(BaseModel):
+    """A saved partial answer during an attempt."""
+
+    question_id: int
+    answer: str
+
+
+class QuizAttemptResume(BaseModel):
+    """Response for resuming an in-progress attempt."""
+
+    attempt_id: int
+    quiz_id: int
+    started_at: datetime
+    time_limit_minutes: Optional[int]
+    elapsed_seconds: int
+    current_question_index: int
+    questions: List[QuestionResponse]
+    partial_answers: List[PartialAnswer]
+    is_expired: bool
+
+
 class QuizGenerateRequest(BaseModel):
     """AI quiz generation request."""
 
@@ -549,3 +570,302 @@ async def submit_quiz_attempt(
         time_taken_seconds=attempt.time_taken_seconds,
         answers=answer_results,  # Return AnswerResult objects
     )
+
+
+@router.get("/attempts/{attempt_id}", response_model=QuizResultResponse)
+async def get_quiz_attempt(
+    attempt_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Retrieve a completed quiz attempt's results.
+
+    This endpoint allows fetching results for a previously completed attempt,
+    enabling refresh-safe results pages and historical review.
+    """
+    # Get attempt
+    attempt_result = await db.execute(
+        select(QuizAttempt).where(
+            and_(QuizAttempt.id == attempt_id, QuizAttempt.user_id == current_user.id)
+        )
+    )
+    attempt = attempt_result.scalar_one_or_none()
+
+    if not attempt:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Attempt not found")
+
+    if not attempt.completed_at:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Attempt not yet completed. Use the submit endpoint first.",
+        )
+
+    # Reconstruct AnswerResult objects from stored answers
+    stored_answers = attempt.answers.get("answers", []) if attempt.answers else []
+    answer_results = [
+        AnswerResult(
+            question_id=ans["question_id"],
+            question_text=ans["question_text"],
+            your_answer=ans["your_answer"],
+            correct_answer=ans["correct_answer"],
+            is_correct=ans["is_correct"],
+            explanation=ans.get("explanation"),
+            points_earned=ans["points_earned"],
+        )
+        for ans in stored_answers
+    ]
+
+    return QuizResultResponse(
+        attempt_id=attempt.id,
+        score=attempt.score,
+        max_score=attempt.max_score,
+        percentage=float(attempt.percentage),
+        time_taken_seconds=attempt.time_taken_seconds or 0,
+        answers=answer_results,
+    )
+
+
+class QuizInsightsResponse(BaseModel):
+    """AI-generated insights for a quiz attempt."""
+
+    attempt_id: int
+    summary: str
+    weak_areas: List[str]
+    recommendations: List[str]
+    generated_at: datetime
+
+
+@router.get("/attempts/{attempt_id}/insights", response_model=QuizInsightsResponse)
+async def get_quiz_attempt_insights(
+    attempt_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Get AI-generated insights for a completed quiz attempt.
+
+    Analyzes performance patterns and provides actionable recommendations.
+    Currently returns a basic analysis; will be enhanced with full AI integration.
+    """
+    # Get attempt
+    attempt_result = await db.execute(
+        select(QuizAttempt).where(
+            and_(QuizAttempt.id == attempt_id, QuizAttempt.user_id == current_user.id)
+        )
+    )
+    attempt = attempt_result.scalar_one_or_none()
+
+    if not attempt:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Attempt not found")
+
+    if not attempt.completed_at:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Attempt not yet completed",
+        )
+
+    # Analyze answers to find weak areas
+    stored_answers = attempt.answers.get("answers", []) if attempt.answers else []
+    incorrect_answers = [ans for ans in stored_answers if not ans.get("is_correct", False)]
+
+    # Basic analysis (to be enhanced with AI later)
+    weak_areas = []
+    for ans in incorrect_answers[:3]:  # Top 3 weak areas
+        weak_areas.append(f"Question: {ans.get('question_text', 'Unknown')[:50]}...")
+
+    # Generate summary based on performance
+    percentage = float(attempt.percentage) if attempt.percentage else 0
+    if percentage >= 90:
+        summary = "Excellent performance! You demonstrated strong mastery of the material."
+    elif percentage >= 70:
+        summary = "Good performance with some areas for improvement."
+    elif percentage >= 50:
+        summary = "Moderate performance. Review the incorrect answers to strengthen understanding."
+    else:
+        summary = "This topic needs more study. Consider reviewing the material before retrying."
+
+    # Basic recommendations
+    recommendations = []
+    if incorrect_answers:
+        recommendations.append("Review the explanations for incorrect answers")
+        recommendations.append("Create flashcards for topics you missed")
+    if percentage < 80:
+        recommendations.append("Consider retaking this quiz after review")
+
+    return QuizInsightsResponse(
+        attempt_id=attempt.id,
+        summary=summary,
+        weak_areas=weak_areas,
+        recommendations=recommendations,
+        generated_at=datetime.utcnow(),
+    )
+
+
+# ============================================================================
+# Attempt Resume Endpoints
+# ============================================================================
+
+
+@router.get("/{quiz_id}/active", response_model=Optional[int])
+async def get_active_attempt(
+    quiz_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Check if there's an active (incomplete) attempt for this quiz.
+
+    Returns the attempt_id if one exists, null otherwise.
+    Used by frontend to decide whether to start new or resume.
+    """
+    result = await db.execute(
+        select(QuizAttempt.id)
+        .where(
+            and_(
+                QuizAttempt.quiz_id == quiz_id,
+                QuizAttempt.user_id == current_user.id,
+                QuizAttempt.completed_at.is_(None),  # Not completed
+            )
+        )
+        .order_by(QuizAttempt.started_at.desc())
+        .limit(1)  # Only get the most recent one
+    )
+    attempt_id = result.scalar()  # Returns first or None
+    return attempt_id
+
+
+@router.get("/attempts/{attempt_id}/resume", response_model=QuizAttemptResume)
+async def resume_quiz_attempt(
+    attempt_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Resume an in-progress quiz attempt.
+
+    Returns questions, partial answers, and timing info.
+    Allows frontend to rehydrate state after page refresh.
+    """
+    # Get attempt
+    attempt_result = await db.execute(
+        select(QuizAttempt).where(
+            and_(QuizAttempt.id == attempt_id, QuizAttempt.user_id == current_user.id)
+        )
+    )
+    attempt = attempt_result.scalar_one_or_none()
+
+    if not attempt:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Attempt not found")
+
+    if attempt.completed_at:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Attempt already completed. Use GET /attempts/{id} for results.",
+        )
+
+    # Get quiz for time limit
+    quiz_result = await db.execute(select(Quiz).where(Quiz.id == attempt.quiz_id))
+    quiz = quiz_result.scalar_one_or_none()
+
+    # Get questions
+    questions_result = await db.execute(
+        select(QuizQuestion)
+        .where(QuizQuestion.quiz_id == attempt.quiz_id)
+        .order_by(QuizQuestion.order)
+    )
+    questions = questions_result.scalars().all()
+
+    # Calculate elapsed time
+    started = attempt.started_at
+    if started.tzinfo is not None:
+        started = started.replace(tzinfo=None)
+    elapsed_seconds = int((datetime.utcnow() - started).total_seconds())
+
+    # Check if expired (if timed)
+    is_expired = False
+    if quiz and quiz.time_limit_minutes:
+        time_limit_seconds = quiz.time_limit_minutes * 60
+        is_expired = elapsed_seconds > time_limit_seconds
+
+    # Get partial answers from attempt.answers
+    partial_answers = []
+    saved_answers = attempt.answers or {}
+    # Handle both {"answers": [...]} and direct dict formats
+    if "answers" in saved_answers:
+        for ans in saved_answers.get("answers", []):
+            partial_answers.append(
+                PartialAnswer(
+                    question_id=ans["question_id"],
+                    answer=ans.get("your_answer", ans.get("answer", "")),
+                )
+            )
+    elif "partial" in saved_answers:
+        for ans in saved_answers.get("partial", []):
+            partial_answers.append(
+                PartialAnswer(question_id=ans["question_id"], answer=ans["answer"])
+            )
+
+    # Determine current question index based on answered questions
+    current_index = len(partial_answers) if partial_answers else 0
+
+    return QuizAttemptResume(
+        attempt_id=attempt.id,
+        quiz_id=attempt.quiz_id,
+        started_at=attempt.started_at,
+        time_limit_minutes=quiz.time_limit_minutes if quiz else None,
+        elapsed_seconds=elapsed_seconds,
+        current_question_index=current_index,
+        questions=[
+            QuestionResponse(
+                id=q.id,
+                question_text=q.question_text,
+                question_type=q.question_type,
+                options=q.options,
+                points=q.points,
+                order=q.order,
+                correct_answer=q.correct_answer,
+                explanation=q.explanation,
+            )
+            for q in questions
+        ],
+        partial_answers=partial_answers,
+        is_expired=is_expired,
+    )
+
+
+@router.post("/attempts/{attempt_id}/save")
+async def save_partial_answers(
+    attempt_id: int,
+    answers: List[AnswerSubmit],
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Save partial answers without submitting.
+
+    Enables resume functionality by persisting progress.
+    """
+    # Get attempt
+    attempt_result = await db.execute(
+        select(QuizAttempt).where(
+            and_(QuizAttempt.id == attempt_id, QuizAttempt.user_id == current_user.id)
+        )
+    )
+    attempt = attempt_result.scalar_one_or_none()
+
+    if not attempt:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Attempt not found")
+
+    if attempt.completed_at:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Attempt already completed"
+        )
+
+    # Save partial answers
+    partial = [{"question_id": a.question_id, "answer": a.answer} for a in answers]
+    attempt.answers = {"partial": partial}
+
+    await db.commit()
+
+    return {"status": "saved", "count": len(answers)}
