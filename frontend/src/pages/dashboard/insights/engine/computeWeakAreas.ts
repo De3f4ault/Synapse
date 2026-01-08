@@ -224,3 +224,140 @@ export function mergeWeakAreas(
         return bTime - aTime;
     });
 }
+
+/**
+ * Merge GIE (Graph Intelligence Engine) weak areas into existing weak areas.
+ *
+ * GIE provides:
+ * - mastery (0-1)
+ * - stability (0-1, lower = at risk)
+ * - weakness_evidence (reasons)
+ *
+ * Rules:
+ * 1. GIE source has highest authority for identified concepts
+ * 2. If topic exists in other sources, create hybrid
+ * 3. Include stability for decay risk indication
+ */
+export function mergeGIEWeakAreas(
+    existingWeakAreas: WeakAreaInsight[],
+    gieWeakConcepts: Array<{
+        concept_id: string;
+        concept_name?: string;
+        mastery: number;
+        stability: number;
+        last_reinforced_at?: string;
+        weakness_evidence?: Array<{ reason: string }>;
+    }>,
+    gieFragileConcepts: Array<{
+        concept_id: string;
+        concept_name?: string;
+        mastery: number;
+        stability: number;
+        last_reinforced_at?: string;
+    }>
+): WeakAreaInsight[] {
+    // Create map for existing areas
+    const existingMap = new Map<string, WeakAreaInsight>();
+    for (const area of existingWeakAreas) {
+        existingMap.set(area.topic.toLowerCase(), area);
+    }
+
+    const merged: WeakAreaInsight[] = [];
+    const processedTopics = new Set<string>();
+
+    // Process GIE weak concepts (highest priority)
+    for (const concept of gieWeakConcepts) {
+        const topicKey = concept.concept_id.toLowerCase();
+        const existing = existingMap.get(topicKey);
+        processedTopics.add(topicKey);
+
+        const priority = calculatePriority({
+            dueDate: null,
+            isWeakArea: true,
+            accuracy: concept.mastery,
+            hasPrerequisites: false,
+            lastAccessed: concept.last_reinforced_at || null,
+        });
+
+        const reason = concept.weakness_evidence?.[0]?.reason || "Low mastery detected";
+
+        if (existing) {
+            // Hybrid: GIE confirms existing weakness
+            merged.push({
+                ...existing,
+                source: "hybrid",
+                stability: concept.stability,
+                accuracy: Math.min(existing.accuracy, concept.mastery),
+                priority: priority + 0.15,
+                suggestion: reason,
+                lastReinforcedAt: concept.last_reinforced_at,
+            });
+        } else {
+            // GIE-only weak concept
+            merged.push({
+                topic: concept.concept_name || concept.concept_id,
+                accuracy: concept.mastery,
+                review_count: 0,
+                priority,
+                severity: determineSeverity(concept.mastery),
+                suggestion: reason,
+                trend: null,
+                source: "gie",
+                stability: concept.stability,
+                lastReinforcedAt: concept.last_reinforced_at,
+            });
+        }
+    }
+
+    // Process GIE fragile concepts (at risk, not yet weak)
+    for (const concept of gieFragileConcepts) {
+        const topicKey = concept.concept_id.toLowerCase();
+        if (processedTopics.has(topicKey)) continue;
+
+        const existing = existingMap.get(topicKey);
+        processedTopics.add(topicKey);
+
+        const priority = calculatePriority({
+            dueDate: null,
+            isWeakArea: true,
+            accuracy: concept.mastery,
+            hasPrerequisites: false,
+            lastAccessed: concept.last_reinforced_at || null,
+        });
+
+        if (existing) {
+            merged.push({
+                ...existing,
+                source: "hybrid",
+                stability: concept.stability,
+                priority: priority + 0.05,
+                suggestion: "At risk of being forgotten",
+                lastReinforcedAt: concept.last_reinforced_at,
+            });
+        } else {
+            merged.push({
+                topic: concept.concept_name || concept.concept_id,
+                accuracy: concept.mastery,
+                review_count: 0,
+                priority: priority - 0.1, // Lower than weak, but still important
+                severity: "low",
+                suggestion: "Stability declining — reinforce soon",
+                trend: "declining",
+                source: "gie",
+                stability: concept.stability,
+                lastReinforcedAt: concept.last_reinforced_at,
+            });
+        }
+    }
+
+    // Add remaining areas not in GIE
+    for (const area of existingWeakAreas) {
+        const topicKey = area.topic.toLowerCase();
+        if (!processedTopics.has(topicKey)) {
+            merged.push(area);
+        }
+    }
+
+    // Sort by priority desc
+    return merged.sort((a, b) => b.priority - a.priority);
+}

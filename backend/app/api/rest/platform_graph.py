@@ -81,10 +81,25 @@ async def get_graph_context(
     - Strong concepts (mastery)
     - Recommended platform actions
     """
-    # TODO: Query actual graph data
-    # For now, return minimal context with example recommendations
+    from sqlalchemy import text
 
-    # Build recommended actions based on entity type
+    # Query GIE for user's weak/strong concepts
+    result = await db.execute(
+        text("SELECT * FROM developer_schema.get_intelligence_summary(:user_id, :limit)"),
+        {"user_id": current_user.id, "limit": 5},
+    )
+    rows = result.fetchall()
+
+    weaknesses: list[str] = []
+    strengths: list[str] = []
+
+    for row in rows:
+        if row.category == "weak":
+            weaknesses.append(str(row.concept_id))
+        elif row.mastery and row.mastery >= 0.7:
+            strengths.append(str(row.concept_id))
+
+    # Build recommended actions based on entity type AND intelligence
     recommended_actions: list[PlatformAction] = []
 
     target = EntityIdentity(
@@ -124,8 +139,8 @@ async def get_graph_context(
         )
 
     return GraphContext(
-        weaknesses=[],  # TODO: Query from graph
-        strengths=[],  # TODO: Query from graph
+        weaknesses=weaknesses,
+        strengths=strengths,
         recommended_actions=recommended_actions,
     )
 

@@ -270,7 +270,7 @@ async def get_due_items(
     items.sort(key=lambda x: priority_map.get(x["data"].get("priority"), 2))
 
     logger.info(
-        "due_items_retrieved", user_id=current_user.id, total_items=len(items), modules=module_list
+        f"due_items_retrieved user_id={current_user.id} total_items={len(items)} modules={module_list}"
     )
 
     return items[:limit]
@@ -295,11 +295,8 @@ async def start_session(
     await db.refresh(new_session)
 
     logger.info(
-        "study_session_created",
-        user_id=current_user.id,
-        session_id=new_session.id,
-        session_type=session_data.session_type,
-        modules=session_data.modules,
+        f"study_session_created user_id={current_user.id} session_id={new_session.id} "
+        f"session_type={session_data.session_type} modules={session_data.modules}"
     )
 
     return StudySessionResponse(
@@ -380,10 +377,8 @@ async def complete_session(
     await db.refresh(session)
 
     logger.info(
-        "study_session_completed",
-        user_id=current_user.id,
-        session_id=session.id,
-        time_spent_seconds=session.time_spent_seconds,
+        f"study_session_completed user_id={current_user.id} session_id={session.id} "
+        f"time_spent_seconds={session.time_spent_seconds}"
     )
 
     modules = session.modules_used.get("modules", []) if session.modules_used else []
@@ -462,9 +457,7 @@ async def get_recommendations(
         recommendations.sort(key=lambda x: priority_map.get(x["data"].get("priority"), 2))
 
         logger.info(
-            "study_recommendations_retrieved",
-            user_id=current_user.id,
-            total_items=len(recommendations),
+            f"study_recommendations_retrieved user_id={current_user.id} total_items={len(recommendations)}"
         )
 
         return recommendations[:limit]

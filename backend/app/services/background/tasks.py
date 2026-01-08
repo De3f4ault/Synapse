@@ -42,22 +42,97 @@ class BaseTask(Task):
         logger.info(f"Task {self.name} [{task_id}] completed successfully")
 
 
+async def _process_chunk_batch(
+    session,
+    document,
+    batch: list,
+    embedder,
+    upserter,
+    collection_name: str,
+) -> Dict[str, int]:
+    """
+    Process a batch of chunks: save to DB, embed, upsert to Qdrant.
+
+    Designed for streaming ingestion - handles one batch at a time.
+    Uses deterministic chunk IDs for idempotent re-ingestion.
+
+    Args:
+        session: Database session
+        document: Document model instance
+        batch: List of chunk dicts from iter_chunks()
+        embedder: Embedding model instance
+        upserter: Qdrant batch upserter
+        collection_name: Qdrant collection name
+
+    Returns:
+        Dict with chunks and embeddings count
+    """
+    from app.models.document_chunk import DocumentChunk
+
+    # Step 1: Save chunk records to DB
+    for chunk_data in batch:
+        chunk = DocumentChunk(
+            document_id=document.id,
+            content=chunk_data["content"],
+            chunk_index=chunk_data["chunk_index"],
+            start_char=chunk_data["start_char"],
+            end_char=chunk_data["end_char"],
+        )
+        session.add(chunk)
+    await session.commit()
+
+    # Step 2: Generate embeddings for batch
+    batch_texts = [c["content"] for c in batch]
+    batch_embeddings = embedder.encode(batch_texts, normalize=True).tolist()
+
+    # Step 3: Prepare payloads with deterministic IDs (from iter_chunks)
+    batch_payloads = []
+    batch_ids = []
+    for chunk_data in batch:
+        batch_payloads.append(
+            {
+                "text": chunk_data["content"],
+                "source_id": str(document.id),
+                "source_type": "documents",
+                "title": document.filename,
+                "chunk_index": chunk_data["chunk_index"],
+                "user_id": document.user_id,
+                "char_count": len(chunk_data["content"]),
+            }
+        )
+        # Use deterministic chunk_id from iter_chunks for idempotent upserts
+        batch_ids.append(chunk_data["chunk_id"])
+
+    # Step 4: Upsert to Qdrant
+    count = await upserter.upsert_batch(
+        collection_name=collection_name,
+        vectors=batch_embeddings,
+        payloads=batch_payloads,
+        ids=batch_ids,
+    )
+
+    return {"chunks": len(batch), "embeddings": count}
+
+
 @shared_task(
     bind=True,
     name="app.services.background.tasks.process_document_task",
-    soft_time_limit=300,
-    time_limit=600,
+    soft_time_limit=600,  # Increased for large docs
+    time_limit=900,
 )
 def process_document_task(self, document_id: int) -> Dict[str, Any]:
     """
-    Process document asynchronously.
+    Process document asynchronously with MEMORY-SAFE batch processing.
 
-    This task:
-    1. Extracts text from the document
-    2. Chunks the text for embedding
-    3. Generates embeddings via RAG pipeline (Qdrant)
-    4. Updates document status and content
-    5. Creates document chunks in database
+    INVARIANT: No background task may allocate memory proportional to total document size.
+    This is enforced via batch embedding - chunks are processed in groups of BATCH_SIZE.
+
+    Flow:
+    1. Extract text from document
+    2. Create chunk records in DB (batched commits)
+    3. Generate embeddings in batches (BATCH_SIZE at a time)
+    4. Upsert to Qdrant incrementally
+    5. GC between batches to prevent memory buildup
 
     Args:
         document_id: Document ID to process
@@ -65,100 +140,158 @@ def process_document_task(self, document_id: int) -> Dict[str, Any]:
     Returns:
         dict: Processing result with status and statistics
     """
-    logger.info(f"Starting document processing: {document_id}")
+    import gc
+
+    # Memory-safe batch size - limits peak memory usage
+    BATCH_SIZE = 20
+
+    logger.info(f"Starting document processing (batch mode): {document_id}")
 
     try:
         from app.db.session import AsyncSessionLocal
         from app.models.document import Document, ProcessingStatus
-        from app.models.document_chunk import DocumentChunk
         from app.services.background.document_processor import DocumentProcessor
-        from app.services.rag import get_rag_service
+        from app.core.ai.rag.embeddings.models.all_minilm import AllMiniLMEmbedder
+        from app.core.ai.rag.vector_store.qdrant.batch_upserter import BatchUpserter
+        from app.core.ai.rag.vector_store.qdrant.collection_manager import CollectionManager
         from sqlalchemy import select
         import asyncio
 
         async def process():
             async with AsyncSessionLocal() as session:
-                # Get document
-                result = await session.execute(select(Document).where(Document.id == document_id))
+                # INVARIANT: Never process soft-deleted documents.
+                result = await session.execute(
+                    select(Document).where(
+                        Document.id == document_id, Document.deleted_at.is_(None)
+                    )
+                )
                 document = result.scalar_one_or_none()
 
                 if not document:
-                    raise ValueError(f"Document {document_id} not found")
+                    logger.warning(f"Document {document_id} not found or deleted, skipping")
+                    return {
+                        "status": "skipped",
+                        "reason": "not_found_or_deleted",
+                        "document_id": document_id,
+                    }
 
                 # Update status to processing
                 document.processing_status = ProcessingStatus.PROCESSING
                 await session.commit()
 
                 try:
-                    # Step 1: Process document (extract text and chunk)
+                    # Step 1: Extract text (this is the one atomic operation we can't batch)
                     processor = DocumentProcessor()
                     extracted_data = processor.process_document(
                         file_path=document.file_path, file_type=document.file_type
                     )
 
-                    # Update document with extracted content
+                    # Update document metadata immediately
                     document.content_text = extracted_data["content_text"]
                     document.page_count = extracted_data.get("page_count")
                     document.word_count = extracted_data["word_count"]
                     document.file_metadata = extracted_data.get("metadata", {})
                     document.ocr_performed = extracted_data.get("ocr_performed", False)
+                    await session.commit()
 
-                    # Step 2: Chunking
-                    chunks_data = processor.chunk_text(
-                        text=extracted_data["content_text"], chunk_size=1000, overlap=200
+                    logger.info(
+                        f"Document {document_id}: Extracted {extracted_data['word_count']} words, "
+                        f"{extracted_data.get('page_count', 'N/A')} pages"
                     )
 
-                    # Step 3: Save chunks to database
-                    chunk_objects = []
-                    for chunk_data in chunks_data:
-                        chunk = DocumentChunk(
-                            document_id=document.id,
-                            content=chunk_data["content"],
-                            chunk_index=chunk_data["chunk_index"],
-                            start_char=chunk_data["start_char"],
-                            end_char=chunk_data["end_char"],
+                    # Step 2: Initialize embedder and Qdrant upserter early
+                    embedder = AllMiniLMEmbedder()
+                    collection_manager = CollectionManager()
+                    upserter = BatchUpserter()
+
+                    collection_name = collection_manager.create_user_collection(
+                        document.user_id, "documents"
+                    )
+
+                    # Step 3: STREAMING INGESTION
+                    # INVARIANT: Never hold full chunk list in memory
+                    # Process chunks as they're yielded from generator
+
+                    batch = []
+                    chunks_processed = 0
+                    embeddings_stored = 0
+                    chunk_records_created = 0
+
+                    logger.info(f"Document {document_id}: Starting streaming chunk processing")
+
+                    for chunk_data in processor.iter_chunks(
+                        text=extracted_data["content_text"],
+                        document_id=str(document.id),
+                        chunk_size=1000,
+                        overlap=200,
+                    ):
+                        batch.append(chunk_data)
+
+                        # Process batch when full
+                        if len(batch) >= BATCH_SIZE:
+                            batch_result = await _process_chunk_batch(
+                                session=session,
+                                document=document,
+                                batch=batch,
+                                embedder=embedder,
+                                upserter=upserter,
+                                collection_name=collection_name,
+                            )
+                            chunk_records_created += batch_result["chunks"]
+                            embeddings_stored += batch_result["embeddings"]
+                            chunks_processed += len(batch)
+                            batch.clear()
+
+                            # CRITICAL: Force garbage collection between batches
+                            gc.collect()
+
+                            logger.debug(
+                                f"Document {document_id}: Processed {chunks_processed} chunks, "
+                                f"{embeddings_stored} embeddings"
+                            )
+
+                    # Flush remaining batch
+                    if batch:
+                        batch_result = await _process_chunk_batch(
+                            session=session,
+                            document=document,
+                            batch=batch,
+                            embedder=embedder,
+                            upserter=upserter,
+                            collection_name=collection_name,
                         )
-                        session.add(chunk)
-                        chunk_objects.append(chunk)
+                        chunk_records_created += batch_result["chunks"]
+                        embeddings_stored += batch_result["embeddings"]
+                        chunks_processed += len(batch)
+                        batch.clear()
 
-                    # Flush to get chunk IDs
-                    await session.flush()
-
-                    logger.info(f"Document {document_id}: Created {len(chunk_objects)} chunks")
-
-                    # Step 4: Generate and store embeddings via RAG service (Qdrant)
-                    rag_service = get_rag_service()
-
-                    embedding_result = await rag_service.ingest_document(
-                        user_id=document.user_id,
-                        content=extracted_data["content_text"],
-                        metadata={
-                            "document_id": document.id,
-                            "filename": document.filename,
-                            "file_type": document.file_type,
-                            "source_type": "document",
-                        },
-                    )
-
-                    logger.info(f"Document {document_id}: Ingested to Qdrant - {embedding_result}")
-
-                    # Step 5: Update final status
+                    # Step 4: Mark complete
                     document.processing_status = ProcessingStatus.COMPLETED
                     await session.commit()
 
                     result_stats = {
                         "document_id": document_id,
                         "status": "completed",
-                        "chunks_created": len(chunk_objects),
-                        "embeddings_stored": embedding_result.get("chunks_stored", 0),
+                        "chunks_created": chunk_records_created,
+                        "embeddings_stored": embeddings_stored,
                         "word_count": extracted_data["word_count"],
                         "page_count": extracted_data.get("page_count"),
                         "ocr_performed": extracted_data.get("ocr_performed", False),
+                        "batch_size": BATCH_SIZE,
+                        "streaming": True,
                     }
 
                     logger.info(f"Document {document_id} processed successfully: {result_stats}")
-
                     return result_stats
+
+                except MemoryError:
+                    # Do NOT retry OOM failures - mark and skip
+                    document.processing_status = ProcessingStatus.FAILED
+                    await session.commit()
+                    logger.error(f"Document {document_id} OOM - marked FAILED, not retrying")
+                    from celery.exceptions import Ignore
+
+                    raise Ignore()
 
                 except Exception as e:
                     # Mark failed

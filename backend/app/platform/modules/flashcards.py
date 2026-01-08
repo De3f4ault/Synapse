@@ -19,8 +19,10 @@ from app.schemas.platform import (
     EntityVisibility,
     PlatformActionResult,
     ActionStatus,
+    EntitySearchResult,
 )
 from app.platform.registry import ModuleContract, register_module
+from app.models.deck import Deck
 
 
 # ============================================================================
@@ -30,6 +32,39 @@ from app.platform.registry import ModuleContract, register_module
 FLASHCARDS_CAPABILITIES = [
     EntityCapability.REINFORCE_GRAPH,
 ]
+
+
+# ============================================================================
+# Entity Search
+# ============================================================================
+
+
+async def search_flashcards(
+    query: str,
+    db: AsyncSession,
+    user_id: int,
+    limit: int = 10,
+) -> list[EntitySearchResult]:
+    """Search for flashcards by front text."""
+    stmt = (
+        select(Flashcard)
+        .join(Deck)
+        .where(Deck.user_id == user_id, Flashcard.front_text.ilike(f"%{query}%"))
+        .limit(limit)
+    )
+    result = await db.execute(stmt)
+    cards = result.scalars().all()
+
+    return [
+        EntitySearchResult(
+            id=card.id,
+            type=EntityType.FLASHCARD,
+            source_module=ModuleId.FLASHCARDS,
+            title=card.front_text[:50] + ("..." if len(card.front_text) > 50 else ""),
+            created_at=card.created_at,
+        )
+        for card in cards
+    ]
 
 
 # ============================================================================
@@ -138,6 +173,7 @@ flashcards_module_contract = ModuleContract(
     resolve_entity=resolve_flashcard,
     execute_capability=execute_flashcard_capability,
     check_availability=check_flashcard_availability,
+    search_entities=search_flashcards,
     supported_capabilities=FLASHCARDS_CAPABILITIES,
 )
 

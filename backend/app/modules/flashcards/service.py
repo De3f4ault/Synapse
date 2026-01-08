@@ -248,6 +248,11 @@ class FlashcardService:
         )
 
         self.session.add(card)
+        await self.session.flush()  # Get ID, validate constraints
+
+        # Generate embedding synchronously
+        await self._generate_embeddings(card)
+
         await self.session.commit()
         await self.session.refresh(card)
 
@@ -316,10 +321,17 @@ class FlashcardService:
         if not card:
             raise Exception(f"Card {card_id} not found or access denied")
 
+        # Track if content changed
+        content_changed = "front_text" in data or "back_text" in data
+
         # Update fields
         for key, value in data.items():
             if hasattr(card, key) and value is not None:
                 setattr(card, key, value)
+
+        # Regenerate embedding if content changed
+        if content_changed:
+            await self._generate_embeddings(card)
 
         await self.session.commit()
         await self.session.refresh(card)
@@ -415,6 +427,48 @@ class FlashcardService:
             "created_at": deck.created_at,
             "updated_at": deck.updated_at,
         }
+
+    async def _generate_embeddings(self, card):
+        """
+        Generate embeddings for a flashcard SYNCHRONOUSLY.
+
+        ARCHITECTURAL CHANGE: Transactional entities embed synchronously.
+        - Uses boundary module for sync embedding (~20ms)
+        - Sets embedding_status and embedding_model for versioning
+        - Falls back gracefully on failure
+
+        Args:
+            card: Flashcard model instance
+        """
+        import structlog
+        from app.core.ai.embeddings.boundary import (
+            embed_text_sync,
+            EMBEDDING_VERSION,
+            EmbeddingStatus,
+        )
+
+        logger = structlog.get_logger()
+
+        try:
+            # Combine front and back for embedding
+            text_to_embed = f"{card.front_text or ''}\n\n{card.back_text or ''}"
+
+            # Sync embed (~20ms)
+            embedding, status = embed_text_sync(text_to_embed)
+
+            # Update card fields
+            card.content_embedding = embedding
+            card.embedding_status = status.value
+            card.embedding_model = EMBEDDING_VERSION if status == EmbeddingStatus.READY else None
+
+            logger.info(
+                "flashcard_embedding_sync_complete", flashcard_id=card.id, status=status.value
+            )
+
+        except Exception as e:
+            # Log but don't fail - allow save to proceed
+            logger.warning("flashcard_embedding_sync_failed", flashcard_id=card.id, error=str(e))
+            card.embedding_status = "FAILED"
 
     def _card_to_dict(self, card) -> Dict:
         """Convert Flashcard model to dict"""

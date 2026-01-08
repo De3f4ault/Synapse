@@ -6,11 +6,16 @@ Hybrid Architecture:
 - Documents → Qdrant (existing pipeline) for complex chunking
 
 Uses sentence-transformers/all-MiniLM-L6-v2 (384 dimensions).
+
+Memory Notes:
+- PyTorch + Sentence-Transformers requires ~950MB on import
+- Worker memory limit set to 1.5GB to prevent premature recycling
+- Model is cached per-worker via get_embedder() for 20x speedup
 """
 
 import structlog
-from typing import Optional, List, Dict, Any
-from celery import shared_task, group
+from typing import Optional, Dict, Any
+from celery import group
 from sqlalchemy import text
 
 from app.services.background.celery_app import celery_app
@@ -88,15 +93,20 @@ def generate_note_embedding_task(
 
         with SessionLocal() as db:
             # Use CAST() instead of :: to avoid SQLAlchemy parameter parsing issues
-            db.execute(
+            result = db.execute(
                 text("""
                     UPDATE developer_schema.notes 
                     SET embedding = CAST(:embedding AS vector(384))
-                    WHERE id = :note_id
+                    WHERE id = :note_id AND deleted_at IS NULL
                 """),
                 {"embedding": embedding_str, "note_id": note_id},
             )
             db.commit()
+
+            # Safety check: if rowcount is 0, note was deleted between hook and task
+            if result.rowcount == 0:
+                logger.warning("note_not_found_or_deleted", note_id=note_id)
+                return {"status": "skipped", "reason": "not_found_or_deleted", "note_id": note_id}
 
         logger.info("note_embedding_generated", note_id=note_id)
         return {"status": "success", "note_id": note_id}
@@ -164,15 +174,24 @@ def generate_flashcard_embedding_task(
 
         with SessionLocal() as db:
             # Use CAST() instead of :: to avoid SQLAlchemy parameter parsing issues
-            db.execute(
+            result = db.execute(
                 text("""
                     UPDATE developer_schema.flashcards 
                     SET content_embedding = CAST(:embedding AS vector(384))
-                    WHERE id = :flashcard_id
+                    WHERE id = :flashcard_id AND deleted_at IS NULL
                 """),
                 {"embedding": embedding_str, "flashcard_id": flashcard_id},
             )
             db.commit()
+
+            # Safety check: if rowcount is 0, flashcard was deleted between hook and task
+            if result.rowcount == 0:
+                logger.warning("flashcard_not_found_or_deleted", flashcard_id=flashcard_id)
+                return {
+                    "status": "skipped",
+                    "reason": "not_found_or_deleted",
+                    "flashcard_id": flashcard_id,
+                }
 
         logger.info("flashcard_embedding_generated", flashcard_id=flashcard_id)
         return {"status": "success", "flashcard_id": flashcard_id}

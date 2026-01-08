@@ -288,8 +288,8 @@ celery-cpu: ## Start CPU-bound Celery worker (RAG, embeddings, OCR)
 		--queues=rag,embeddings,documents,ocr \
 		--loglevel=info \
 		--concurrency=1 \
-		--max-tasks-per-child=25 \
-		--max-memory-per-child=500000 \
+		--max-tasks-per-child=100 \
+		--max-memory-per-child=1500000 \
 		-n cpu_worker@%h
 
 celery-all: ## Start all Celery queues in one worker (dev only)
@@ -298,11 +298,15 @@ celery-all: ## Start all Celery queues in one worker (dev only)
 		--pool=prefork \
 		--queues=emails,default,webhook,rag,embeddings,documents,ocr \
 		--loglevel=info \
-		--concurrency=2 \
+		--concurrency=1 \
+		--prefetch-multiplier=1 \
+		--max-tasks-per-child=100 \
+		--max-memory-per-child=1500000 \
 		-n dev_worker@%h
 
 celery-beat: ## Start Celery beat scheduler
 	@echo "Starting Celery beat..."
+	@rm -f /tmp/celerybeat.pid
 	celery -A app.services.background.celery_app beat \
 		--loglevel=info \
 		--pidfile=/tmp/celerybeat.pid

@@ -19,12 +19,25 @@ from app.schemas.platform import (
     LearningEntity,
     ResolvedCapability,
     PlatformActionResult,
+    EntitySearchResult,
 )
 
 
 # ============================================================================
 # Protocol Definitions (Type Contracts)
 # ============================================================================
+
+
+class ModuleEntitySearcher(Protocol):
+    """
+    Protocol for entity search functions.
+    """
+
+    async def __call__(
+        self, query: str, db: AsyncSession, user_id: int, limit: int = 10
+    ) -> list[EntitySearchResult]:
+        """Search for entities matching the query."""
+        ...
 
 
 class EntityResolver(Protocol):
@@ -90,6 +103,7 @@ class ModuleContract:
     resolve_entity: EntityResolver
     execute_capability: CapabilityExecutor
     check_availability: AvailabilityChecker
+    search_entities: ModuleEntitySearcher | None = None
     supported_capabilities: list[EntityCapability] = field(default_factory=list)
 
 

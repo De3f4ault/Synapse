@@ -393,36 +393,43 @@ class NoteService:
 
     async def _generate_embeddings(self, note):
         """
-        Generate embeddings for a note.
+        Generate embeddings for a note SYNCHRONOUSLY.
 
-        NOTE: Since we now have SQLAlchemy hooks (embedding_hooks.py) that
-        automatically trigger Celery tasks on Note create/update events,
-        this method is mostly a fallback for explicit embedding generation.
-
-        The hooks in app/services/background/embedding_hooks.py handle:
-        - Note creation -> generate_note_embedding_task
-        - Note updates -> generate_note_embedding_task
+        ARCHITECTURAL CHANGE: Transactional entities embed synchronously.
+        - Uses boundary module for sync embedding (~20ms)
+        - Sets embedding_status and embedding_model for versioning
+        - Falls back gracefully on failure
 
         Args:
             note: Note model instance
         """
+        import structlog
+        from app.core.ai.embeddings.boundary import (
+            embed_text_sync,
+            EMBEDDING_VERSION,
+            EmbeddingStatus,
+        )
+
+        logger = structlog.get_logger()
+
         try:
-            from app.services.background.embedding_tasks import generate_note_embedding_task
+            # Combine title and content for embedding
+            text_to_embed = f"{note.title or ''}\n\n{note.content or ''}"
 
-            # Queue the embedding generation task
-            generate_note_embedding_task.delay(note.id)
+            # Sync embed (~20ms)
+            embedding, status = embed_text_sync(text_to_embed)
 
-            import structlog
+            # Update note fields
+            note.embedding = embedding
+            note.embedding_status = status.value
+            note.embedding_model = EMBEDDING_VERSION if status == EmbeddingStatus.READY else None
 
-            logger = structlog.get_logger()
-            logger.info("note_embedding_task_queued", note_id=note.id)
+            logger.info("note_embedding_sync_complete", note_id=note.id, status=status.value)
 
         except Exception as e:
-            # Log but don't fail - hooks should also trigger this
-            import structlog
-
-            logger = structlog.get_logger()
-            logger.warning("embedding_task_queue_failed", note_id=note.id, error=str(e))
+            # Log but don't fail - allow save to proceed
+            logger.warning("note_embedding_sync_failed", note_id=note.id, error=str(e))
+            note.embedding_status = "FAILED"
 
     # ==================== HIERARCHY OPERATIONS ====================
 

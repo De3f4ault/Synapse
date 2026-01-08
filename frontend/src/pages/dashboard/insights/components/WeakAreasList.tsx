@@ -2,13 +2,15 @@
  * WeakAreasList - Visualizes weak areas identified by insights engine
  * 
  * Displays:
- * - List of weak areas from API and graph intelligence
- * - Source indicator (graph = learning patterns, hybrid = confirmed)
+ * - List of weak areas from API, graph intelligence, and GIE
+ * - Source indicator (gie = intelligence engine, graph = learning patterns, hybrid = confirmed)
+ * - Stability indicator for decay risk
  * - Progress bar for accuracy
  * - Empty state if no weak areas
  */
 
-import { AlertCircle, Sparkles, CheckCircle2 } from "lucide-react";
+import { AlertCircle, Sparkles, CheckCircle2, Brain, TrendingDown } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { NeumorphicCard } from "@/components/neumorphic";
 import type { WeakAreaInsight } from "../engine/types";
 import { cn } from "@/lib/utils";
@@ -23,6 +25,12 @@ interface WeakAreasListProps {
  */
 function getSourceInfo(source?: string): { label: string; className: string; Icon: typeof Sparkles | null } {
     switch (source) {
+        case "gie":
+            return {
+                label: "Intelligence",
+                className: "text-cyan-400 bg-cyan-500/10 border-cyan-500/20",
+                Icon: Brain,
+            };
         case "graph":
             return {
                 label: "Learning patterns",
@@ -45,6 +53,8 @@ function getSourceInfo(source?: string): { label: string; className: string; Ico
 }
 
 export function WeakAreasList({ data, className }: WeakAreasListProps) {
+    const navigate = useNavigate();
+
     return (
         <NeumorphicCard className={cn("p-6 flex flex-col", className)}>
             <div className="flex items-center gap-3 mb-6">
@@ -77,21 +87,34 @@ export function WeakAreasList({ data, className }: WeakAreasListProps) {
                         const sourceInfo = getSourceInfo(area.source);
 
                         return (
-                            <div key={area.topic} className="space-y-2 group">
+                            <div
+                                key={area.topic}
+                                className="space-y-2 group cursor-pointer"
+                                onClick={() => navigate(`/study?focus=concept:${encodeURIComponent(area.topic)}`)}
+                            >
                                 <div className="flex justify-between items-start text-sm gap-2">
                                     <div className="flex-1 min-w-0">
                                         <span className="font-medium text-slate-300 group-hover:text-white transition-colors block truncate">
                                             {area.topic}
                                         </span>
-                                        {sourceInfo.Icon && (
-                                            <div className={cn(
-                                                "inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded border text-[10px] uppercase tracking-wider font-medium",
-                                                sourceInfo.className
-                                            )}>
-                                                <sourceInfo.Icon className="w-3 h-3" />
-                                                {sourceInfo.label}
-                                            </div>
-                                        )}
+                                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                            {sourceInfo.Icon && (
+                                                <div className={cn(
+                                                    "inline-flex items-center gap-1 px-2 py-0.5 rounded border text-[10px] uppercase tracking-wider font-medium",
+                                                    sourceInfo.className
+                                                )}>
+                                                    <sourceInfo.Icon className="w-3 h-3" />
+                                                    {sourceInfo.label}
+                                                </div>
+                                            )}
+                                            {/* Stability indicator for GIE sources */}
+                                            {area.stability !== undefined && area.stability < 0.5 && (
+                                                <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded border text-[10px] uppercase tracking-wider font-medium text-red-400 bg-red-500/10 border-red-500/20">
+                                                    <TrendingDown className="w-3 h-3" />
+                                                    Decaying
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                     <span className="text-red-400 font-bold font-mono shrink-0">
                                         {(area.accuracy * 100).toFixed(0)}%
@@ -101,8 +124,9 @@ export function WeakAreasList({ data, className }: WeakAreasListProps) {
                                     <div
                                         className={cn(
                                             "h-full rounded-full transition-all duration-500",
-                                            area.source === "hybrid" ? "bg-amber-400" :
-                                                area.source === "graph" ? "bg-purple-400" : "bg-red-400"
+                                            area.source === "gie" ? "bg-cyan-400" :
+                                                area.source === "hybrid" ? "bg-amber-400" :
+                                                    area.source === "graph" ? "bg-purple-400" : "bg-red-400"
                                         )}
                                         style={{ width: `${area.accuracy * 100}%` }}
                                     />

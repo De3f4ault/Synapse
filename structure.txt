@@ -6,6 +6,8 @@
 │   │   └── versions
 │   │       ├── 052d2385be9e_initial_schema.py
 │   │       ├── 29017093e61c_add_document_notes_sector_summary_fields.py
+│   │       ├── 715e1be1a0d9_add_embedding_versioning_fields.py
+│   │       ├── 8e666190e36e_merge_heads_before_embedding_versioning.py
 │   │       ├── add_activity_log_table.py
 │   │       ├── add_conversation_branching.py
 │   │       ├── add_document_content_hash.py
@@ -28,16 +30,20 @@
 │   │   │   │   └── types.py
 │   │   │   ├── __init__.py
 │   │   │   ├── rest
+│   │   │   │   ├── actions.py
 │   │   │   │   ├── analytics.py
 │   │   │   │   ├── auth.py
 │   │   │   │   ├── chat.py
 │   │   │   │   ├── decks.py
 │   │   │   │   ├── documents.py
+│   │   │   │   ├── entities.py
 │   │   │   │   ├── flashcards.py
 │   │   │   │   ├── health.py
 │   │   │   │   ├── __init__.py
+│   │   │   │   ├── intelligence.py
 │   │   │   │   ├── links.py
 │   │   │   │   ├── notes.py
+│   │   │   │   ├── platform_graph.py
 │   │   │   │   ├── quizzes.py
 │   │   │   │   ├── rag.py
 │   │   │   │   ├── router.py
@@ -92,6 +98,8 @@
 │   │   │   │   │   └── registry.py
 │   │   │   │   ├── context
 │   │   │   │   │   └── dashboard_context_builder.py
+│   │   │   │   ├── embeddings
+│   │   │   │   │   └── boundary.py
 │   │   │   │   ├── __init__.py
 │   │   │   │   ├── orchestrator.py
 │   │   │   │   ├── providers
@@ -327,6 +335,16 @@
 │   │   │       ├── __init__.py
 │   │   │       ├── repository.py
 │   │   │       └── service.py
+│   │   ├── platform
+│   │   │   ├── __init__.py
+│   │   │   ├── init.py
+│   │   │   ├── modules
+│   │   │   │   ├── documents.py
+│   │   │   │   ├── flashcards.py
+│   │   │   │   ├── __init__.py
+│   │   │   │   ├── notes.py
+│   │   │   │   └── quizzes.py
+│   │   │   └── registry.py
 │   │   ├── schemas
 │   │   │   ├── auth.py
 │   │   │   ├── chat.py
@@ -336,6 +354,7 @@
 │   │   │   ├── flashcard.py
 │   │   │   ├── __init__.py
 │   │   │   ├── note.py
+│   │   │   ├── platform.py
 │   │   │   ├── quiz.py
 │   │   │   ├── rag.py
 │   │   │   ├── user.py
@@ -406,6 +425,8 @@
 │   │   │   │   │   ├── get_due_cards.sql
 │   │   │   │   │   └── record_review.sql
 │   │   │   │   ├── hybrid_search.sql
+│   │   │   │   ├── intelligence
+│   │   │   │   │   └── get_intelligence_summary.sql
 │   │   │   │   ├── notes
 │   │   │   │   │   └── get_note_hierarchy.sql
 │   │   │   │   └── search
@@ -732,33 +753,16 @@
 │   │   │       │       └── version.info
 │   │   │       └── raft_state.json
 │   │   └── uploads
-│   │       ├── 4165cede-052a-4652-91cf-b3316389fa30.pdf
-│   │       ├── 4165cede-052a-4652-91cf-b3316389fa30.pdf_thumb.png
-│   │       ├── 48c32d12-ee6a-46ec-9958-175d358925c0.pdf
-│   │       ├── 48c32d12-ee6a-46ec-9958-175d358925c0.pdf_thumb.png
-│   │       ├── 4f3d9c95-4123-4a6c-b79b-0d29b0c82d02.pdf
-│   │       ├── 655690fa-f6e0-4537-a44b-9b49c0fd2705.pdf
-│   │       ├── 655690fa-f6e0-4537-a44b-9b49c0fd2705.pdf_thumb.png
-│   │       ├── 7689e198-1446-4b88-af1b-a989e7931d2a.pdf
-│   │       ├── 7689e198-1446-4b88-af1b-a989e7931d2a.pdf_thumb.png
-│   │       ├── a4f88e3b-e2e8-4e8e-be5e-53b12635d7d3.pdf
-│   │       ├── a4f88e3b-e2e8-4e8e-be5e-53b12635d7d3.pdf_thumb.png
-│   │       ├── b031015e-44e0-4b56-8e80-9098713fd7c5.pdf
-│   │       ├── b031015e-44e0-4b56-8e80-9098713fd7c5.pdf_thumb.png
-│   │       ├── c11c2b82-2b00-45f1-81ca-ef8df516b882.pdf
-│   │       ├── c11c2b82-2b00-45f1-81ca-ef8df516b882.pdf_thumb.png
-│   │       ├── c600372d-c6fc-4b6c-98c1-3d93cb731fc8.pdf
-│   │       ├── c600372d-c6fc-4b6c-98c1-3d93cb731fc8.pdf_thumb.png
-│   │       ├── c72936a6-c4c2-4d54-9b54-2f5b575a14ca.pdf
-│   │       ├── c72936a6-c4c2-4d54-9b54-2f5b575a14ca.pdf_thumb.png
-│   │       ├── c8ea08a9-f18d-49bf-acdf-6a383b6fed57.pdf
-│   │       ├── c8ea08a9-f18d-49bf-acdf-6a383b6fed57.pdf_thumb.png
-│   │       ├── cfcdecb2-7117-4ad2-8f4a-30a9ebcf2ec6.pdf
-│   │       ├── cfcdecb2-7117-4ad2-8f4a-30a9ebcf2ec6.pdf_thumb.png
-│   │       ├── ddc4c392-afd6-4245-b10d-a5ba1b00ba1f.pdf
-│   │       ├── ddc4c392-afd6-4245-b10d-a5ba1b00ba1f.pdf_thumb.png
-│   │       ├── dea3a6bd-5017-4b3a-804f-65c3b564a0b8.pdf
-│   │       └── dea3a6bd-5017-4b3a-804f-65c3b564a0b8.pdf_thumb.png
+│   │       ├── 0e0e6bed-0169-413e-97ff-4d5b1852d7f0.pdf
+│   │       ├── 0e0e6bed-0169-413e-97ff-4d5b1852d7f0.pdf_thumb.png
+│   │       ├── 5423aef8-8949-4016-b126-bda03df72234.pdf
+│   │       ├── 5423aef8-8949-4016-b126-bda03df72234.pdf_thumb.png
+│   │       ├── 56bcc6e1-ebdc-472b-835a-d9ea1f828b4b.pdf
+│   │       ├── 56bcc6e1-ebdc-472b-835a-d9ea1f828b4b.pdf_thumb.png
+│   │       ├── 76fecbd2-4a44-43c9-9773-009ec141065b.pdf
+│   │       ├── 76fecbd2-4a44-43c9-9773-009ec141065b.pdf_thumb.png
+│   │       ├── e4608922-99e3-4e08-8531-68b938c233e7.pdf
+│   │       └── e4608922-99e3-4e08-8531-68b938c233e7.pdf_thumb.png
 │   ├── docs
 │   │   ├── CELERY_DEPLOYMENT.md
 │   │   ├── CELERY_QUICKSTART.md
@@ -790,153 +794,169 @@
 │       ├── __init__.py
 │       └── start-production.sh
 ├── frontend
+│   ├── &1
 │   ├── chat_implementation.md
 │   ├── components.json
 │   ├── dist
 │   │   ├── assets
-│   │   │   ├── activity-Dcv_ktBv.js
-│   │   │   ├── activity-Dcv_ktBv.js.map
-│   │   │   ├── architectureDiagram-VXUJARFQ-p5fx2OVJ.js
-│   │   │   ├── architectureDiagram-VXUJARFQ-p5fx2OVJ.js.map
-│   │   │   ├── arrow-left-rSQYhqsM.js
-│   │   │   ├── arrow-left-rSQYhqsM.js.map
-│   │   │   ├── arrow-right-n1NEQAVw.js
-│   │   │   ├── arrow-right-n1NEQAVw.js.map
-│   │   │   ├── AuthenticationService-BqU0CYE5.js
-│   │   │   ├── AuthenticationService-BqU0CYE5.js.map
-│   │   │   ├── _baseUniq-DRlHj2y2.js
-│   │   │   ├── _baseUniq-DRlHj2y2.js.map
-│   │   │   ├── blockDiagram-VD42YOAC-dmbI4okZ.js
-│   │   │   ├── blockDiagram-VD42YOAC-dmbI4okZ.js.map
-│   │   │   ├── brain-BVWXWsUi.js
-│   │   │   ├── brain-BVWXWsUi.js.map
-│   │   │   ├── brain-circuit-B7Gi3lZU.js
-│   │   │   ├── brain-circuit-B7Gi3lZU.js.map
-│   │   │   ├── c4Diagram-YG6GDRKO-B5IcjxhO.js
-│   │   │   ├── c4Diagram-YG6GDRKO-B5IcjxhO.js.map
-│   │   │   ├── channel-DSiaEIWh.js
-│   │   │   ├── channel-DSiaEIWh.js.map
-│   │   │   ├── ChatPage-ZCT_2bGG.js
-│   │   │   ├── ChatPage-ZCT_2bGG.js.map
-│   │   │   ├── ChatService-B79KNe8q.js
-│   │   │   ├── ChatService-B79KNe8q.js.map
-│   │   │   ├── check-DbQGIafM.js
-│   │   │   ├── check-DbQGIafM.js.map
-│   │   │   ├── chevron-left-CuzAntBu.js
-│   │   │   ├── chevron-left-CuzAntBu.js.map
-│   │   │   ├── chevron-up-Diw_9Dei.js
-│   │   │   ├── chevron-up-Diw_9Dei.js.map
-│   │   │   ├── chunk-4BX2VUAB-4LWIMWGl.js
-│   │   │   ├── chunk-4BX2VUAB-4LWIMWGl.js.map
-│   │   │   ├── chunk-55IACEB6-D_2s0eBI.js
-│   │   │   ├── chunk-55IACEB6-D_2s0eBI.js.map
-│   │   │   ├── chunk-B4BG7PRW-DspS36u5.js
-│   │   │   ├── chunk-B4BG7PRW-DspS36u5.js.map
-│   │   │   ├── chunk-DI55MBZ5-CfPuo0Q6.js
-│   │   │   ├── chunk-DI55MBZ5-CfPuo0Q6.js.map
-│   │   │   ├── chunk-FMBD7UC4-Cvcvs8N8.js
-│   │   │   ├── chunk-FMBD7UC4-Cvcvs8N8.js.map
-│   │   │   ├── chunk-QN33PNHL-tdoiXsJ7.js
-│   │   │   ├── chunk-QN33PNHL-tdoiXsJ7.js.map
-│   │   │   ├── chunk-QZHKN3VN-tPcjCFOR.js
-│   │   │   ├── chunk-QZHKN3VN-tPcjCFOR.js.map
-│   │   │   ├── chunk-TZMSLE5B-CRAKzeOo.js
-│   │   │   ├── chunk-TZMSLE5B-CRAKzeOo.js.map
-│   │   │   ├── circle-check-DHCrS92c.js
-│   │   │   ├── circle-check-DHCrS92c.js.map
-│   │   │   ├── classDiagram-2ON5EDUG-B4O6l01h.js
-│   │   │   ├── classDiagram-2ON5EDUG-B4O6l01h.js.map
-│   │   │   ├── classDiagram-v2-WZHVMYZB-B4O6l01h.js
-│   │   │   ├── classDiagram-v2-WZHVMYZB-B4O6l01h.js.map
-│   │   │   ├── clock-CWP-_9Hi.js
-│   │   │   ├── clock-CWP-_9Hi.js.map
-│   │   │   ├── clone-B_q4hSwH.js
-│   │   │   ├── clone-B_q4hSwH.js.map
-│   │   │   ├── code-q8cRD6uJ.js
-│   │   │   ├── code-q8cRD6uJ.js.map
-│   │   │   ├── _commonjs-dynamic-modules-TDtrdbi3.js
-│   │   │   ├── _commonjs-dynamic-modules-TDtrdbi3.js.map
-│   │   │   ├── copy-Czdx1P23.js
-│   │   │   ├── copy-Czdx1P23.js.map
-│   │   │   ├── cose-bilkent-S5V4N54A-OYWXMy3M.js
-│   │   │   ├── cose-bilkent-S5V4N54A-OYWXMy3M.js.map
-│   │   │   ├── CreateCardPage-CTdxiciS.js
-│   │   │   ├── CreateCardPage-CTdxiciS.js.map
-│   │   │   ├── CreateDeckPage-CU8u0tPo.js
-│   │   │   ├── CreateDeckPage-CU8u0tPo.js.map
+│   │   │   ├── activity-Bt-qhNPj.js
+│   │   │   ├── activity-Bt-qhNPj.js.map
+│   │   │   ├── architectureDiagram-VXUJARFQ-DYcKJhI6.js
+│   │   │   ├── architectureDiagram-VXUJARFQ-DYcKJhI6.js.map
+│   │   │   ├── arrow-left-DaSX-4DG.js
+│   │   │   ├── arrow-left-DaSX-4DG.js.map
+│   │   │   ├── AuthenticationService-BXYPVoKi.js
+│   │   │   ├── AuthenticationService-BXYPVoKi.js.map
+│   │   │   ├── badge-DF_guJw7.js
+│   │   │   ├── badge-DF_guJw7.js.map
+│   │   │   ├── _baseUniq-Di9syUNZ.js
+│   │   │   ├── _baseUniq-Di9syUNZ.js.map
+│   │   │   ├── blockDiagram-VD42YOAC-BJcXJ0Rf.js
+│   │   │   ├── blockDiagram-VD42YOAC-BJcXJ0Rf.js.map
+│   │   │   ├── brain-circuit-ppLpeDhO.js
+│   │   │   ├── brain-circuit-ppLpeDhO.js.map
+│   │   │   ├── brain-DD562FkQ.js
+│   │   │   ├── brain-DD562FkQ.js.map
+│   │   │   ├── c4Diagram-YG6GDRKO-BBBTANAz.js
+│   │   │   ├── c4Diagram-YG6GDRKO-BBBTANAz.js.map
+│   │   │   ├── calendar-Gk-4BrPJ.js
+│   │   │   ├── calendar-Gk-4BrPJ.js.map
+│   │   │   ├── channel-C5InRDXs.js
+│   │   │   ├── channel-C5InRDXs.js.map
+│   │   │   ├── ChatPage-C36DnUAD.js
+│   │   │   ├── ChatPage-C36DnUAD.js.map
+│   │   │   ├── ChatService-B_zl8jgO.js
+│   │   │   ├── ChatService-B_zl8jgO.js.map
+│   │   │   ├── check-D_G6GQx9.js
+│   │   │   ├── check-D_G6GQx9.js.map
+│   │   │   ├── chevron-down-yCO9SLxO.js
+│   │   │   ├── chevron-down-yCO9SLxO.js.map
+│   │   │   ├── chevron-up-S6H-gOs6.js
+│   │   │   ├── chevron-up-S6H-gOs6.js.map
+│   │   │   ├── chunk-4BX2VUAB-Cwziw9S8.js
+│   │   │   ├── chunk-4BX2VUAB-Cwziw9S8.js.map
+│   │   │   ├── chunk-55IACEB6-B5BD8U6R.js
+│   │   │   ├── chunk-55IACEB6-B5BD8U6R.js.map
+│   │   │   ├── chunk-B4BG7PRW-EGSld7bq.js
+│   │   │   ├── chunk-B4BG7PRW-EGSld7bq.js.map
+│   │   │   ├── chunk-DI55MBZ5-dlLqFCZj.js
+│   │   │   ├── chunk-DI55MBZ5-dlLqFCZj.js.map
+│   │   │   ├── chunk-FMBD7UC4-36iqt66F.js
+│   │   │   ├── chunk-FMBD7UC4-36iqt66F.js.map
+│   │   │   ├── chunk-QN33PNHL-CXVafHFa.js
+│   │   │   ├── chunk-QN33PNHL-CXVafHFa.js.map
+│   │   │   ├── chunk-QZHKN3VN-D7JqMa1t.js
+│   │   │   ├── chunk-QZHKN3VN-D7JqMa1t.js.map
+│   │   │   ├── chunk-TZMSLE5B-CgDQmvcq.js
+│   │   │   ├── chunk-TZMSLE5B-CgDQmvcq.js.map
+│   │   │   ├── circle-check-big-BaeB-1c_.js
+│   │   │   ├── circle-check-big-BaeB-1c_.js.map
+│   │   │   ├── circle-check-CLkk3s67.js
+│   │   │   ├── circle-check-CLkk3s67.js.map
+│   │   │   ├── circle-x-CuexcsmR.js
+│   │   │   ├── circle-x-CuexcsmR.js.map
+│   │   │   ├── classDiagram-2ON5EDUG-CvAZylNP.js
+│   │   │   ├── classDiagram-2ON5EDUG-CvAZylNP.js.map
+│   │   │   ├── classDiagram-v2-WZHVMYZB-CvAZylNP.js
+│   │   │   ├── classDiagram-v2-WZHVMYZB-CvAZylNP.js.map
+│   │   │   ├── clock-D6koMRVs.js
+│   │   │   ├── clock-D6koMRVs.js.map
+│   │   │   ├── clone-B1QHP6Zs.js
+│   │   │   ├── clone-B1QHP6Zs.js.map
+│   │   │   ├── code-Bc2mDb8Q.js
+│   │   │   ├── code-Bc2mDb8Q.js.map
+│   │   │   ├── constants-DpgL8oNP.js
+│   │   │   ├── constants-DpgL8oNP.js.map
+│   │   │   ├── cose-bilkent-S5V4N54A-BSvIr-65.js
+│   │   │   ├── cose-bilkent-S5V4N54A-BSvIr-65.js.map
+│   │   │   ├── CreateCardPage-w5Qill4n.js
+│   │   │   ├── CreateCardPage-w5Qill4n.js.map
+│   │   │   ├── CreateDeckPage-MW5MNJa4.js
+│   │   │   ├── CreateDeckPage-MW5MNJa4.js.map
 │   │   │   ├── cytoscape.esm-BQaXIfA_.js
 │   │   │   ├── cytoscape.esm-BQaXIfA_.js.map
-│   │   │   ├── dagre-6UL2VRFP-7yOf9XvQ.js
-│   │   │   ├── dagre-6UL2VRFP-7yOf9XvQ.js.map
-│   │   │   ├── DashboardPage-BezEyG9Q.js
-│   │   │   ├── DashboardPage-BezEyG9Q.js.map
-│   │   │   ├── DeckDetailPage-_-B0DB04.js
-│   │   │   ├── DeckDetailPage-_-B0DB04.js.map
-│   │   │   ├── DecksPage-BxiHOnZ8.js
-│   │   │   ├── DecksPage-BxiHOnZ8.js.map
-│   │   │   ├── diagram-PSM6KHXK-EqCy43Q9.js
-│   │   │   ├── diagram-PSM6KHXK-EqCy43Q9.js.map
-│   │   │   ├── diagram-QEK2KX5R-D-FwPtzG.js
-│   │   │   ├── diagram-QEK2KX5R-D-FwPtzG.js.map
-│   │   │   ├── diagram-S2PKOQOG-Blzj9TbV.js
-│   │   │   ├── diagram-S2PKOQOG-Blzj9TbV.js.map
-│   │   │   ├── DocumentsPage-C7H0jYmg.js
-│   │   │   ├── DocumentsPage-C7H0jYmg.js.map
-│   │   │   ├── DocumentsService-BpWZmCVM.js
-│   │   │   ├── DocumentsService-BpWZmCVM.js.map
-│   │   │   ├── DOCXViewer-c01CqggN.js
-│   │   │   ├── DOCXViewer-c01CqggN.js.map
-│   │   │   ├── EditCardPage-BGj4XsGZ.js
-│   │   │   ├── EditCardPage-BGj4XsGZ.js.map
-│   │   │   ├── editor-vendor-Br4IFlFB.js
-│   │   │   ├── editor-vendor-Br4IFlFB.js.map
-│   │   │   ├── ellipsis-vertical-CQ-FRRIZ.js
-│   │   │   ├── ellipsis-vertical-CQ-FRRIZ.js.map
+│   │   │   ├── dagre-6UL2VRFP-C91IsQmf.js
+│   │   │   ├── dagre-6UL2VRFP-C91IsQmf.js.map
+│   │   │   ├── DarkCard-gzGiCZSz.js
+│   │   │   ├── DarkCard-gzGiCZSz.js.map
+│   │   │   ├── DashboardPage-Byw7ZHeA.js
+│   │   │   ├── DashboardPage-Byw7ZHeA.js.map
+│   │   │   ├── DeckDetailPage-B0_sNVq7.js
+│   │   │   ├── DeckDetailPage-B0_sNVq7.js.map
+│   │   │   ├── deckListStore-BaWFOeB2.js
+│   │   │   ├── deckListStore-BaWFOeB2.js.map
+│   │   │   ├── diagram-PSM6KHXK-BYWfdCqA.js
+│   │   │   ├── diagram-PSM6KHXK-BYWfdCqA.js.map
+│   │   │   ├── diagram-QEK2KX5R-DkilRk9m.js
+│   │   │   ├── diagram-QEK2KX5R-DkilRk9m.js.map
+│   │   │   ├── diagram-S2PKOQOG-DMf-Vgvg.js
+│   │   │   ├── diagram-S2PKOQOG-DMf-Vgvg.js.map
+│   │   │   ├── DocumentsPage-CJcKS1eY.css
+│   │   │   ├── DocumentsPage-DgHfaUmW.js
+│   │   │   ├── DocumentsPage-DgHfaUmW.js.map
+│   │   │   ├── DOCXViewer-CDm1cccC.js
+│   │   │   ├── DOCXViewer-CDm1cccC.js.map
+│   │   │   ├── EditCardPage-DITbgdc6.js
+│   │   │   ├── EditCardPage-DITbgdc6.js.map
+│   │   │   ├── editor-vendor-DSNN-YtN.js
+│   │   │   ├── editor-vendor-DSNN-YtN.js.map
+│   │   │   ├── ellipsis-vertical-ARNKBg3M.js
+│   │   │   ├── ellipsis-vertical-ARNKBg3M.js.map
+│   │   │   ├── EmptyState-DsePKizk.js
+│   │   │   ├── EmptyState-DsePKizk.js.map
 │   │   │   ├── en-US-D8UQXs-H.js
 │   │   │   ├── en-US-D8UQXs-H.js.map
-│   │   │   ├── EPUBViewer-CpHEiAXE.js
-│   │   │   ├── EPUBViewer-CpHEiAXE.js.map
-│   │   │   ├── erDiagram-Q2GNP2WA-C8r6rBFC.js
-│   │   │   ├── erDiagram-Q2GNP2WA-C8r6rBFC.js.map
-│   │   │   ├── eye-CZSZMWuX.js
-│   │   │   ├── eye-CZSZMWuX.js.map
-│   │   │   ├── filter-Zz6TgFtX.js
-│   │   │   ├── filter-Zz6TgFtX.js.map
-│   │   │   ├── flame-DSbjV3mz.js
-│   │   │   ├── flame-DSbjV3mz.js.map
-│   │   │   ├── FlashcardsService-CnJLmiwA.js
-│   │   │   ├── FlashcardsService-CnJLmiwA.js.map
-│   │   │   ├── FloatingPageDock-DVOExlK6.js
-│   │   │   ├── FloatingPageDock-DVOExlK6.js.map
-│   │   │   ├── flowDiagram-NV44I4VS-fZGI8Wf2.js
-│   │   │   ├── flowDiagram-NV44I4VS-fZGI8Wf2.js.map
-│   │   │   ├── ganttDiagram-JELNMOA3-vJM6M1V8.js
-│   │   │   ├── ganttDiagram-JELNMOA3-vJM6M1V8.js.map
-│   │   │   ├── GatekeeperUI-BGT7A-zC.js
-│   │   │   ├── GatekeeperUI-BGT7A-zC.js.map
-│   │   │   ├── gitGraphDiagram-NY62KEGX-DTDnlL-N.js
-│   │   │   ├── gitGraphDiagram-NY62KEGX-DTDnlL-N.js.map
-│   │   │   ├── GlassCard-ZetUrEmF.js
-│   │   │   ├── GlassCard-ZetUrEmF.js.map
-│   │   │   ├── graph-CXn41lxE.js
-│   │   │   ├── graph-CXn41lxE.js.map
-│   │   │   ├── HTMLViewer-K78tBAOc.js
-│   │   │   ├── HTMLViewer-K78tBAOc.js.map
-│   │   │   ├── index-B4BDQYKn.js
-│   │   │   ├── index-B4BDQYKn.js.map
-│   │   │   ├── index-B4HlFNEp.js
-│   │   │   ├── index-B4HlFNEp.js.map
-│   │   │   ├── index-Cfn9WYoh.js
-│   │   │   ├── index-Cfn9WYoh.js.map
-│   │   │   ├── index-wrK3vLI5.css
-│   │   │   ├── infoDiagram-WHAUD3N6-B6fSNEvZ.js
-│   │   │   ├── infoDiagram-WHAUD3N6-B6fSNEvZ.js.map
-│   │   │   ├── input-B2jkNYh0.js
-│   │   │   ├── input-B2jkNYh0.js.map
-│   │   │   ├── journeyDiagram-XKPGCS4Q-DKM3amJn.js
-│   │   │   ├── journeyDiagram-XKPGCS4Q-DKM3amJn.js.map
-│   │   │   ├── kanban-definition-3W4ZIXB7-BNN2K0d3.js
-│   │   │   ├── kanban-definition-3W4ZIXB7-BNN2K0d3.js.map
+│   │   │   ├── EPUBViewer-D9zox3k2.js
+│   │   │   ├── EPUBViewer-D9zox3k2.js.map
+│   │   │   ├── erDiagram-Q2GNP2WA--wzqcGHi.js
+│   │   │   ├── erDiagram-Q2GNP2WA--wzqcGHi.js.map
+│   │   │   ├── eye-DoihKx_c.js
+│   │   │   ├── eye-DoihKx_c.js.map
+│   │   │   ├── filter-C_HeJqcE.js
+│   │   │   ├── filter-C_HeJqcE.js.map
+│   │   │   ├── flame-BY5Vf7K5.js
+│   │   │   ├── flame-BY5Vf7K5.js.map
+│   │   │   ├── FlashcardsPage-Bvj2mWfE.js
+│   │   │   ├── FlashcardsPage-Bvj2mWfE.js.map
+│   │   │   ├── FloatingPageDock-BGXfm3YD.js
+│   │   │   ├── FloatingPageDock-BGXfm3YD.js.map
+│   │   │   ├── flowDiagram-NV44I4VS-Djvumx0O.js
+│   │   │   ├── flowDiagram-NV44I4VS-Djvumx0O.js.map
+│   │   │   ├── ganttDiagram-JELNMOA3-BRkVnpkp.js
+│   │   │   ├── ganttDiagram-JELNMOA3-BRkVnpkp.js.map
+│   │   │   ├── GatekeeperUI-Dawcrbwt.js
+│   │   │   ├── GatekeeperUI-Dawcrbwt.js.map
+│   │   │   ├── gitGraphDiagram-NY62KEGX-IagMnKUa.js
+│   │   │   ├── gitGraphDiagram-NY62KEGX-IagMnKUa.js.map
+│   │   │   ├── GlassCard-D-GdbaOF.js
+│   │   │   ├── GlassCard-D-GdbaOF.js.map
+│   │   │   ├── graph-Bd6KpsbG.js
+│   │   │   ├── graph-Bd6KpsbG.js.map
+│   │   │   ├── HTMLViewer-B83HKBK2.js
+│   │   │   ├── HTMLViewer-B83HKBK2.js.map
+│   │   │   ├── ImportModal-G5PsJY-5.js
+│   │   │   ├── ImportModal-G5PsJY-5.js.map
+│   │   │   ├── index-CUWCbkBE.js
+│   │   │   ├── index-CUWCbkBE.js.map
+│   │   │   ├── index-D_PGPMiW.css
+│   │   │   ├── index-DseQwBo5.js
+│   │   │   ├── index-DseQwBo5.js.map
+│   │   │   ├── index-DYq4_oeB.js
+│   │   │   ├── index-DYq4_oeB.js.map
+│   │   │   ├── index.esm-RYPoGAyS.js
+│   │   │   ├── index.esm-RYPoGAyS.js.map
+│   │   │   ├── index-oWxQcU9o.js
+│   │   │   ├── index-oWxQcU9o.js.map
+│   │   │   ├── index-t7FYgZ5O.js
+│   │   │   ├── index-t7FYgZ5O.js.map
+│   │   │   ├── infoDiagram-WHAUD3N6-wUq8HO2t.js
+│   │   │   ├── infoDiagram-WHAUD3N6-wUq8HO2t.js.map
+│   │   │   ├── input-Cd7UfVaz.js
+│   │   │   ├── input-Cd7UfVaz.js.map
+│   │   │   ├── journeyDiagram-XKPGCS4Q-CeGaNXwi.js
+│   │   │   ├── journeyDiagram-XKPGCS4Q-CeGaNXwi.js.map
+│   │   │   ├── kanban-definition-3W4ZIXB7-BlrrQ13k.js
+│   │   │   ├── kanban-definition-3W4ZIXB7-BlrrQ13k.js.map
 │   │   │   ├── KaTeX_AMS-Regular-BQhdFMY1.woff2
 │   │   │   ├── KaTeX_AMS-Regular-DMm9YOAa.woff
 │   │   │   ├── KaTeX_AMS-Regular-DRggAlZN.ttf
@@ -996,132 +1016,119 @@
 │   │   │   ├── KaTeX_Typewriter-Regular-C0xS9mPB.woff
 │   │   │   ├── KaTeX_Typewriter-Regular-CO6r4hn1.woff2
 │   │   │   ├── KaTeX_Typewriter-Regular-D3Ib7_Hf.ttf
-│   │   │   ├── KnowledgeGraphPage-BKivB_xY.js
-│   │   │   ├── KnowledgeGraphPage-BKivB_xY.js.map
-│   │   │   ├── label-DjHWTR_J.js
-│   │   │   ├── label-DjHWTR_J.js.map
-│   │   │   ├── layers-B5ZJuAGT.js
-│   │   │   ├── layers-B5ZJuAGT.js.map
-│   │   │   ├── layout-DiVQ6ONE.js
-│   │   │   ├── layout-DiVQ6ONE.js.map
-│   │   │   ├── lightbulb-Bx2Xix-W.js
-│   │   │   ├── lightbulb-Bx2Xix-W.js.map
-│   │   │   ├── link-C9UF3gpA.js
-│   │   │   ├── link-C9UF3gpA.js.map
-│   │   │   ├── loader-circle-BIo1x9te.js
-│   │   │   ├── loader-circle-BIo1x9te.js.map
-│   │   │   ├── LoginPage-D5VjJ2ix.js
-│   │   │   ├── LoginPage-D5VjJ2ix.js.map
-│   │   │   ├── logo-BV1m59CX.js
-│   │   │   ├── logo-BV1m59CX.js.map
-│   │   │   ├── MarkdownRenderer-C7hmT8iX.js
-│   │   │   ├── MarkdownRenderer-C7hmT8iX.js.map
+│   │   │   ├── KnowledgeGraphPage-BWLnyaUx.js
+│   │   │   ├── KnowledgeGraphPage-BWLnyaUx.js.map
+│   │   │   ├── label-DFUTR2Bw.js
+│   │   │   ├── label-DFUTR2Bw.js.map
+│   │   │   ├── layers-CP9x9KuG.js
+│   │   │   ├── layers-CP9x9KuG.js.map
+│   │   │   ├── layout-o7L1gjmD.js
+│   │   │   ├── layout-o7L1gjmD.js.map
+│   │   │   ├── lightbulb-vLxvX6qv.js
+│   │   │   ├── lightbulb-vLxvX6qv.js.map
+│   │   │   ├── link-CEoC93-p.js
+│   │   │   ├── link-CEoC93-p.js.map
+│   │   │   ├── loader-circle-DlRCxfqe.js
+│   │   │   ├── loader-circle-DlRCxfqe.js.map
+│   │   │   ├── LoginPage-MvLqFZ_Q.js
+│   │   │   ├── LoginPage-MvLqFZ_Q.js.map
+│   │   │   ├── MarkdownRenderer-B8UPAR1p.js
+│   │   │   ├── MarkdownRenderer-B8UPAR1p.js.map
 │   │   │   ├── MarkdownRenderer-DWnSZQSX.css
-│   │   │   ├── MarkdownViewer-CTu7zK6D.js
-│   │   │   ├── MarkdownViewer-CTu7zK6D.js.map
-│   │   │   ├── maximize-2-CK3qBYWX.js
-│   │   │   ├── maximize-2-CK3qBYWX.js.map
-│   │   │   ├── min-BV5lJHRk.js
-│   │   │   ├── min-BV5lJHRk.js.map
-│   │   │   ├── mindmap-definition-VGOIOE7T-DooGG1Hp.js
-│   │   │   ├── mindmap-definition-VGOIOE7T-DooGG1Hp.js.map
-│   │   │   ├── NoteDetailPage-CMCWph9U.js
-│   │   │   ├── NoteDetailPage-CMCWph9U.js.map
-│   │   │   ├── NotesPage-MRhhq4LV.js
-│   │   │   ├── NotesPage-MRhhq4LV.js.map
-│   │   │   ├── NotesService-CygM2A57.js
-│   │   │   ├── NotesService-CygM2A57.js.map
-│   │   │   ├── NotFoundPage-DRAHsuTw.js
-│   │   │   ├── NotFoundPage-DRAHsuTw.js.map
-│   │   │   ├── PDFViewer-CJcKS1eY.css
-│   │   │   ├── PDFViewer-Cq0TIgey.js
-│   │   │   ├── PDFViewer-Cq0TIgey.js.map
-│   │   │   ├── pieDiagram-ADFJNKIX-BrSc4fP9.js
-│   │   │   ├── pieDiagram-ADFJNKIX-BrSc4fP9.js.map
-│   │   │   ├── play-Cag7qe13.js
-│   │   │   ├── play-Cag7qe13.js.map
-│   │   │   ├── progress-_KxWTtuX.js
-│   │   │   ├── progress-_KxWTtuX.js.map
-│   │   │   ├── purify.es-A66Cw1IH.js
-│   │   │   ├── purify.es-A66Cw1IH.js.map
-│   │   │   ├── quadrantDiagram-AYHSOK5B-BNltYPMR.js
-│   │   │   ├── quadrantDiagram-AYHSOK5B-BNltYPMR.js.map
+│   │   │   ├── MarkdownViewer-Di09b2G9.js
+│   │   │   ├── MarkdownViewer-Di09b2G9.js.map
+│   │   │   ├── min-CJQh_yKM.js
+│   │   │   ├── min-CJQh_yKM.js.map
+│   │   │   ├── mindmap-definition-VGOIOE7T-CKBFmc6O.js
+│   │   │   ├── mindmap-definition-VGOIOE7T-CKBFmc6O.js.map
+│   │   │   ├── minimize-2-C3NEJ38N.js
+│   │   │   ├── minimize-2-C3NEJ38N.js.map
+│   │   │   ├── NoteDetailPage-BWTFJz0V.js
+│   │   │   ├── NoteDetailPage-BWTFJz0V.js.map
+│   │   │   ├── noteSchema-D9PYAl-U.js
+│   │   │   ├── noteSchema-D9PYAl-U.js.map
+│   │   │   ├── NotesPage-D7F5dI3U.js
+│   │   │   ├── NotesPage-D7F5dI3U.js.map
+│   │   │   ├── NotFoundPage-caKSiqDx.js
+│   │   │   ├── NotFoundPage-caKSiqDx.js.map
+│   │   │   ├── pieDiagram-ADFJNKIX-MP4wh8TO.js
+│   │   │   ├── pieDiagram-ADFJNKIX-MP4wh8TO.js.map
+│   │   │   ├── play-AnruLTpX.js
+│   │   │   ├── play-AnruLTpX.js.map
+│   │   │   ├── progress-4hFhHLLN.js
+│   │   │   ├── progress-4hFhHLLN.js.map
+│   │   │   ├── purify.es-Cz0cKcfx.js
+│   │   │   ├── purify.es-Cz0cKcfx.js.map
+│   │   │   ├── quadrantDiagram-AYHSOK5B-C2RtIU-U.js
+│   │   │   ├── quadrantDiagram-AYHSOK5B-C2RtIU-U.js.map
 │   │   │   ├── queryKeys-BzTkX2gd.js
 │   │   │   ├── queryKeys-BzTkX2gd.js.map
 │   │   │   ├── query-vendor-BckQVSZU.js
 │   │   │   ├── query-vendor-BckQVSZU.js.map
-│   │   │   ├── QuizTakePage-CZG65ioh.js
-│   │   │   ├── QuizTakePage-CZG65ioh.js.map
-│   │   │   ├── QuizzesPage-Dzpv9XJ2.js
-│   │   │   ├── QuizzesPage-Dzpv9XJ2.js.map
-│   │   │   ├── QuizzesService-D430G-V5.js
-│   │   │   ├── QuizzesService-D430G-V5.js.map
+│   │   │   ├── QuizTakePage-DiR_VN1I.js
+│   │   │   ├── QuizTakePage-DiR_VN1I.js.map
+│   │   │   ├── QuizzesPage-CRJ1gpy8.js
+│   │   │   ├── QuizzesPage-CRJ1gpy8.js.map
 │   │   │   ├── react-vendor-B7FnPyzq.js
 │   │   │   ├── react-vendor-B7FnPyzq.js.map
-│   │   │   ├── refresh-cw-CiaGySg_.js
-│   │   │   ├── refresh-cw-CiaGySg_.js.map
-│   │   │   ├── RegisterPage-7fbo9mvA.js
-│   │   │   ├── RegisterPage-7fbo9mvA.js.map
-│   │   │   ├── request-CU3-Fs6_.js
-│   │   │   ├── request-CU3-Fs6_.js.map
-│   │   │   ├── requirementDiagram-UZGBJVZJ-DOGNDQ7w.js
-│   │   │   ├── requirementDiagram-UZGBJVZJ-DOGNDQ7w.js.map
-│   │   │   ├── ReviewPage-Cn6n1iv7.js
-│   │   │   ├── ReviewPage-Cn6n1iv7.js.map
-│   │   │   ├── rotate-ccw-B4rbLMCy.js
-│   │   │   ├── rotate-ccw-B4rbLMCy.js.map
-│   │   │   ├── sankeyDiagram-TZEHDZUN-DNJqFz7T.js
-│   │   │   ├── sankeyDiagram-TZEHDZUN-DNJqFz7T.js.map
-│   │   │   ├── save-DRNM3MSH.js
-│   │   │   ├── save-DRNM3MSH.js.map
-│   │   │   ├── sequenceDiagram-WL72ISMW-r_S2M60x.js
-│   │   │   ├── sequenceDiagram-WL72ISMW-r_S2M60x.js.map
-│   │   │   ├── sheet-BKnby3xH.js
-│   │   │   ├── sheet-BKnby3xH.js.map
-│   │   │   ├── sparkles-DO6T_ZDC.js
-│   │   │   ├── sparkles-DO6T_ZDC.js.map
-│   │   │   ├── SpreadsheetViewer-DcqIM-3B.js
-│   │   │   ├── SpreadsheetViewer-DcqIM-3B.js.map
-│   │   │   ├── stateDiagram-FKZM4ZOC-Brt8aqgI.js
-│   │   │   ├── stateDiagram-FKZM4ZOC-Brt8aqgI.js.map
-│   │   │   ├── stateDiagram-v2-4FDKWEC3-BVUj-Nqo.js
-│   │   │   ├── stateDiagram-v2-4FDKWEC3-BVUj-Nqo.js.map
-│   │   │   ├── StudyPage-6qjjd-Ju.js
-│   │   │   ├── StudyPage-6qjjd-Ju.js.map
-│   │   │   ├── target-CcUPOToj.js
-│   │   │   ├── target-CcUPOToj.js.map
-│   │   │   ├── textarea-BmRQ40Ue.js
-│   │   │   ├── textarea-BmRQ40Ue.js.map
-│   │   │   ├── timeline-definition-IT6M3QCI-DWF4oMNn.js
-│   │   │   ├── timeline-definition-IT6M3QCI-DWF4oMNn.js.map
-│   │   │   ├── trash-2-DXUpC6lI.js
-│   │   │   ├── trash-2-DXUpC6lI.js.map
-│   │   │   ├── treemap-KMMF4GRG-DBXdQ-0P.js
-│   │   │   ├── treemap-KMMF4GRG-DBXdQ-0P.js.map
-│   │   │   ├── trending-up-BJ4e-GrT.js
-│   │   │   ├── trending-up-BJ4e-GrT.js.map
-│   │   │   ├── triangle-alert-ClWGTt02.js
-│   │   │   ├── triangle-alert-ClWGTt02.js.map
-│   │   │   ├── trophy-G-TJBn8G.js
-│   │   │   ├── trophy-G-TJBn8G.js.map
-│   │   │   ├── ui-vendor-CK8qGe-x.js
-│   │   │   ├── ui-vendor-CK8qGe-x.js.map
-│   │   │   ├── useAIGeneration-Ks-CgEcI.js
-│   │   │   ├── useAIGeneration-Ks-CgEcI.js.map
-│   │   │   ├── useCards-iWK8Oto9.js
-│   │   │   ├── useCards-iWK8Oto9.js.map
-│   │   │   ├── useDecks-BLPR0ksD.js
-│   │   │   ├── useDecks-BLPR0ksD.js.map
-│   │   │   ├── useNotes-CNqzjwmr.js
-│   │   │   ├── useNotes-CNqzjwmr.js.map
-│   │   │   ├── wand-sparkles-DVQ8pZW2.js
-│   │   │   ├── wand-sparkles-DVQ8pZW2.js.map
-│   │   │   ├── xychartDiagram-PRI3JC2R-BJo8V-eI.js
-│   │   │   ├── xychartDiagram-PRI3JC2R-BJo8V-eI.js.map
-│   │   │   ├── zap-eEbtqkv4.js
-│   │   │   ├── zap-eEbtqkv4.js.map
-│   │   │   ├── zoom-out-DRv4Bxbg.js
-│   │   │   └── zoom-out-DRv4Bxbg.js.map
+│   │   │   ├── refresh-cw-3Wuax6Jv.js
+│   │   │   ├── refresh-cw-3Wuax6Jv.js.map
+│   │   │   ├── RegisterPage-BBGP78-T.js
+│   │   │   ├── RegisterPage-BBGP78-T.js.map
+│   │   │   ├── requirementDiagram-UZGBJVZJ-CdNzDSOV.js
+│   │   │   ├── requirementDiagram-UZGBJVZJ-CdNzDSOV.js.map
+│   │   │   ├── ReviewPage-CGMG-ix_.js
+│   │   │   ├── ReviewPage-CGMG-ix_.js.map
+│   │   │   ├── rotate-ccw-BrpwsgUZ.js
+│   │   │   ├── rotate-ccw-BrpwsgUZ.js.map
+│   │   │   ├── sankeyDiagram-TZEHDZUN-CNpk2hlA.js
+│   │   │   ├── sankeyDiagram-TZEHDZUN-CNpk2hlA.js.map
+│   │   │   ├── save-79D22TP1.js
+│   │   │   ├── save-79D22TP1.js.map
+│   │   │   ├── sequenceDiagram-WL72ISMW-DzmQeESM.js
+│   │   │   ├── sequenceDiagram-WL72ISMW-DzmQeESM.js.map
+│   │   │   ├── sheet-BjFumgE-.js
+│   │   │   ├── sheet-BjFumgE-.js.map
+│   │   │   ├── sparkles-YWqC3YrM.js
+│   │   │   ├── sparkles-YWqC3YrM.js.map
+│   │   │   ├── SpreadsheetViewer-D_3dl3vI.js
+│   │   │   ├── SpreadsheetViewer-D_3dl3vI.js.map
+│   │   │   ├── stateDiagram-FKZM4ZOC-DLYntne_.js
+│   │   │   ├── stateDiagram-FKZM4ZOC-DLYntne_.js.map
+│   │   │   ├── stateDiagram-v2-4FDKWEC3-CNzwWClC.js
+│   │   │   ├── stateDiagram-v2-4FDKWEC3-CNzwWClC.js.map
+│   │   │   ├── StudyPage-Dd2RrOFP.js
+│   │   │   ├── StudyPage-Dd2RrOFP.js.map
+│   │   │   ├── target-B7hxr_1R.js
+│   │   │   ├── target-B7hxr_1R.js.map
+│   │   │   ├── textarea-DBZ-5G1b.js
+│   │   │   ├── textarea-DBZ-5G1b.js.map
+│   │   │   ├── timeline-definition-IT6M3QCI-D92FmZqm.js
+│   │   │   ├── timeline-definition-IT6M3QCI-D92FmZqm.js.map
+│   │   │   ├── trash-2-CcX2X1Dj.js
+│   │   │   ├── trash-2-CcX2X1Dj.js.map
+│   │   │   ├── treemap-KMMF4GRG-BXhgK8v3.js
+│   │   │   ├── treemap-KMMF4GRG-BXhgK8v3.js.map
+│   │   │   ├── trending-up-B9SDNcCC.js
+│   │   │   ├── trending-up-B9SDNcCC.js.map
+│   │   │   ├── triangle-alert-CuNqh4kd.js
+│   │   │   ├── triangle-alert-CuNqh4kd.js.map
+│   │   │   ├── trophy-Cs1LGXTj.js
+│   │   │   ├── trophy-Cs1LGXTj.js.map
+│   │   │   ├── types-D8_qC6eW.js
+│   │   │   ├── types-D8_qC6eW.js.map
+│   │   │   ├── ui-vendor-CctUXwrn.js
+│   │   │   ├── ui-vendor-CctUXwrn.js.map
+│   │   │   ├── useActiveDeck-B566Dpqh.js
+│   │   │   ├── useActiveDeck-B566Dpqh.js.map
+│   │   │   ├── useIntelligence-Cw9y7uRZ.js
+│   │   │   ├── useIntelligence-Cw9y7uRZ.js.map
+│   │   │   ├── wand-sparkles-CD_X2QFy.js
+│   │   │   ├── wand-sparkles-CD_X2QFy.js.map
+│   │   │   ├── xychartDiagram-PRI3JC2R-CeTObZ1g.js
+│   │   │   ├── xychartDiagram-PRI3JC2R-CeTObZ1g.js.map
+│   │   │   ├── zap-DXHveG2p.js
+│   │   │   └── zap-DXHveG2p.js.map
 │   │   └── index.html
 │   ├── index.html
 │   ├── Makefile
@@ -1131,6 +1138,7 @@
 │   ├── package-lock.json
 │   ├── postcss.config.js
 │   ├── README.md
+│   ├── SHARED_MODULE_AUDIT.md
 │   ├── src
 │   │   ├── api
 │   │   │   ├── client.ts
@@ -1150,6 +1158,7 @@
 │   │   │   │   │   ├── app__api__rest__links__MessageResponse.ts
 │   │   │   │   │   ├── BatchIngestRequest.ts
 │   │   │   │   │   ├── BatchIngestResponse.ts
+│   │   │   │   │   ├── Body_replace_document_api_v1_documents__document_id__replace_put.ts
 │   │   │   │   │   ├── Body_upload_chat_file_api_v1_chat_files_upload_post.ts
 │   │   │   │   │   ├── Body_upload_document_api_v1_documents_upload_post.ts
 │   │   │   │   │   ├── ChatMessageCreate.ts
@@ -1193,13 +1202,13 @@
 │   │   │   │   │   ├── HybridSearchResult.ts
 │   │   │   │   │   ├── ImportCard.ts
 │   │   │   │   │   ├── ImportRequest.ts
+│   │   │   │   │   ├── ImportResult.ts
 │   │   │   │   │   ├── KnowledgeGraphResponse.ts
 │   │   │   │   │   ├── LinkCreate.ts
 │   │   │   │   │   ├── LinkResponse.ts
 │   │   │   │   │   ├── LinkType.ts
 │   │   │   │   │   ├── LinkUpdate.ts
 │   │   │   │   │   ├── LLMEnhancementStrategy.ts
-│   │   │   │   │   ├── MessageRole.ts
 │   │   │   │   │   ├── NoteCreate.ts
 │   │   │   │   │   ├── NoteFormat.ts
 │   │   │   │   │   ├── NoteHybridResponse.ts
@@ -1209,6 +1218,7 @@
 │   │   │   │   │   ├── NoteTreeNode.ts
 │   │   │   │   │   ├── NoteUpdate.ts
 │   │   │   │   │   ├── NoteVersionResponse.ts
+│   │   │   │   │   ├── PartialAnswer.ts
 │   │   │   │   │   ├── PasswordChange.ts
 │   │   │   │   │   ├── PerformanceTrend.ts
 │   │   │   │   │   ├── ProcessingStatusResponse.ts
@@ -1219,11 +1229,13 @@
 │   │   │   │   │   ├── QuestionCreate.ts
 │   │   │   │   │   ├── QuestionResponse.ts
 │   │   │   │   │   ├── QuestionType.ts
+│   │   │   │   │   ├── QuizAttemptResume.ts
 │   │   │   │   │   ├── QuizAttemptStart.ts
 │   │   │   │   │   ├── QuizCreate.ts
 │   │   │   │   │   ├── QuizDifficulty.ts
 │   │   │   │   │   ├── QuizGenerateRequest.ts
 │   │   │   │   │   ├── QuizGenerateResponse.ts
+│   │   │   │   │   ├── QuizInsightsResponse.ts
 │   │   │   │   │   ├── QuizResponse.ts
 │   │   │   │   │   ├── QuizResultResponse.ts
 │   │   │   │   │   ├── ReviewResult.ts
@@ -1301,11 +1313,8 @@
 │   │   │   │   ├── AnimatedCounter.tsx
 │   │   │   │   ├── AnimatedList.tsx
 │   │   │   │   ├── ConfirmDialog.tsx
-│   │   │   │   ├── EmptyState.tsx
 │   │   │   │   ├── ErrorBoundary.tsx
-│   │   │   │   ├── ErrorState.tsx
 │   │   │   │   ├── GradientCard.tsx
-│   │   │   │   ├── LoadingSpinner.tsx
 │   │   │   │   ├── ProgressIndicator.tsx
 │   │   │   │   ├── QuickActions.tsx
 │   │   │   │   ├── RetryBoundary.tsx
@@ -1415,13 +1424,44 @@
 │   │   │   │   │   ├── ChunkExplorer.tsx
 │   │   │   │   │   ├── DocumentUploader.tsx
 │   │   │   │   │   ├── DocumentViewer.tsx
-│   │   │   │   │   └── ProcessingStatus.tsx
+│   │   │   │   │   ├── ProcessingStatus.tsx
+│   │   │   │   │   └── UploadQueueItem.tsx
+│   │   │   │   ├── core
+│   │   │   │   │   ├── constants.ts
+│   │   │   │   │   ├── events.ts
+│   │   │   │   │   ├── index.ts
+│   │   │   │   │   ├── lifecycle.ts
+│   │   │   │   │   ├── platformRegistration.ts
+│   │   │   │   │   └── types.ts
 │   │   │   │   ├── hooks
 │   │   │   │   │   └── useDocumentUpload.ts
 │   │   │   │   ├── index.ts
 │   │   │   │   └── schemas
 │   │   │   │       ├── documentSchema.ts
 │   │   │   │       └── index.ts
+│   │   │   ├── graph
+│   │   │   │   ├── components
+│   │   │   │   │   ├── index.ts
+│   │   │   │   │   └── RelatedNotesPanel.tsx
+│   │   │   │   ├── core
+│   │   │   │   │   ├── decayEngine.ts
+│   │   │   │   │   ├── documentHandlers.ts
+│   │   │   │   │   ├── eventConsumer.ts
+│   │   │   │   │   ├── graphHandlers.ts
+│   │   │   │   │   ├── graphStore.ts
+│   │   │   │   │   ├── index.ts
+│   │   │   │   │   ├── intelligence.ts
+│   │   │   │   │   ├── learningConstants.ts
+│   │   │   │   │   ├── learningHandlers.ts
+│   │   │   │   │   ├── linkExtractor.ts
+│   │   │   │   │   └── types.ts
+│   │   │   │   ├── hooks
+│   │   │   │   │   ├── index.ts
+│   │   │   │   │   ├── useDocuments.ts
+│   │   │   │   │   ├── useLearning.ts
+│   │   │   │   │   ├── useRelatedNotes.ts
+│   │   │   │   │   └── useSpacedRepetition.ts
+│   │   │   │   └── index.ts
 │   │   │   ├── notes
 │   │   │   │   ├── ai
 │   │   │   │   │   ├── components
@@ -1439,6 +1479,7 @@
 │   │   │   │   │   │   ├── index.ts
 │   │   │   │   │   │   └── useActiveNote.ts
 │   │   │   │   │   ├── index.ts
+│   │   │   │   │   ├── platformRegistration.ts
 │   │   │   │   │   └── state
 │   │   │   │   │       ├── index.ts
 │   │   │   │   │       ├── noteSelectors.ts
@@ -1482,17 +1523,38 @@
 │   │   │   │       │   └── useNoteVersions.ts
 │   │   │   │       └── index.ts
 │   │   │   ├── quizzes
-│   │   │   │   ├── components
-│   │   │   │   │   ├── QuestionCard.tsx
-│   │   │   │   │   ├── QuizBuilder.tsx
-│   │   │   │   │   ├── QuizTaker.tsx
-│   │   │   │   │   └── Results.tsx
-│   │   │   │   ├── hooks
-│   │   │   │   │   └── useQuizAttempt.ts
+│   │   │   │   ├── attempt
+│   │   │   │   │   ├── components
+│   │   │   │   │   │   ├── index.ts
+│   │   │   │   │   │   ├── ProgressBar.tsx
+│   │   │   │   │   │   └── QuestionRenderer.tsx
+│   │   │   │   │   ├── hooks
+│   │   │   │   │   │   └── useQuizAttempt.ts
+│   │   │   │   │   ├── index.ts
+│   │   │   │   │   └── QuizSession.tsx
+│   │   │   │   ├── core
+│   │   │   │   │   ├── constants.ts
+│   │   │   │   │   ├── events.ts
+│   │   │   │   │   ├── index.ts
+│   │   │   │   │   ├── lifecycle.ts
+│   │   │   │   │   ├── platformRegistration.ts
+│   │   │   │   │   └── types.ts
+│   │   │   │   ├── hub
+│   │   │   │   │   ├── hooks
+│   │   │   │   │   │   └── useQuizHub.ts
+│   │   │   │   │   ├── index.ts
+│   │   │   │   │   ├── QuizCard.tsx
+│   │   │   │   │   ├── QuizGenerator.tsx
+│   │   │   │   │   └── QuizHub.tsx
 │   │   │   │   ├── index.ts
-│   │   │   │   └── schemas
+│   │   │   │   └── results
+│   │   │   │       ├── AIInsights.tsx
+│   │   │   │       ├── hooks
+│   │   │   │       │   └── useQuizResults.ts
 │   │   │   │       ├── index.ts
-│   │   │   │       └── quizSchema.ts
+│   │   │   │       ├── QuestionReview.tsx
+│   │   │   │       ├── QuizResults.tsx
+│   │   │   │       └── ResultsSummary.tsx
 │   │   │   └── study
 │   │   │       ├── components
 │   │   │       │   ├── DueItems.tsx
@@ -1513,12 +1575,14 @@
 │   │   │   │   ├── core
 │   │   │   │   │   ├── components
 │   │   │   │   │   │   ├── ChatConversationView.tsx
+│   │   │   │   │   │   ├── ChatEntityPreview.tsx
 │   │   │   │   │   │   ├── ChatInputBox.tsx
 │   │   │   │   │   │   ├── ChatMain.tsx
 │   │   │   │   │   │   ├── ChatMessage.tsx
 │   │   │   │   │   │   ├── ChatWelcomeScreen.tsx
 │   │   │   │   │   │   ├── CitationBadge.tsx
 │   │   │   │   │   │   ├── index.ts
+│   │   │   │   │   │   ├── MentionChip.tsx
 │   │   │   │   │   │   └── SourcesFooter.tsx
 │   │   │   │   │   ├── engine
 │   │   │   │   │   │   ├── index.ts
@@ -1673,6 +1737,7 @@
 │   │   │   │   │   │   └── types.ts
 │   │   │   │   │   ├── hooks
 │   │   │   │   │   │   ├── index.ts
+│   │   │   │   │   │   ├── useGraphWeakConcepts.ts
 │   │   │   │   │   │   └── useInsights.ts
 │   │   │   │   │   ├── index.ts
 │   │   │   │   │   └── state
@@ -1737,13 +1802,16 @@
 │   │   │   │   │   │   ├── FileValidator.tsx
 │   │   │   │   │   │   ├── index.ts
 │   │   │   │   │   │   ├── UploadArea.tsx
-│   │   │   │   │   │   └── UploadProgress.tsx
+│   │   │   │   │   │   ├── UploadProgress.tsx
+│   │   │   │   │   │   ├── UploadQueueBar.tsx
+│   │   │   │   │   │   └── UploadQueueItem.tsx
 │   │   │   │   │   ├── engine
 │   │   │   │   │   │   ├── index.ts
 │   │   │   │   │   │   └── validation.ts
 │   │   │   │   │   ├── hooks
 │   │   │   │   │   │   ├── index.ts
-│   │   │   │   │   │   └── useDocumentUpload.ts
+│   │   │   │   │   │   ├── useDocumentUpload.ts
+│   │   │   │   │   │   └── useUploadQueue.ts
 │   │   │   │   │   ├── index.ts
 │   │   │   │   │   └── state
 │   │   │   │   │       ├── index.ts
@@ -1781,6 +1849,7 @@
 │   │   │   │   │   │   ├── index.ts
 │   │   │   │   │   │   └── useActiveDeck.ts
 │   │   │   │   │   ├── index.ts
+│   │   │   │   │   ├── platformRegistration.ts
 │   │   │   │   │   └── state
 │   │   │   │   │       ├── flashcardSelectors.ts
 │   │   │   │   │       ├── flashcardStore.ts
@@ -1820,13 +1889,11 @@
 │   │   │   │   ├── shared
 │   │   │   │   │   ├── components
 │   │   │   │   │   │   ├── DarkCard.tsx
-│   │   │   │   │   │   ├── EmptyState.tsx
 │   │   │   │   │   │   └── index.ts
 │   │   │   │   │   └── index.ts
 │   │   │   │   └── study
 │   │   │   │       ├── components
 │   │   │   │       │   ├── AnswerReveal.tsx
-│   │   │   │       │   ├── AuroraBackground.tsx
 │   │   │   │       │   ├── FlashcardView.tsx
 │   │   │   │       │   ├── index.ts
 │   │   │   │       │   └── RatingControls.tsx
@@ -1854,41 +1921,15 @@
 │   │   │   │   └── NotesPage.tsx
 │   │   │   ├── NotFoundPage.tsx
 │   │   │   ├── quizzes
-│   │   │   │   ├── components
-│   │   │   │   │   ├── builder
-│   │   │   │   │   │   ├── QuestionEditor.tsx
-│   │   │   │   │   │   ├── QuestionTypeSelector.tsx
-│   │   │   │   │   │   └── QuizBuilder.tsx
-│   │   │   │   │   ├── list
-│   │   │   │   │   │   ├── QuizCard.tsx
-│   │   │   │   │   │   ├── QuizFilters.tsx
-│   │   │   │   │   │   └── QuizGrid.tsx
-│   │   │   │   │   ├── results
-│   │   │   │   │   │   ├── PerformanceChart.tsx
-│   │   │   │   │   │   ├── QuestionReview.tsx
-│   │   │   │   │   │   ├── QuizResultsView.tsx
-│   │   │   │   │   │   └── ResultsSummary.tsx
-│   │   │   │   │   ├── shared
-│   │   │   │   │   │   └── QuizStats.tsx
-│   │   │   │   │   └── taker
-│   │   │   │   │       ├── AnswerOptions.tsx
-│   │   │   │   │       ├── QuestionCard.tsx
-│   │   │   │   │       ├── QuizProgress.tsx
-│   │   │   │   │       └── QuizTimer.tsx
-│   │   │   │   ├── hooks
-│   │   │   │   │   ├── useQuizAttempt.ts
-│   │   │   │   │   ├── useQuizBuilder.ts
-│   │   │   │   │   └── useQuizzes.ts
 │   │   │   │   ├── index.ts
 │   │   │   │   ├── QuizTakePage.tsx
-│   │   │   │   ├── QuizzesPage.tsx
-│   │   │   │   ├── types
-│   │   │   │   │   └── quizzes.types.ts
-│   │   │   │   └── utils
-│   │   │   │       ├── questionValidator.ts
-│   │   │   │       └── quizScoring.ts
+│   │   │   │   └── QuizzesPage.tsx
 │   │   │   └── study
 │   │   │       ├── components
+│   │   │       │   ├── intelligence
+│   │   │       │   │   ├── ActionCard.tsx
+│   │   │       │   │   ├── index.ts
+│   │   │       │   │   └── PriorityActions.tsx
 │   │   │       │   ├── queue
 │   │   │       │   │   ├── DueItems.tsx
 │   │   │       │   │   ├── ItemCard.tsx
@@ -1907,7 +1948,9 @@
 │   │   │       │       └── StudyStats.tsx
 │   │   │       ├── hooks
 │   │   │       │   ├── useDueItems.ts
+│   │   │       │   ├── useIntelligence.ts
 │   │   │       │   ├── useRecommendations.ts
+│   │   │       │   ├── useReviewReinforcement.ts
 │   │   │       │   └── useStudySession.ts
 │   │   │       ├── index.ts
 │   │   │       ├── StudyPage.tsx
@@ -1920,18 +1963,76 @@
 │   │   ├── services
 │   │   │   └── noteAI.service.ts
 │   │   ├── shared
-│   │   │   └── rendering
-│   │   │       ├── components
-│   │   │       │   ├── CodeBlock.tsx
-│   │   │       │   ├── ExpandableBlock.tsx
-│   │   │       │   ├── index.ts
-│   │   │       │   ├── LatexBlock.tsx
-│   │   │       │   └── MermaidBlock.tsx
+│   │   │   ├── async
+│   │   │   │   ├── AsyncState.ts
+│   │   │   │   └── index.ts
+│   │   │   ├── components
+│   │   │   │   ├── EntityActions.tsx
+│   │   │   │   ├── EntityPicker.tsx
+│   │   │   │   ├── EntityPreview.tsx
+│   │   │   │   └── index.ts
+│   │   │   ├── context
+│   │   │   │   ├── index.ts
+│   │   │   │   ├── resolveEntity.ts
+│   │   │   │   ├── resolveGraphContext.ts
+│   │   │   │   ├── resolveRelations.ts
+│   │   │   │   └── useLearningContext.ts
+│   │   │   ├── core
+│   │   │   │   ├── capabilities.ts
+│   │   │   │   ├── entity.ts
+│   │   │   │   ├── index.ts
+│   │   │   │   └── modules.ts
+│   │   │   ├── entities
+│   │   │   │   ├── EntityRef.ts
+│   │   │   │   └── index.ts
+│   │   │   ├── errors
+│   │   │   │   ├── AppError.ts
+│   │   │   │   └── index.ts
+│   │   │   ├── events
+│   │   │   │   ├── EventBus.ts
+│   │   │   │   ├── EventEnvelope.ts
+│   │   │   │   ├── index.ts
+│   │   │   │   └── useSubscription.ts
+│   │   │   ├── index.ts
+│   │   │   ├── platform
+│   │   │   │   ├── executor.ts
+│   │   │   │   ├── hooks
+│   │   │   │   │   └── useEntitySearch.ts
+│   │   │   │   ├── index.ts
+│   │   │   │   ├── init.ts
+│   │   │   │   ├── mentions
+│   │   │   │   │   ├── EntityPicker.tsx
+│   │   │   │   │   ├── index.ts
+│   │   │   │   │   ├── useMentionController.ts
+│   │   │   │   │   └── useTextareaMention.ts
+│   │   │   │   ├── registry.ts
+│   │   │   │   └── types.ts
+│   │   │   ├── rendering
+│   │   │   │   ├── components
+│   │   │   │   │   ├── CodeBlock.tsx
+│   │   │   │   │   ├── ExpandableBlock.tsx
+│   │   │   │   │   ├── index.ts
+│   │   │   │   │   ├── LatexBlock.tsx
+│   │   │   │   │   └── MermaidBlock.tsx
+│   │   │   │   ├── index.ts
+│   │   │   │   ├── MarkdownRenderer.tsx
+│   │   │   │   └── schema
+│   │   │   │       ├── index.ts
+│   │   │   │       └── outputBlocks.ts
+│   │   │   ├── time
+│   │   │   │   ├── clock.ts
+│   │   │   │   ├── duration.ts
+│   │   │   │   └── index.ts
+│   │   │   └── ui
+│   │   │       ├── backgrounds
+│   │   │       │   ├── AuroraBackground.tsx
+│   │   │       │   └── index.ts
 │   │   │       ├── index.ts
-│   │   │       ├── MarkdownRenderer.tsx
-│   │   │       └── schema
+│   │   │       └── states
+│   │   │           ├── EmptyState.tsx
+│   │   │           ├── ErrorState.tsx
 │   │   │           ├── index.ts
-│   │   │           └── outputBlocks.ts
+│   │   │           └── LoadingState.tsx
 │   │   ├── stores
 │   │   │   ├── authStore.ts
 │   │   │   ├── notificationStore.ts
@@ -1963,4 +2064,4 @@
 │   └── health-check.sh
 └── structure.txt
 
-370 directories, 1594 files
+390 directories, 1675 files

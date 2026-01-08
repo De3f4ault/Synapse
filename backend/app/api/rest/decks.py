@@ -373,7 +373,7 @@ async def update_deck(
     "/{deck_id}",
     response_model=MessageResponse,
     summary="Delete deck",
-    description="Delete a deck (soft delete)",
+    description="Delete a deck (soft delete with cascade to flashcards)",
 )
 async def delete_deck(
     deck_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
@@ -388,10 +388,20 @@ async def delete_deck(
     if not deck:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Deck not found")
 
+    # CASCADE: Soft-delete all flashcards in this deck first
+    from sqlalchemy import update
+
+    await db.execute(
+        update(Flashcard)
+        .where(and_(Flashcard.deck_id == deck_id, Flashcard.deleted_at.is_(None)))
+        .values(deleted_at=datetime.utcnow())
+    )
+
+    # Then soft-delete the deck
     deck.deleted_at = datetime.utcnow()
     await db.commit()
 
-    return MessageResponse(message="Deck deleted successfully")
+    return MessageResponse(message="Deck and flashcards deleted successfully")
 
 
 # ============================================================================

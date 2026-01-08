@@ -26,7 +26,7 @@ export type {
 } from "./types";
 
 // Pure engine functions
-export { computeWeakAreas, mergeWeakAreas, calculatePriority } from "./computeWeakAreas";
+export { computeWeakAreas, mergeWeakAreas, mergeGIEWeakAreas, calculatePriority } from "./computeWeakAreas";
 export { suggestNextAction } from "./suggestNextActions";
 export { generateMilestones } from "./generateMilestones";
 export { generateContextInsights } from "./generateContextInsights";

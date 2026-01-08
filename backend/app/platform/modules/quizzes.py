@@ -19,6 +19,7 @@ from app.schemas.platform import (
     EntityVisibility,
     PlatformActionResult,
     ActionStatus,
+    EntitySearchResult,
 )
 from app.platform.registry import ModuleContract, register_module
 
@@ -30,6 +31,34 @@ from app.platform.registry import ModuleContract, register_module
 QUIZZES_CAPABILITIES = [
     EntityCapability.REINFORCE_GRAPH,
 ]
+
+
+# ============================================================================
+# Entity Search
+# ============================================================================
+
+
+async def search_quizzes(
+    query: str,
+    db: AsyncSession,
+    user_id: int,
+    limit: int = 10,
+) -> list[EntitySearchResult]:
+    """Search for quizzes by title."""
+    stmt = select(Quiz).where(Quiz.user_id == user_id, Quiz.title.ilike(f"%{query}%")).limit(limit)
+    result = await db.execute(stmt)
+    quizzes = result.scalars().all()
+
+    return [
+        EntitySearchResult(
+            id=quiz.id,
+            type=EntityType.QUIZ,
+            source_module=ModuleId.QUIZZES,
+            title=quiz.title,
+            created_at=quiz.created_at,
+        )
+        for quiz in quizzes
+    ]
 
 
 # ============================================================================
@@ -145,6 +174,7 @@ quizzes_module_contract = ModuleContract(
     resolve_entity=resolve_quiz,
     execute_capability=execute_quiz_capability,
     check_availability=check_quiz_availability,
+    search_entities=search_quizzes,
     supported_capabilities=QUIZZES_CAPABILITIES,
 )
 

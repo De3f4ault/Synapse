@@ -3,6 +3,7 @@
  * 
  * Fetches necessary data and computes insights using the engine.
  * Integrates API weak areas with graph-based WEAKNESS edges.
+ * Integrates GIE (Graph Intelligence Engine) for mastery/stability data.
  * Caches results in Zustand store.
  */
 
@@ -19,6 +20,7 @@ import {
 import {
     computeWeakAreas,
     mergeWeakAreas,
+    mergeGIEWeakAreas,
     suggestNextAction,
     generateMilestones,
     generateContextInsights,
@@ -26,6 +28,7 @@ import {
 } from "../engine";
 import { useInsightsStore, useInsightsActions } from "../state";
 import { useGraphWeakConcepts } from "./useGraphWeakConcepts";
+import { useIntelligence } from "@/pages/study/hooks/useIntelligence";
 
 export function useInsights() {
     const { setAll, setComputing, setError } = useInsightsActions();
@@ -33,6 +36,9 @@ export function useInsights() {
 
     // Graph-based weak concepts (from spaced repetition)
     const { weakAreas: graphWeakAreas } = useGraphWeakConcepts();
+
+    // GIE intelligence data (mastery + stability)
+    const { data: gieData, isLoading: isGIELoading } = useIntelligence(5);
 
     // ===========================================================================
     // Data Fetching
@@ -127,6 +133,8 @@ export function useInsights() {
     // Compute insights when data changes
     useEffect(() => {
         if (!engineInput) return;
+        // Wait for GIE data too, but don't block entirely if it fails
+        if (isGIELoading) return;
 
         // Skip if already computed recently (within 5 seconds)
         if (lastComputedAt && Date.now() - lastComputedAt < 5000) {
@@ -144,9 +152,18 @@ export function useInsights() {
 
             // 2. Merge with graph-based weak areas
             // Graph weakness overrides API when both exist (hybrid)
-            const weakAreas = mergeWeakAreas(apiWeakAreas, graphWeakAreas);
+            let weakAreas = mergeWeakAreas(apiWeakAreas, graphWeakAreas);
 
-            // 3. Generate other insights
+            // 3. Merge with GIE weak/fragile concepts (highest authority)
+            if (gieData) {
+                weakAreas = mergeGIEWeakAreas(
+                    weakAreas,
+                    gieData.weak_concepts || [],
+                    gieData.fragile_concepts || []
+                );
+            }
+
+            // 4. Generate other insights
             const nextAction = suggestNextAction(engineInput, weakAreas);
             const milestones = generateMilestones(engineInput.overview);
             const contextInsights = generateContextInsights(engineInput, weakAreas);
@@ -162,7 +179,7 @@ export function useInsights() {
             console.error("[useInsights] Computation error:", err);
             setError(err instanceof Error ? err : new Error("Failed to compute insights"));
         }
-    }, [engineInput, graphWeakAreas, lastComputedAt, setAll, setComputing, setError]);
+    }, [engineInput, graphWeakAreas, gieData, isGIELoading, lastComputedAt, setAll, setComputing, setError]);
 
     // Return store values + fetching status
     const store = useInsightsStore();

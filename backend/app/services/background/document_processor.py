@@ -274,21 +274,30 @@ class DocumentProcessor:
 
         return text
 
-    def chunk_text(
-        self, text: str, chunk_size: int = 1000, overlap: int = 200
-    ) -> list[Dict[str, Any]]:
+    def iter_chunks(
+        self,
+        text: str,
+        document_id: str,
+        chunk_size: int = 1000,
+        overlap: int = 200,
+    ):
         """
-        Split text into overlapping chunks for embedding.
+        Yield chunks one at a time for memory-safe streaming ingestion.
+
+        STREAMING INVARIANT: At no point should the full chunk list exist in memory.
+        This generator yields chunks lazily, allowing batch processing with gc.collect().
 
         Args:
             text: Text to chunk
+            document_id: Document ID for deterministic chunk hashing
             chunk_size: Target chunk size in characters
             overlap: Overlap between chunks in characters
 
-        Returns:
-            List of chunk dictionaries with content and metadata
+        Yields:
+            Dict with content, chunk_index, start_char, end_char, chunk_id
         """
-        chunks = []
+        import hashlib
+
         start = 0
         chunk_index = 0
 
@@ -297,7 +306,6 @@ class DocumentProcessor:
 
             # Find the nearest sentence boundary
             if end < len(text):
-                # Look for sentence endings
                 for punct in [". ", "! ", "? ", "\n\n"]:
                     punct_pos = text.rfind(punct, start, end)
                     if punct_pos != -1:
@@ -307,18 +315,49 @@ class DocumentProcessor:
             chunk_text = text[start:end].strip()
 
             if chunk_text:
-                chunks.append(
-                    {
-                        "content": chunk_text,
-                        "chunk_index": chunk_index,
-                        "start_char": start,
-                        "end_char": end,
-                    }
-                )
+                # Deterministic chunk ID for idempotent re-ingestion
+                # Hash based on document_id + position, not content (allows edits)
+                chunk_id = hashlib.sha256(
+                    f"{document_id}:{start}:{chunk_size}:{overlap}".encode()
+                ).hexdigest()[:16]
+
+                yield {
+                    "content": chunk_text,
+                    "chunk_index": chunk_index,
+                    "start_char": start,
+                    "end_char": end,
+                    "chunk_id": chunk_id,
+                }
                 chunk_index += 1
 
             # Move start position with overlap
             start = end - overlap
+
+    def chunk_text(
+        self, text: str, chunk_size: int = 1000, overlap: int = 200
+    ) -> list[Dict[str, Any]]:
+        """
+        Split text into overlapping chunks for embedding.
+
+        COMPATIBILITY WRAPPER: For streaming ingestion, use iter_chunks() instead.
+
+        Args:
+            text: Text to chunk
+            chunk_size: Target chunk size in characters
+            overlap: Overlap between chunks in characters
+
+        Returns:
+            List of chunk dictionaries with content and metadata
+        """
+        # Use generator but collect for backwards compatibility
+        chunks = list(
+            self.iter_chunks(
+                text=text,
+                document_id="legacy",  # No document ID in legacy calls
+                chunk_size=chunk_size,
+                overlap=overlap,
+            )
+        )
 
         logger.info(f"Created {len(chunks)} chunks from text")
         return chunks

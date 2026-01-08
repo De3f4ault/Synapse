@@ -2,7 +2,7 @@
  * ItemCard - Display component for study items
  */
 
-import { Clock, TrendingUp, AlertCircle, Sparkles } from "lucide-react";
+import { Clock, TrendingUp } from "lucide-react";
 import { motion } from "framer-motion";
 import type { StudyItem } from "../../types/study.types";
 import { cn } from "@/lib/utils";
@@ -43,34 +43,24 @@ export function ItemCard({ item, onClick, selected }: ItemCardProps) {
         )}
 
         <div className="space-y-4 flex-1">
-          {/* Header with type and priority */}
+          {/* Header with title - simplified, no type badge */}
           <div className="flex items-start justify-between gap-2">
             <div className="flex-1">
-              <div className="flex flex-wrap items-center gap-2 mb-2">
+              {/* Priority indicator - subtle colored dot */}
+              <div className="flex items-center gap-2 mb-2">
                 <span
                   className={cn(
-                    "px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider border",
-                    item.type === "flashcard"
-                      ? "bg-purple-500/10 text-purple-400 border-purple-500/20"
-                      : "bg-blue-500/10 text-blue-400 border-blue-500/20",
+                    "w-2 h-2 rounded-full",
+                    isOverdue ? "bg-red-400 animate-pulse" :
+                      isNew ? "bg-emerald-400" :
+                        "bg-slate-500"
                   )}
-                >
-                  {item.type}
+                />
+                <span className="text-[10px] uppercase tracking-wider text-slate-500 font-medium">
+                  {isOverdue ? "Overdue" : isNew ? "New" : item.type}
                 </span>
-                {isOverdue && (
-                  <span className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider bg-red-500/10 text-red-400 border border-red-500/20">
-                    <AlertCircle size={10} />
-                    Overdue
-                  </span>
-                )}
-                {isNew && (
-                  <span className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                    <Sparkles size={10} />
-                    New
-                  </span>
-                )}
               </div>
-              <h4 className="font-bold text-white text-lg line-clamp-2 leading-tight group-hover:text-cyan-400 transition-colors">
+              <h4 className="font-bold text-white text-base line-clamp-2 leading-snug">
                 {item.title}
               </h4>
             </div>

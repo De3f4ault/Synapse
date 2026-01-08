@@ -19,6 +19,7 @@ from app.schemas.platform import (
     EntityVisibility,
     PlatformActionResult,
     ActionStatus,
+    EntitySearchResult,
 )
 from app.platform.registry import ModuleContract, register_module
 
@@ -34,6 +35,34 @@ NOTES_CAPABILITIES = [
     EntityCapability.REINFORCE_GRAPH,
     EntityCapability.SUMMARIZE,
 ]
+
+
+# ============================================================================
+# Entity Search
+# ============================================================================
+
+
+async def search_notes(
+    query: str,
+    db: AsyncSession,
+    user_id: int,
+    limit: int = 10,
+) -> list[EntitySearchResult]:
+    """Search for notes by title."""
+    stmt = select(Note).where(Note.user_id == user_id, Note.title.ilike(f"%{query}%")).limit(limit)
+    result = await db.execute(stmt)
+    notes = result.scalars().all()
+
+    return [
+        EntitySearchResult(
+            id=note.id,
+            type=EntityType.NOTE,
+            source_module=ModuleId.NOTES,
+            title=note.title,
+            created_at=note.created_at,
+        )
+        for note in notes
+    ]
 
 
 # ============================================================================
@@ -184,6 +213,7 @@ notes_module_contract = ModuleContract(
     resolve_entity=resolve_note,
     execute_capability=execute_note_capability,
     check_availability=check_note_availability,
+    search_entities=search_notes,
     supported_capabilities=NOTES_CAPABILITIES,
 )
 

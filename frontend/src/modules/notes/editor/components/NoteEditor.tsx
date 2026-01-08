@@ -29,6 +29,11 @@ interface NoteEditorProps {
 // Component
 // ============================================================================
 
+import { useTextareaMentionAdapter, EntityPicker } from "@/shared/platform/mentions";
+import { useEntitySearch } from "@/shared/platform/hooks/useEntitySearch";
+
+// ... (props interface unchanged)
+
 export const NoteEditor: React.FC<NoteEditorProps> = ({
     title,
     content,
@@ -41,6 +46,33 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
     const internalTextareaRef = useRef<HTMLTextAreaElement>(null);
     const titleRef = useRef<HTMLInputElement>(null);
     const textareaRef = externalRef || internalTextareaRef;
+
+    // Mention System Integration
+    const [mentionQuery, setMentionQuery] = useState("");
+    const { data: searchResults = [], isLoading: isSearching } = useEntitySearch(mentionQuery, {
+        enabled: mentionQuery.length > 0,
+        limit: 5,
+    });
+
+    const {
+        isPickerOpen,
+        activeIndex,
+        onInput: handleInput,
+        onKeyDown: onMentionKeyDown,
+        handleSelectEntity
+    } = useTextareaMentionAdapter({
+        textareaRef,
+        value: content,
+        onChange: onContentChange,
+        onSearchChange: setMentionQuery,
+        results: searchResults,
+    });
+
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (isPickerOpen) {
+            onMentionKeyDown(e);
+        }
+    };
 
     // Character count and stats
     const [stats, setStats] = useState({
@@ -142,7 +174,8 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
                 <textarea
                     ref={textareaRef}
                     value={content}
-                    onChange={(e) => onContentChange(e.target.value)}
+                    onInput={handleInput}
+                    onKeyDown={handleKeyDown}
                     className={cn(
                         "relative w-full bg-transparent outline-none text-lg leading-relaxed resize-none font-serif placeholder:text-[var(--synapse-text-dim)] min-h-[500px] z-10",
                         isEditing
@@ -153,6 +186,31 @@ export const NoteEditor: React.FC<NoteEditorProps> = ({
                     spellCheck={false}
                     disabled={!isEditing}
                 />
+
+                {/* Entity Picker Floating */}
+                {isPickerOpen && (
+                    <div className="absolute z-50 left-0 bg-background/95 backdrop-blur shadow-2xl rounded-lg border border-border/50 w-72 overflow-hidden"
+                        style={{
+                            // Basic positioning (can be improved with measuring cursor)
+                            top: "100px",
+                            left: "50px"
+                            // TODO: Real cursor attachment requires measuring text metrics. 
+                            // For MVP/v1, we can float it near the cursor or fixed.
+                            // Fixed at current cursor line is hard in textarea.
+                            // Let's position it fixed relative to editor for now, 
+                            // or use a library like `textarea-caret` if available.
+                            // For this step, I will position it simply at top left of editor or fixed?
+                            // Let's put it absolute below the header for visibility.
+                        }}
+                    >
+                        <EntityPicker
+                            results={searchResults}
+                            activeIndex={activeIndex}
+                            onSelect={handleSelectEntity}
+                            isLoading={isSearching}
+                        />
+                    </div>
+                )}
 
                 {/* Typing indicator particles */}
                 {isEditing && content && (

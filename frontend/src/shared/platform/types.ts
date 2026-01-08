@@ -28,9 +28,23 @@ export interface GraphEffect {
     description?: string;
 }
 
+// ============================================================================
+// Entity Identity (Lightweight Reference)
+// ============================================================================
+
+/**
+ * Result from the global entity search API.
+ */
+export interface EntitySearchResult extends EntityIdentity {
+    title: string;
+    createdAt?: string;
+    matchPreview?: string;
+}
+
 /**
  * Standard result from any platform-level action.
  */
+
 export interface PlatformActionResult {
     /** Action status */
     status: ActionStatus;

@@ -28,6 +28,7 @@ from . import (
     entities,  # Platform entity resolution
     platform_graph,  # Platform graph intelligence
     actions,  # Platform action execution
+    intelligence,  # Graph Intelligence Engine
 )
 
 # Import WebSocket endpoint
@@ -76,6 +77,7 @@ api_router.include_router(entities.router, prefix="/entities", tags=["Platform"]
 api_router.include_router(platform_graph.router, prefix="/graph", tags=["Platform"])
 
 api_router.include_router(actions.router, prefix="/actions", tags=["Platform"])
+api_router.include_router(intelligence.router, prefix="/intelligence", tags=["Intelligence"])
 
 # ==================== WEBSOCKET ENDPOINTS ====================
 # WebSocket endpoints must be registered outside the /api/v1 prefix

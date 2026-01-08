@@ -37,7 +37,7 @@ TRACKED_TASKS = {
     "app.services.background.tasks.send_email_task": TaskName.SEND_EMAIL,
     "app.services.background.tasks.generate_report_task": TaskName.GENERATE_REPORT,
     "app.services.background.tasks.cleanup_task": TaskName.CLEANUP,
-    "app.services.background.tasks.retry_failed_webhooks_task": TaskName.RETRY_WEBHOOKS,
+    "tasks.retry_failed_webhooks": TaskName.RETRY_WEBHOOKS,
 }
 
 

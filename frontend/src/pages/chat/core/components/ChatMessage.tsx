@@ -7,6 +7,7 @@ import { MarkdownRenderer } from "@/shared/rendering";
 import { MermaidBlock } from "@/shared/rendering/components/MermaidBlock";
 import { parseOutput } from "../engine/parseOutput";
 import { ChatEntityPreview } from "./ChatEntityPreview";
+import { MentionChip } from "./MentionChip";
 import { entityKey } from "@/shared/core/entity";
 
 import type { ChatMessageResponse } from "@/api/generated";
@@ -42,17 +43,59 @@ const ChatMessageComponent = ({
 
     // User messages: plain text with optional highlighting
     if (isUser) {
+      // Basic Mention Parsing
+      // Regex: @\[([^\]]+)\]\(entity:([^:]+):([^)]+)\)
+      // Matches @[Title](entity:type:id)
+      const parts = [];
+      let lastIndex = 0;
+      const mentionRegex = /@\[([^\]]+)\]\(entity:([a-zA-Z0-9_-]+):([a-zA-Z0-9_-]+)\)/g;
+
+      let match;
+      const textContent = content; // Assuming content is string
+
+      while ((match = mentionRegex.exec(textContent)) !== null) {
+        if (match.index > lastIndex) {
+          parts.push(textContent.substring(lastIndex, match.index));
+        }
+        parts.push({
+          isMention: true,
+          title: match[1],
+          type: match[2],
+          id: match[3],
+          matchText: match[0]
+        });
+        lastIndex = match.index + match[0].length;
+      }
+      if (lastIndex < textContent.length) {
+        parts.push(textContent.substring(lastIndex));
+      }
+
+      // Check for search highlights in text parts only? 
+      // This is getting complex: HighlightedText needs full string or segment.
+      // If we have search highlights, mixing with mentions is tricky.
+      // Search logic typically operates on plain text. If mentions are raw markdown, search finds matches in raw text.
+      // But we want to render mentions as chips. 
+      // Simpler approach: If mentions exist, render chips. If highlights exist, render highlights on clean text?
+      // For now, let's prioritize Mention rendering over Search highlights if both exist, 
+      // or just apply highlighting to the text nodes.
+
       return (
         <p className="text-sm leading-relaxed whitespace-pre-wrap">
-          {hasHighlights ? (
-            <HighlightedText
-              content={content}
-              occurrences={occurrences}
-              currentOccurrenceId={currentOccurrenceId}
-            />
-          ) : (
-            content
-          )}
+          {parts.map((part, i) => {
+            if (typeof part === 'string') {
+              // Fallback to simple string
+              return <span key={i}>{part}</span>;
+            } else {
+              return (
+                <MentionChip
+                  key={i}
+                  title={part.title || ""}
+                  type={part.type as any}
+                  id={part.id || ""}
+                />
+              );
+            }
+          })}
         </p>
       );
     }

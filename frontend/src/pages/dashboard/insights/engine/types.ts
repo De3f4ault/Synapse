@@ -53,9 +53,10 @@ export type ModuleType = "flashcards" | "documents" | "notes" | "quizzes" | "cha
  * Source of weakness detection.
  * - api: Detected from historical performance data
  * - graph: Detected from recent learning interactions (spaced repetition)
- * - hybrid: Confirmed by both sources (highest confidence)
+ * - gie: Detected by Graph Intelligence Engine (mastery + stability)
+ * - hybrid: Confirmed by multiple sources (highest confidence)
  */
-export type WeakAreaSource = "api" | "graph" | "hybrid";
+export type WeakAreaSource = "api" | "graph" | "gie" | "hybrid";
 
 export interface IntelligenceInsight {
     id?: string;
@@ -85,6 +86,9 @@ export interface WeakAreaInsight extends WeakArea {
 
     /** Source of weakness detection */
     source: WeakAreaSource;
+
+    /** Stability score from GIE (0-1, lower = more at risk of decay) */
+    stability?: number;
 
     /** When this weakness was first detected */
     detectedAt?: string;

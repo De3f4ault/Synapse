@@ -19,6 +19,7 @@ from app.schemas.platform import (
     EntityVisibility,
     PlatformActionResult,
     ActionStatus,
+    EntitySearchResult,
 )
 from app.platform.registry import ModuleContract, register_module
 
@@ -34,6 +35,38 @@ DOCUMENTS_CAPABILITIES = [
     EntityCapability.SUMMARIZE,
     EntityCapability.EXPORT,
 ]
+
+
+# ============================================================================
+# Entity Search
+# ============================================================================
+
+
+async def search_documents(
+    query: str,
+    db: AsyncSession,
+    user_id: int,
+    limit: int = 10,
+) -> list[EntitySearchResult]:
+    """Search for documents by filename."""
+    stmt = (
+        select(Document)
+        .where(Document.user_id == user_id, Document.filename.ilike(f"%{query}%"))
+        .limit(limit)
+    )
+    result = await db.execute(stmt)
+    docs = result.scalars().all()
+
+    return [
+        EntitySearchResult(
+            id=doc.id,
+            type=EntityType.DOCUMENT,
+            source_module=ModuleId.DOCUMENTS,
+            title=doc.filename,
+            created_at=doc.created_at,
+        )
+        for doc in docs
+    ]
 
 
 # ============================================================================
@@ -196,6 +229,7 @@ documents_module_contract = ModuleContract(
     resolve_entity=resolve_document,
     execute_capability=execute_document_capability,
     check_availability=check_document_availability,
+    search_entities=search_documents,
     supported_capabilities=DOCUMENTS_CAPABILITIES,
 )
 

@@ -134,10 +134,25 @@ class Flashcard(Base, TimestampMixin, SoftDeleteMixin):
 
     # Vector Embedding (pgvector - for hybrid search)
     content_embedding: Mapped[Optional[list[float]]] = mapped_column(
-        Vector(1536),
+        Vector(384),  # MiniLM-L6-v2 dimension
         nullable=True,
         default=None,
         doc="Vector embedding for semantic search (front_text + back_text combined)",
+    )
+
+    # Embedding versioning (for model upgrades and failure tracking)
+    embedding_model: Mapped[Optional[str]] = mapped_column(
+        String(100),
+        nullable=True,
+        default=None,
+        doc="Embedding model version (e.g., 'all-MiniLM-L6-v2@384@v1')",
+    )
+
+    embedding_status: Mapped[Optional[str]] = mapped_column(
+        String(20),
+        nullable=True,
+        default="PENDING",
+        doc="Embedding status: PENDING, READY, FAILED, STALE",
     )
 
     # Relationships

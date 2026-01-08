@@ -75,8 +75,8 @@ celery_app.conf.update(
     broker_visibility_timeout=900,  # 15 min (was 3600), faster task recovery
     # Worker - OPTIMIZED FOR CPU-BOUND TASKS
     worker_prefetch_multiplier=1,  # Prevent task hogging (was 4)
-    worker_max_tasks_per_child=50,  # Recycle workers frequently (was 1000)
-    worker_max_memory_per_child=500000,  # 500MB limit, kill if exceeded
+    worker_max_tasks_per_child=100,  # Increased to allow model caching (was 50)
+    worker_max_memory_per_child=1500000,  # 1.5GB limit for embedding models (was 500MB)
     # Task tracking
     task_track_started=True,
     task_send_sent_event=True,
@@ -115,7 +115,7 @@ celery_app.conf.update(
     # Beat schedule for periodic tasks (with expires to prevent pileup)
     beat_schedule={
         "retry-failed-webhooks": {
-            "task": "app.services.background.tasks.retry_failed_webhooks_task",
+            "task": "tasks.retry_failed_webhooks",
             "schedule": 300.0,
             "options": {"expires": 270.0},  # Expire before next run
         },
