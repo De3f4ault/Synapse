@@ -69,7 +69,8 @@ async def _process_chunk_batch(
     """
     from app.models.document_chunk import DocumentChunk
 
-    # Step 1: Save chunk records to DB
+    # Step 1: Save chunk records to DB WITH embedding_id (deterministic UUID)
+    # The embedding_id links PG chunks to Qdrant points
     for chunk_data in batch:
         chunk = DocumentChunk(
             document_id=document.id,
@@ -77,6 +78,7 @@ async def _process_chunk_batch(
             chunk_index=chunk_data["chunk_index"],
             start_char=chunk_data["start_char"],
             end_char=chunk_data["end_char"],
+            embedding_id=chunk_data["chunk_id"],  # Deterministic UUID from iter_chunks
         )
         session.add(chunk)
     await session.commit()
@@ -85,7 +87,7 @@ async def _process_chunk_batch(
     batch_texts = [c["content"] for c in batch]
     batch_embeddings = embedder.encode(batch_texts, normalize=True).tolist()
 
-    # Step 3: Prepare payloads with deterministic IDs (from iter_chunks)
+    # Step 3: Prepare payloads - IDs already match embedding_id in DB
     batch_payloads = []
     batch_ids = []
     for chunk_data in batch:
@@ -96,11 +98,12 @@ async def _process_chunk_batch(
                 "source_type": "documents",
                 "title": document.filename,
                 "chunk_index": chunk_data["chunk_index"],
+                "start_char": chunk_data["start_char"],
+                "end_char": chunk_data["end_char"],
                 "user_id": document.user_id,
                 "char_count": len(chunk_data["content"]),
             }
         )
-        # Use deterministic chunk_id from iter_chunks for idempotent upserts
         batch_ids.append(chunk_data["chunk_id"])
 
     # Step 4: Upsert to Qdrant
@@ -175,11 +178,74 @@ def process_document_task(self, document_id: int) -> Dict[str, Any]:
                         "document_id": document_id,
                     }
 
+                # GUARD: Skip documents already being processed or completed
+                if document.processing_status == ProcessingStatus.PROCESSING:
+                    logger.info(f"Document {document_id} already PROCESSING, skipping")
+                    return {
+                        "status": "skipped",
+                        "reason": "already_processing",
+                        "document_id": document_id,
+                    }
+
+                if document.processing_status == ProcessingStatus.COMPLETED:
+                    logger.info(f"Document {document_id} already COMPLETED, skipping")
+                    return {
+                        "status": "skipped",
+                        "reason": "already_completed",
+                        "document_id": document_id,
+                    }
+
                 # Update status to processing
                 document.processing_status = ProcessingStatus.PROCESSING
                 await session.commit()
 
                 try:
+                    # IDEMPOTENCY: Delete ALL derived artifacts before re-processing
+                    # This ensures retries start clean
+                    from sqlalchemy import text as sql_text
+
+                    # 1. Delete existing PG chunks
+                    deleted_chunks = await session.execute(
+                        sql_text("DELETE FROM document_chunks WHERE document_id = :doc_id"),
+                        {"doc_id": document.id},
+                    )
+                    if deleted_chunks.rowcount > 0:
+                        logger.info(
+                            f"Document {document_id}: Cleaned {deleted_chunks.rowcount} existing chunks"
+                        )
+
+                    # 2. Delete existing Qdrant points
+                    from app.core.ai.rag.vector_store.qdrant.client import get_qdrant_client
+                    from qdrant_client.http import models as qdrant_models
+
+                    qdrant_client = get_qdrant_client().get_client()
+                    collection_name = f"synapse_v2_user_{document.user_id}_documents"
+
+                    try:
+                        # Check if collection exists before deleting
+                        qdrant_client.get_collection(collection_name)
+                        qdrant_client.delete(
+                            collection_name=collection_name,
+                            points_selector=qdrant_models.FilterSelector(
+                                filter=qdrant_models.Filter(
+                                    must=[
+                                        qdrant_models.FieldCondition(
+                                            key="source_id",
+                                            match=qdrant_models.MatchValue(value=str(document.id)),
+                                        )
+                                    ]
+                                )
+                            ),
+                        )
+                        logger.info(
+                            f"Document {document_id}: Cleaned Qdrant points for collection {collection_name}"
+                        )
+                    except Exception as qdrant_err:
+                        # Collection might not exist yet - that's OK
+                        logger.debug(f"Qdrant cleanup skipped: {qdrant_err}")
+
+                    await session.commit()
+
                     # Step 1: Extract text (this is the one atomic operation we can't batch)
                     processor = DocumentProcessor()
                     extracted_data = processor.process_document(
@@ -201,7 +267,10 @@ def process_document_task(self, document_id: int) -> Dict[str, Any]:
 
                     # Step 2: Initialize embedder and Qdrant upserter early
                     embedder = AllMiniLMEmbedder()
-                    collection_manager = CollectionManager()
+                    from app.core.ai.rag.vector_store.qdrant.client import get_qdrant_client
+
+                    qdrant_client = get_qdrant_client().get_client()
+                    collection_manager = CollectionManager(client=qdrant_client)
                     upserter = BatchUpserter()
 
                     collection_name = collection_manager.create_user_collection(
@@ -265,13 +334,31 @@ def process_document_task(self, document_id: int) -> Dict[str, Any]:
                         chunks_processed += len(batch)
                         batch.clear()
 
-                    # Step 4: Mark complete
-                    document.processing_status = ProcessingStatus.COMPLETED
+                    # Step 4: Lifecycle invariant validation
+                    # Only mark COMPLETED if chunks == embeddings
+                    if chunk_records_created == embeddings_stored and chunk_records_created > 0:
+                        document.processing_status = ProcessingStatus.COMPLETED
+                        final_status = "completed"
+                    elif chunk_records_created > 0:
+                        # Partial success - some chunks, not all embedded
+                        # This allows manual recovery without re-processing
+                        document.processing_status = ProcessingStatus.FAILED
+                        final_status = "partial"
+                        logger.warning(
+                            f"Document {document_id}: PARTIAL - chunks={chunk_records_created}, "
+                            f"embeddings={embeddings_stored}"
+                        )
+                    else:
+                        # No chunks created
+                        document.processing_status = ProcessingStatus.FAILED
+                        final_status = "failed_no_chunks"
+                        logger.error(f"Document {document_id}: No chunks created")
+
                     await session.commit()
 
                     result_stats = {
                         "document_id": document_id,
-                        "status": "completed",
+                        "status": final_status,
                         "chunks_created": chunk_records_created,
                         "embeddings_stored": embeddings_stored,
                         "word_count": extracted_data["word_count"],
@@ -281,7 +368,7 @@ def process_document_task(self, document_id: int) -> Dict[str, Any]:
                         "streaming": True,
                     }
 
-                    logger.info(f"Document {document_id} processed successfully: {result_stats}")
+                    logger.info(f"Document {document_id} processed: {result_stats}")
                     return result_stats
 
                 except MemoryError:

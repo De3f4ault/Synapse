@@ -296,30 +296,49 @@ class DocumentProcessor:
         Yields:
             Dict with content, chunk_index, start_char, end_char, chunk_id
         """
-        import hashlib
+        import uuid
+
+        # Safety limits
+        MAX_CHUNKS = 50000  # Absolute maximum chunks per document
+        MIN_ADVANCE = max(1, chunk_size - overlap)  # Minimum progress per iteration
 
         start = 0
         chunk_index = 0
+        last_start = -1  # For infinite loop detection
 
-        while start < len(text):
+        while start < len(text) and chunk_index < MAX_CHUNKS:
+            # Infinite loop detection
+            if start == last_start:
+                logger.error(f"Chunker stuck at position {start}, forcing advance")
+                start += MIN_ADVANCE
+                continue
+            last_start = start
+
             end = start + chunk_size
 
             # Find the nearest sentence boundary
             if end < len(text):
+                best_boundary = None
                 for punct in [". ", "! ", "? ", "\n\n"]:
                     punct_pos = text.rfind(punct, start, end)
                     if punct_pos != -1:
-                        end = punct_pos + len(punct)
-                        break
+                        # Take the furthest boundary to maximize chunk size
+                        if best_boundary is None or punct_pos > best_boundary:
+                            best_boundary = punct_pos + len(punct)
+
+                if best_boundary is not None:
+                    end = best_boundary
+
+            # Clamp end to text length
+            end = min(end, len(text))
 
             chunk_text = text[start:end].strip()
 
             if chunk_text:
                 # Deterministic chunk ID for idempotent re-ingestion
-                # Hash based on document_id + position, not content (allows edits)
-                chunk_id = hashlib.sha256(
-                    f"{document_id}:{start}:{chunk_size}:{overlap}".encode()
-                ).hexdigest()[:16]
+                chunk_id = str(
+                    uuid.uuid5(uuid.NAMESPACE_OID, f"{document_id}:{start}:{chunk_size}:{overlap}")
+                )
 
                 yield {
                     "content": chunk_text,
@@ -330,8 +349,13 @@ class DocumentProcessor:
                 }
                 chunk_index += 1
 
-            # Move start position with overlap
-            start = end - overlap
+            # CRITICAL: Guarantee forward progress
+            # Move to next position with overlap, but ensure minimum advance
+            next_start = end - overlap
+            if next_start <= start:
+                # Overlap would cause no progress - force advance
+                next_start = start + MIN_ADVANCE
+            start = next_start
 
     def chunk_text(
         self, text: str, chunk_size: int = 1000, overlap: int = 200

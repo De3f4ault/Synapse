@@ -47,15 +47,20 @@ def _get_task_name(celery_task_name: str) -> TaskName:
 
 
 def _extract_user_id(body: tuple) -> Optional[int]:
-    """Extract user_id from task arguments if present."""
+    """
+    Extract user_id from task arguments if present.
+
+    IMPORTANT: Only extracts from explicit kwargs['user_id'].
+    Never guess from positional args - this caused owner_id corruption
+    when document_id was mistakenly treated as user_id.
+    """
     try:
         args, kwargs, _ = body
-        # Check kwargs first
+        # ONLY check kwargs - positional guessing is dangerous
         if kwargs and "user_id" in kwargs:
             return kwargs["user_id"]
-        # Check first positional arg
-        if args and isinstance(args[0], int):
-            return args[0]
+        # For document tasks, could resolve from document record
+        # but that requires async DB call - leave as None for now
     except Exception:
         pass
     return None
