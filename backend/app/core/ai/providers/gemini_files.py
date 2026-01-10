@@ -18,7 +18,7 @@ from typing import Any, Dict, List, Optional
 from datetime import datetime, timedelta
 from dataclasses import dataclass
 import structlog
-import google.generativeai as genai
+from google import genai
 
 from app.core.config import settings
 
@@ -28,6 +28,7 @@ logger = structlog.get_logger(__name__)
 @dataclass
 class GeminiFile:
     """Represents an uploaded file in Gemini's Files API"""
+
     name: str  # Gemini's internal file name (e.g., "files/abc123")
     display_name: str  # Original filename
     mime_type: str
@@ -99,7 +100,6 @@ class GeminiFilesManager:
         ".csv": "text/csv",
         ".xml": "text/xml",
         ".rtf": "text/rtf",
-
         # Code
         ".py": "text/x-python",
         ".java": "text/x-java",
@@ -110,7 +110,6 @@ class GeminiFilesManager:
         ".rb": "text/x-ruby",
         ".php": "text/x-php",
         ".ts": "text/typescript",
-
         # Images
         ".png": "image/png",
         ".jpg": "image/jpeg",
@@ -119,7 +118,6 @@ class GeminiFilesManager:
         ".webp": "image/webp",
         ".heic": "image/heic",
         ".heif": "image/heif",
-
         # Audio
         ".mp3": "audio/mp3",
         ".wav": "audio/wav",
@@ -127,7 +125,6 @@ class GeminiFilesManager:
         ".aac": "audio/aac",
         ".ogg": "audio/ogg",
         ".flac": "audio/flac",
-
         # Video
         ".mp4": "video/mp4",
         ".mpeg": "video/mpeg",
@@ -153,7 +150,7 @@ class GeminiFilesManager:
             api_key: Optional API key (defaults to settings.GEMINI_API_KEY)
         """
         self.api_key = api_key or settings.GEMINI_API_KEY
-        genai.configure(api_key=self.api_key)
+        self.client = genai.Client(api_key=self.api_key)
         self.logger = logger.bind(component="gemini_files")
 
     def _get_mime_type(self, file_path: str) -> str:
@@ -162,10 +159,7 @@ class GeminiFilesManager:
         return self.SUPPORTED_MIME_TYPES.get(ext, "application/octet-stream")
 
     async def upload_file(
-        self,
-        file_path: str,
-        display_name: Optional[str] = None,
-        mime_type: Optional[str] = None
+        self, file_path: str, display_name: Optional[str] = None, mime_type: Optional[str] = None
     ) -> GeminiFile:
         """
         Upload a file to Gemini Files API
@@ -205,7 +199,7 @@ class GeminiFilesManager:
             file_path=str(path),
             display_name=name,
             mime_type=mime,
-            size_bytes=file_size
+            size_bytes=file_size,
         )
 
         try:
@@ -213,11 +207,9 @@ class GeminiFilesManager:
             loop = asyncio.get_event_loop()
             uploaded_file = await loop.run_in_executor(
                 None,
-                lambda: genai.upload_file(
-                    path=str(path),
-                    display_name=name,
-                    mime_type=mime
-                )
+                lambda: self.client.files.upload(
+                    file=str(path), config={"display_name": name, "mime_type": mime}
+                ),
             )
 
             # Wait for processing to complete
@@ -227,24 +219,17 @@ class GeminiFilesManager:
                 "file_uploaded",
                 gemini_name=gemini_file.name,
                 uri=gemini_file.uri,
-                hours_until_expiry=gemini_file.hours_until_expiry
+                hours_until_expiry=gemini_file.hours_until_expiry,
             )
 
             return gemini_file
 
         except Exception as e:
-            self.logger.error(
-                "file_upload_failed",
-                file_path=str(path),
-                error=str(e)
-            )
+            self.logger.error("file_upload_failed", file_path=str(path), error=str(e))
             raise
 
     async def _wait_for_processing(
-        self,
-        uploaded_file,
-        timeout_seconds: int = 300,
-        poll_interval: float = 2.0
+        self, uploaded_file, timeout_seconds: int = 300, poll_interval: float = 2.0
     ) -> GeminiFile:
         """
         Wait for file to finish processing
@@ -263,18 +248,17 @@ class GeminiFilesManager:
             # Check timeout
             elapsed = asyncio.get_event_loop().time() - start_time
             if elapsed > timeout_seconds:
-                raise TimeoutError(
-                    f"File processing timed out after {timeout_seconds}s"
-                )
+                raise TimeoutError(f"File processing timed out after {timeout_seconds}s")
 
             # Get current file status
             loop = asyncio.get_event_loop()
             file_info = await loop.run_in_executor(
-                None,
-                lambda: genai.get_file(uploaded_file.name)
+                None, lambda: self.client.files.get(name=uploaded_file.name)
             )
 
-            state = file_info.state.name if hasattr(file_info.state, 'name') else str(file_info.state)
+            state = (
+                file_info.state.name if hasattr(file_info.state, "name") else str(file_info.state)
+            )
 
             if state == "ACTIVE":
                 # File is ready
@@ -289,7 +273,7 @@ class GeminiFilesManager:
         """Convert genai file object to GeminiFile dataclass"""
         # Parse timestamps
         create_time = datetime.utcnow()  # Approximate if not available
-        if hasattr(file_info, 'create_time') and file_info.create_time:
+        if hasattr(file_info, "create_time") and file_info.create_time:
             create_time = file_info.create_time
 
         # Calculate expiration (48 hours from creation)
@@ -297,18 +281,22 @@ class GeminiFilesManager:
 
         # Get state as string
         state = "ACTIVE"
-        if hasattr(file_info, 'state'):
-            state = file_info.state.name if hasattr(file_info.state, 'name') else str(file_info.state)
+        if hasattr(file_info, "state"):
+            state = (
+                file_info.state.name if hasattr(file_info.state, "name") else str(file_info.state)
+            )
 
         return GeminiFile(
             name=file_info.name,
-            display_name=getattr(file_info, 'display_name', ''),
-            mime_type=getattr(file_info, 'mime_type', ''),
-            size_bytes=getattr(file_info, 'size_bytes', 0),
-            uri=file_info.uri if hasattr(file_info, 'uri') else f"https://generativelanguage.googleapis.com/v1beta/{file_info.name}",
+            display_name=getattr(file_info, "display_name", ""),
+            mime_type=getattr(file_info, "mime_type", ""),
+            size_bytes=getattr(file_info, "size_bytes", 0),
+            uri=file_info.uri
+            if hasattr(file_info, "uri")
+            else f"https://generativelanguage.googleapis.com/v1beta/{file_info.name}",
             state=state,
             create_time=create_time,
-            expiration_time=expiration_time
+            expiration_time=expiration_time,
         )
 
     async def get_file(self, file_name: str) -> Optional[GeminiFile]:
@@ -324,16 +312,11 @@ class GeminiFilesManager:
         try:
             loop = asyncio.get_event_loop()
             file_info = await loop.run_in_executor(
-                None,
-                lambda: genai.get_file(file_name)
+                None, lambda: self.client.files.get(name=file_name)
             )
             return self._to_gemini_file(file_info)
         except Exception as e:
-            self.logger.warning(
-                "file_not_found",
-                file_name=file_name,
-                error=str(e)
-            )
+            self.logger.warning("file_not_found", file_name=file_name, error=str(e))
             return None
 
     async def list_files(self) -> List[GeminiFile]:
@@ -345,11 +328,10 @@ class GeminiFilesManager:
         """
         try:
             loop = asyncio.get_event_loop()
-            files = await loop.run_in_executor(
-                None,
-                lambda: list(genai.list_files())
+            files_response = await loop.run_in_executor(
+                None, lambda: list(self.client.files.list())
             )
-            return [self._to_gemini_file(f) for f in files]
+            return [self._to_gemini_file(f) for f in files_response]
         except Exception as e:
             self.logger.error("list_files_failed", error=str(e))
             return []
@@ -366,18 +348,11 @@ class GeminiFilesManager:
         """
         try:
             loop = asyncio.get_event_loop()
-            await loop.run_in_executor(
-                None,
-                lambda: genai.delete_file(file_name)
-            )
+            await loop.run_in_executor(None, lambda: self.client.files.delete(name=file_name))
             self.logger.info("file_deleted", file_name=file_name)
             return True
         except Exception as e:
-            self.logger.error(
-                "file_delete_failed",
-                file_name=file_name,
-                error=str(e)
-            )
+            self.logger.error("file_delete_failed", file_name=file_name, error=str(e))
             return False
 
     async def cleanup_expired_files(self) -> int:

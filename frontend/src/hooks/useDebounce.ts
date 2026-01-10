@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from "react";
 
 /**
  * Debounce a value by a specified delay.
@@ -19,21 +19,21 @@ import { useState, useEffect } from 'react';
  * }, [debouncedQuery]);
  */
 export function useDebounce<T>(value: T, delay: number = 500): T {
-    const [debouncedValue, setDebouncedValue] = useState<T>(value);
+  const [debouncedValue, setDebouncedValue] = useState<T>(value);
 
-    useEffect(() => {
-        // Set up timeout to update debounced value after delay
-        const timeoutId = setTimeout(() => {
-            setDebouncedValue(value);
-        }, delay);
+  useEffect(() => {
+    // Set up timeout to update debounced value after delay
+    const timeoutId = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
 
-        // Clean up timeout on value change or unmount
-        return () => {
-            clearTimeout(timeoutId);
-        };
-    }, [value, delay]);
+    // Clean up timeout on value change or unmount
+    return () => {
+      clearTimeout(timeoutId);
+    };
+  }, [value, delay]);
 
-    return debouncedValue;
+  return debouncedValue;
 }
 
 /**
@@ -50,37 +50,39 @@ export function useDebounce<T>(value: T, delay: number = 500): T {
  *   1000
  * );
  */
-export function useDebouncedCallback<T extends (...args: Parameters<T>) => ReturnType<T>>(
-    callback: T,
-    delay: number = 500
+export function useDebouncedCallback<
+  T extends (...args: Parameters<T>) => ReturnType<T>,
+>(
+  callback: T,
+  delay: number = 500,
 ): { debouncedFn: (...args: Parameters<T>) => void; cancel: () => void } {
-    const [timeoutId, setTimeoutId] = useState<NodeJS.Timeout | null>(null);
+  const [timeoutId, setTimeoutId] = useState<NodeJS.Timeout | null>(null);
 
-    const cancel = () => {
-        if (timeoutId) {
-            clearTimeout(timeoutId);
-            setTimeoutId(null);
-        }
+  const cancel = () => {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+      setTimeoutId(null);
+    }
+  };
+
+  const debouncedFn = (...args: Parameters<T>) => {
+    cancel();
+    const id = setTimeout(() => {
+      callback(...args);
+    }, delay);
+    setTimeoutId(id);
+  };
+
+  // Clean up on unmount
+  useEffect(() => {
+    return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
     };
+  }, [timeoutId]);
 
-    const debouncedFn = (...args: Parameters<T>) => {
-        cancel();
-        const id = setTimeout(() => {
-            callback(...args);
-        }, delay);
-        setTimeoutId(id);
-    };
-
-    // Clean up on unmount
-    useEffect(() => {
-        return () => {
-            if (timeoutId) {
-                clearTimeout(timeoutId);
-            }
-        };
-    }, [timeoutId]);
-
-    return { debouncedFn, cancel };
+  return { debouncedFn, cancel };
 }
 
 export default useDebounce;

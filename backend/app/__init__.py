@@ -7,6 +7,11 @@ This is the root package. Import settings from here:
     from app import settings
 """
 
+import os
+
+# Suppress TensorFlow logs globally
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
+
 from app.core.config import settings
 
 __version__ = settings.APP_VERSION

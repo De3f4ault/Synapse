@@ -1,38 +1,72 @@
 /**
- * Documents Module Exports
- * Central export point for all documents-related functionality
+ * Documents Module - Public API
+ *
+ * This is the ONLY entry point for the documents module.
+ * No deep imports across modules allowed.
+ *
+ * Architecture:
+ * - core/   → Canonical document types, lifecycle, active document state
+ * - list/   → Document discovery and organization
+ * - upload/ → Document ingestion pipeline
+ * - viewer/ → Document interaction surface
+ * - shared/ → Cross-cutting components and utilities
  */
 
 // Main Page
-export { DocumentsPage } from './DocumentsPage';
+export { DocumentsPage } from "./DocumentsPage";
 
-// List Components
-export { DocumentCard } from './components/list/DocumentCard';
-export { DocumentGrid } from './components/list/DocumentGrid';
-export { DocumentTable } from './components/list/DocumentTable';
+// Core - Types and state
+export type {
+  DocumentStatus,
+  DocumentSector,
+  EnhancedDocument,
+  DocumentCoreState,
+  ChunkMetadata,
+  DocumentFilters,
+} from "./core";
 
-// Upload Components
-export { UploadArea } from './components/upload/UploadArea';
-export { UploadProgress } from './components/upload/UploadProgress';
-export { FileValidator } from './components/upload/FileValidator';
+export {
+  SECTOR_SUGGESTIONS,
+  useDocumentStore,
+  useActiveDocumentId,
+  useActiveDocument,
+  useDocumentActions,
+  useSelectDocument,
+} from "./core";
 
-// Viewer Components
-export { DocumentViewer } from './components/viewer/DocumentViewer';
-export { ChunkExplorer } from './components/viewer/ChunkExplorer';
-export { ProcessingStatus } from './components/viewer/ProcessingStatus';
+// List - Discovery and organization
+export {
+  DocumentCard,
+  DocumentGrid,
+  DocumentTable,
+  useDocuments,
+  useListStore,
+  type ViewMode,
+} from "./list";
 
-// Shared Components
-export { DocumentStats } from './components/shared/DocumentStats';
-export { FilterBar } from './components/shared/FilterBar';
+// Upload - Ingestion pipeline
+export {
+  UploadArea,
+  UploadProgress,
+  FileValidator,
+  useDocumentUpload,
+  useUploadStore,
+  validateFile,
+  validateFiles,
+} from "./upload";
 
-// Hooks
-export { useDocuments } from './hooks/useDocuments';
-export { useDocumentUpload } from './hooks/useDocumentUpload';
-export { useDocumentViewer } from './hooks/useDocumentViewer';
+// Viewer - Interaction surface
+export {
+  DocumentViewer,
+  useDocumentViewer,
+  useViewerStore,
+  type ViewerTheme,
+} from "./viewer";
 
-// Utils
-export { validateFile, getFileExtension, formatFileSize } from './utils/fileValidation';
-export { processChunks, getChunkMetadata } from './utils/chunkProcessing';
-
-// Types
-export type * from './types/documents.types';
+// Shared - Cross-cutting
+export {
+  DocumentStats,
+  FilterBar,
+  processChunks,
+  getChunkMetadata,
+} from "./shared";

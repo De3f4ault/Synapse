@@ -1,44 +1,128 @@
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { BookOpen, TrendingDown } from 'lucide-react';
-import { useSuggestedTopics } from '../../hooks/useRecommendations';
+/**
+ * SuggestedTopics - GIE-powered weak/fragile concept display
+ *
+ * Shows concepts that need attention based on Graph Intelligence Engine.
+ * Clicking a topic navigates to the flashcard deck for review.
+ */
+
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { BookOpen, TrendingDown, AlertCircle, Loader2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { useIntelligence } from "../../hooks/useIntelligence";
+import { cn } from "@/lib/utils";
 
 export function SuggestedTopics() {
-    const { data: topics, isLoading } = useSuggestedTopics();
+  const navigate = useNavigate();
+  const { data, isLoading, error } = useIntelligence(10);
 
-    if (isLoading || !topics) {
-        return <div className="text-muted-foreground">Loading suggestions...</div>;
-    }
+  /**
+   * Navigate to deck for review.
+   * concept_id is actually the deck ID from the GIE function.
+   */
+  const handleTopicClick = (conceptId: string) => {
+    // Navigate to flashcard deck review
+    navigate(`/flashcards/decks/${conceptId}`);
+  };
 
+  if (isLoading) {
     return (
-        <div className="space-y-3">
-        <h4 className="text-sm font-medium">Topics to Review</h4>
-        <div className="space-y-2">
-        {topics.map(topic => (
-            <Card key={topic.topic} className="hover:border-primary/50 cursor-pointer">
-            <CardContent className="pt-4">
-            <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-            <BookOpen className="h-4 w-4 text-muted-foreground" />
-            <div>
-            <p className="font-medium text-sm">{topic.topic}</p>
-            <p className="text-xs text-muted-foreground">{topic.reason}</p>
-            </div>
-            </div>
-            <div className="flex items-center gap-2">
-            <Badge variant="outline" className="text-xs">
-            {topic.itemCount} items
-            </Badge>
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-            <TrendingDown className="h-3 w-3" />
-            {topic.avgMastery}%
-            </div>
-            </div>
-            </div>
-            </CardContent>
-            </Card>
-        ))}
-        </div>
-        </div>
+      <div className="flex items-center justify-center py-8 text-slate-500">
+        <Loader2 size={20} className="animate-spin mr-2" />
+        <span className="text-sm">Analyzing your learning state...</span>
+      </div>
     );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center py-8 text-slate-500">
+        <AlertCircle size={20} className="mr-2" />
+        <span className="text-sm">Could not load topic suggestions</span>
+      </div>
+    );
+  }
+
+  // Combine weak and fragile concepts
+  const topics = [
+    ...(data?.weak_concepts || []).map(c => ({ ...c, status: "weak" as const })),
+    ...(data?.fragile_concepts || []).map(c => ({ ...c, status: "fragile" as const })),
+  ];
+
+  if (topics.length === 0) {
+    return (
+      <div className="text-center py-8">
+        <div className="text-4xl mb-2">✨</div>
+        <p className="text-slate-400 text-sm">
+          No weak areas detected. Keep up the great work!
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="space-y-2">
+        {topics.map((topic) => (
+          <Card
+            key={topic.concept_id}
+            onClick={() => handleTopicClick(topic.concept_id)}
+            className={cn(
+              "border transition-colors cursor-pointer group",
+              topic.status === "weak"
+                ? "border-red-500/20 hover:border-red-500/40 bg-red-500/5"
+                : "border-amber-500/20 hover:border-amber-500/40 bg-amber-500/5"
+            )}
+          >
+            <CardContent className="pt-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <BookOpen className={cn(
+                    "h-4 w-4",
+                    topic.status === "weak" ? "text-red-400" : "text-amber-400"
+                  )} />
+                  <div>
+                    <p className="font-medium text-sm text-white">
+                      {topic.concept_name || topic.concept_id}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      {topic.status === "weak"
+                        ? "Needs immediate attention"
+                        : "At risk of being forgotten"}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      "text-xs border",
+                      topic.status === "weak"
+                        ? "border-red-500/30 text-red-400"
+                        : "border-amber-500/30 text-amber-400"
+                    )}
+                  >
+                    {topic.status === "weak" ? "Weak" : "Fragile"}
+                  </Badge>
+                  <div className="flex items-center gap-1 text-xs text-slate-500">
+                    <TrendingDown className="h-3 w-3" />
+                    {Math.round(topic.mastery * 100)}%
+                  </div>
+                </div>
+              </div>
+
+              {/* Evidence if available */}
+              {topic.weakness_evidence?.length > 0 && (
+                <div className="mt-2 pt-2 border-t border-white/5">
+                  <p className="text-xs text-slate-500">
+                    {topic.weakness_evidence?.[0]?.reason}
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
 }

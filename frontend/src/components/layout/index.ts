@@ -5,18 +5,16 @@
  */
 
 // Core Layout
-export { AppShell } from './AppShell';
-export { Header } from './Header';
-export { Sidebar } from './Sidebar';
-export { Breadcrumbs } from './Breadcrumbs';
+export { AppShell } from "./AppShell";
+export { Header } from "./Header";
+export { Breadcrumbs } from "./Breadcrumbs";
 
 // Navigation
-export { MobileNav } from './MobileNav';
-export { SearchCommand } from './SearchCommand';
+export { MobileNav } from "./MobileNav";
+export { SearchCommand } from "./SearchCommand";
 
 // User Interface
-export { UserMenu } from './UserMenu';
-export { NotificationCenter } from './NotificationCenter';
+export { NotificationCenter } from "./NotificationCenter";
 
 // Utilities
-export { PageTransition } from './PageTransition';
+export { PageTransition } from "./PageTransition";

@@ -2,7 +2,7 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-import type { app__api__rest__documents__MessageResponse } from '../models/app__api__rest__documents__MessageResponse';
+import type { app__api__rest__links__MessageResponse } from '../models/app__api__rest__links__MessageResponse';
 import type { NoteCreate } from '../models/NoteCreate';
 import type { NoteResponse } from '../models/NoteResponse';
 import type { NoteSearchResult } from '../models/NoteSearchResult';
@@ -20,6 +20,7 @@ export class NotesService {
      * @param tags Filter by tags (comma-separated)
      * @param page Page number
      * @param pageSize Items per page
+     * @param token Auth token for image/file requests
      * @returns NoteResponse Successful Response
      * @throws ApiError
      */
@@ -28,6 +29,7 @@ export class NotesService {
         tags?: (string | null),
         page: number = 1,
         pageSize: number = 20,
+        token?: (string | null),
     ): CancelablePromise<Array<NoteResponse>> {
         return __request(OpenAPI, {
             method: 'GET',
@@ -37,6 +39,7 @@ export class NotesService {
                 'tags': tags,
                 'page': page,
                 'page_size': pageSize,
+                'token': token,
             },
             errors: {
                 422: `Validation Error`,
@@ -47,15 +50,20 @@ export class NotesService {
      * Create note
      * Create a new note with optional parent for hierarchy
      * @param requestBody
+     * @param token Auth token for image/file requests
      * @returns NoteResponse Successful Response
      * @throws ApiError
      */
     public static createNoteApiV1NotesPost(
         requestBody: NoteCreate,
+        token?: (string | null),
     ): CancelablePromise<NoteResponse> {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/api/v1/notes',
+            query: {
+                'token': token,
+            },
             body: requestBody,
             mediaType: 'application/json',
             errors: {
@@ -67,17 +75,20 @@ export class NotesService {
      * Get note hierarchy
      * Retrieve hierarchical note structure as tree
      * @param rootId Start from specific note (NULL for roots)
+     * @param token Auth token for image/file requests
      * @returns NoteTreeNode Successful Response
      * @throws ApiError
      */
     public static getNoteTreeApiV1NotesTreeGet(
         rootId?: (number | null),
+        token?: (string | null),
     ): CancelablePromise<Array<NoteTreeNode>> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/v1/notes/tree',
             query: {
                 'root_id': rootId,
+                'token': token,
             },
             errors: {
                 422: `Validation Error`,
@@ -89,12 +100,14 @@ export class NotesService {
      * Full-text search across notes (title and content)
      * @param query Search query
      * @param limit Maximum results
+     * @param token Auth token for image/file requests
      * @returns NoteSearchResult Successful Response
      * @throws ApiError
      */
     public static searchNotesApiV1NotesSearchGet(
         query: string,
         limit: number = 20,
+        token?: (string | null),
     ): CancelablePromise<Array<NoteSearchResult>> {
         return __request(OpenAPI, {
             method: 'GET',
@@ -102,6 +115,7 @@ export class NotesService {
             query: {
                 'query': query,
                 'limit': limit,
+                'token': token,
             },
             errors: {
                 422: `Validation Error`,
@@ -112,17 +126,22 @@ export class NotesService {
      * Get note
      * Retrieve a specific note by ID
      * @param noteId
+     * @param token Auth token for image/file requests
      * @returns NoteResponse Successful Response
      * @throws ApiError
      */
     public static getNoteApiV1NotesNoteIdGet(
         noteId: number,
+        token?: (string | null),
     ): CancelablePromise<NoteResponse> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/v1/notes/{note_id}',
             path: {
                 'note_id': noteId,
+            },
+            query: {
+                'token': token,
             },
             errors: {
                 422: `Validation Error`,
@@ -134,18 +153,23 @@ export class NotesService {
      * Update note and create new version
      * @param noteId
      * @param requestBody
+     * @param token Auth token for image/file requests
      * @returns NoteResponse Successful Response
      * @throws ApiError
      */
     public static updateNoteApiV1NotesNoteIdPut(
         noteId: number,
         requestBody: NoteUpdate,
+        token?: (string | null),
     ): CancelablePromise<NoteResponse> {
         return __request(OpenAPI, {
             method: 'PUT',
             url: '/api/v1/notes/{note_id}',
             path: {
                 'note_id': noteId,
+            },
+            query: {
+                'token': token,
             },
             body: requestBody,
             mediaType: 'application/json',
@@ -158,17 +182,22 @@ export class NotesService {
      * Delete note
      * Soft delete note and all children
      * @param noteId
-     * @returns app__api__rest__documents__MessageResponse Successful Response
+     * @param token Auth token for image/file requests
+     * @returns app__api__rest__links__MessageResponse Successful Response
      * @throws ApiError
      */
     public static deleteNoteApiV1NotesNoteIdDelete(
         noteId: number,
-    ): CancelablePromise<app__api__rest__documents__MessageResponse> {
+        token?: (string | null),
+    ): CancelablePromise<app__api__rest__links__MessageResponse> {
         return __request(OpenAPI, {
             method: 'DELETE',
             url: '/api/v1/notes/{note_id}',
             path: {
                 'note_id': noteId,
+            },
+            query: {
+                'token': token,
             },
             errors: {
                 422: `Validation Error`,
@@ -179,17 +208,22 @@ export class NotesService {
      * Get note versions
      * Retrieve version history for a note
      * @param noteId
+     * @param token Auth token for image/file requests
      * @returns NoteVersionResponse Successful Response
      * @throws ApiError
      */
     public static getNoteVersionsApiV1NotesNoteIdVersionsGet(
         noteId: number,
+        token?: (string | null),
     ): CancelablePromise<Array<NoteVersionResponse>> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/v1/notes/{note_id}/versions',
             path: {
                 'note_id': noteId,
+            },
+            query: {
+                'token': token,
             },
             errors: {
                 422: `Validation Error`,

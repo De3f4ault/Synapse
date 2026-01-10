@@ -3,7 +3,8 @@
 	format lint ruff check test test-cov \
 	clean clean-all openapi openapi-serve logs ps \
 	supervisor-start supervisor-stop supervisor-status supervisor-restart \
-	prod-start prod-stop prod-status health
+	prod-start prod-stop prod-status health \
+	celery-io celery-cpu celery-all backfill-embeddings
 
 # ============================================================================
 # HELP
@@ -264,3 +265,63 @@ logs: ## Tail all service logs
 ps: ## Show running processes
 	@echo "Python processes:"
 	@ps aux | grep python | grep -v grep || echo "No Python processes found"
+
+# ============================================================================
+# CELERY (Manual Worker Control)
+# ============================================================================
+
+celery-io: ## Start IO-bound Celery worker (emails, webhooks)
+	@echo "Starting IO-bound Celery worker..."
+	celery -A app.services.background.celery_app worker \
+		--pool=prefork \
+		--queues=emails,default,webhook \
+		--loglevel=info \
+		--concurrency=2 \
+		--max-tasks-per-child=100 \
+		--max-memory-per-child=300000 \
+		-n io_worker@%h
+
+celery-cpu: ## Start CPU-bound Celery worker (RAG, embeddings, OCR)
+	@echo "Starting CPU-bound Celery worker..."
+	celery -A app.services.background.celery_app worker \
+		--pool=prefork \
+		--queues=rag,embeddings,documents,ocr \
+		--loglevel=info \
+		--concurrency=1 \
+		--max-tasks-per-child=100 \
+		--max-memory-per-child=1500000 \
+		-n cpu_worker@%h
+
+celery-all: ## Start all Celery queues in one worker (dev only)
+	@echo "Starting Celery worker (all queues)..."
+	celery -A app.services.background.celery_app worker \
+		--pool=prefork \
+		--queues=emails,default,webhook,rag,embeddings,documents,ocr \
+		--loglevel=info \
+		--concurrency=1 \
+		--prefetch-multiplier=1 \
+		--max-tasks-per-child=100 \
+		--max-memory-per-child=1500000 \
+		-n dev_worker@%h
+
+celery-beat: ## Start Celery beat scheduler
+	@echo "Starting Celery beat..."
+	@rm -f /tmp/celerybeat.pid
+	celery -A app.services.background.celery_app beat \
+		--loglevel=info \
+		--pidfile=/tmp/celerybeat.pid
+
+# ============================================================================
+# EMBEDDING MANAGEMENT
+# ============================================================================
+
+backfill-embeddings: ## Backfill embeddings for existing notes/flashcards
+	@echo "Starting embedding backfill..."
+	@echo "This will queue embedding generation for all notes and flashcards."
+	@read -p "Continue? [y/N] " confirm; \
+	if [ "$$confirm" = "y" ] || [ "$$confirm" = "Y" ]; then \
+		python -c "from app.services.background import batch_backfill_notes_task, batch_backfill_flashcards_task; print('Queueing notes...'); batch_backfill_notes_task.apply_async(); print('Queueing flashcards...'); batch_backfill_flashcards_task.apply_async(); print('Done! Monitor with: celery -A app.services.background.celery_app inspect active')"; \
+	else \
+		echo "Cancelled."; \
+	fi
+

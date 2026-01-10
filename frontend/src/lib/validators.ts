@@ -1,102 +1,114 @@
-import { z } from 'zod';
-import { DOCUMENTS, NOTES, CHAT, QUIZZES } from './constants';
+import { z } from "zod";
+import { DOCUMENTS, NOTES, CHAT, QUIZZES } from "./constants";
 
 // =============================================================================
 // Authentication Schemas
 // =============================================================================
 
 export const emailSchema = z
-.string()
-.min(1, 'Email is required')
-.email('Please enter a valid email address');
+  .string()
+  .min(1, "Email is required")
+  .email("Please enter a valid email address");
 
 export const passwordSchema = z
-.string()
-.min(8, 'Password must be at least 8 characters')
-.max(128, 'Password must be less than 128 characters');
+  .string()
+  .min(8, "Password must be at least 8 characters")
+  .max(128, "Password must be less than 128 characters");
 
 export const loginSchema = z.object({
-    email: emailSchema,
-    password: z.string().min(1, 'Password is required'),
+  email: emailSchema,
+  password: z.string().min(1, "Password is required"),
 });
 
 export const registerSchema = z
-.object({
+  .object({
     email: emailSchema,
     password: passwordSchema,
-    confirmPassword: z.string().min(1, 'Please confirm your password'),
-        full_name: z
-        .string()
-        .min(1, 'Full name is required')
-        .max(255, 'Full name must be less than 255 characters'),
-})
-.refine((data) => data.password === data.confirmPassword, {
-    message: 'Passwords do not match',
-    path: ['confirmPassword'],
-});
+    confirmPassword: z.string().min(1, "Please confirm your password"),
+    full_name: z
+      .string()
+      .min(1, "Full name is required")
+      .max(255, "Full name must be less than 255 characters"),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
+  });
 
 export const passwordChangeSchema = z
-.object({
-    current_password: z.string().min(1, 'Current password is required'),
-        new_password: passwordSchema,
-        confirm_password: z.string().min(1, 'Please confirm your new password'),
-})
-.refine((data) => data.new_password === data.confirm_password, {
-    message: 'Passwords do not match',
-    path: ['confirm_password'],
-})
-.refine((data) => data.current_password !== data.new_password, {
-    message: 'New password must be different from current password',
-    path: ['new_password'],
-});
+  .object({
+    current_password: z.string().min(1, "Current password is required"),
+    new_password: passwordSchema,
+    confirm_password: z.string().min(1, "Please confirm your new password"),
+  })
+  .refine((data) => data.new_password === data.confirm_password, {
+    message: "Passwords do not match",
+    path: ["confirm_password"],
+  })
+  .refine((data) => data.current_password !== data.new_password, {
+    message: "New password must be different from current password",
+    path: ["new_password"],
+  });
 
 // =============================================================================
 // Deck & Flashcard Schemas
 // =============================================================================
 
 export const deckCreateSchema = z.object({
-    name: z
+  name: z
     .string()
-    .min(1, 'Deck name is required')
-    .max(255, 'Deck name must be less than 255 characters'),
-                                         description: z.string().max(1000, 'Description must be less than 1000 characters').optional(),
-                                         tags: z.array(z.string().max(50)).max(10, 'Maximum 10 tags allowed').optional(),
-                                         is_public: z.boolean().default(false),
+    .min(1, "Deck name is required")
+    .max(255, "Deck name must be less than 255 characters"),
+  description: z
+    .string()
+    .max(1000, "Description must be less than 1000 characters")
+    .optional(),
+  tags: z
+    .array(z.string().max(50))
+    .max(10, "Maximum 10 tags allowed")
+    .optional(),
+  is_public: z.boolean().default(false),
 });
 
 export const deckUpdateSchema = deckCreateSchema.partial();
 
 export const flashcardCreateSchema = z.object({
-    deck_id: z.number().int().positive('Deck ID is required'),
-                                              front_text: z.string().min(1, 'Front text is required').max(5000, 'Front text is too long'),
-                                              back_text: z.string().min(1, 'Back text is required').max(5000, 'Back text is too long'),
-                                              front_media_url: z.string().url('Invalid URL').optional().nullable(),
-                                              back_media_url: z.string().url('Invalid URL').optional().nullable(),
+  deck_id: z.number().int().positive("Deck ID is required"),
+  front_text: z
+    .string()
+    .min(1, "Front text is required")
+    .max(5000, "Front text is too long"),
+  back_text: z
+    .string()
+    .min(1, "Back text is required")
+    .max(5000, "Back text is too long"),
+  front_media_url: z.string().url("Invalid URL").optional().nullable(),
+  back_media_url: z.string().url("Invalid URL").optional().nullable(),
 });
 
 export const reviewSubmitSchema = z.object({
-    quality: z
+  quality: z
     .number()
     .int()
-    .min(0, 'Quality must be between 0-5')
-    .max(5, 'Quality must be between 0-5'),
-                                           time_taken_ms: z.number().int().min(0, 'Time must be positive'),
+    .min(0, "Quality must be between 0-5")
+    .max(5, "Quality must be between 0-5"),
+  time_taken_ms: z.number().int().min(0, "Time must be positive"),
 });
 
 export const flashcardGenerateSchema = z.object({
-    document_id: z.number().int().positive('Document ID is required'),
-                                                deck_name: z
-                                                .string()
-                                                .min(1, 'Deck name is required')
-                                                .max(255, 'Deck name must be less than 255 characters'),
-                                                num_cards: z
-                                                .number()
-                                                .int()
-                                                .min(1, 'Minimum 1 card')
-                                                .max(50, 'Maximum 50 cards')
-                                                .default(10),
-                                                difficulty: z.enum(['easy', 'medium', 'hard']).default('medium'),
-                                                tags: z.array(z.string()).optional(),
+  document_id: z.number().int().positive("Document ID is required"),
+  deck_name: z
+    .string()
+    .min(1, "Deck name is required")
+    .max(255, "Deck name must be less than 255 characters"),
+  num_cards: z
+    .number()
+    .int()
+    .min(1, "Minimum 1 card")
+    .max(50, "Maximum 50 cards")
+    .default(10),
+  difficulty: z.enum(["easy", "medium", "hard"]).default("medium"),
+  tags: z.array(z.string()).optional(),
 });
 
 // =============================================================================
@@ -104,14 +116,17 @@ export const flashcardGenerateSchema = z.object({
 // =============================================================================
 
 export const noteCreateSchema = z.object({
-    title: z
+  title: z
     .string()
-    .min(1, 'Title is required')
-    .max(NOTES.MAX_TITLE_LENGTH, `Title must be less than ${NOTES.MAX_TITLE_LENGTH} characters`),
-                                         content: z.string().min(1, 'Content is required'),
-                                         format: z.enum(NOTES.FORMATS).default('markdown'),
-                                             parent_id: z.number().int().positive().optional().nullable(),
-                                         tags: z.array(z.string().max(50)).max(10).optional(),
+    .min(1, "Title is required")
+    .max(
+      NOTES.MAX_TITLE_LENGTH,
+      `Title must be less than ${NOTES.MAX_TITLE_LENGTH} characters`,
+    ),
+  content: z.string().min(1, "Content is required"),
+  format: z.enum(NOTES.FORMATS).default("markdown"),
+  parent_id: z.number().int().positive().optional().nullable(),
+  tags: z.array(z.string().max(50)).max(10).optional(),
 });
 
 export const noteUpdateSchema = noteCreateSchema.partial();
@@ -121,16 +136,16 @@ export const noteUpdateSchema = noteCreateSchema.partial();
 // =============================================================================
 
 export const documentUploadSchema = z.object({
-    file: z
+  file: z
     .instanceof(File)
     .refine(
-        (file) => file.size <= DOCUMENTS.MAX_FILE_SIZE,
-            `File size must be less than ${DOCUMENTS.MAX_FILE_SIZE / (1024 * 1024)}MB`
+      (file) => file.size <= DOCUMENTS.MAX_FILE_SIZE,
+      `File size must be less than ${DOCUMENTS.MAX_FILE_SIZE / (1024 * 1024)}MB`,
     )
     .refine((file) => {
-        const acceptedTypes = Object.keys(DOCUMENTS.ACCEPTED_TYPES);
-        return acceptedTypes.includes(file.type);
-    }, 'Invalid file type. Accepted: PDF, DOCX, TXT, MD, EPUB'),
+      const acceptedTypes = Object.keys(DOCUMENTS.ACCEPTED_TYPES);
+      return acceptedTypes.includes(file.type);
+    }, "Invalid file type. Accepted: PDF, DOCX, TXT, MD, EPUB"),
 });
 
 // =============================================================================
@@ -138,28 +153,28 @@ export const documentUploadSchema = z.object({
 // =============================================================================
 
 export const questionCreateSchema = z.object({
-    question_text: z.string().min(1, 'Question text is required').max(2000),
-                                             question_type: z.enum(QUIZZES.QUESTION_TYPES),
-                                             options: z.record(z.unknown()).optional().nullable(),
-                                             correct_answer: z.string().min(1, 'Correct answer is required'),
-                                             explanation: z.string().max(2000).optional().nullable(),
-                                             points: z.number().int().min(1).default(1),
+  question_text: z.string().min(1, "Question text is required").max(2000),
+  question_type: z.enum(QUIZZES.QUESTION_TYPES),
+  options: z.record(z.unknown()).optional().nullable(),
+  correct_answer: z.string().min(1, "Correct answer is required"),
+  explanation: z.string().max(2000).optional().nullable(),
+  points: z.number().int().min(1).default(1),
 });
 
 export const quizCreateSchema = z.object({
-    title: z.string().min(1, 'Quiz title is required').max(500),
-                                         description: z.string().max(2000).optional().nullable(),
-                                         difficulty: z.enum(QUIZZES.DIFFICULTIES).default('medium'),
-                                         time_limit_minutes: z.number().int().positive().optional().nullable(),
-                                         questions: z
-                                         .array(questionCreateSchema)
-                                         .min(1, 'At least one question is required')
-                                         .max(QUIZZES.MAX_QUESTIONS, `Maximum ${QUIZZES.MAX_QUESTIONS} questions`),
+  title: z.string().min(1, "Quiz title is required").max(500),
+  description: z.string().max(2000).optional().nullable(),
+  difficulty: z.enum(QUIZZES.DIFFICULTIES).default("medium"),
+  time_limit_minutes: z.number().int().positive().optional().nullable(),
+  questions: z
+    .array(questionCreateSchema)
+    .min(1, "At least one question is required")
+    .max(QUIZZES.MAX_QUESTIONS, `Maximum ${QUIZZES.MAX_QUESTIONS} questions`),
 });
 
 export const answerSubmitSchema = z.object({
-    question_id: z.number().int().positive(),
-                                           answer: z.string().min(1, 'Answer is required'),
+  question_id: z.number().int().positive(),
+  answer: z.string().min(1, "Answer is required"),
 });
 
 // =============================================================================
@@ -167,16 +182,19 @@ export const answerSubmitSchema = z.object({
 // =============================================================================
 
 export const chatSessionCreateSchema = z.object({
-    title: z.string().max(500).optional().nullable(),
-                                                document_id: z.number().int().positive().optional().nullable(),
-                                                context_modules: z.array(z.string()).optional().nullable(),
+  title: z.string().max(500).optional().nullable(),
+  document_id: z.number().int().positive().optional().nullable(),
+  context_modules: z.array(z.string()).optional().nullable(),
 });
 
 export const chatMessageCreateSchema = z.object({
-    content: z
+  content: z
     .string()
-    .min(1, 'Message cannot be empty')
-    .max(CHAT.MAX_MESSAGE_LENGTH, `Message must be less than ${CHAT.MAX_MESSAGE_LENGTH} characters`),
+    .min(1, "Message cannot be empty")
+    .max(
+      CHAT.MAX_MESSAGE_LENGTH,
+      `Message must be less than ${CHAT.MAX_MESSAGE_LENGTH} characters`,
+    ),
 });
 
 // =============================================================================
@@ -184,8 +202,8 @@ export const chatMessageCreateSchema = z.object({
 // =============================================================================
 
 export const studySessionCreateSchema = z.object({
-    session_type: z.enum(['flashcard_review', 'quiz', 'mixed']),
-                                                 modules: z.array(z.string()).optional(),
+  session_type: z.enum(["flashcard_review", "quiz", "mixed"]),
+  modules: z.array(z.string()).optional(),
 });
 
 // =============================================================================
@@ -193,10 +211,10 @@ export const studySessionCreateSchema = z.object({
 // =============================================================================
 
 export const searchQuerySchema = z.object({
-    query: z.string().min(1, 'Search query is required').max(200),
-                                          modules: z.string().optional(),
-                                          search_type: z.enum(['fts', 'semantic', 'hybrid']).default('hybrid'),
-                                          limit: z.number().int().min(1).max(100).default(20),
+  query: z.string().min(1, "Search query is required").max(200),
+  modules: z.string().optional(),
+  search_type: z.enum(["fts", "semantic", "hybrid"]).default("hybrid"),
+  limit: z.number().int().min(1).max(100).default(20),
 });
 
 // =============================================================================
@@ -204,9 +222,9 @@ export const searchQuerySchema = z.object({
 // =============================================================================
 
 export const profileUpdateSchema = z.object({
-    full_name: z.string().min(1).max(255).optional().nullable(),
-                                            timezone: z.string().max(50).optional().nullable(),
-                                            preferences: z.record(z.unknown()).optional().nullable(),
+  full_name: z.string().min(1).max(255).optional().nullable(),
+  timezone: z.string().max(50).optional().nullable(),
+  preferences: z.record(z.unknown()).optional().nullable(),
 });
 
 // =============================================================================
@@ -214,10 +232,10 @@ export const profileUpdateSchema = z.object({
 // =============================================================================
 
 export const webhookCreateSchema = z.object({
-    url: z.string().url('Invalid webhook URL').max(2083),
-                                            events: z.array(z.string()).min(1, 'At least one event is required'),
-                                            description: z.string().max(500).optional().nullable(),
-                                            active: z.boolean().default(true),
+  url: z.string().url("Invalid webhook URL").max(2083),
+  events: z.array(z.string()).min(1, "At least one event is required"),
+  description: z.string().max(500).optional().nullable(),
+  active: z.boolean().default(true),
 });
 
 export const webhookUpdateSchema = webhookCreateSchema.partial();
@@ -241,7 +259,9 @@ export type QuestionCreateFormData = z.infer<typeof questionCreateSchema>;
 export type AnswerSubmitFormData = z.infer<typeof answerSubmitSchema>;
 export type ChatSessionCreateFormData = z.infer<typeof chatSessionCreateSchema>;
 export type ChatMessageCreateFormData = z.infer<typeof chatMessageCreateSchema>;
-export type StudySessionCreateFormData = z.infer<typeof studySessionCreateSchema>;
+export type StudySessionCreateFormData = z.infer<
+  typeof studySessionCreateSchema
+>;
 export type SearchQueryFormData = z.infer<typeof searchQuerySchema>;
 export type ProfileUpdateFormData = z.infer<typeof profileUpdateSchema>;
 export type WebhookCreateFormData = z.infer<typeof webhookCreateSchema>;

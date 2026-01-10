@@ -1,15 +1,21 @@
 import { useEffect, useRef } from "react";
-import { motion, useMotionValue, useTransform, animate, MotionValue } from "framer-motion";
+import {
+  motion,
+  useMotionValue,
+  useTransform,
+  animate,
+  MotionValue,
+} from "framer-motion";
 import { cn } from "@/lib/utils";
 
 interface AnimatedCounterProps {
-    value: number;
-    className?: string;
-    duration?: number;
-    decimals?: number;
-    prefix?: string;
-    suffix?: string;
-    formatter?: (value: number) => string;
+  value: number;
+  className?: string;
+  duration?: number;
+  decimals?: number;
+  prefix?: string;
+  suffix?: string;
+  formatter?: (value: number) => string;
 }
 
 /**
@@ -42,49 +48,49 @@ interface AnimatedCounterProps {
  * />
  */
 export function AnimatedCounter({
-    value,
-    className,
-    duration = 1,
-    decimals = 0,
-    prefix = "",
-    suffix = "",
-    formatter,
+  value,
+  className,
+  duration = 1,
+  decimals = 0,
+  prefix = "",
+  suffix = "",
+  formatter,
 }: AnimatedCounterProps) {
-    const motionValue = useMotionValue(0);
-    const prevValueRef = useRef(0);
+  const motionValue = useMotionValue(0);
+  const prevValueRef = useRef(0);
 
-    // Transform motion value to rounded display value
-    const displayValue = useTransform(motionValue, (latest) => {
-        const rounded = latest.toFixed(decimals);
-        if (formatter) {
-            return formatter(parseFloat(rounded));
-        }
-        return rounded;
+  // Transform motion value to rounded display value
+  const displayValue = useTransform(motionValue, (latest) => {
+    const rounded = latest.toFixed(decimals);
+    if (formatter) {
+      return formatter(parseFloat(rounded));
+    }
+    return rounded;
+  });
+
+  useEffect(() => {
+    const controls = animate(motionValue, value, {
+      duration,
+      ease: "easeOut",
+      from: prevValueRef.current,
     });
 
-    useEffect(() => {
-        const controls = animate(motionValue, value, {
-            duration,
-            ease: "easeOut",
-            from: prevValueRef.current,
-        });
+    prevValueRef.current = value;
 
-        prevValueRef.current = value;
+    return controls.stop;
+  }, [value, duration, motionValue]);
 
-        return controls.stop;
-    }, [value, duration, motionValue]);
-
-    return (
-        <motion.span
-        className={cn("tabular-nums", className)}
-        aria-live="polite"
-        aria-atomic="true"
-        >
-        {prefix}
-        <motion.span>{displayValue}</motion.span>
-        {suffix}
-        </motion.span>
-    );
+  return (
+    <motion.span
+      className={cn("tabular-nums", className)}
+      aria-live="polite"
+      aria-atomic="true"
+    >
+      {prefix}
+      <motion.span>{displayValue}</motion.span>
+      {suffix}
+    </motion.span>
+  );
 }
 
 /**
@@ -98,23 +104,23 @@ export function AnimatedCounter({
  * const displayValue = useTransform(count, (v) => Math.round(v).toLocaleString());
  */
 export function useAnimatedCounter(
-    value: number,
-    options: {
-        duration?: number;
-        from?: number;
-    } = {}
+  value: number,
+  options: {
+    duration?: number;
+    from?: number;
+  } = {},
 ): MotionValue<number> {
-    const { duration = 1, from = 0 } = options;
-    const motionValue = useMotionValue(from);
+  const { duration = 1, from = 0 } = options;
+  const motionValue = useMotionValue(from);
 
-    useEffect(() => {
-        const controls = animate(motionValue, value, {
-            duration,
-            ease: "easeOut",
-        });
+  useEffect(() => {
+    const controls = animate(motionValue, value, {
+      duration,
+      ease: "easeOut",
+    });
 
-        return controls.stop;
-    }, [value, duration, motionValue]);
+    return controls.stop;
+  }, [value, duration, motionValue]);
 
-    return motionValue;
+  return motionValue;
 }

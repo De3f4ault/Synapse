@@ -2,19 +2,61 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-import type { MessageRole } from './MessageRole';
 /**
- * Chat message response.
+ * Chat message response schema.
  */
 export type ChatMessageResponse = {
+    /**
+     * Message ID
+     */
     id: number;
+    /**
+     * Session ID
+     */
     session_id: number;
-    role: MessageRole;
+    /**
+     * Message role (user, assistant, system)
+     */
+    role: string;
+    /**
+     * Message content
+     */
     content: string;
+    /**
+     * Tokens in message
+     */
     tokens: number;
-    model_used: (string | null);
+    /**
+     * AI model used (for assistant messages)
+     */
+    model_used?: (string | null);
+    /**
+     * Function calls made
+     */
     function_calls?: (Record<string, any> | null);
+    /**
+     * Grounding sources
+     */
     grounding_sources?: (Record<string, any> | null);
+    /**
+     * Message time
+     */
     created_at: string;
+    /**
+     * Parent message ID (for branched messages)
+     */
+    parent_message_id?: (number | null);
+    /**
+     * Message version (increments on edit/regenerate)
+     */
+    version?: number;
+    /**
+     * Whether message is on active branch
+     */
+    is_active?: boolean;
+    /**
+     * Whether message has child messages
+     */
+    has_children?: boolean;
 };
 

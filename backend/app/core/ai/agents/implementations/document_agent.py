@@ -11,11 +11,7 @@ Uses Gemini 2.5 Pro for complex document analysis.
 """
 
 from typing import Dict, Any, List, Optional
-from app.core.ai.agents.base_agent import (
-    BaseAgent,
-    AgentConfig,
-    AgentCapability
-)
+from app.core.ai.agents.base_agent import BaseAgent, AgentConfig, AgentCapability
 import structlog
 
 logger = structlog.get_logger(__name__)
@@ -270,75 +266,115 @@ Let's help this student learn from their materials! 📚
         return prompt
 
     async def _analyze_document_section(
-        self,
-        document_id: int,
-        section: str,
-        user_id: int
+        self, document_id: int, section: str, user_id: int
     ) -> Dict[str, Any]:
         """
-        Analyze specific document section
+        Analyze specific document section using real content and caching.
 
         Args:
             document_id: Document to analyze
-            section: Section identifier (page, chapter)
+            section: Section identifier (page, chapter, or "full")
             user_id: User requesting analysis
 
         Returns:
-            Analysis results
+            Analysis results with concepts, summary, and key points
         """
         logger.info(
-            "document_section_analysis",
-            document_id=document_id,
-            section=section,
-            user_id=user_id
+            "document_section_analysis", document_id=document_id, section=section, user_id=user_id
         )
 
-        # Implementation of caching logic
         try:
-            # 1. Get document content
-            # Note: In real implementation, this would fetch from storage
-            doc_content = f"Content for document {document_id}"  # Placeholder
-            
-            # 2. Create or get cache
-            # We'll use the document ID as a cache key
-            cache_name = f"document_{document_id}_cache"
-            
-            # This is where we'd interface with the provider
-            # For now, we'll simulate the caching call
-            # from app.core.ai.providers.gemini import GeminiProvider
-            # provider = GeminiProvider()
-            # cache_id = await provider.create_context_cache(
-            #     name=cache_name,
-            #     content=doc_content,
-            #     model=self.config.model
-            # )
-            
-            # 3. Analyze using cache
-            # results = await provider.generate(
-            #     prompt=f"Analyze section {section}",
-            #     config=GenerationConfig(cached_content=cache_id)
-            # )
-            
-            logger.info(
-                "document_analysis_cached",
-                document_id=document_id,
-                cache_name=cache_name
+            # 1. Fetch document and its content from database
+            from app.db.session import AsyncSessionLocal
+            from app.models.document import Document
+            from app.models.document_chunk import DocumentChunk
+            from sqlalchemy import select, and_
+
+            async with AsyncSessionLocal() as db:
+                # Get document
+                doc_result = await db.execute(
+                    select(Document).where(
+                        and_(
+                            Document.id == document_id,
+                            Document.user_id == user_id,
+                            Document.deleted_at.is_(None),
+                        )
+                    )
+                )
+                document = doc_result.scalar_one_or_none()
+
+                if not document:
+                    return {"section": section, "error": f"Document {document_id} not found"}
+
+                # Get document content (either full text or chunks)
+                if document.content_text:
+                    doc_content = document.content_text
+                else:
+                    # Fall back to chunks
+                    chunks_result = await db.execute(
+                        select(DocumentChunk)
+                        .where(DocumentChunk.document_id == document_id)
+                        .order_by(DocumentChunk.chunk_index)
+                    )
+                    chunks = chunks_result.scalars().all()
+                    doc_content = "\n\n".join([c.content for c in chunks])
+
+                if not doc_content:
+                    return {"section": section, "error": "Document has no extracted content"}
+
+            # 2. Use context caching for efficient analysis
+            from app.core.ai.providers.cache_manager import get_cache_manager
+
+            cache_manager = get_cache_manager()
+
+            # Cache the document (or use existing cache)
+            cache_name = await cache_manager.cache_document(
+                user_id=user_id,
+                document_id=str(document_id),
+                content=doc_content,
+                title=document.filename,
+                ttl_seconds=3600,  # 1 hour cache
             )
-            
+
+            # 3. Query the cached document for analysis
+            analysis_prompt = f"""Analyze the following section/aspect of this document: {section}
+
+Provide:
+1. **Key Concepts**: Main ideas and definitions (bullet points)
+2. **Summary**: 2-3 paragraph summary of the content
+3. **Key Points**: Most important takeaways
+4. **Suggested Flashcards**: 3-5 flashcard ideas for studying this content
+
+Format as structured text with clear headers."""
+
+            result = await cache_manager.query_cached_document(
+                cache_name=cache_name,
+                query=analysis_prompt,
+                temperature=0.3,  # Slightly creative for summaries
+            )
+
+            logger.info(
+                "document_analysis_completed",
+                document_id=document_id,
+                section=section,
+                cached_tokens=result.get("cached_tokens", 0),
+            )
+
+            # Parse the response into structured format
+            response_text = result.get("text", "")
+
             return {
                 "section": section,
-                "concepts": ["Cached Concept A", "Cached Concept B"],
-                "summary": f"Cached analysis of section {section}",
-                "key_points": ["Point 1", "Point 2"],
-                "suggested_flashcards": []
+                "document_id": document_id,
+                "document_title": document.filename,
+                "analysis": response_text,
+                "cached_tokens": result.get("cached_tokens", 0),
+                "cache_name": cache_name,
             }
-            
+
         except Exception as e:
-            logger.error("analysis_failed", error=str(e))
-            return {
-                "section": section,
-                "error": str(e)
-            }
+            logger.error("analysis_failed", error=str(e), document_id=document_id)
+            return {"section": section, "error": str(e)}
 
 
 def create_document_agent_config() -> AgentConfig:
@@ -359,7 +395,7 @@ def create_document_agent_config() -> AgentConfig:
             AgentCapability.TOOL_USE,
             AgentCapability.FILE_ACCESS,
             AgentCapability.GROUNDING,  # Can use Google Search for verification
-            AgentCapability.PLANNING
+            AgentCapability.PLANNING,
         ],
         system_prompt="",  # Built dynamically
         model="gemini-2.5-pro",  # Pro for complex analysis
@@ -368,5 +404,5 @@ def create_document_agent_config() -> AgentConfig:
         tools=[],  # Set by factory
         middleware=[],  # Set by factory
         enabled=True,
-        requires_review=False
+        requires_review=False,
     )

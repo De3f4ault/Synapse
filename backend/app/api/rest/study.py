@@ -29,8 +29,10 @@ router = APIRouter()
 # Schemas
 # ============================================================================
 
+
 class StudyItemResponse(BaseModel):
     """Study item (flashcard, quiz, etc.)."""
+
     type: str  # "flashcard" or "quiz"
     id: int
     data: dict
@@ -38,12 +40,14 @@ class StudyItemResponse(BaseModel):
 
 class StudySessionCreate(BaseModel):
     """Study session creation."""
+
     session_type: StudySessionType
     modules: List[str] = Field(default_factory=lambda: ["flashcards", "quizzes"])
 
 
 class StudySessionResponse(BaseModel):
     """Study session response."""
+
     id: int
     session_type: StudySessionType
     modules_used: List[str]
@@ -60,11 +64,8 @@ class StudySessionResponse(BaseModel):
 # Helper Functions
 # ============================================================================
 
-async def get_due_flashcards(
-    user_id: int,
-    limit: int,
-    db: AsyncSession
-) -> List[dict]:
+
+async def get_due_flashcards(user_id: int, limit: int, db: AsyncSession) -> List[dict]:
     """
     Get due flashcards for user.
 
@@ -74,24 +75,29 @@ async def get_due_flashcards(
     3. Review items
     """
     try:
-        cards_query = select(Flashcard).join(Deck).where(
-            and_(
-                Deck.user_id == user_id,
-                Flashcard.deleted_at.is_(None),
-                Deck.deleted_at.is_(None),
-                or_(
-                    Flashcard.next_review <= datetime.utcnow(),
-                    Flashcard.next_review.is_(None)
+        cards_query = (
+            select(Flashcard)
+            .join(Deck)
+            .where(
+                and_(
+                    Deck.user_id == user_id,
+                    Flashcard.deleted_at.is_(None),
+                    Deck.deleted_at.is_(None),
+                    or_(
+                        Flashcard.next_review <= datetime.utcnow(), Flashcard.next_review.is_(None)
+                    ),
                 )
             )
-        ).order_by(
-            # Overdue cards first
-            (Flashcard.next_review < datetime.utcnow()).desc(),
-            # Then new cards
-            (Flashcard.learning_state == LearningState.NEW).desc(),
-            # Then by next review date
-            Flashcard.next_review.asc().nullsfirst()
-        ).limit(limit)
+            .order_by(
+                # Overdue cards first
+                (Flashcard.next_review < datetime.utcnow()).desc(),
+                # Then new cards
+                (Flashcard.learning_state == LearningState.NEW).desc(),
+                # Then by next review date
+                Flashcard.next_review.asc().nullsfirst(),
+            )
+            .limit(limit)
+        )
 
         cards_result = await db.execute(cards_query)
         cards = cards_result.scalars().all()
@@ -106,8 +112,8 @@ async def get_due_flashcards(
                     "deck_id": card.deck_id,
                     "learning_state": card.learning_state.value,
                     "next_review": card.next_review.isoformat() if card.next_review else None,
-                    "ease_factor": float(card.ease_factor) if card.ease_factor else 2.5
-                }
+                    "ease_factor": float(card.ease_factor) if card.ease_factor else 2.5,
+                },
             }
             for card in cards
         ]
@@ -117,13 +123,9 @@ async def get_due_flashcards(
         return []
 
 
-async def get_due_quizzes(
-    user_id: int,
-    limit: int,
-    db: AsyncSession
-) -> List[dict]:
+async def get_due_quizzes(user_id: int, limit: int, db: AsyncSession) -> List[dict]:
     """
-    Get quizzes due for retake/review.
+    Get quizzes due for retake/review (optimized - single query).
 
     Returns quizzes that need another attempt based on:
     1. Time elapsed since last attempt
@@ -131,69 +133,95 @@ async def get_due_quizzes(
     3. Quiz difficulty level
     """
     try:
-        # Get user's quizzes
-        quizzes_query = select(Quiz).where(
-            and_(
-                Quiz.user_id == user_id,
-                Quiz.deleted_at.is_(None)
+        # Subquery to get latest attempt for each quiz
+        # Using window function ROW_NUMBER() to get the most recent attempt
+        latest_attempt_subq = (
+            select(
+                QuizAttempt.quiz_id,
+                QuizAttempt.completed_at,
+                QuizAttempt.score,
+                QuizAttempt.max_score,
+                func.row_number()
+                .over(partition_by=QuizAttempt.quiz_id, order_by=QuizAttempt.completed_at.desc())
+                .label("rn"),
             )
+            .where(QuizAttempt.user_id == user_id)
+            .where(QuizAttempt.completed_at.isnot(None))
+            .subquery()
         )
 
-        quizzes_result = await db.execute(quizzes_query)
-        quizzes = quizzes_result.scalars().all()
+        # Main query: quizzes with their latest attempt (if any)
+        stmt = (
+            select(
+                Quiz,
+                latest_attempt_subq.c.completed_at.label("last_completed_at"),
+                latest_attempt_subq.c.score.label("last_score"),
+                latest_attempt_subq.c.max_score.label("last_max_score"),
+            )
+            .outerjoin(
+                latest_attempt_subq,
+                and_(latest_attempt_subq.c.quiz_id == Quiz.id, latest_attempt_subq.c.rn == 1),
+            )
+            .where(and_(Quiz.user_id == user_id, Quiz.deleted_at.is_(None)))
+        )
+
+        result = await db.execute(stmt)
+        rows = result.all()
 
         due_quizzes = []
-
-        for quiz in quizzes:
-            # Get last attempt
-            last_attempt_query = select(QuizAttempt).where(
-                QuizAttempt.quiz_id == quiz.id
-            ).order_by(QuizAttempt.completed_at.desc()).limit(1)
-
-            last_attempt_result = await db.execute(last_attempt_query)
-            last_attempt = last_attempt_result.scalar_one_or_none()
-
+        for quiz, last_completed_at, last_score, last_max_score in rows:
             # Determine if quiz is due
             is_due = False
             priority = "normal"
+            last_percentage = None
 
-            if not last_attempt:
+            if not last_completed_at:
                 # Never attempted
                 is_due = True
                 priority = "new"
             else:
+                # Calculate percentage
+                if last_max_score and last_max_score > 0:
+                    last_percentage = float(last_score or 0) / float(last_max_score) * 100
+                else:
+                    last_percentage = 0
+
                 # Check based on difficulty and performance
-                time_since_attempt = datetime.utcnow() - last_attempt.completed_at
+                time_since_attempt = datetime.utcnow() - last_completed_at
 
                 # Spaced repetition: easier quizzes reviewed less frequently
                 if quiz.difficulty == QuizDifficulty.EASY:
                     review_interval = 14  # 14 days
                 elif quiz.difficulty == QuizDifficulty.MEDIUM:
-                    review_interval = 7   # 7 days
+                    review_interval = 7  # 7 days
                 else:  # HARD
-                    review_interval = 3   # 3 days
+                    review_interval = 3  # 3 days
 
                 if time_since_attempt.days >= review_interval:
                     is_due = True
-
                     # Low scores need more frequent review
-                    if last_attempt.percentage < 70:
+                    if last_percentage and last_percentage < 70:
                         priority = "high"
 
             if is_due:
-                due_quizzes.append({
-                    "type": "quiz",
-                    "id": quiz.id,
-                    "data": {
-                        "title": quiz.title,
-                        "description": quiz.description,
-                        "question_count": len(quiz.questions) if quiz.questions else 0,
-                        "difficulty": quiz.difficulty.value,
-                        "time_limit_minutes": quiz.time_limit_minutes,
-                        "priority": priority,
-                        "last_score": last_attempt.percentage if last_attempt else None
+                # Get question count (already loaded if using eager loading, otherwise one query)
+                question_count = len(quiz.questions) if quiz.questions else 0
+
+                due_quizzes.append(
+                    {
+                        "type": "quiz",
+                        "id": quiz.id,
+                        "data": {
+                            "title": quiz.title,
+                            "description": quiz.description,
+                            "question_count": question_count,
+                            "difficulty": quiz.difficulty.value,
+                            "time_limit_minutes": quiz.time_limit_minutes,
+                            "priority": priority,
+                            "last_score": last_percentage,
+                        },
                     }
-                })
+                )
 
         # Sort by priority (high first) and limit
         priority_order = {"high": 0, "new": 1, "normal": 2}
@@ -210,12 +238,13 @@ async def get_due_quizzes(
 # Endpoints
 # ============================================================================
 
+
 @router.get("/due", response_model=List[StudyItemResponse])
 async def get_due_items(
     modules: str = Query("flashcards,quizzes", description="Comma-separated modules"),
     limit: int = Query(20, ge=1, le=100),
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Get all due items across modules.
@@ -241,10 +270,7 @@ async def get_due_items(
     items.sort(key=lambda x: priority_map.get(x["data"].get("priority"), 2))
 
     logger.info(
-        "due_items_retrieved",
-        user_id=current_user.id,
-        total_items=len(items),
-        modules=module_list
+        f"due_items_retrieved user_id={current_user.id} total_items={len(items)} modules={module_list}"
     )
 
     return items[:limit]
@@ -254,14 +280,14 @@ async def get_due_items(
 async def start_session(
     session_data: StudySessionCreate,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """Start a new study session."""
     new_session = StudySession(
         user_id=current_user.id,
         session_type=session_data.session_type,
         modules_used={"modules": session_data.modules},
-        started_at=datetime.utcnow()
+        started_at=datetime.utcnow(),
     )
 
     db.add(new_session)
@@ -269,11 +295,8 @@ async def start_session(
     await db.refresh(new_session)
 
     logger.info(
-        "study_session_created",
-        user_id=current_user.id,
-        session_id=new_session.id,
-        session_type=session_data.session_type,
-        modules=session_data.modules
+        f"study_session_created user_id={current_user.id} session_id={new_session.id} "
+        f"session_type={session_data.session_type} modules={session_data.modules}"
     )
 
     return StudySessionResponse(
@@ -286,7 +309,7 @@ async def start_session(
         time_spent_seconds=0,
         started_at=new_session.started_at,
         ended_at=None,
-        is_completed=False
+        is_completed=False,
     )
 
 
@@ -294,15 +317,12 @@ async def start_session(
 async def get_session(
     session_id: int,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """Get a specific study session."""
     result = await db.execute(
         select(StudySession).where(
-            and_(
-                StudySession.id == session_id,
-                StudySession.user_id == current_user.id
-            )
+            and_(StudySession.id == session_id, StudySession.user_id == current_user.id)
         )
     )
     session = result.scalar_one_or_none()
@@ -322,7 +342,7 @@ async def get_session(
         time_spent_seconds=session.time_spent_seconds,
         started_at=session.started_at,
         ended_at=session.ended_at,
-        is_completed=session.is_completed
+        is_completed=session.is_completed,
     )
 
 
@@ -330,15 +350,12 @@ async def get_session(
 async def complete_session(
     session_id: int,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """Complete a study session."""
     result = await db.execute(
         select(StudySession).where(
-            and_(
-                StudySession.id == session_id,
-                StudySession.user_id == current_user.id
-            )
+            and_(StudySession.id == session_id, StudySession.user_id == current_user.id)
         )
     )
     session = result.scalar_one_or_none()
@@ -347,7 +364,9 @@ async def complete_session(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
 
     if session.ended_at:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Session already completed")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Session already completed"
+        )
 
     # Complete session
     session.ended_at = datetime.utcnow()
@@ -358,10 +377,8 @@ async def complete_session(
     await db.refresh(session)
 
     logger.info(
-        "study_session_completed",
-        user_id=current_user.id,
-        session_id=session.id,
-        time_spent_seconds=session.time_spent_seconds
+        f"study_session_completed user_id={current_user.id} session_id={session.id} "
+        f"time_spent_seconds={session.time_spent_seconds}"
     )
 
     modules = session.modules_used.get("modules", []) if session.modules_used else []
@@ -376,7 +393,7 @@ async def complete_session(
         time_spent_seconds=session.time_spent_seconds,
         started_at=session.started_at,
         ended_at=session.ended_at,
-        is_completed=session.is_completed
+        is_completed=session.is_completed,
     )
 
 
@@ -385,12 +402,14 @@ async def list_sessions(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """List user's study sessions with pagination."""
-    query = select(StudySession).where(
-        StudySession.user_id == current_user.id
-    ).order_by(StudySession.started_at.desc())
+    query = (
+        select(StudySession)
+        .where(StudySession.user_id == current_user.id)
+        .order_by(StudySession.started_at.desc())
+    )
 
     query = query.offset((page - 1) * page_size).limit(page_size)
     result = await db.execute(query)
@@ -407,7 +426,7 @@ async def list_sessions(
             time_spent_seconds=s.time_spent_seconds,
             started_at=s.started_at,
             ended_at=s.ended_at,
-            is_completed=s.is_completed
+            is_completed=s.is_completed,
         )
         for s in sessions
     ]
@@ -417,7 +436,7 @@ async def list_sessions(
 async def get_recommendations(
     limit: int = Query(10, ge=1, le=50),
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Get AI-powered study recommendations.
@@ -435,14 +454,10 @@ async def get_recommendations(
 
         # Sort by priority (high first)
         priority_map = {"high": 0, "new": 1, "normal": 2}
-        recommendations.sort(
-            key=lambda x: priority_map.get(x["data"].get("priority"), 2)
-        )
+        recommendations.sort(key=lambda x: priority_map.get(x["data"].get("priority"), 2))
 
         logger.info(
-            "study_recommendations_retrieved",
-            user_id=current_user.id,
-            total_items=len(recommendations)
+            f"study_recommendations_retrieved user_id={current_user.id} total_items={len(recommendations)}"
         )
 
         return recommendations[:limit]

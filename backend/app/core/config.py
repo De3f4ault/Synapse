@@ -2,6 +2,7 @@
 Configuration management using Pydantic Settings.
 Reads environment variables from .env file.
 """
+
 from typing import List, Optional
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -13,60 +14,36 @@ class Settings(BaseSettings):
     # Application
     APP_NAME: str = Field(default="SYNAPSE", description="Application name")
     APP_VERSION: str = Field(default="1.0.0", description="Application version")
-    ENVIRONMENT: str = Field(default="development", description="Environment: development, testing, production")
+    ENVIRONMENT: str = Field(
+        default="development", description="Environment: development, testing, production"
+    )
 
     # Database - PostgreSQL
-    DATABASE_URL: str = Field(
-        ...,
-        description="PostgreSQL connection string (asyncpg driver)"
-    )
+    DATABASE_URL: str = Field(..., description="PostgreSQL connection string (asyncpg driver)")
 
-    DATABASE_SCHEMA: str = Field(
-        default="developer_schema",
-        description="PostgreSQL schema name"
-    )
+    DATABASE_SCHEMA: str = Field(default="developer_schema", description="PostgreSQL schema name")
 
     # Redis
-    REDIS_URL: str = Field(
-        default="redis://localhost:6379/0",
-        description="Redis connection URL"
-    )
+    REDIS_URL: str = Field(default="redis://localhost:6379/0", description="Redis connection URL")
 
     # Vector Store - LanceDB
-    LANCEDB_PATH: str = Field(
-        default="data/lancedb",
-        description="Path to LanceDB vector store"
-    )
+    LANCEDB_PATH: str = Field(default="data/lancedb", description="Path to LanceDB vector store")
 
-    # Analytics - DuckDB
-    DUCKDB_PATH: str = Field(
-        default="data/duckdb/analytics.duckdb",
-        description="Path to DuckDB analytics database"
-    )
+    # NOTE: DuckDB removed - Analytics now uses PostgreSQL materialized views
+    # See: app/sql/views/user_dashboard_stats.sql
 
     # Gemini API
-    GEMINI_API_KEY: str = Field(
-        ...,
-        description="Google Gemini API key"
-    )
+    GEMINI_API_KEY: str = Field(..., description="Google Gemini API key")
 
     # JWT Authentication
-    JWT_SECRET_KEY: str = Field(
-        ...,
-        description="Secret key for JWT token signing (min 64 chars)"
-    )
-    JWT_ALGORITHM: str = Field(
-        default="HS256",
-        description="JWT signing algorithm"
-    )
-    JWT_EXPIRATION_MINUTES: int = Field(
-        default=60,
-        description="JWT token expiration in minutes"
-    )
+    JWT_SECRET_KEY: str = Field(..., description="Secret key for JWT token signing (min 64 chars)")
+    JWT_ALGORITHM: str = Field(default="HS256", description="JWT signing algorithm")
+    JWT_EXPIRATION_MINUTES: int = Field(default=60, description="JWT token expiration in minutes")
 
-    # CORS - All common development ports
+    # CORS - All common development ports + HTTPS for nginx reverse proxy
     CORS_ORIGINS: List[str] = Field(
         default=[
+            # HTTP development servers
             "http://localhost:3000",
             "http://localhost:3001",
             "http://localhost:3002",
@@ -77,77 +54,57 @@ class Settings(BaseSettings):
             "http://127.0.0.1:8000",
             "http://localhost:5173",
             "http://127.0.0.1:5173",
+            # HTTPS (nginx reverse proxy)
+            "https://localhost",
+            "https://127.0.0.1",
+            "https://synapse.local",
         ],
-        description="Allowed CORS origins"
+        description="Allowed CORS origins",
     )
 
     # Logging
     LOG_LEVEL: str = Field(
-        default="INFO",
-        description="Logging level: DEBUG, INFO, WARNING, ERROR, CRITICAL"
+        default="INFO", description="Logging level: DEBUG, INFO, WARNING, ERROR, CRITICAL"
     )
 
     # File Storage
-    UPLOAD_DIR: str = Field(
-        default="data/uploads",
-        description="Directory for file uploads"
-    )
+    UPLOAD_DIR: str = Field(default="data/uploads", description="Directory for file uploads")
     MAX_UPLOAD_SIZE: int = Field(
         default=100 * 1024 * 1024,  # 100MB
-        description="Maximum file upload size in bytes"
+        description="Maximum file upload size in bytes",
     )
 
     # Rate Limiting
-    RATE_LIMIT_ENABLED: bool = Field(
-        default=True,
-        description="Enable rate limiting"
-    )
+    RATE_LIMIT_ENABLED: bool = Field(default=True, description="Enable rate limiting")
     RATE_LIMIT_REQUESTS: int = Field(
-        default=100,
-        description="Number of requests allowed per window"
+        default=100, description="Number of requests allowed per window"
     )
-    RATE_LIMIT_WINDOW: int = Field(
-        default=60,
-        description="Rate limit window in seconds"
-    )
+    RATE_LIMIT_WINDOW: int = Field(default=60, description="Rate limit window in seconds")
 
     # Background Tasks
     BACKGROUND_TASKS_ENABLED: bool = Field(
-        default=True,
-        description="Enable background task processing"
+        default=True, description="Enable background task processing"
     )
-    BACKGROUND_WORKERS: int = Field(
-        default=4,
-        description="Number of background worker threads"
-    )
+    BACKGROUND_WORKERS: int = Field(default=4, description="Number of background worker threads")
 
     # Webhooks
     WEBHOOK_ENCRYPTION_KEY: Optional[str] = Field(
         default=None,
-        description="Fernet encryption key for webhook secrets (required in production)"
+        description="Fernet encryption key for webhook secrets (required in production)",
     )
     WEBHOOK_ENCRYPTION_ROTATION_KEYS: Optional[str] = Field(
-        default=None,
-        description="Comma-separated list of old encryption keys for rotation"
+        default=None, description="Comma-separated list of old encryption keys for rotation"
     )
     WEBHOOK_MAX_RETRIES: int = Field(
-        default=5,
-        description="Maximum webhook delivery retry attempts"
+        default=5, description="Maximum webhook delivery retry attempts"
     )
     WEBHOOK_BACKOFF_MAX: int = Field(
-        default=3600,
-        description="Maximum backoff delay in seconds (default: 1 hour)"
+        default=3600, description="Maximum backoff delay in seconds (default: 1 hour)"
     )
-    WEBHOOK_TIMEOUT: int = Field(
-        default=10,
-        description="Webhook HTTP request timeout in seconds"
-    )
+    WEBHOOK_TIMEOUT: int = Field(default=10, description="Webhook HTTP request timeout in seconds")
 
     model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        case_sensitive=True,
-        extra="ignore"
+        env_file=".env", env_file_encoding="utf-8", case_sensitive=True, extra="ignore"
     )
 
     @field_validator("JWT_SECRET_KEY")

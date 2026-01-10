@@ -4,6 +4,7 @@ Database Models Package
 All SQLAlchemy ORM models are exported from here.
 
 UPDATED: Added ActivityLog model.
+UPDATED: Added SynapseTask for Celery task tracking.
 """
 
 from .base import Base
@@ -27,6 +28,8 @@ from .ai_usage import AIUsage
 from .agent_metric import AgentMetric
 from .webhook_event import WebhookEvent, WebhookStatus
 from .webhook import Webhook
+from .link import Link, LinkType, EntityType
+from .synapse_task import SynapseTask, TaskStatus, TaskType, TaskName
 
 __all__ = [
     "Base",
@@ -53,4 +56,11 @@ __all__ = [
     "WebhookEvent",
     "WebhookStatus",
     "Webhook",
+    "Link",
+    "LinkType",
+    "EntityType",
+    "SynapseTask",
+    "TaskStatus",
+    "TaskType",
+    "TaskName",
 ]

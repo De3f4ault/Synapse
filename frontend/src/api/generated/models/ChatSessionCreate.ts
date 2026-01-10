@@ -3,20 +3,20 @@
 /* tslint:disable */
 /* eslint-disable */
 /**
- * Chat session creation.
+ * Chat session creation schema.
  */
 export type ChatSessionCreate = {
     /**
-     * Custom session title
+     * Session title (auto-generated if not provided)
      */
     title?: (string | null);
     /**
-     * Optional document for context
+     * Document ID to chat about
      */
     document_id?: (number | null);
     /**
-     * Modules to include in context building
+     * Modules to include in context
      */
-    context_modules?: (Array<string> | null);
+    context_modules?: Array<string>;
 };
 

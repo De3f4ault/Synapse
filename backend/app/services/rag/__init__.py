@@ -5,7 +5,6 @@ import time
 import structlog
 
 from app.core.ai.rag.pipeline.rag_pipeline import RAGPipeline
-from app.schemas.rag import SourceType, LLMEnhancementStrategy
 
 logger = structlog.get_logger(__name__)
 
@@ -45,7 +44,7 @@ class RAGService:
             enable_advanced_chunking=True,
             enable_llm_enhancement=True,
             enable_feedback_loops=True,
-            llm_provider="openai",  # Can be configured
+            llm_provider="gemini",  # Use Gemini for query enhancement
             llm_enhancement_strategy="rewrite"  # Default strategy
         )
         
@@ -55,7 +54,7 @@ class RAGService:
                 "learning_aware",
                 "query_enhancement",
                 "advanced_chunking",
-                "llm_enhancement", 
+                "llm_enhancement",
                 "feedback_loops"
             ]
         )
@@ -320,4 +319,4 @@ def get_rag_service() -> RAGService:
     if _rag_service is None:
         _rag_service = RAGService()
     
-    return_rag_service
+    return _rag_service

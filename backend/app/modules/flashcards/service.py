@@ -23,12 +23,7 @@ from sqlalchemy import select, and_
 from sqlalchemy.orm import selectinload
 
 from .repository import FlashcardRepository
-from .constants import (
-    DEFAULT_DUE_CARD_LIMIT,
-    DEFAULT_EASE_FACTOR,
-    INITIAL_INTERVAL,
-    LearningState
-)
+from .constants import DEFAULT_DUE_CARD_LIMIT, DEFAULT_EASE_FACTOR, INITIAL_INTERVAL, LearningState
 from app.api.websockets.events import broadcast_card_reviewed
 
 
@@ -73,7 +68,7 @@ class FlashcardService:
             tags=data.get("tags", []),
             is_public=data.get("is_public", False),
             ai_generated=data.get("ai_generated", False),
-            ai_metadata=data.get("ai_metadata")
+            ai_metadata=data.get("ai_metadata"),
         )
 
         self.session.add(deck)
@@ -98,12 +93,7 @@ class FlashcardService:
         """
         from app.models.deck import Deck
 
-        query = select(Deck).where(
-            and_(
-                Deck.id == deck_id,
-                Deck.deleted_at.is_(None)
-            )
-        )
+        query = select(Deck).where(and_(Deck.id == deck_id, Deck.deleted_at.is_(None)))
 
         result = await self.session.execute(query)
         deck = result.scalar_one_or_none()
@@ -117,11 +107,7 @@ class FlashcardService:
 
         return self._deck_to_dict(deck)
 
-    async def list_decks(
-        self,
-        user_id: int,
-        filters: Optional[Dict] = None
-    ) -> List[Dict]:
+    async def list_decks(self, user_id: int, filters: Optional[Dict] = None) -> List[Dict]:
         """
         List user's decks with optional filters.
 
@@ -136,12 +122,11 @@ class FlashcardService:
 
         filters = filters or {}
 
-        query = select(Deck).where(
-            and_(
-                Deck.user_id == user_id,
-                Deck.deleted_at.is_(None)
-            )
-        ).order_by(Deck.updated_at.desc())
+        query = (
+            select(Deck)
+            .where(and_(Deck.user_id == user_id, Deck.deleted_at.is_(None)))
+            .order_by(Deck.updated_at.desc())
+        )
 
         # Apply filters
         if "tags" in filters and filters["tags"]:
@@ -156,12 +141,7 @@ class FlashcardService:
 
         return [self._deck_to_dict(deck) for deck in decks]
 
-    async def update_deck(
-        self,
-        deck_id: int,
-        user_id: int,
-        data: Dict
-    ) -> Dict:
+    async def update_deck(self, deck_id: int, user_id: int, data: Dict) -> Dict:
         """
         Update a deck.
 
@@ -176,11 +156,7 @@ class FlashcardService:
         from app.models.deck import Deck
 
         query = select(Deck).where(
-            and_(
-                Deck.id == deck_id,
-                Deck.user_id == user_id,
-                Deck.deleted_at.is_(None)
-            )
+            and_(Deck.id == deck_id, Deck.user_id == user_id, Deck.deleted_at.is_(None))
         )
 
         result = await self.session.execute(query)
@@ -213,11 +189,7 @@ class FlashcardService:
         from app.models.deck import Deck
 
         query = select(Deck).where(
-            and_(
-                Deck.id == deck_id,
-                Deck.user_id == user_id,
-                Deck.deleted_at.is_(None)
-            )
+            and_(Deck.id == deck_id, Deck.user_id == user_id, Deck.deleted_at.is_(None))
         )
 
         result = await self.session.execute(query)
@@ -250,11 +222,7 @@ class FlashcardService:
 
         # Verify deck ownership
         deck_query = select(Deck).where(
-            and_(
-                Deck.id == data["deck_id"],
-                Deck.user_id == user_id,
-                Deck.deleted_at.is_(None)
-            )
+            and_(Deck.id == data["deck_id"], Deck.user_id == user_id, Deck.deleted_at.is_(None))
         )
 
         deck_result = await self.session.execute(deck_query)
@@ -276,10 +244,15 @@ class FlashcardService:
             learning_state=LearningState.NEW,
             times_reviewed=0,
             times_correct=0,
-            times_incorrect=0
+            times_incorrect=0,
         )
 
         self.session.add(card)
+        await self.session.flush()  # Get ID, validate constraints
+
+        # Generate embedding synchronously
+        await self._generate_embeddings(card)
+
         await self.session.commit()
         await self.session.refresh(card)
 
@@ -299,11 +272,13 @@ class FlashcardService:
         from app.models.flashcard import Flashcard
         from app.models.deck import Deck
 
-        query = select(Flashcard).join(Deck).where(
-            and_(
-                Flashcard.id == card_id,
-                Deck.user_id == user_id,
-                Flashcard.deleted_at.is_(None)
+        query = (
+            select(Flashcard)
+            .join(Deck)
+            .where(
+                and_(
+                    Flashcard.id == card_id, Deck.user_id == user_id, Flashcard.deleted_at.is_(None)
+                )
             )
         )
 
@@ -315,12 +290,7 @@ class FlashcardService:
 
         return self._card_to_dict(card)
 
-    async def update_card(
-        self,
-        card_id: int,
-        user_id: int,
-        data: Dict
-    ) -> Dict:
+    async def update_card(self, card_id: int, user_id: int, data: Dict) -> Dict:
         """
         Update a flashcard.
 
@@ -335,11 +305,13 @@ class FlashcardService:
         from app.models.flashcard import Flashcard
         from app.models.deck import Deck
 
-        query = select(Flashcard).join(Deck).where(
-            and_(
-                Flashcard.id == card_id,
-                Deck.user_id == user_id,
-                Flashcard.deleted_at.is_(None)
+        query = (
+            select(Flashcard)
+            .join(Deck)
+            .where(
+                and_(
+                    Flashcard.id == card_id, Deck.user_id == user_id, Flashcard.deleted_at.is_(None)
+                )
             )
         )
 
@@ -349,22 +321,24 @@ class FlashcardService:
         if not card:
             raise Exception(f"Card {card_id} not found or access denied")
 
+        # Track if content changed
+        content_changed = "front_text" in data or "back_text" in data
+
         # Update fields
         for key, value in data.items():
             if hasattr(card, key) and value is not None:
                 setattr(card, key, value)
+
+        # Regenerate embedding if content changed
+        if content_changed:
+            await self._generate_embeddings(card)
 
         await self.session.commit()
         await self.session.refresh(card)
 
         return self._card_to_dict(card)
 
-    async def review_card(
-        self,
-        card_id: int,
-        user_id: int,
-        quality: int
-    ) -> Dict:
+    async def review_card(self, card_id: int, user_id: int, quality: int) -> Dict:
         """
         Record a card review using SM-2 algorithm.
 
@@ -388,11 +362,13 @@ class FlashcardService:
         from app.models.deck import Deck
 
         # Verify ownership
-        query = select(Flashcard).join(Deck).where(
-            and_(
-                Flashcard.id == card_id,
-                Deck.user_id == user_id,
-                Flashcard.deleted_at.is_(None)
+        query = (
+            select(Flashcard)
+            .join(Deck)
+            .where(
+                and_(
+                    Flashcard.id == card_id, Deck.user_id == user_id, Flashcard.deleted_at.is_(None)
+                )
             )
         )
 
@@ -403,26 +379,23 @@ class FlashcardService:
             raise Exception(f"Card {card_id} not found or access denied")
 
         # Call repository to execute SQL function
-        review_result = await self.repository.record_review(card_id, quality)
+        review_result = await self.repository.record_review(card_id, user_id, quality)
 
         # Commit transaction
         await self.session.commit()
 
-        # ✅ NEW: Broadcast WebSocket event to dashboard
+        # Broadcast WebSocket event to dashboard
         await broadcast_card_reviewed(
             user_id=user_id,
             card_id=card_id,
             quality=quality,
-            next_review=review_result.get("next_review_date").isoformat() if review_result.get("next_review_date") else None
+            next_review=review_result.get("next_review_date"),  # Already a string from JSONB
         )
 
         return review_result
 
     async def get_due_cards(
-        self,
-        user_id: int,
-        deck_id: Optional[int] = None,
-        limit: int = DEFAULT_DUE_CARD_LIMIT
+        self, user_id: int, deck_id: Optional[int] = None, limit: int = DEFAULT_DUE_CARD_LIMIT
     ) -> List[Dict]:
         """
         Get cards due for review.
@@ -452,16 +425,54 @@ class FlashcardService:
             "ai_generated": deck.ai_generated,
             "ai_metadata": deck.ai_metadata,
             "created_at": deck.created_at,
-            "updated_at": deck.updated_at
+            "updated_at": deck.updated_at,
         }
+
+    async def _generate_embeddings(self, card):
+        """
+        Generate embeddings for a flashcard SYNCHRONOUSLY.
+
+        ARCHITECTURAL CHANGE: Transactional entities embed synchronously.
+        - Uses boundary module for sync embedding (~20ms)
+        - Sets embedding_status and embedding_model for versioning
+        - Falls back gracefully on failure
+
+        Args:
+            card: Flashcard model instance
+        """
+        import structlog
+        from app.core.ai.embeddings.boundary import (
+            embed_text_sync,
+            EMBEDDING_VERSION,
+            EmbeddingStatus,
+        )
+
+        logger = structlog.get_logger()
+
+        try:
+            # Combine front and back for embedding
+            text_to_embed = f"{card.front_text or ''}\n\n{card.back_text or ''}"
+
+            # Sync embed (~20ms)
+            embedding, status = embed_text_sync(text_to_embed)
+
+            # Update card fields
+            card.content_embedding = embedding
+            card.embedding_status = status.value
+            card.embedding_model = EMBEDDING_VERSION if status == EmbeddingStatus.READY else None
+
+            logger.info(
+                "flashcard_embedding_sync_complete", flashcard_id=card.id, status=status.value
+            )
+
+        except Exception as e:
+            # Log but don't fail - allow save to proceed
+            logger.warning("flashcard_embedding_sync_failed", flashcard_id=card.id, error=str(e))
+            card.embedding_status = "FAILED"
 
     def _card_to_dict(self, card) -> Dict:
         """Convert Flashcard model to dict"""
-        accuracy = (
-            card.times_correct / card.times_reviewed
-            if card.times_reviewed > 0
-            else 0.0
-        )
+        accuracy = card.times_correct / card.times_reviewed if card.times_reviewed > 0 else 0.0
 
         return {
             "id": card.id,
@@ -481,5 +492,5 @@ class FlashcardService:
             "times_incorrect": card.times_incorrect,
             "accuracy": accuracy,
             "created_at": card.created_at,
-            "updated_at": card.updated_at
+            "updated_at": card.updated_at,
         }

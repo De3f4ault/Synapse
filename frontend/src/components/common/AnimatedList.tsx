@@ -3,12 +3,12 @@ import { motion, Variants } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 interface AnimatedListProps {
-    children: ReactNode;
-    className?: string;
-    delay?: number;
-    staggerDelay?: number;
-    duration?: number;
-    direction?: "up" | "down" | "left" | "right";
+  children: ReactNode;
+  className?: string;
+  delay?: number;
+  staggerDelay?: number;
+  duration?: number;
+  direction?: "up" | "down" | "left" | "right";
 }
 
 /**
@@ -37,73 +37,74 @@ interface AnimatedListProps {
  * </AnimatedList>
  */
 export function AnimatedList({
-    children,
-    className,
-    delay = 0,
-    staggerDelay = 0.05,
-    duration = 0.4,
-    direction = "up",
+  children,
+  className,
+  delay = 0,
+  staggerDelay = 0.05,
+  duration = 0.4,
+  direction = "up",
 }: AnimatedListProps) {
-    // Container variants for stagger animation
-    const containerVariants: Variants = {
-        hidden: { opacity: 0 },
-        visible: {
-            opacity: 1,
-            transition: {
-                delayChildren: delay,
-                staggerChildren: staggerDelay,
-            },
-        },
-    };
+  // Container variants for stagger animation
+  const containerVariants: Variants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        delayChildren: delay,
+        staggerChildren: staggerDelay,
+      },
+    },
+  };
 
-    // Get initial position based on direction
-    const getInitialPosition = () => {
-        switch (direction) {
-            case "up":
-                return { y: 20, x: 0 };
-            case "down":
-                return { y: -20, x: 0 };
-            case "left":
-                return { x: 20, y: 0 };
-            case "right":
-                return { x: -20, y: 0 };
-        }
-    };
+  // Get initial position based on direction
+  const getInitialPosition = () => {
+    switch (direction) {
+      case "up":
+        return { y: 20, x: 0 };
+      case "down":
+        return { y: -20, x: 0 };
+      case "left":
+        return { x: 20, y: 0 };
+      case "right":
+        return { x: -20, y: 0 };
+    }
+  };
 
-    // Item variants for individual items
-    const itemVariants: Variants = {
-        hidden: {
-            opacity: 0,
-            ...getInitialPosition(),
-        },
-        visible: {
-            opacity: 1,
-            x: 0,
-            y: 0,
-            transition: {
-                duration,
-                ease: "easeOut",
-            },
-        },
-    };
+  // Item variants for individual items
+  const itemVariants: Variants = {
+    hidden: {
+      opacity: 0,
+      ...getInitialPosition(),
+    },
+    visible: {
+      opacity: 1,
+      x: 0,
+      y: 0,
+      transition: {
+        duration,
+        ease: "easeOut",
+      },
+    },
+  };
 
-    return (
-        <motion.div
-        className={cn(className)}
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-        >
-        {Array.isArray(children)
-            ? children.map((child, index) => (
-                <motion.div key={index} variants={itemVariants}>
-                {child}
-                </motion.div>
-            ))
-            : <motion.div variants={itemVariants}>{children}</motion.div>
-        }
-        </motion.div>
-    );
+  return (
+    <motion.div
+      className={cn(className)}
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+    >
+      {Array.isArray(children) ? (
+        children.map((child, index) => (
+          <motion.div key={index} variants={itemVariants}>
+            {child}
+          </motion.div>
+        ))
+      ) : (
+        <motion.div variants={itemVariants}>{children}</motion.div>
+      )}
+    </motion.div>
+  );
 }
 
 /**
@@ -122,55 +123,55 @@ export function AnimatedList({
  * </motion.ul>
  */
 export function AnimatedListItem({
-    children,
-    className,
+  children,
+  className,
 }: {
-    children: ReactNode;
-    className?: string;
+  children: ReactNode;
+  className?: string;
 }) {
-    const itemVariants: Variants = {
-        hidden: {
-            opacity: 0,
-            y: 20,
-        },
-        visible: {
-            opacity: 1,
-            y: 0,
-            transition: {
-                duration: 0.4,
-                ease: "easeOut",
-            },
-        },
-    };
+  const itemVariants: Variants = {
+    hidden: {
+      opacity: 0,
+      y: 20,
+    },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        duration: 0.4,
+        ease: "easeOut",
+      },
+    },
+  };
 
-    return (
-        <motion.div className={cn(className)} variants={itemVariants}>
-        {children}
-        </motion.div>
-    );
+  return (
+    <motion.div className={cn(className)} variants={itemVariants}>
+      {children}
+    </motion.div>
+  );
 }
 
 /**
  * Container variants export for custom implementations
  */
 export const listContainerVariants: Variants = {
-    hidden: { opacity: 0 },
-    visible: {
-        opacity: 1,
-        transition: {
-            staggerChildren: 0.05,
-        },
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.05,
     },
+  },
 };
 
 export const listItemVariants: Variants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: {
-        opacity: 1,
-        y: 0,
-        transition: {
-            duration: 0.4,
-            ease: "easeOut",
-        },
+  hidden: { opacity: 0, y: 20 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.4,
+      ease: "easeOut",
     },
+  },
 };

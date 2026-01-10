@@ -4,11 +4,11 @@
  * Centralized exports for all feedback-related components.
  */
 
-export { Alert } from './Alert';
-export type { AlertVariant } from './Alert';
+export { Alert } from "./Alert";
+export type { AlertVariant } from "./Alert";
 
-export { ConfirmationModal } from './ConfirmationModal';
+export { ConfirmationModal } from "./ConfirmationModal";
 
-export { FeedbackButton } from './FeedbackButton';
+export { FeedbackButton } from "./FeedbackButton";
 
-export { toast } from './Toast';
+export { toast } from "./Toast";

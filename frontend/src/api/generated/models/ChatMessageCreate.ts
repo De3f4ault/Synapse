@@ -3,9 +3,13 @@
 /* tslint:disable */
 /* eslint-disable */
 /**
- * Chat message creation.
+ * Chat message creation schema.
  */
 export type ChatMessageCreate = {
+    /**
+     * Session ID
+     */
+    session_id: number;
     /**
      * Message content
      */

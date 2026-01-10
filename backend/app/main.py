@@ -47,6 +47,7 @@ async def lifespan(app: FastAPI):
         if settings.REDIS_URL:
             try:
                 from app.services.cache.client import init_redis
+
                 await init_redis()
                 logger.info("redis_initialized")
             except Exception as e:
@@ -55,6 +56,7 @@ async def lifespan(app: FastAPI):
         # Initialize Qdrant vector store
         try:
             from app.core.ai.rag.vector_store.qdrant.client import get_qdrant_client
+
             qdrant_client = get_qdrant_client()
             # Test connection
             qdrant_client.get_client().get_collections()
@@ -62,24 +64,28 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.warning("qdrant_init_failed", error=str(e))
 
-        # Initialize DuckDB analytics
-        try:
-            from app.services.analytics import AnalyticsClient
-            analytics_client = AnalyticsClient(database=settings.DUCKDB_PATH)
-            analytics_client.connect()
-            # Store in app state for access in routes
-            app.state.analytics_client = analytics_client
-            logger.info("duckdb_initialized", path=settings.DUCKDB_PATH)
-        except Exception as e:
-            logger.warning("duckdb_init_failed", error=str(e))
+        # NOTE: DuckDB analytics removed - using PostgreSQL materialized views instead
+        # See app/sql/views/user_dashboard_stats.sql
 
         # Load SQL functions
         try:
             from app.db import load_sql_functions
+
             await load_sql_functions()
             logger.info("sql_functions_loaded")
         except Exception as e:
             logger.warning("sql_functions_load_failed", error=str(e))
+
+        # ==================== INITIALIZE PLATFORM ====================
+        try:
+            from app.platform import init_platform
+
+            init_platform()
+            logger.info(
+                "platform_initialized", modules=["notes", "documents", "flashcards", "quizzes"]
+            )
+        except Exception as e:
+            logger.warning("platform_init_failed", error=str(e))
 
         # ==================== REGISTER AI AGENTS ====================
         try:
@@ -104,6 +110,7 @@ async def lifespan(app: FastAPI):
         # Initialize Agent Orchestrator
         try:
             from app.core.ai.orchestrator import get_orchestrator
+
             orchestrator = get_orchestrator()
             await orchestrator.initialize()
             logger.info("orchestrator_initialized")
@@ -113,25 +120,37 @@ async def lifespan(app: FastAPI):
         # ==================== INITIALIZE RAG SYSTEM ====================
         try:
             from app.services.rag import get_rag_service
-            
+
             # Initialize RAG service (triggers pipeline init)
             rag_service = get_rag_service()
-            
+
             # Store in app state for access in routes
             app.state.rag_service = rag_service
-            
-            logger.info("rag_system_initialized",
+
+            logger.info(
+                "rag_system_initialized",
                 features=[
                     "advanced_chunking",
                     "llm_enhancement",
                     "learning_aware_reranking",
-                    "feedback_loops"
-                ]
+                    "feedback_loops",
+                ],
             )
         except Exception as e:
             logger.error("rag_init_failed", error=str(e), exc_info=True)
             # Non-critical for now, continue startup
 
+        # ==================== SETUP EMBEDDING HOOKS ====================
+        try:
+            from app.services.background.embedding_hooks import setup_embedding_hooks
+
+            setup_embedding_hooks()
+            logger.info(
+                "embedding_hooks_initialized",
+                description="Note/Flashcard create/update will auto-trigger embedding generation",
+            )
+        except Exception as e:
+            logger.warning("embedding_hooks_init_failed", error=str(e))
 
         logger.info(
             "application_started",
@@ -152,6 +171,7 @@ async def lifespan(app: FastAPI):
     try:
         # Stop WebSocket cleanup task
         from app.api.websockets.manager import manager
+
         manager.stop_cleanup_task()
         logger.info("websocket_cleanup_stopped")
 
@@ -162,16 +182,9 @@ async def lifespan(app: FastAPI):
         # Close Redis
         try:
             from app.services.cache.client import close_redis
+
             await close_redis()
             logger.info("redis_closed")
-        except Exception:
-            pass
-
-        # Close DuckDB
-        try:
-            if hasattr(app.state, "analytics_client"):
-                app.state.analytics_client.close()
-                logger.info("duckdb_closed")
         except Exception:
             pass
 

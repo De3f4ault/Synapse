@@ -1,26 +1,52 @@
 // Chat Module - Public API
 // Only export through this barrel file to maintain module isolation
 
-// Components
-export { ChatInterface } from './components/ChatInterface';
-export { ContextPanel } from './components/ContextPanel';
-export { MessageInput } from './components/MessageInput';
-export { MessageList } from './components/MessageList';
+// ==================== COMPONENTS ====================
+export { ChatInterface } from "./components/ChatInterface";
+export { ContextPanel } from "./components/ContextPanel";
+export { MessageInput } from "./components/MessageInput";
+export { MessageList } from "./components/MessageList";
 export {
-    StreamingMessage,
-    TypingIndicator,
-    MessageBubble,
-} from './components/StreamingMessage';
+  StreamingMessage,
+  TypingIndicator,
+  MessageBubble,
+} from "./components/StreamingMessage";
+export { ChatMessage } from "./components/ChatMessage";
 
-// Hooks
+// ==================== HOOKS ====================
+
+// WebSocket & Streaming
 export {
-    useChatWebSocket,
-    type WebSocketStatus,
-    type StreamingChunk,
-    type ChatWebSocketMessage,
-} from './hooks/useChatWebSocket';
+  useChatWebSocket,
+  type WebSocketStatus,
+  type StreamingChunk,
+  type ChatWebSocketMessage,
+} from "./hooks/useChatWebSocket";
 
 export {
-    useStreamingMessage,
-    useTypingEffect,
-} from './hooks/useStreamingMessage';
+  useStreamingMessage,
+  useTypingEffect,
+} from "./hooks/useStreamingMessage";
+
+export { useChatStreaming, type WebSocketState } from "./hooks/useChatStreaming";
+
+// Session Management
+export {
+  useChatSessions,
+  useChatSession,
+  useCreateSession,
+  useUpdateSession,
+  useDeleteSession,
+} from "./hooks/useChatSession";
+
+// Message Management
+export {
+  useChatMessages,
+  useSendMessage,
+  useAddMessage,
+  useUpdateMessage,
+} from "./hooks/useChatMessages";
+
+// Title Generation
+export { useTitleGeneration } from "./hooks/useTitleGeneration";
+

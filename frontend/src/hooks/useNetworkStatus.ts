@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState } from "react";
 
 /**
  * useNetworkStatus Hook
@@ -19,48 +19,48 @@ import { useEffect, useState } from 'react';
  */
 
 interface NetworkStatus {
-    isOnline: boolean;
-    isOffline: boolean;
+  isOnline: boolean;
+  isOffline: boolean;
 }
 
 export function useNetworkStatus(): NetworkStatus {
-    const [isOnline, setIsOnline] = useState<boolean>(() => {
-        // Check if we're in a browser environment
-        if (typeof window === 'undefined' || typeof navigator === 'undefined') {
-            return true; // Assume online in SSR
-        }
-        return navigator.onLine;
-    });
+  const [isOnline, setIsOnline] = useState<boolean>(() => {
+    // Check if we're in a browser environment
+    if (typeof window === "undefined" || typeof navigator === "undefined") {
+      return true; // Assume online in SSR
+    }
+    return navigator.onLine;
+  });
 
-    useEffect(() => {
-        // Skip if not in browser
-        if (typeof window === 'undefined') return;
+  useEffect(() => {
+    // Skip if not in browser
+    if (typeof window === "undefined") return;
 
-        const handleOnline = () => {
-            setIsOnline(true);
-            console.log('Network status: Online');
-        };
-
-        const handleOffline = () => {
-            setIsOnline(false);
-            console.log('Network status: Offline');
-        };
-
-        // Add event listeners
-        window.addEventListener('online', handleOnline);
-        window.addEventListener('offline', handleOffline);
-
-        // Cleanup
-        return () => {
-            window.removeEventListener('online', handleOnline);
-            window.removeEventListener('offline', handleOffline);
-        };
-    }, []);
-
-    return {
-        isOnline,
-        isOffline: !isOnline,
+    const handleOnline = () => {
+      setIsOnline(true);
+      console.log("Network status: Online");
     };
+
+    const handleOffline = () => {
+      setIsOnline(false);
+      console.log("Network status: Offline");
+    };
+
+    // Add event listeners
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+
+    // Cleanup
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
+
+  return {
+    isOnline,
+    isOffline: !isOnline,
+  };
 }
 
 /**
@@ -84,40 +84,40 @@ export function useNetworkStatus(): NetworkStatus {
  * );
  */
 export function useNetworkStatusWithCallback(
-    onOnline?: () => void,
-                                             onOffline?: () => void
+  onOnline?: () => void,
+  onOffline?: () => void,
 ): NetworkStatus {
-    const [isOnline, setIsOnline] = useState<boolean>(() => {
-        if (typeof window === 'undefined' || typeof navigator === 'undefined') {
-            return true;
-        }
-        return navigator.onLine;
-    });
+  const [isOnline, setIsOnline] = useState<boolean>(() => {
+    if (typeof window === "undefined" || typeof navigator === "undefined") {
+      return true;
+    }
+    return navigator.onLine;
+  });
 
-    useEffect(() => {
-        if (typeof window === 'undefined') return;
+  useEffect(() => {
+    if (typeof window === "undefined") return;
 
-        const handleOnline = () => {
-            setIsOnline(true);
-            onOnline?.();
-        };
-
-        const handleOffline = () => {
-            setIsOnline(false);
-            onOffline?.();
-        };
-
-        window.addEventListener('online', handleOnline);
-        window.addEventListener('offline', handleOffline);
-
-        return () => {
-            window.removeEventListener('online', handleOnline);
-            window.removeEventListener('offline', handleOffline);
-        };
-    }, [onOnline, onOffline]);
-
-    return {
-        isOnline,
-        isOffline: !isOnline,
+    const handleOnline = () => {
+      setIsOnline(true);
+      onOnline?.();
     };
+
+    const handleOffline = () => {
+      setIsOnline(false);
+      onOffline?.();
+    };
+
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, [onOnline, onOffline]);
+
+  return {
+    isOnline,
+    isOffline: !isOnline,
+  };
 }

@@ -17,6 +17,7 @@ export class WebhooksService {
      * @param page Page number
      * @param pageSize Items per page
      * @param activeOnly Only active webhooks
+     * @param token Auth token for image/file requests
      * @returns WebhookResponse Successful Response
      * @throws ApiError
      */
@@ -24,6 +25,7 @@ export class WebhooksService {
         page: number = 1,
         pageSize: number = 20,
         activeOnly: boolean = false,
+        token?: (string | null),
     ): CancelablePromise<Array<WebhookResponse>> {
         return __request(OpenAPI, {
             method: 'GET',
@@ -32,6 +34,7 @@ export class WebhooksService {
                 'page': page,
                 'page_size': pageSize,
                 'active_only': activeOnly,
+                'token': token,
             },
             errors: {
                 422: `Validation Error`,
@@ -42,15 +45,20 @@ export class WebhooksService {
      * Create webhook
      * Create a new webhook for event notifications
      * @param requestBody
+     * @param token Auth token for image/file requests
      * @returns WebhookResponse Successful Response
      * @throws ApiError
      */
     public static createWebhookApiV1WebhooksPost(
         requestBody: WebhookCreate,
+        token?: (string | null),
     ): CancelablePromise<WebhookResponse> {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/api/v1/webhooks',
+            query: {
+                'token': token,
+            },
             body: requestBody,
             mediaType: 'application/json',
             errors: {
@@ -62,17 +70,22 @@ export class WebhooksService {
      * Get webhook
      * Retrieve a specific webhook
      * @param webhookId
+     * @param token Auth token for image/file requests
      * @returns WebhookResponse Successful Response
      * @throws ApiError
      */
     public static getWebhookApiV1WebhooksWebhookIdGet(
         webhookId: number,
+        token?: (string | null),
     ): CancelablePromise<WebhookResponse> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/v1/webhooks/{webhook_id}',
             path: {
                 'webhook_id': webhookId,
+            },
+            query: {
+                'token': token,
             },
             errors: {
                 422: `Validation Error`,
@@ -84,18 +97,23 @@ export class WebhooksService {
      * Update a webhook configuration
      * @param webhookId
      * @param requestBody
+     * @param token Auth token for image/file requests
      * @returns WebhookResponse Successful Response
      * @throws ApiError
      */
     public static updateWebhookApiV1WebhooksWebhookIdPut(
         webhookId: number,
         requestBody: WebhookUpdate,
+        token?: (string | null),
     ): CancelablePromise<WebhookResponse> {
         return __request(OpenAPI, {
             method: 'PUT',
             url: '/api/v1/webhooks/{webhook_id}',
             path: {
                 'webhook_id': webhookId,
+            },
+            query: {
+                'token': token,
             },
             body: requestBody,
             mediaType: 'application/json',
@@ -108,17 +126,22 @@ export class WebhooksService {
      * Delete webhook
      * Delete a webhook (soft delete)
      * @param webhookId
+     * @param token Auth token for image/file requests
      * @returns any Successful Response
      * @throws ApiError
      */
     public static deleteWebhookApiV1WebhooksWebhookIdDelete(
         webhookId: number,
+        token?: (string | null),
     ): CancelablePromise<any> {
         return __request(OpenAPI, {
             method: 'DELETE',
             url: '/api/v1/webhooks/{webhook_id}',
             path: {
                 'webhook_id': webhookId,
+            },
+            query: {
+                'token': token,
             },
             errors: {
                 422: `Validation Error`,
@@ -130,18 +153,23 @@ export class WebhooksService {
      * Send test payload to webhook
      * @param webhookId
      * @param requestBody
+     * @param token Auth token for image/file requests
      * @returns WebhookTestResponse Successful Response
      * @throws ApiError
      */
     public static testWebhookApiV1WebhooksWebhookIdTestPost(
         webhookId: number,
         requestBody: WebhookTestRequest,
+        token?: (string | null),
     ): CancelablePromise<WebhookTestResponse> {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/api/v1/webhooks/{webhook_id}/test',
             path: {
                 'webhook_id': webhookId,
+            },
+            query: {
+                'token': token,
             },
             body: requestBody,
             mediaType: 'application/json',

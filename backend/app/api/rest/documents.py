@@ -7,11 +7,13 @@ Complete implementation with background processing task triggers.
 
 import os
 import uuid
+import hashlib
+import enum
 from typing import List, Optional
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, func
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from datetime import datetime
 import logging
 
@@ -20,6 +22,8 @@ from app.models.user import User
 from app.models.document import Document, ProcessingStatus
 from app.models.document_chunk import DocumentChunk
 from app.core.config import settings
+import pypdfium2 as pdfium
+from PIL import Image
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -29,7 +33,23 @@ router = APIRouter()
 # Configuration
 # ============================================================================
 
-ALLOWED_EXTENSIONS = {".pdf", ".docx", ".txt", ".md", ".epub"}
+ALLOWED_EXTENSIONS = {
+    # Documents
+    ".pdf",
+    ".docx",
+    ".txt",
+    ".md",
+    ".epub",
+    # Images (OCR support)
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".tiff",
+    ".tif",
+    ".bmp",
+    ".gif",
+    ".webp",
+}
 MAX_FILE_SIZE = 100 * 1024 * 1024  # 100MB
 UPLOAD_DIR = settings.UPLOAD_DIR or "data/uploads"
 
@@ -38,8 +58,10 @@ UPLOAD_DIR = settings.UPLOAD_DIR or "data/uploads"
 # Request/Response Schemas
 # ============================================================================
 
+
 class DocumentResponse(BaseModel):
     """Document response."""
+
     id: int
     filename: str
     file_type: str
@@ -47,18 +69,33 @@ class DocumentResponse(BaseModel):
     processing_status: ProcessingStatus
     page_count: Optional[int]
     word_count: Optional[int]
+    ocr_performed: bool = False
     gemini_file_uri: Optional[str]
     gemini_file_expired: bool
     user_id: int
     created_at: datetime
     updated_at: datetime
+    # New fields
+    sector: Optional[str] = "Uncategorized"
+    notes: Optional[str] = None
+    ai_summary: Optional[str] = None
+    reading_progress: Optional[float] = 0.0
 
     class Config:
         from_attributes = True
 
 
+class DocumentUpdateRequest(BaseModel):
+    """Request to update document metadata."""
+
+    sector: Optional[str] = None
+    notes: Optional[str] = None
+    reading_progress: Optional[float] = None
+
+
 class DocumentChunkResponse(BaseModel):
     """Document chunk response."""
+
     id: int
     document_id: int
     content: str
@@ -74,6 +111,7 @@ class DocumentChunkResponse(BaseModel):
 
 class ProcessingStatusResponse(BaseModel):
     """Processing status check response."""
+
     document_id: int
     status: ProcessingStatus
     progress_percentage: float
@@ -82,12 +120,34 @@ class ProcessingStatusResponse(BaseModel):
 
 class MessageResponse(BaseModel):
     """Simple message response."""
+
+    message: str
+
+
+# Duplicate Detection Models
+class ConflictType(str, enum.Enum):
+    """Types of document conflicts during upload."""
+
+    EXACT_DUPLICATE = "exact_duplicate"  # Same hash + same filename
+    SAME_CONTENT = "same_content"  # Same hash, different filename
+    SAME_FILENAME = "same_filename"  # Different hash, same filename
+
+
+class DuplicateConflictResponse(BaseModel):
+    """Response returned when a duplicate document is detected (409 Conflict)."""
+
+    conflict_type: ConflictType
+    existing_document_id: int
+    existing_filename: str
+    existing_file_size: int
+    existing_uploaded_at: datetime
     message: str
 
 
 # ============================================================================
 # Helper Functions
 # ============================================================================
+
 
 def get_file_extension(filename: str) -> str:
     """Extract file extension."""
@@ -111,26 +171,31 @@ def validate_file(file: UploadFile) -> tuple[bool, Optional[str]]:
 
 
 def generate_upload_path(user_id: int, filename: str) -> str:
-    """Generate unique upload path for file."""
-    # Create user directory structure
-    user_dir = os.path.join(UPLOAD_DIR, f"user_{user_id}", "documents")
-    os.makedirs(user_dir, exist_ok=True)
+    """
+    Generate unique upload path for file.
 
-    # Generate unique filename
+    Files are stored in a flat uploads/ directory with UUID filenames.
+    The database tracks user ownership via user_id column.
+    """
+    # Ensure uploads directory exists
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+    # Generate unique filename using UUID to avoid collisions
     file_ext = get_file_extension(filename)
     unique_filename = f"{uuid.uuid4()}{file_ext}"
 
-    return os.path.join(user_dir, unique_filename)
+    return os.path.join(UPLOAD_DIR, unique_filename)
 
 
-async def save_uploaded_file(file: UploadFile, filepath: str) -> int:
+async def save_uploaded_file(file: UploadFile, filepath: str) -> tuple[int, str]:
     """
-    Save uploaded file to disk.
+    Save uploaded file to disk while computing SHA256 hash.
 
     Returns:
-        int: File size in bytes
+        tuple[int, str]: (file_size_in_bytes, sha256_content_hash)
     """
     total_size = 0
+    sha256_hash = hashlib.sha256()
 
     with open(filepath, "wb") as f:
         while chunk := await file.read(8192):  # 8KB chunks
@@ -140,12 +205,65 @@ async def save_uploaded_file(file: UploadFile, filepath: str) -> int:
                 os.remove(filepath)
                 raise HTTPException(
                     status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-                    detail=f"File too large. Maximum size: {MAX_FILE_SIZE / 1024 / 1024}MB"
+                    detail=f"File too large. Maximum size: {MAX_FILE_SIZE / 1024 / 1024}MB",
                 )
             f.write(chunk)
+            sha256_hash.update(chunk)  # Compute hash during streaming
             total_size += len(chunk)
 
-    return total_size
+    return total_size, sha256_hash.hexdigest()
+
+
+def generate_thumbnail(file_path: str, mime_type: str = "application/pdf") -> Optional[str]:
+    """
+    Generate a thumbnail for a document.
+
+    Args:
+        file_path: Path to the source file
+        mime_type: MIME type of the file
+
+    Returns:
+        Path to the generated thumbnail file, or None if generation failed
+    """
+    try:
+        thumb_path = f"{file_path}_thumb.png"
+
+        # If thumbnail already exists, return it
+        if os.path.exists(thumb_path):
+            return thumb_path
+
+        image = None
+
+        if "pdf" in mime_type:
+            # Render first page of PDF
+            pdf = pdfium.PdfDocument(file_path)
+            page = pdf[0]
+            # Render at 72 DPI (web quality)
+            # scale=1 means 72 DPI. Paperless uses higher, but 1-2 is good for thumbnails.
+            bitmap = page.render(scale=2)
+            image = bitmap.to_pil()
+            page.close()
+            pdf.close()
+
+        elif "image" in mime_type:
+            # Resize existing image
+            with Image.open(file_path) as img:
+                # Convert to RGB to handle PNGs with alpha or CMYK
+                if img.mode in ("RGBA", "P"):
+                    img = img.convert("RGB")
+                image = img.copy()
+
+        if image:
+            # Resize to max 500px width/height while maintaining aspect ratio
+            image.thumbnail((500, 500))
+            image.save(thumb_path, format="PNG", optimize=True)
+            return thumb_path
+
+    except Exception as e:
+        logger.error(f"Thumbnail generation failed for {file_path}: {e}")
+        return None
+
+    return None
 
 
 async def trigger_document_processing(document_id: int) -> bool:
@@ -213,11 +331,11 @@ async def cleanup_document_vectors(document_id: int, user_id: int) -> bool:
                     must=[
                         models.FieldCondition(
                             key="metadata.document_id",
-                            match=models.MatchValue(value=str(document_id))
+                            match=models.MatchValue(value=str(document_id)),
                         )
                     ]
                 )
-            )
+            ),
         )
 
         logger.info(f"Deleted vector embeddings from Qdrant for document {document_id}")
@@ -242,16 +360,16 @@ async def cleanup_gemini_file(document: Document) -> bool:
         if not document.gemini_file_uri:
             return True
 
-        import google.generativeai as genai
+        from google import genai
         from app.core.config import settings
 
-        genai.configure(api_key=settings.GEMINI_API_KEY)
+        client = genai.Client(api_key=settings.GEMINI_API_KEY)
 
         # Extract file ID from URI (format: "files/FILE_ID")
         file_id = document.gemini_file_uri.split("/")[-1]
 
-        # Delete the file
-        genai.delete_file(file_id)
+        # Delete the file using new SDK
+        client.files.delete(name=f"files/{file_id}")
 
         logger.info(f"Deleted file from Gemini Files API: {file_id}")
         return True
@@ -290,17 +408,18 @@ async def cleanup_physical_file(filepath: str) -> bool:
 # Endpoints
 # ============================================================================
 
+
 @router.post(
     "/upload",
     response_model=DocumentResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Upload document",
-    description="Upload a document for processing (PDF, DOCX, TXT, MD, EPUB)"
+    description="Upload a document for processing (PDF, DOCX, TXT, MD, EPUB)",
 )
 async def upload_document(
     file: UploadFile = File(..., description="Document file to upload"),
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Upload a document.
@@ -311,30 +430,107 @@ async def upload_document(
     3. Embedding generation
     4. Vector indexing
     5. Gemini Files API upload (if applicable)
+
+    Returns 409 Conflict with DuplicateConflictResponse if:
+    - Same content hash exists (exact duplicate or same content)
+    - Same filename exists (different content, same name)
     """
+    from fastapi.responses import JSONResponse
+
     # Validate file
     is_valid, error_msg = validate_file(file)
     if not is_valid:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=error_msg
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error_msg)
 
     # Generate upload path
     filepath = generate_upload_path(current_user.id, file.filename)
 
-    # Save file
+    # Save file and compute SHA256 hash during streaming
     try:
-        file_size = await save_uploaded_file(file, filepath)
+        file_size, content_hash = await save_uploaded_file(file, filepath)
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to save file: {str(e)}"
+            detail=f"Failed to save file: {str(e)}",
         )
 
-    # Create document record
+    # Check for content hash collision (exact duplicate or same content)
+    hash_collision_result = await db.execute(
+        select(Document).where(
+            and_(
+                Document.content_hash == content_hash,
+                Document.user_id == current_user.id,
+                Document.deleted_at.is_(None),
+            )
+        )
+    )
+    hash_collision_doc = hash_collision_result.scalars().first()
+
+    # Check for filename collision (case-insensitive)
+    filename_collision_result = await db.execute(
+        select(Document).where(
+            and_(
+                func.lower(Document.filename) == file.filename.lower(),
+                Document.user_id == current_user.id,
+                Document.deleted_at.is_(None),
+            )
+        )
+    )
+    filename_collision_doc = filename_collision_result.scalars().first()
+
+    # Determine conflict type
+    if (
+        hash_collision_doc
+        and filename_collision_doc
+        and hash_collision_doc.id == filename_collision_doc.id
+    ):
+        # Exact duplicate: same hash + same filename
+        os.remove(filepath)  # Clean up uploaded file
+        conflict = DuplicateConflictResponse(
+            conflict_type=ConflictType.EXACT_DUPLICATE,
+            existing_document_id=hash_collision_doc.id,
+            existing_filename=hash_collision_doc.filename,
+            existing_file_size=hash_collision_doc.file_size,
+            existing_uploaded_at=hash_collision_doc.created_at,
+            message=f"This exact file '{file.filename}' already exists in your library.",
+        )
+        return JSONResponse(
+            status_code=status.HTTP_409_CONFLICT, content=conflict.model_dump(mode="json")
+        )
+
+    elif hash_collision_doc:
+        # Same content, different filename
+        os.remove(filepath)  # Clean up uploaded file
+        conflict = DuplicateConflictResponse(
+            conflict_type=ConflictType.SAME_CONTENT,
+            existing_document_id=hash_collision_doc.id,
+            existing_filename=hash_collision_doc.filename,
+            existing_file_size=hash_collision_doc.file_size,
+            existing_uploaded_at=hash_collision_doc.created_at,
+            message=f"This file's content already exists as '{hash_collision_doc.filename}'.",
+        )
+        return JSONResponse(
+            status_code=status.HTTP_409_CONFLICT, content=conflict.model_dump(mode="json")
+        )
+
+    elif filename_collision_doc:
+        # Different content, same filename
+        os.remove(filepath)  # Clean up uploaded file
+        conflict = DuplicateConflictResponse(
+            conflict_type=ConflictType.SAME_FILENAME,
+            existing_document_id=filename_collision_doc.id,
+            existing_filename=filename_collision_doc.filename,
+            existing_file_size=filename_collision_doc.file_size,
+            existing_uploaded_at=filename_collision_doc.created_at,
+            message=f"A different document named '{file.filename}' already exists.",
+        )
+        return JSONResponse(
+            status_code=status.HTTP_409_CONFLICT, content=conflict.model_dump(mode="json")
+        )
+
+    # No conflict - create document record
     file_type = get_file_extension(file.filename)[1:]  # Remove leading dot
 
     new_document = Document(
@@ -343,7 +539,8 @@ async def upload_document(
         file_path=filepath,
         file_type=file_type,
         file_size=file_size,
-        processing_status=ProcessingStatus.PENDING
+        content_hash=content_hash,
+        processing_status=ProcessingStatus.PENDING,
     )
 
     db.add(new_document)
@@ -365,11 +562,12 @@ async def upload_document(
         processing_status=new_document.processing_status,
         page_count=new_document.page_count,
         word_count=new_document.word_count,
+        ocr_performed=new_document.ocr_performed,
         gemini_file_uri=new_document.gemini_file_uri,
         gemini_file_expired=new_document.gemini_file_expired,
         user_id=new_document.user_id,
         created_at=new_document.created_at,
-        updated_at=new_document.updated_at
+        updated_at=new_document.updated_at,
     )
 
 
@@ -377,22 +575,21 @@ async def upload_document(
     "",
     response_model=List[DocumentResponse],
     summary="List documents",
-    description="Retrieve user's uploaded documents"
+    description="Retrieve user's uploaded documents",
 )
 async def list_documents(
-    status_filter: Optional[ProcessingStatus] = Query(None, description="Filter by processing status"),
+    status_filter: Optional[ProcessingStatus] = Query(
+        None, description="Filter by processing status"
+    ),
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Items per page"),
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """List user's documents with optional status filtering."""
     # Build query
     query = select(Document).where(
-        and_(
-            Document.user_id == current_user.id,
-            Document.deleted_at.is_(None)
-        )
+        and_(Document.user_id == current_user.id, Document.deleted_at.is_(None))
     )
 
     # Apply status filter
@@ -415,11 +612,12 @@ async def list_documents(
             processing_status=doc.processing_status,
             page_count=doc.page_count,
             word_count=doc.word_count,
+            ocr_performed=doc.ocr_performed,
             gemini_file_uri=doc.gemini_file_uri,
             gemini_file_expired=doc.gemini_file_expired,
             user_id=doc.user_id,
             created_at=doc.created_at,
-            updated_at=doc.updated_at
+            updated_at=doc.updated_at,
         )
         for doc in documents
     ]
@@ -429,12 +627,12 @@ async def list_documents(
     "/{document_id}",
     response_model=DocumentResponse,
     summary="Get document",
-    description="Retrieve a specific document by ID"
+    description="Retrieve a specific document by ID",
 )
 async def get_document(
     document_id: int,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """Get a specific document."""
     result = await db.execute(
@@ -442,17 +640,14 @@ async def get_document(
             and_(
                 Document.id == document_id,
                 Document.user_id == current_user.id,
-                Document.deleted_at.is_(None)
+                Document.deleted_at.is_(None),
             )
         )
     )
     doc = result.scalar_one_or_none()
 
     if not doc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Document not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
 
     return DocumentResponse(
         id=doc.id,
@@ -462,11 +657,12 @@ async def get_document(
         processing_status=doc.processing_status,
         page_count=doc.page_count,
         word_count=doc.word_count,
+        ocr_performed=doc.ocr_performed,
         gemini_file_uri=doc.gemini_file_uri,
         gemini_file_expired=doc.gemini_file_expired,
         user_id=doc.user_id,
         created_at=doc.created_at,
-        updated_at=doc.updated_at
+        updated_at=doc.updated_at,
     )
 
 
@@ -474,31 +670,28 @@ async def get_document(
     "/{document_id}",
     response_model=MessageResponse,
     summary="Delete document",
-    description="Delete a document and all its chunks"
+    description="Delete a document and all its chunks",
 )
 async def delete_document(
     document_id: int,
-    delete_file: bool = Query(False, description="Also delete physical file from storage"),
+    keep_file: bool = Query(False, description="Keep physical file on disk (default: delete it)"),
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
-    """Delete a document (soft delete with optional physical cleanup)."""
+    """Delete a document (soft delete + physical cleanup by default)."""
     result = await db.execute(
         select(Document).where(
             and_(
                 Document.id == document_id,
                 Document.user_id == current_user.id,
-                Document.deleted_at.is_(None)
+                Document.deleted_at.is_(None),
             )
         )
     )
     doc = result.scalar_one_or_none()
 
     if not doc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Document not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
 
     # Soft delete
     doc.deleted_at = datetime.utcnow()
@@ -512,25 +705,134 @@ async def delete_document(
     # Delete from Gemini Files API if applicable
     await cleanup_gemini_file(doc)
 
-    # Optionally delete physical file
-    if delete_file:
+    # Delete physical file unless explicitly kept
+    if not keep_file:
         await cleanup_physical_file(doc.file_path)
+        # Clean up thumbnail if it exists
+        await cleanup_physical_file(f"{doc.file_path}_thumb.png")
 
     return MessageResponse(message="Document deleted successfully")
+
+
+@router.put(
+    "/{document_id}/replace",
+    response_model=DocumentResponse,
+    summary="Replace document",
+    description="Replace an existing document's file while preserving its ID and metadata",
+)
+async def replace_document(
+    document_id: int,
+    file: UploadFile = File(..., description="New document file"),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Replace an existing document's content while preserving its ID.
+
+    This endpoint:
+    1. Validates the new file
+    2. Computes new content hash
+    3. Updates the document record
+    4. Cleans up old file and downstream indexes
+    5. Triggers reprocessing
+    """
+    # Get existing document
+    result = await db.execute(
+        select(Document).where(
+            and_(
+                Document.id == document_id,
+                Document.user_id == current_user.id,
+                Document.deleted_at.is_(None),
+            )
+        )
+    )
+    doc = result.scalar_one_or_none()
+
+    if not doc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
+
+    # Validate new file
+    is_valid, error_msg = validate_file(file)
+    if not is_valid:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=error_msg)
+
+    # Save new file
+    new_filepath = generate_upload_path(current_user.id, file.filename)
+    try:
+        file_size, content_hash = await save_uploaded_file(file, new_filepath)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to save file: {str(e)}",
+        )
+
+    # Store old file path for cleanup
+    old_filepath = doc.file_path
+
+    # Update document record
+    doc.filename = file.filename
+    doc.file_path = new_filepath
+    doc.file_type = get_file_extension(file.filename)[1:]
+    doc.file_size = file_size
+    doc.content_hash = content_hash
+    doc.processing_status = ProcessingStatus.PENDING
+    doc.gemini_file_uri = None
+    doc.gemini_file_expires_at = None
+    doc.content_text = None  # Clear cached text
+    doc.page_count = None
+    doc.word_count = None
+    doc.ai_summary = None
+
+    await db.commit()
+    await db.refresh(doc)
+
+    logger.info(f"Document replaced: {document_id} with {file.filename} by user {current_user.id}")
+
+    # Clean up old file
+    await cleanup_physical_file(old_filepath)
+    # Clean up old thumbnail if it exists
+    await cleanup_physical_file(f"{old_filepath}_thumb.png")
+
+    # Clean up old vector embeddings
+    await cleanup_document_vectors(document_id, current_user.id)
+
+    # Clean up old Gemini file
+    await cleanup_gemini_file(doc)
+
+    # Trigger reprocessing
+    await trigger_document_processing(document_id)
+
+    return DocumentResponse(
+        id=doc.id,
+        filename=doc.filename,
+        file_type=doc.file_type,
+        file_size=doc.file_size,
+        processing_status=doc.processing_status,
+        page_count=doc.page_count,
+        word_count=doc.word_count,
+        ocr_performed=doc.ocr_performed,
+        gemini_file_uri=doc.gemini_file_uri,
+        gemini_file_expired=doc.gemini_file_expired,
+        user_id=doc.user_id,
+        created_at=doc.created_at,
+        updated_at=doc.updated_at,
+    )
 
 
 @router.get(
     "/{document_id}/chunks",
     response_model=List[DocumentChunkResponse],
     summary="Get document chunks",
-    description="Retrieve all chunks for a document"
+    description="Retrieve all chunks for a document",
 )
 async def get_document_chunks(
     document_id: int,
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(50, ge=1, le=200, description="Chunks per page"),
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """Get all chunks for a document."""
     # Verify document ownership
@@ -539,22 +841,21 @@ async def get_document_chunks(
             and_(
                 Document.id == document_id,
                 Document.user_id == current_user.id,
-                Document.deleted_at.is_(None)
+                Document.deleted_at.is_(None),
             )
         )
     )
     doc = doc_result.scalar_one_or_none()
 
     if not doc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Document not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
 
     # Get chunks
-    chunks_query = select(DocumentChunk).where(
-        DocumentChunk.document_id == document_id
-    ).order_by(DocumentChunk.chunk_index)
+    chunks_query = (
+        select(DocumentChunk)
+        .where(DocumentChunk.document_id == document_id)
+        .order_by(DocumentChunk.chunk_index)
+    )
 
     chunks_query = chunks_query.offset((page - 1) * page_size).limit(page_size)
 
@@ -570,7 +871,7 @@ async def get_document_chunks(
             page=chunk.page,
             start_char=chunk.start_char,
             end_char=chunk.end_char,
-            embedding_id=chunk.embedding_id
+            embedding_id=chunk.embedding_id,
         )
         for chunk in chunks
     ]
@@ -580,12 +881,12 @@ async def get_document_chunks(
     "/{document_id}/status",
     response_model=ProcessingStatusResponse,
     summary="Get processing status",
-    description="Check document processing status and progress"
+    description="Check document processing status and progress",
 )
 async def get_processing_status(
     document_id: int,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """Get document processing status."""
     result = await db.execute(
@@ -593,38 +894,35 @@ async def get_processing_status(
             and_(
                 Document.id == document_id,
                 Document.user_id == current_user.id,
-                Document.deleted_at.is_(None)
+                Document.deleted_at.is_(None),
             )
         )
     )
     doc = result.scalar_one_or_none()
 
     if not doc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Document not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
 
     # Calculate progress percentage
     progress_map = {
         ProcessingStatus.PENDING: 0.0,
         ProcessingStatus.PROCESSING: 50.0,
         ProcessingStatus.COMPLETED: 100.0,
-        ProcessingStatus.FAILED: 0.0
+        ProcessingStatus.FAILED: 0.0,
     }
 
     message_map = {
         ProcessingStatus.PENDING: "Document queued for processing",
         ProcessingStatus.PROCESSING: "Processing document (extracting text, chunking, embedding)",
         ProcessingStatus.COMPLETED: "Document processing complete",
-        ProcessingStatus.FAILED: "Document processing failed"
+        ProcessingStatus.FAILED: "Document processing failed",
     }
 
     return ProcessingStatusResponse(
         document_id=doc.id,
         status=doc.processing_status,
         progress_percentage=progress_map[doc.processing_status],
-        message=message_map[doc.processing_status]
+        message=message_map[doc.processing_status],
     )
 
 
@@ -632,12 +930,12 @@ async def get_processing_status(
     "/{document_id}/process",
     response_model=MessageResponse,
     summary="Trigger processing",
-    description="Manually trigger document processing (if pending or failed)"
+    description="Manually trigger document processing (if pending or failed)",
 )
 async def trigger_processing(
     document_id: int,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """Manually trigger document processing."""
     result = await db.execute(
@@ -645,23 +943,20 @@ async def trigger_processing(
             and_(
                 Document.id == document_id,
                 Document.user_id == current_user.id,
-                Document.deleted_at.is_(None)
+                Document.deleted_at.is_(None),
             )
         )
     )
     doc = result.scalar_one_or_none()
 
     if not doc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Document not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
 
     # Only allow reprocessing if pending or failed
     if doc.processing_status not in [ProcessingStatus.PENDING, ProcessingStatus.FAILED]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Cannot reprocess document in status: {doc.processing_status.value}"
+            detail=f"Cannot reprocess document in status: {doc.processing_status.value}",
         )
 
     # Update status to pending
@@ -676,3 +971,248 @@ async def trigger_processing(
         logger.warning(f"Could not queue document {document_id} for processing")
 
     return MessageResponse(message="Document processing triggered")
+
+
+@router.get(
+    "/{document_id}/content",
+    summary="Get document content",
+    description="Stream the raw document file (inline viewing)",
+)
+async def get_document_content(
+    document_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Serve the raw document file."""
+    doc = await _get_doc_or_404(document_id, current_user, db)
+
+    if not os.path.exists(doc.file_path):
+        raise HTTPException(status_code=404, detail="File not found on disk")
+
+    # Determine media type
+    media_type = "application/octet-stream"
+    if doc.file_type == "pdf":
+        media_type = "application/pdf"
+    elif doc.file_type in ["jpg", "jpeg"]:
+        media_type = "image/jpeg"
+    elif doc.file_type == "png":
+        media_type = "image/png"
+
+    from fastapi.responses import FileResponse
+
+    return FileResponse(
+        doc.file_path,
+        media_type=media_type,
+        filename=doc.filename,
+        content_disposition_type="inline",
+    )
+
+
+@router.get(
+    "/{document_id}/thumb",
+    summary="Get document thumbnail",
+    description="Get a visual thumbnail/cover image for the document",
+)
+async def get_document_thumbnail(
+    document_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Serve the document thumbnail."""
+    doc = await _get_doc_or_404(document_id, current_user, db)
+
+    if not os.path.exists(doc.file_path):
+        raise HTTPException(status_code=404, detail="Original file not found")
+
+    # Determine mime type for generation
+    mime_type = "application/pdf" if doc.file_type == "pdf" else f"image/{doc.file_type}"
+
+    # Generate (or get cached) thumbnail
+    thumb_path = generate_thumbnail(doc.file_path, mime_type)
+
+    if not thumb_path or not os.path.exists(thumb_path):
+        # Fallback for non-supported types or failures: return 404 so frontend shows default icon
+        raise HTTPException(status_code=404, detail="Thumbnail not available")
+
+    from fastapi.responses import FileResponse
+
+    return FileResponse(thumb_path, media_type="image/png")
+
+
+@router.get(
+    "/batch/thumbs",
+    summary="Get multiple document thumbnails",
+    description="Fetch thumbnails for multiple documents in a single request. Returns base64-encoded PNGs.",
+)
+async def get_batch_thumbnails(
+    ids: str = Query(..., description="Comma-separated document IDs"),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Batch fetch document thumbnails.
+
+    Performance: 1 request instead of N requests for N documents.
+    Returns base64-encoded PNG thumbnails.
+    """
+    import base64
+
+    # Parse document IDs
+    try:
+        document_ids = [int(id.strip()) for id in ids.split(",") if id.strip()]
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid document IDs format")
+
+    if not document_ids:
+        return {"thumbnails": {}}
+
+    if len(document_ids) > 50:
+        raise HTTPException(status_code=400, detail="Maximum 50 documents per request")
+
+    # Single query to fetch all requested documents
+    result = await db.execute(
+        select(Document).where(
+            and_(
+                Document.id.in_(document_ids),
+                Document.user_id == current_user.id,
+                Document.deleted_at.is_(None),
+            )
+        )
+    )
+    documents = result.scalars().all()
+
+    # Generate thumbnails for each document
+    thumbnails = {}
+    for doc in documents:
+        if not os.path.exists(doc.file_path):
+            thumbnails[str(doc.id)] = None
+            continue
+
+        mime_type = "application/pdf" if doc.file_type == "pdf" else f"image/{doc.file_type}"
+        thumb_path = generate_thumbnail(doc.file_path, mime_type)
+
+        if thumb_path and os.path.exists(thumb_path):
+            try:
+                with open(thumb_path, "rb") as f:
+                    thumb_data = base64.b64encode(f.read()).decode("utf-8")
+                thumbnails[str(doc.id)] = {
+                    "data": f"data:image/png;base64,{thumb_data}",
+                    "filename": doc.filename,
+                }
+            except Exception:
+                thumbnails[str(doc.id)] = None
+        else:
+            thumbnails[str(doc.id)] = None
+
+    return {"thumbnails": thumbnails}
+
+
+async def _get_doc_or_404(document_id: int, user: User, db: AsyncSession) -> Document:
+    result = await db.execute(
+        select(Document).where(
+            and_(
+                Document.id == document_id,
+                Document.user_id == user.id,
+                Document.deleted_at.is_(None),
+            )
+        )
+    )
+    doc = result.scalar_one_or_none()
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+    return doc
+
+
+@router.patch(
+    "/{document_id}",
+    response_model=DocumentResponse,
+    summary="Update document metadata",
+    description="Update sector, notes, or reading progress for a document",
+)
+async def update_document(
+    document_id: int,
+    update_data: DocumentUpdateRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Update document metadata like sector, notes, and reading progress."""
+    doc = await _get_doc_or_404(document_id, current_user, db)
+
+    # Apply updates
+    if update_data.sector is not None:
+        doc.sector = update_data.sector
+    if update_data.notes is not None:
+        doc.notes = update_data.notes
+    if update_data.reading_progress is not None:
+        doc.reading_progress = max(0.0, min(1.0, update_data.reading_progress))
+
+    await db.commit()
+    await db.refresh(doc)
+
+    logger.info(f"Document {document_id} updated by user {current_user.id}")
+    return doc
+
+
+class SummaryResponse(BaseModel):
+    """AI summary response."""
+
+    summary: str
+    cached: bool = False
+
+
+@router.post(
+    "/{document_id}/summary",
+    response_model=SummaryResponse,
+    summary="Generate AI summary",
+    description="Generate or retrieve cached AI summary for a document",
+)
+async def generate_document_summary(
+    document_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Generate AI summary for document content using Gemini."""
+    doc = await _get_doc_or_404(document_id, current_user, db)
+
+    # Return cached summary if exists
+    if doc.ai_summary:
+        return SummaryResponse(summary=doc.ai_summary, cached=True)
+
+    # Check if document has content
+    if not doc.content_text:
+        raise HTTPException(
+            status_code=400,
+            detail="Document has no extracted text. Wait for processing to complete.",
+        )
+
+    # Generate summary using Gemini
+    try:
+        from google import genai
+        from app.core.config import settings
+
+        client = genai.Client(api_key=settings.GEMINI_API_KEY)
+
+        # Truncate content if too long (Gemini has context limits)
+        content = doc.content_text[:30000] if len(doc.content_text) > 30000 else doc.content_text
+
+        prompt = f"""Provide a concise summary of this document in 3-5 paragraphs. 
+Focus on the main topics, key takeaways, and important concepts.
+
+Document Title: {doc.filename}
+
+Content:
+{content}"""
+
+        response = client.models.generate_content(model="gemini-2.0-flash", contents=prompt)
+        summary = response.text
+
+        # Cache the summary
+        doc.ai_summary = summary
+        await db.commit()
+
+        logger.info(f"AI summary generated for document {document_id}")
+        return SummaryResponse(summary=summary, cached=False)
+
+    except Exception as e:
+        logger.error(f"AI summary generation failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Summary generation failed: {str(e)}")

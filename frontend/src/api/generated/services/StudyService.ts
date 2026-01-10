@@ -17,12 +17,14 @@ export class StudyService {
      * that need review, prioritized by due date and performance.
      * @param modules Comma-separated modules
      * @param limit
+     * @param token Auth token for image/file requests
      * @returns StudyItemResponse Successful Response
      * @throws ApiError
      */
     public static getDueItemsApiV1StudyDueGet(
         modules: string = 'flashcards,quizzes',
         limit: number = 20,
+        token?: (string | null),
     ): CancelablePromise<Array<StudyItemResponse>> {
         return __request(OpenAPI, {
             method: 'GET',
@@ -30,6 +32,7 @@ export class StudyService {
             query: {
                 'modules': modules,
                 'limit': limit,
+                'token': token,
             },
             errors: {
                 422: `Validation Error`,
@@ -40,15 +43,20 @@ export class StudyService {
      * Start Session
      * Start a new study session.
      * @param requestBody
+     * @param token Auth token for image/file requests
      * @returns StudySessionResponse Successful Response
      * @throws ApiError
      */
     public static startSessionApiV1StudySessionsPost(
         requestBody: StudySessionCreate,
+        token?: (string | null),
     ): CancelablePromise<StudySessionResponse> {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/api/v1/study/sessions',
+            query: {
+                'token': token,
+            },
             body: requestBody,
             mediaType: 'application/json',
             errors: {
@@ -61,12 +69,14 @@ export class StudyService {
      * List user's study sessions with pagination.
      * @param page
      * @param pageSize
+     * @param token Auth token for image/file requests
      * @returns StudySessionResponse Successful Response
      * @throws ApiError
      */
     public static listSessionsApiV1StudySessionsGet(
         page: number = 1,
         pageSize: number = 20,
+        token?: (string | null),
     ): CancelablePromise<Array<StudySessionResponse>> {
         return __request(OpenAPI, {
             method: 'GET',
@@ -74,6 +84,7 @@ export class StudyService {
             query: {
                 'page': page,
                 'page_size': pageSize,
+                'token': token,
             },
             errors: {
                 422: `Validation Error`,
@@ -84,17 +95,22 @@ export class StudyService {
      * Get Session
      * Get a specific study session.
      * @param sessionId
+     * @param token Auth token for image/file requests
      * @returns StudySessionResponse Successful Response
      * @throws ApiError
      */
     public static getSessionApiV1StudySessionsSessionIdGet(
         sessionId: number,
+        token?: (string | null),
     ): CancelablePromise<StudySessionResponse> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/v1/study/sessions/{session_id}',
             path: {
                 'session_id': sessionId,
+            },
+            query: {
+                'token': token,
             },
             errors: {
                 422: `Validation Error`,
@@ -105,17 +121,22 @@ export class StudyService {
      * Complete Session
      * Complete a study session.
      * @param sessionId
+     * @param token Auth token for image/file requests
      * @returns StudySessionResponse Successful Response
      * @throws ApiError
      */
     public static completeSessionApiV1StudySessionsSessionIdCompletePost(
         sessionId: number,
+        token?: (string | null),
     ): CancelablePromise<StudySessionResponse> {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/api/v1/study/sessions/{session_id}/complete',
             path: {
                 'session_id': sessionId,
+            },
+            query: {
+                'token': token,
             },
             errors: {
                 422: `Validation Error`,
@@ -129,17 +150,20 @@ export class StudyService {
      * Recommends items based on weak areas, review patterns, and learning goals.
      * Combines flashcards and quizzes, prioritizing high-value items.
      * @param limit
+     * @param token Auth token for image/file requests
      * @returns StudyItemResponse Successful Response
      * @throws ApiError
      */
     public static getRecommendationsApiV1StudyRecommendationsGet(
         limit: number = 10,
+        token?: (string | null),
     ): CancelablePromise<Array<StudyItemResponse>> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/v1/study/recommendations',
             query: {
                 'limit': limit,
+                'token': token,
             },
             errors: {
                 422: `Validation Error`,

@@ -9,7 +9,7 @@ FastAPI dependency injection for common operations:
 """
 
 from typing import AsyncGenerator, Optional
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Query
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 from jose import JWTError, jwt
@@ -19,7 +19,7 @@ from app.core.config import settings
 from app.models.user import User
 
 # Security scheme for JWT Bearer tokens
-security = HTTPBearer()
+security = HTTPBearer(auto_error=False)
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
@@ -40,8 +40,9 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 
 
 async def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
-    db: AsyncSession = Depends(get_db)
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
+    token: Optional[str] = Query(None, description="Auth token for image/file requests"),
+    db: AsyncSession = Depends(get_db),
 ) -> User:
     """
     Get current authenticated user from JWT token.
@@ -50,6 +51,7 @@ async def get_current_user(
 
     Args:
         credentials: HTTP Authorization credentials (Bearer token)
+        token_query: Optional token from query parameters (for images/downloads)
         db: Database session
 
     Returns:
@@ -58,7 +60,12 @@ async def get_current_user(
     Raises:
         HTTPException: 401 if token is invalid or user not found
     """
-    token = credentials.credentials
+    # 1. Get token source
+    jwt_token = None
+    if credentials:
+        jwt_token = credentials.credentials
+    elif token:
+        jwt_token = token
 
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -66,12 +73,13 @@ async def get_current_user(
         headers={"WWW-Authenticate": "Bearer"},
     )
 
+    if not jwt_token:
+        raise credentials_exception
+
     try:
         # Decode JWT token
         payload = jwt.decode(
-            token,
-            settings.JWT_SECRET_KEY,
-            algorithms=[settings.JWT_ALGORITHM]
+            jwt_token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM]
         )
         user_id: Optional[int] = payload.get("sub")
 
@@ -83,26 +91,20 @@ async def get_current_user(
 
     # Query user from database
     from sqlalchemy import select
-    result = await db.execute(
-        select(User).where(User.id == int(user_id))
-    )
+
+    result = await db.execute(select(User).where(User.id == int(user_id)))
     user = result.scalar_one_or_none()
 
     if user is None:
         raise credentials_exception
 
     if not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Inactive user account"
-        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Inactive user account")
 
     return user
 
 
-async def get_current_active_user(
-    current_user: User = Depends(get_current_user)
-) -> User:
+async def get_current_active_user(current_user: User = Depends(get_current_user)) -> User:
     """
     Verify user is active.
 
@@ -118,16 +120,11 @@ async def get_current_active_user(
         HTTPException: 403 if user is inactive
     """
     if not current_user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Inactive user account"
-        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Inactive user account")
     return current_user
 
 
-async def require_admin(
-    current_user: User = Depends(get_current_user)
-) -> User:
+async def require_admin(current_user: User = Depends(get_current_user)) -> User:
     """
     Require admin privileges.
 
@@ -144,14 +141,13 @@ async def require_admin(
     """
     if not current_user.is_admin:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin privileges required"
+            status_code=status.HTTP_403_FORBIDDEN, detail="Admin privileges required"
         )
     return current_user
 
 
 def get_optional_user(
-    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security)
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
 ) -> Optional[User]:
     """
     Get user if authenticated, None otherwise.

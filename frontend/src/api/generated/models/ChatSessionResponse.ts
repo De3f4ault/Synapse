@@ -3,15 +3,48 @@
 /* tslint:disable */
 /* eslint-disable */
 /**
- * Chat session response.
+ * Chat session response schema.
  */
 export type ChatSessionResponse = {
+    /**
+     * Session ID
+     */
     id: number;
+    /**
+     * Owner user ID
+     */
+    user_id: number;
+    /**
+     * Session title
+     */
     title: string;
-    document_id: (number | null);
+    /**
+     * Associated document ID
+     */
+    document_id?: (number | null);
+    /**
+     * Modules in context
+     */
+    context_modules: Array<string>;
+    /**
+     * Number of messages
+     */
     message_count: number;
-    total_tokens: number;
+    /**
+     * Total tokens used
+     */
+    total_tokens_used: number;
+    /**
+     * Total cost (estimated)
+     */
+    total_cost: number;
+    /**
+     * Creation time
+     */
     created_at: string;
+    /**
+     * Last message time
+     */
     updated_at: string;
 };
 
