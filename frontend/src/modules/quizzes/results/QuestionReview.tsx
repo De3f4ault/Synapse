@@ -8,6 +8,8 @@ import React from "react";
 import { CheckCircle, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+import GlassCard from "@/components/ui/GlassCard";
+
 interface QuestionReviewProps {
     questionText: string;
     userAnswer: string;
@@ -24,9 +26,9 @@ export const QuestionReview: React.FC<QuestionReviewProps> = ({
     explanation,
 }) => {
     return (
-        <div
+        <GlassCard
             className={cn(
-                "bg-[#0c0c12] border rounded-xl p-5",
+                "p-5",
                 isCorrect ? "border-emerald-500/20" : "border-red-500/20"
             )}
         >
@@ -69,6 +71,6 @@ export const QuestionReview: React.FC<QuestionReviewProps> = ({
                     </div>
                 </div>
             </div>
-        </div>
+        </GlassCard>
     );
 };

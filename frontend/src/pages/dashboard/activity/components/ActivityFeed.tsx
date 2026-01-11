@@ -25,7 +25,7 @@ export function ActivityFeed({ className }: ActivityFeedProps) {
     // Filter activities
     const filteredActivities = activityLog.filter((activity) => {
         if (filter === "all") return true;
-        return activity.type.toLowerCase().includes(filter);
+        return activity.activity_type.toLowerCase().includes(filter);
     });
 
     return (

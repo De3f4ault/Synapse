@@ -165,7 +165,7 @@ export function AuroraBackground({
             />
 
             {/* Content Layer - Z-index ensures content is above glow */}
-            <div className="relative z-10 w-full h-full flex flex-col">
+            <div className="relative z-10 w-full flex-1 flex flex-col">
                 {children}
             </div>
         </div>

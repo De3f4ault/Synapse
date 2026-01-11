@@ -36,6 +36,28 @@ export enum DocumentFormat {
 }
 
 // ============================================================================
+// Augmented Types (for UI)
+// ============================================================================
+
+export interface EnhancedDocument extends DocumentResponse {
+    sector: string;
+    type: string; // extension (pdf, docx, etc.)
+    size: string; // formatted size string
+    filename: string; // explicitly declare filename exists (from DocumentResponse)
+
+    // Processing status
+    status?: string; // "uploading" | "processing" | "indexed" | "ready" | "error" | "archived"
+    ocr_performed?: boolean;
+
+    // Productivity fields
+    notes?: string | null;
+    ai_summary?: string | null;
+    reading_progress?: number | null;
+    content_text?: string | null;
+    thumbnail_url?: string | null;
+}
+
+// ============================================================================
 // Upload Types
 // ============================================================================
 

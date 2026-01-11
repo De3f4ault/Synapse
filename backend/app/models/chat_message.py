@@ -16,6 +16,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import Enum as SQLEnum
 
 from .base import Base
+from app.db.types import Vector
 
 
 class MessageRole(str, enum.Enum):
@@ -84,6 +85,14 @@ class ChatMessage(Base):
     )
 
     content: Mapped[str] = mapped_column(Text, nullable=False, doc="Message content")
+
+    # Embedding for hybrid search (Q+A pair embedding for assistant messages)
+    embedding: Mapped[Optional[list[float]]] = mapped_column(
+        Vector(384),  # MiniLM-L6-v2 dimension
+        nullable=True,
+        default=None,
+        doc="Vector embedding (384-dim) for semantic search",
+    )
 
     # AI Metadata (for assistant messages)
     tokens: Mapped[int] = mapped_column(
@@ -163,3 +172,34 @@ class ChatMessage(Base):
         if self.parent is None:
             return False
         return len(self.parent.children) > 1
+
+    @property
+    def embedding_text(self) -> str:
+        """
+        Generate rich text for embedding.
+
+        Strategy (Q+A pair embedding with session context):
+        - Session title provides topical prior
+        - User question (parent) provides intent
+        - Assistant answer provides meaning
+
+        Example output:
+            Session: React Hooks Study
+            Q: What is photosynthesis?
+            A: Photosynthesis is the process by which plants...
+        """
+        parts = []
+
+        # Add session title as contextual prior (if available)
+        if hasattr(self, "session") and self.session and self.session.title:
+            parts.append(f"Session: {self.session.title}")
+
+        # For assistant messages: include parent question for full Q+A context
+        if self.role == MessageRole.ASSISTANT and self.parent:
+            parts.append(f"Q: {self.parent.content}")
+            parts.append(f"A: {self.content}")
+        else:
+            # User messages or standalone: just the content
+            parts.append(self.content)
+
+        return "\n".join(parts)

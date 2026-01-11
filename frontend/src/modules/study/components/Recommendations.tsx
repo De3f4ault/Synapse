@@ -4,10 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Sparkles, TrendingDown, Target, PlayCircle } from "lucide-react";
-import {
-  getRecommendationsApiV1StudyRecommendationsGet,
-  StudyService,
-} from "@/api/generated";
+import { StudyService } from "@/api/generated";
 import { QUERY_KEYS } from "@/lib/constants";
 import type { StudyItemResponse } from "@/api/generated";
 
@@ -32,7 +29,7 @@ export function Recommendations({
     refetch,
   } = useQuery({
     queryKey: [QUERY_KEYS.STUDY, "recommendations", limit],
-    queryFn: () => getRecommendationsApiV1StudyRecommendationsGet({ limit }),
+    queryFn: () => StudyService.getRecommendationsApiV1StudyRecommendationsGet(limit),
   });
 
   if (isLoading) {

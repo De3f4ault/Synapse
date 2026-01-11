@@ -7,8 +7,10 @@ import { ChatInputBox } from "./ChatInputBox";
 import { SearchBar } from "../../search/components/SearchBar";
 import { scrollToOccurrence } from "../../search/utils/scrollToOccurrence";
 import { useConversationSearch } from "../../search/hooks";
+
 import type { ChatMessageResponse } from "@/api/generated";
 import type { SearchOccurrence } from "../../search/types";
+
 
 interface ChatConversationViewProps {
   messages: ChatMessageResponse[];
@@ -35,7 +37,9 @@ export function ChatConversationView({
   streamingContent = "",
   streamingThinking = "",
 }: ChatConversationViewProps) {
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
   const [searchParams, setSearchParams] = useSearchParams();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const hasAutoActivated = useRef(false);
@@ -138,22 +142,25 @@ export function ChatConversationView({
       : null;
 
   return (
-    <div className="flex h-full flex-col">
-      {/* Search Bar */}
+    <div className="flex flex-col h-full w-full">
+      {/* Search Bar - Fixed at top when open */}
       {isSearchOpen && (
-        <SearchBar
-          state={search.state}
-          occurrences={search.state.occurrences}
-          onQueryChange={search.setQuery}
-          onOptionsChange={search.setOptions}
-          onNext={search.goToNext}
-          onPrev={search.goToPrev}
-          onClose={handleCloseSearch}
-          onJumpTo={search.goToOccurrence}
-        />
+        <div className="shrink-0">
+          <SearchBar
+            state={search.state}
+            occurrences={search.state.occurrences}
+            onQueryChange={search.setQuery}
+            onOptionsChange={search.setOptions}
+            onNext={search.goToNext}
+            onPrev={search.goToPrev}
+            onClose={handleCloseSearch}
+            onJumpTo={search.goToOccurrence}
+          />
+        </div>
       )}
 
-      <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-hide px-4 md:px-8 py-8">
+      {/* Messages Area - Scrollable, takes remaining space */}
+      <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-hide px-4 md:px-8 py-8 min-h-0">
         <div className="max-w-4xl mx-auto space-y-6">
           <div className="flex justify-end gap-2 mb-2">
             {/* Search Toggle Button */}
@@ -199,7 +206,8 @@ export function ChatConversationView({
         </div>
       </div>
 
-      <div className="px-4 md:px-8 pb-6 pt-2">
+      {/* Input Area - Fixed at bottom */}
+      <div className="shrink-0 px-4 md:px-8 pb-6 pt-2 bg-gradient-to-t from-[#050505] via-[#050505]/80 to-transparent">
         <div className="max-w-4xl mx-auto">
           <ChatInputBox
             message={message}

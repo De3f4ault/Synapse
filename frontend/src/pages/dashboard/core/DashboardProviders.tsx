@@ -11,7 +11,6 @@
 
 import React, { useEffect, useRef } from "react";
 import { useInsightsActions } from "../insights";
-import { useAssistantActions } from "../assistant";
 import { useDashboardStore } from "./state";
 
 interface DashboardProvidersProps {

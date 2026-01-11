@@ -52,6 +52,7 @@ export function useDocuments() {
         ai_summary: (doc as unknown as { ai_summary?: string }).ai_summary || null,
         reading_progress: (doc as unknown as { reading_progress?: number }).reading_progress || 0,
         content_text: (doc as unknown as { content_text?: string }).content_text || null,
+        thumbnail_url: (doc as unknown as { thumbnail_url?: string }).thumbnail_url || null,
     }));
 
     return {

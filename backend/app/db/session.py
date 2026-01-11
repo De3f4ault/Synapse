@@ -21,6 +21,9 @@ engine = create_async_engine(
     future=True,
     pool_pre_ping=True,
     pool_recycle=300,
+    pool_size=10,  # Base pool size
+    max_overflow=20,  # Additional connections when needed
+    pool_timeout=30,  # Wait up to 30s for a connection
     # Set search_path at connection level
     connect_args={"server_settings": {"search_path": f"{settings.DATABASE_SCHEMA}, public"}},
 )

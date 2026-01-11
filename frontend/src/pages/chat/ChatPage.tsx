@@ -25,7 +25,7 @@ import { useIsVoiceActive, LiveVoiceOverlay } from "./voice";
 
 // Layout and providers
 import { ChatProviders } from "./ChatProviders";
-import { GridPattern } from "@/components/ui/grid-pattern";
+import { AuroraBackground } from "@/shared/ui";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { MenuIcon, PanelLeftIcon } from "lucide-react";
@@ -61,7 +61,7 @@ export const ChatPage: React.FC = () => {
 
   // Load sidebar state from localStorage
   useEffect(() => {
-    const saved = localStorage.getItem("sidebarCollapsed");
+    const saved = localStorage.getItem("chatSidebarCollapsed");
     if (saved) {
       setSidebarCollapsed(JSON.parse(saved));
     }
@@ -109,7 +109,7 @@ export const ChatPage: React.FC = () => {
   const toggleSidebar = () => {
     const newState = !sidebarCollapsed;
     setSidebarCollapsed(newState);
-    localStorage.setItem("sidebarCollapsed", JSON.stringify(newState));
+    localStorage.setItem("chatSidebarCollapsed", JSON.stringify(newState));
   };
 
   // Loading state
@@ -125,62 +125,67 @@ export const ChatPage: React.FC = () => {
   }
 
   // ==================== RENDER ====================
+  // Pattern copied EXACTLY from DocumentsHub.tsx which works correctly
 
   return (
     <ChatProviders sessionId={sessionId}>
-      <div className="flex h-screen overflow-hidden nm-bg nm-constellation-bg">
-        {/* Desktop Sidebar - Retractable */}
-        <div
-          className={cn(
-            "hidden md:block transition-all duration-300 ease-in-out",
-            sidebarCollapsed ? "w-0" : "w-64",
-          )}
-        >
-          <div className={cn("h-full", sidebarCollapsed && "opacity-0")}>
-            <ChatSidebar currentSessionId={sessionId} />
-          </div>
-        </div>
-
-        {/* Mobile Sidebar (Drawer) */}
-        <Sheet open={mobileSidebarOpen} onOpenChange={setMobileSidebarOpen}>
-          <SheetContent
-            side="left"
-            className="w-64 p-0 border-none [&>button]:hidden"
+      <AuroraBackground className="fixed inset-0 min-h-screen flex flex-col pt-16" fixed>
+        <div className="flex flex-1 overflow-hidden">
+          {/* Desktop Sidebar - Standardized Collapsible Pattern */}
+          <div
+            className={cn(
+              "hidden lg:block transition-all duration-300 ease-in-out relative z-10",
+              sidebarCollapsed ? "w-0" : "w-64",
+            )}
           >
-            <ChatSidebar currentSessionId={sessionId} />
-          </SheetContent>
-        </Sheet>
-
-        {/* Main Content Area */}
-        <div className="flex flex-1 flex-col overflow-hidden relative">
-          {/* Floating Header Actions */}
-          <div className="absolute top-4 left-4 z-50 flex items-center gap-2 pointer-events-none">
-            {/* Desktop Toggle */}
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={toggleSidebar}
-              className="hidden md:flex pointer-events-auto hover:bg-muted/50 rounded-full"
-            >
-              <PanelLeftIcon className="size-5 text-muted-foreground" />
-            </Button>
-
-            {/* Mobile Hamburger */}
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setMobileSidebarOpen(true)}
-              className="md:hidden pointer-events-auto hover:bg-muted/50 rounded-full"
-            >
-              <MenuIcon className="size-5 text-muted-foreground" />
-            </Button>
+            <div className={cn("h-full overflow-hidden", sidebarCollapsed && "opacity-0")}>
+              <ChatSidebar
+                currentSessionId={sessionId}
+                className="w-full h-full"
+              />
+            </div>
           </div>
 
-          {/* Chat Interface with Grid Background */}
-          <div className="flex-1 overflow-hidden relative">
-            <GridPattern className="pointer-events-none" />
+          {/* Mobile Sidebar (Drawer) */}
+          <Sheet open={mobileSidebarOpen} onOpenChange={setMobileSidebarOpen}>
+            <SheetContent
+              side="left"
+              className="w-64 p-0 border-none [&>button]:hidden bg-[#050505]/95 backdrop-blur-xl"
+            >
+              <ChatSidebar
+                currentSessionId={sessionId}
+                className="w-64"
+              />
+            </SheetContent>
+          </Sheet>
 
-            <div className="relative z-10 h-full">
+          {/* Main Content Area */}
+          <div className="flex-1 flex flex-col overflow-hidden relative z-0">
+            {/* Standardized Floating Sidebar Toggle */}
+            <div className="absolute top-4 left-4 z-50 flex items-center gap-2 pointer-events-none">
+              {/* Desktop Toggle */}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={toggleSidebar}
+                className="hidden lg:flex pointer-events-auto hover:bg-white/10 text-slate-400 hover:text-white rounded-xl transition-colors"
+              >
+                <PanelLeftIcon className="size-5" />
+              </Button>
+
+              {/* Mobile Hamburger */}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setMobileSidebarOpen(true)}
+                className="lg:hidden pointer-events-auto hover:bg-white/10 text-slate-400 hover:text-white rounded-xl transition-colors"
+              >
+                <MenuIcon className="size-5" />
+              </Button>
+            </div>
+
+            {/* Chat Content - with proper padding like DocumentsHub */}
+            <div className="flex-1 overflow-hidden p-4 lg:p-0 relative">
               <ChatMain sessionId={sessionId} />
             </div>
           </div>
@@ -191,7 +196,7 @@ export const ChatPage: React.FC = () => {
           isOpen={voiceOverlayOpen || isVoiceActive}
           onClose={() => setVoiceOverlayOpen(false)}
         />
-      </div>
+      </AuroraBackground>
     </ChatProviders>
   );
 };

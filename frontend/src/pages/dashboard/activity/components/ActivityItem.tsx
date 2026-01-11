@@ -19,16 +19,10 @@ import {
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
+import type { ActivityLogEntry } from "../hooks/useSessionTracking";
 
 interface ActivityItemProps {
-    activity: {
-        id: number;
-        type: string;
-        title: string;
-        description: string;
-        timestamp: string;
-        metadata?: Record<string, unknown>;
-    };
+    activity: ActivityLogEntry;
     index: number;
 }
 
@@ -36,6 +30,7 @@ export function ActivityItem({ activity, index }: ActivityItemProps) {
     const getIcon = (type: string) => {
         switch (type) {
             case "review":
+            case "flashcard":
                 return Zap;
             case "document":
                 return FileText;
@@ -52,10 +47,15 @@ export function ActivityItem({ activity, index }: ActivityItemProps) {
         }
     };
 
-    const Icon = getIcon(activity.type);
+    const Icon = getIcon(activity.activity_type);
     const timeAgo = formatDistanceToNow(new Date(activity.timestamp), {
         addSuffix: true,
     });
+
+    // Generate title from resource_title or activity_type
+    const title = activity.resource_title || `${activity.activity_type} in ${activity.module}`;
+    // Generate description from module
+    const description = `${activity.module} activity`;
 
     return (
         <div
@@ -67,7 +67,7 @@ export function ActivityItem({ activity, index }: ActivityItemProps) {
         >
             <div className={cn(
                 "w-8 h-8 rounded-lg nm-inset flex items-center justify-center shrink-0",
-                activity.type === "achievement" ? "text-yellow-400" : "text-cyan-400"
+                activity.activity_type === "achievement" ? "text-yellow-400" : "text-cyan-400"
             )}>
                 <Icon className="w-4 h-4" />
             </div>
@@ -75,16 +75,17 @@ export function ActivityItem({ activity, index }: ActivityItemProps) {
             <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2">
                     <h4 className="text-sm font-medium text-slate-200 truncate">
-                        {activity.title}
+                        {title}
                     </h4>
                     <span className="text-[10px] text-slate-500 whitespace-nowrap font-mono">
                         {timeAgo}
                     </span>
                 </div>
                 <p className="text-xs text-slate-400 line-clamp-2 mt-0.5">
-                    {activity.description}
+                    {description}
                 </p>
             </div>
         </div>
     );
 }
+

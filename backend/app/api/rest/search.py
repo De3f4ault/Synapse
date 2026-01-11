@@ -5,6 +5,7 @@ Unified search with:
 - PostgreSQL pg_search BM25 (keyword matching via ParadeDB)
 - Semantic search (Qdrant or pgvector)
 - Hybrid ranking with RRF
+- NEW: Unified Search Intelligence Bus
 """
 
 from typing import List, Optional
@@ -19,9 +20,15 @@ from app.services.search.hybrid_v2 import HybridSearchServiceV2, SearchMode
 from app.services.search.ranking import HybridRankingService
 from app.utils.logging import get_logger
 
+# Import unified search router
+from app.api.rest.unified_search import router as unified_router
+
 logger = get_logger(__name__)
 
 router = APIRouter()
+
+# Include the unified search endpoints under /unified
+router.include_router(unified_router, tags=["Unified Search"])
 
 
 # ============================================================================

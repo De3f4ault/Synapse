@@ -15,6 +15,7 @@ import structlog
 from pathlib import Path
 
 from app.core.ai.agents.base_agent import BaseAgent, AgentConfig, AgentCapability
+from app.core.ai.agents.middleware import GroundingMiddleware
 from app.core.ai.tools.registry import ToolRegistry
 from langchain_core.tools import BaseTool
 
@@ -153,6 +154,10 @@ class AgentFactory:
         # Load tools from registry
         tools = self._load_tools(all_tool_names)
 
+        # Combine default middleware with explicitly provided middleware
+        default_middleware = base_config.get("default_middleware", [])
+        all_middleware = default_middleware + middleware_instances
+
         # Build AgentConfig
         return AgentConfig(
             name=agent_name,
@@ -167,7 +172,7 @@ class AgentFactory:
             timeout_seconds=base_config.get("timeout_seconds", 120),
             retry_attempts=base_config.get("retry_attempts", 3),
             tools=tools,
-            middleware=middleware_instances,
+            middleware=all_middleware,
             enable_memory=base_config.get("enable_memory", False),
             memory_type=base_config.get("memory_type", "buffer"),
             verbose=base_config.get("verbose", False),
@@ -199,6 +204,9 @@ class AgentFactory:
                     "search_notes",  # RAG: Search user's notes
                     "search_flashcards",  # RAG: Search flashcards
                     "analyze_document",  # RAG: Deep document analysis
+                ],
+                "default_middleware": [
+                    GroundingMiddleware(),  # Inject RAG evidence for grounding
                 ],
             },
             "document": {

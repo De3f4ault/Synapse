@@ -154,7 +154,7 @@ export function ChatSidebar({ currentSessionId, className }: ChatSidebarProps) {
   return (
     <GlassCard
       className={cn(
-        "flex h-full w-full flex-col bg-zinc-950/40 backdrop-blur-3xl border-r border-white/10 rounded-none shadow-2xl",
+        "flex h-full w-full flex-col bg-zinc-950/40 backdrop-blur-3xl border-r border-white/10 rounded-none shadow-2xl transition-all duration-300 ease-in-out",
         className,
       )}
     >

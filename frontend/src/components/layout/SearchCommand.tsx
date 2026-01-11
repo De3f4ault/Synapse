@@ -23,6 +23,8 @@ import {
   Files,
   Sparkles,
   Target,
+  AlertTriangle,
+  Brain,
 } from "lucide-react";
 
 // API Service imports
@@ -31,7 +33,6 @@ import {
   NotesService,
   FlashcardsService,
   QuizzesService,
-  SearchService,
 } from "@/api/generated";
 import type {
   DocumentResponse,
@@ -39,6 +40,9 @@ import type {
   DeckResponse,
   QuizResponse,
 } from "@/api/generated";
+
+// Unified Search (Intelligence Bus)
+import { useCmdKSearch } from "@/api/unified-search";
 
 /**
  * ENHANCED Search Command Palette
@@ -57,8 +61,9 @@ interface SearchResult {
   description?: string;
   icon: React.ReactNode;
   href: string;
-  category: "navigation" | "content" | "actions";
-  resourceType?: "document" | "note" | "deck" | "quiz";
+  category: "navigation" | "content" | "actions" | "intelligence";
+  resourceType?: "document" | "note" | "deck" | "quiz" | "concept";
+  isWeakArea?: boolean; // From GIE
 }
 
 export function SearchCommand() {
@@ -98,32 +103,15 @@ export function SearchCommand() {
     staleTime: 1000 * 60 * 5,
   });
 
-  // Hybrid search query (server-side BM25 + vector search)
-  const { data: hybridNotes, isLoading: isSearching } = useQuery({
-    queryKey: ["hybrid-search-notes", search],
-    queryFn: () =>
-      SearchService.searchHybridNotesApiV1SearchHybridNotesGet(
-        search,
-        10,
-        0.5,
-        0.5
-      ),
-    enabled: commandPaletteOpen && search.length >= 2,
-    staleTime: 1000 * 30, // Cache for 30 seconds
-  });
-
-  const { data: hybridFlashcards } = useQuery({
-    queryKey: ["hybrid-search-flashcards", search],
-    queryFn: () =>
-      SearchService.searchHybridFlashcardsApiV1SearchHybridFlashcardsGet(
-        search,
-        10,
-        0.5,
-        0.5
-      ),
-    enabled: commandPaletteOpen && search.length >= 2,
-    staleTime: 1000 * 30,
-  });
+  // ============================================================================
+  // UNIFIED SEARCH (Intelligence Bus)
+  // Uses intent=navigate for CMD+K, respects role and assertion_type
+  // ============================================================================
+  const {
+    navigationResults: unifiedNavResults,
+    diagnosticResults: unifiedDiagResults,
+    // isLoading can be used for loading states in CMD+K
+  } = useCmdKSearch(search, commandPaletteOpen && search.length >= 2);
 
   // Navigation items
   const navigationItems: SearchResult[] = [
@@ -274,39 +262,84 @@ export function SearchCommand() {
   ];
 
   // Transform resources into searchable items
+  // Uses UNIFIED SEARCH when searching, falls back to resource lists otherwise
   const contentItems: SearchResult[] = useMemo(() => {
     const items: SearchResult[] = [];
 
-    // If we have hybrid search results, prioritize those when searching
-    if (search.length >= 2 && hybridNotes?.results) {
-      items.push(
-        ...hybridNotes.results.map((note) => ({
-          id: `hybrid-note-${note.id}`,
-          title: note.title || "Untitled Note",
-          description: `🔍 Note • Score: ${(note.hybrid_score * 100).toFixed(1)}% • BM25: ${note.bm25_rank}, Vector: ${note.vector_rank}`,
-          icon: <StickyNote className="h-4 w-4" />,
-          href: `/notes/${note.id}`,
-          category: "content" as const,
-          resourceType: "note" as const,
-        }))
-      );
+    // ========================================================================
+    // UNIFIED SEARCH RESULTS (Intelligence Bus)
+    // These are already filtered by role=navigation, assertion_type=factual
+    // ========================================================================
+    if (search.length >= 2 && unifiedNavResults.length > 0) {
+      for (const result of unifiedNavResults) {
+        const entityType = result.id.type;
+        const entityId = result.id.id;
+
+        // Map entity type to icon and href
+        let icon: React.ReactNode = <Files className="h-4 w-4" />;
+        let href = "/";
+        let resourceType: SearchResult["resourceType"] = "document";
+
+        switch (entityType) {
+          case "note":
+            icon = <StickyNote className="h-4 w-4" />;
+            href = `/notes/${entityId}`;
+            resourceType = "note";
+            break;
+          case "flashcard":
+            icon = <BookOpen className="h-4 w-4" />;
+            href = result.url || `/flashcards`;
+            resourceType = "deck";
+            break;
+          case "document":
+            icon = <Files className="h-4 w-4" />;
+            href = `/documents/${entityId}`;
+            resourceType = "document";
+            break;
+        }
+
+        // Build description with scores for transparency
+        const rrf = result.scores.rrf ?? result.scores.hybrid_score;
+        const scoreStr = rrf ? ` • ${(rrf * 100).toFixed(0)}%` : "";
+
+        items.push({
+          id: `unified-${entityType}-${entityId}`,
+          title: result.title,
+          description: `${entityType}${scoreStr}`,
+          icon,
+          href,
+          category: "content",
+          resourceType,
+        });
+      }
     }
 
-    if (search.length >= 2 && hybridFlashcards?.results) {
-      items.push(
-        ...hybridFlashcards.results.map((fc) => ({
-          id: `hybrid-fc-${fc.id}`,
-          title: fc.front_text.slice(0, 50),
-          description: `🔍 Flashcard • Score: ${(fc.hybrid_score * 100).toFixed(1)}%`,
-          icon: <BookOpen className="h-4 w-4" />,
-          href: `/flashcards/${fc.deck_id}`,
-          category: "content" as const,
-          resourceType: "deck" as const,
-        }))
-      );
+    // ========================================================================
+    // DIAGNOSTIC RESULTS (Weak Areas from GIE)
+    // Show as intelligence hints, not primary navigation
+    // ========================================================================
+    if (search.length >= 2 && unifiedDiagResults.length > 0) {
+      for (const result of unifiedDiagResults) {
+        const isWeak = result.signals.is_weak_area === true;
+        const mastery = result.scores.mastery;
+        const masteryPct = mastery != null ? `${(mastery * 100).toFixed(0)}%` : "";
+
+        items.push({
+          id: `diag-${result.id.id}`,
+          title: result.title,
+          description: isWeak
+            ? `⚠️ Weak area (${masteryPct} mastery)`
+            : `📊 ${masteryPct} mastery`,
+          icon: isWeak ? <AlertTriangle className="h-4 w-4 text-amber-500" /> : <Brain className="h-4 w-4" />,
+          href: `/study?focus=${encodeURIComponent(String(result.id.id))}`,
+          category: "intelligence",
+          resourceType: "concept",
+          isWeakArea: isWeak,
+        });
+      }
     }
 
-    // When not searching or no hybrid results, show regular content
+    // When not searching or no unified results, show regular content as fallback
     if (search.length < 2 || items.length === 0) {
       // Documents
       if (Array.isArray(documents)) {
@@ -370,7 +403,7 @@ export function SearchCommand() {
     }
 
     return items;
-  }, [documents, notes, decks, quizzes, search, hybridNotes, hybridFlashcards]);
+  }, [documents, notes, decks, quizzes, search, unifiedNavResults, unifiedDiagResults]);
 
   // Combine all items
   const allItems = [
@@ -402,6 +435,9 @@ export function SearchCommand() {
   const actionResults = filteredResults.filter((r) => r.category === "actions");
   const contentResults = filteredResults.filter(
     (r) => r.category === "content",
+  );
+  const intelligenceResults = filteredResults.filter(
+    (r) => r.category === "intelligence",
   );
 
   // Keyboard shortcut listener
@@ -478,6 +514,33 @@ export function SearchCommand() {
           <>
             <CommandGroup heading="Your Content">
               {contentResults.map((item) => (
+                <CommandItem
+                  key={item.id}
+                  value={item.title}
+                  onSelect={() => handleSelect(item.href)}
+                  className="flex items-center gap-2 cursor-pointer"
+                >
+                  {item.icon}
+                  <div className="flex-1">
+                    <div className="font-medium">{item.title}</div>
+                    {item.description && (
+                      <div className="text-xs text-muted-foreground">
+                        {item.description}
+                      </div>
+                    )}
+                  </div>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+            {(intelligenceResults.length > 0 || actionResults.length > 0) && <CommandSeparator />}
+          </>
+        )}
+
+        {/* Intelligence (Weak Areas, Learning Insights from GIE) */}
+        {intelligenceResults.length > 0 && (
+          <>
+            <CommandGroup heading="Learning Insights">
+              {intelligenceResults.map((item) => (
                 <CommandItem
                   key={item.id}
                   value={item.title}

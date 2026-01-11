@@ -10,33 +10,10 @@
 DROP INDEX IF EXISTS developer_schema.notes_bm25_idx;
 DROP INDEX IF EXISTS developer_schema.flashcards_bm25_idx;
 -- Create BM25 index on notes (title + content)
-CALL paradedb.create_bm25_index(
-    index_name => 'notes_bm25_idx',
-    schema_name => 'developer_schema',
-    table_name => 'notes',
-    key_field => 'id',
-    text_fields => paradedb.field(
-        'title',
-        tokenizer => paradedb.tokenizer('en_stem')
-    ) || paradedb.field(
-        'content',
-        tokenizer => paradedb.tokenizer('en_stem')
-    )
-);
+-- pg_search v0.20+ syntax: CREATE INDEX ... USING bm25()
+CREATE INDEX notes_bm25_idx ON developer_schema.notes USING bm25 (id, title, content) WITH (key_field = 'id');
 -- Create BM25 index on flashcards (front_text + back_text)
-CALL paradedb.create_bm25_index(
-    index_name => 'flashcards_bm25_idx',
-    schema_name => 'developer_schema',
-    table_name => 'flashcards',
-    key_field => 'id',
-    text_fields => paradedb.field(
-        'front_text',
-        tokenizer => paradedb.tokenizer('en_stem')
-    ) || paradedb.field(
-        'back_text',
-        tokenizer => paradedb.tokenizer('en_stem')
-    )
-);
+CREATE INDEX flashcards_bm25_idx ON developer_schema.flashcards USING bm25 (id, front_text, back_text) WITH (key_field = 'id');
 -- ============================================
 -- 2. VECTOR INDEXES (vectorscale / DiskANN)
 -- ============================================

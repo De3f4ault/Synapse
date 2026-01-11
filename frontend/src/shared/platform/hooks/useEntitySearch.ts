@@ -31,7 +31,17 @@ export function useEntitySearch(query: string, options: UseEntitySearchOptions =
                 types.forEach(t => params.append("types", t));
             }
 
-            const token = await OpenAPI.TOKEN();
+            // Handle TOKEN being either a string or a resolver function
+            let token: string | undefined;
+            if (typeof OpenAPI.TOKEN === 'function') {
+                token = await OpenAPI.TOKEN({
+                    method: 'GET',
+                    url: `${OpenAPI.BASE}/api/v1/entities/search`,
+                });
+            } else {
+                token = OpenAPI.TOKEN;
+            }
+
             const headers: HeadersInit = {
                 "Content-Type": "application/json",
             };

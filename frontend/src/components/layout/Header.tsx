@@ -32,6 +32,10 @@ import {
   ClipboardList,
   Upload,
   Share2,
+  StickyNote,
+  Files,
+  Loader2,
+  Brain,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -52,6 +56,7 @@ import { Button } from "@/components/ui/button";
 import { useAuthStore } from "@/stores/authStore";
 import { useThemeStore } from "@/stores/themeStore";
 import { useWebSocket } from "@/api/websocket/hooks/useWebSocket";
+import { useCmdKSearch } from "@/api/unified-search";
 
 interface HeaderProps {
   className?: string;
@@ -209,46 +214,14 @@ export function Header({ className }: HeaderProps) {
             </div>
           </button>
 
-          {/* Mobile App Launcher */}
+          {/* Mobile App Launcher with Inline Search */}
           <AnimatePresence>
             {launcherOpen && (
-              <motion.div
-                initial={{ opacity: 0, y: -10, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                transition={{ duration: 0.2 }}
-                className="absolute top-16 left-0 w-[300px] bg-[#0a0a0f]/95 border border-white/10 rounded-2xl shadow-2xl z-[100] overflow-hidden backdrop-blur-3xl"
-              >
-                <div className="p-3 border-b border-white/5">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
-                    <input
-                      type="text"
-                      placeholder="Search apps..."
-                      className="w-full bg-white/5 rounded-md py-1.5 pl-8 pr-3 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/50 transition-all border border-transparent focus:border-cyan-500/20"
-                    />
-                  </div>
-                </div>
-                <div className="p-3 grid grid-cols-3 gap-2">
-                  {navItems.map((item) => {
-                    const Icon = item.icon;
-                    return (
-                      <button
-                        key={item.href}
-                        onClick={() => navigate(item.href)}
-                        className="flex flex-col items-center gap-1.5 p-2 rounded-lg hover:bg-white/5 transition-colors group"
-                      >
-                        <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-slate-400 group-hover:bg-cyan-500/20 group-hover:text-cyan-400 transition-colors border border-white/5 group-hover:border-cyan-500/30">
-                          <Icon className="w-5 h-5" />
-                        </div>
-                        <span className="text-[10px] font-medium text-slate-500 group-hover:text-slate-300">
-                          {item.label}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </motion.div>
+              <MobileLauncherWithSearch
+                navItems={navItems}
+                navigate={navigate}
+                onClose={() => setLauncherOpen(false)}
+              />
             )}
           </AnimatePresence>
         </div>
@@ -303,23 +276,8 @@ export function Header({ className }: HeaderProps) {
 
         {/* 3. Right Actions */}
         <div className="flex items-center gap-3 z-50 pointer-events-auto bg-black/20 backdrop-blur-xl border border-white/10 rounded-full px-4 py-2 shadow-2xl">
-          {/* Search */}
-          <div
-            className="hidden md:flex items-center bg-white/5 border border-transparent rounded-full px-3 py-1.5 hover:bg-white/10 transition-all cursor-text group"
-            onClick={() =>
-              document.dispatchEvent(
-                new KeyboardEvent("keydown", { key: "k", metaKey: true }),
-              )
-            }
-          >
-            <Search className="w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300 mr-2" />
-            <span className="text-xs text-slate-500 group-hover:text-slate-300 font-medium mr-2">
-              Search
-            </span>
-            <kbd className="text-[9px] font-mono bg-black/40 px-1.5 rounded border border-white/10 text-slate-500">
-              ⌘K
-            </kbd>
-          </div>
+          {/* Inline Search */}
+          <DesktopInlineSearch navigate={navigate} />
 
           {/* Quick Actions */}
           <DropdownMenu>
@@ -472,5 +430,381 @@ export function Header({ className }: HeaderProps) {
         )}
       </AnimatePresence>
     </>
+  );
+}
+
+// Mobile Launcher with Inline Search
+// =============================================================================
+
+interface MobileLauncherProps {
+  navItems: NavItem[];
+  navigate: (path: string) => void;
+  onClose: () => void;
+}
+
+function MobileLauncherWithSearch({ navItems, navigate, onClose }: MobileLauncherProps) {
+  const [mobileSearch, setMobileSearch] = useState("");
+
+  // Use the unified search API
+  const {
+    navigationResults,
+    diagnosticResults,
+    isLoading,
+  } = useCmdKSearch(mobileSearch, mobileSearch.length >= 2);
+
+  const hasResults = navigationResults.length > 0 || diagnosticResults.length > 0;
+
+  const handleResultClick = (href: string) => {
+    onClose();
+    navigate(href);
+  };
+
+  // Map entity type to icon
+  const getIcon = (type: string) => {
+    switch (type) {
+      case "note":
+        return <StickyNote className="w-4 h-4" />;
+      case "document":
+        return <Files className="w-4 h-4" />;
+      case "flashcard":
+        return <BookOpen className="w-4 h-4" />;
+      default:
+        return <Search className="w-4 h-4" />;
+    }
+  };
+
+  // Map entity to href
+  const getHref = (result: typeof navigationResults[0]) => {
+    const type = result.id.type;
+    const id = result.id.id;
+    switch (type) {
+      case "note":
+        return `/notes/${id}`;
+      case "document":
+        return `/documents/${id}`;
+      case "flashcard":
+        return result.url || "/flashcards";
+      default:
+        return "/";
+    }
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -10, scale: 0.95 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: -10, scale: 0.95 }}
+      transition={{ duration: 0.2 }}
+      className="absolute top-16 left-0 w-[300px] bg-[#0a0a0f]/95 border border-white/10 rounded-2xl shadow-2xl z-[100] overflow-hidden backdrop-blur-3xl max-h-[70vh] flex flex-col"
+    >
+      {/* Search Input */}
+      <div className="p-3 border-b border-white/5 flex-shrink-0">
+        <div className="relative">
+          {isLoading ? (
+            <Loader2 className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-cyan-500 animate-spin" />
+          ) : (
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
+          )}
+          <input
+            type="text"
+            placeholder="Search everything..."
+            value={mobileSearch}
+            onChange={(e) => setMobileSearch(e.target.value)}
+            className="w-full bg-white/5 rounded-md py-1.5 pl-8 pr-3 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/50 transition-all border border-transparent focus:border-cyan-500/20"
+            autoFocus
+          />
+        </div>
+      </div>
+
+      {/* Search Results (when searching) */}
+      {mobileSearch.length >= 2 && hasResults && (
+        <div className="flex-1 overflow-y-auto max-h-[200px] border-b border-white/5">
+          <div className="p-2 space-y-1">
+            <div className="px-2 py-1 text-[10px] font-medium text-slate-500 uppercase tracking-wider">
+              Results
+            </div>
+            {navigationResults.slice(0, 5).map((result) => (
+              <button
+                key={`${result.id.type}-${result.id.id}`}
+                onClick={() => handleResultClick(getHref(result))}
+                className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 transition-colors text-left"
+              >
+                <div className="p-1.5 rounded-md bg-white/5 text-slate-400">
+                  {getIcon(result.id.type)}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium text-white truncate">
+                    {result.title}
+                  </div>
+                  <div className="text-[10px] text-slate-500 truncate">
+                    {result.id.type} • {result.snippet?.slice(0, 50)}...
+                  </div>
+                </div>
+              </button>
+            ))}
+            {diagnosticResults.slice(0, 3).map((result) => (
+              <button
+                key={`diag-${result.id.id}`}
+                onClick={() => handleResultClick(`/study?focus=${result.id.id}`)}
+                className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 transition-colors text-left"
+              >
+                <div className="p-1.5 rounded-md bg-amber-500/10 text-amber-400">
+                  <Brain className="w-4 h-4" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium text-white truncate">
+                    {result.title}
+                  </div>
+                  <div className="text-[10px] text-amber-400/80">
+                    Learning insight
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* No results */}
+      {mobileSearch.length >= 2 && !hasResults && !isLoading && (
+        <div className="p-4 text-center text-sm text-slate-500 border-b border-white/5">
+          No results for "{mobileSearch}"
+        </div>
+      )}
+
+      {/* App Grid */}
+      <div className="p-3 grid grid-cols-3 gap-2 flex-shrink-0">
+        {navItems.map((item) => {
+          const Icon = item.icon;
+          return (
+            <button
+              key={item.href}
+              onClick={() => handleResultClick(item.href)}
+              className="flex flex-col items-center gap-1.5 p-2 rounded-lg hover:bg-white/5 transition-colors group"
+            >
+              <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-slate-400 group-hover:bg-cyan-500/20 group-hover:text-cyan-400 transition-colors border border-white/5 group-hover:border-cyan-500/30">
+                <Icon className="w-5 h-5" />
+              </div>
+              <span className="text-[10px] font-medium text-slate-500 group-hover:text-slate-300">
+                {item.label}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </motion.div>
+  );
+}
+
+// =============================================================================
+// Desktop Inline Search with Dropdown Results
+// =============================================================================
+
+interface DesktopInlineSearchProps {
+  navigate: (path: string) => void;
+}
+
+function DesktopInlineSearch({ navigate }: DesktopInlineSearchProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [query, setQuery] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Search hook
+  const {
+    navigationResults,
+    diagnosticResults,
+    isLoading,
+  } = useCmdKSearch(query, query.length >= 2);
+
+  const hasResults = navigationResults.length > 0 || diagnosticResults.length > 0;
+
+  // Click outside to close
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsExpanded(false);
+        setQuery("");
+      }
+    };
+    if (isExpanded) document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isExpanded]);
+
+  // Focus input when expanded
+  useEffect(() => {
+    if (isExpanded && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [isExpanded]);
+
+  // ESC to close
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Escape") {
+      setIsExpanded(false);
+      setQuery("");
+    }
+  };
+
+  const handleResultClick = (href: string) => {
+    setIsExpanded(false);
+    setQuery("");
+    navigate(href);
+  };
+
+  // Map entity type to icon
+  const getIcon = (type: string) => {
+    switch (type) {
+      case "note":
+        return <StickyNote className="w-3.5 h-3.5" />;
+      case "document":
+        return <Files className="w-3.5 h-3.5" />;
+      case "flashcard":
+        return <BookOpen className="w-3.5 h-3.5" />;
+      default:
+        return <Search className="w-3.5 h-3.5" />;
+    }
+  };
+
+  // Map entity to href
+  const getHref = (result: typeof navigationResults[0]) => {
+    const type = result.id.type;
+    const id = result.id.id;
+    switch (type) {
+      case "note":
+        return `/notes/${id}`;
+      case "document":
+        return `/documents/${id}`;
+      case "flashcard":
+        return result.url || "/flashcards";
+      default:
+        return "/";
+    }
+  };
+
+  return (
+    <div ref={containerRef} className="relative hidden md:block">
+      {/* Collapsed State - Button */}
+      {!isExpanded && (
+        <button
+          onClick={() => setIsExpanded(true)}
+          className="flex items-center bg-white/5 border border-transparent rounded-full px-3 py-1.5 hover:bg-white/10 transition-all cursor-text group"
+        >
+          <Search className="w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300 mr-2" />
+          <span className="text-xs text-slate-500 group-hover:text-slate-300 font-medium mr-2">
+            Search
+          </span>
+          <kbd className="text-[9px] font-mono bg-black/40 px-1.5 rounded border border-white/10 text-slate-500">
+            ⌘K
+          </kbd>
+        </button>
+      )}
+
+      {/* Expanded State - Input with Dropdown */}
+      {isExpanded && (
+        <div className="relative">
+          {/* Input */}
+          <div className="flex items-center bg-white/10 border border-cyan-500/30 rounded-full px-3 py-1.5 min-w-[280px]">
+            {isLoading ? (
+              <Loader2 className="w-3.5 h-3.5 text-cyan-500 animate-spin mr-2" />
+            ) : (
+              <Search className="w-3.5 h-3.5 text-cyan-400 mr-2" />
+            )}
+            <input
+              ref={inputRef}
+              type="text"
+              placeholder="Search everything..."
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={handleKeyDown}
+              className="bg-transparent text-sm text-white placeholder:text-slate-400 focus:outline-none flex-1"
+            />
+            <button
+              onClick={() => { setIsExpanded(false); setQuery(""); }}
+              className="p-0.5 hover:bg-white/10 rounded transition-colors"
+            >
+              <X className="w-3 h-3 text-slate-400" />
+            </button>
+          </div>
+
+          {/* Dropdown Results */}
+          {query.length >= 2 && (
+            <div className="absolute top-full mt-2 right-0 w-[320px] bg-[#0a0a0f]/95 border border-white/10 rounded-xl shadow-2xl z-[100] overflow-hidden backdrop-blur-3xl max-h-[400px] overflow-y-auto">
+              {isLoading && (
+                <div className="p-4 text-center text-sm text-slate-500">
+                  Searching...
+                </div>
+              )}
+
+              {!isLoading && hasResults && (
+                <div className="p-2">
+                  {/* Navigation Results */}
+                  {navigationResults.length > 0 && (
+                    <>
+                      <div className="px-2 py-1 text-[10px] font-medium text-slate-500 uppercase tracking-wider">
+                        Content
+                      </div>
+                      {navigationResults.slice(0, 6).map((result) => (
+                        <button
+                          key={`${result.id.type}-${result.id.id}`}
+                          onClick={() => handleResultClick(getHref(result))}
+                          className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 transition-colors text-left"
+                        >
+                          <div className="p-1.5 rounded-md bg-white/5 text-slate-400">
+                            {getIcon(result.id.type)}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-medium text-white truncate">
+                              {result.title}
+                            </div>
+                            <div className="text-[10px] text-slate-500 truncate">
+                              {result.id.type}
+                            </div>
+                          </div>
+                        </button>
+                      ))}
+                    </>
+                  )}
+
+                  {/* Diagnostic Results */}
+                  {diagnosticResults.length > 0 && (
+                    <>
+                      <div className="px-2 py-1 mt-2 text-[10px] font-medium text-slate-500 uppercase tracking-wider">
+                        Learning Insights
+                      </div>
+                      {diagnosticResults.slice(0, 3).map((result) => (
+                        <button
+                          key={`diag-${result.id.id}`}
+                          onClick={() => handleResultClick(`/study?focus=${result.id.id}`)}
+                          className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 transition-colors text-left"
+                        >
+                          <div className="p-1.5 rounded-md bg-amber-500/10 text-amber-400">
+                            <Brain className="w-3.5 h-3.5" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-medium text-white truncate">
+                              {result.title}
+                            </div>
+                            <div className="text-[10px] text-amber-400/80">
+                              {result.signals.is_weak_area ? "Weak area" : "Concept"}
+                            </div>
+                          </div>
+                        </button>
+                      ))}
+                    </>
+                  )}
+                </div>
+              )}
+
+              {!isLoading && !hasResults && query.length >= 2 && (
+                <div className="p-4 text-center text-sm text-slate-500">
+                  No results for "{query}"
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   );
 }

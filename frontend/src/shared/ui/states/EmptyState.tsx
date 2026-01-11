@@ -11,6 +11,7 @@
  * - Graph nodes with no connections
  */
 
+import React from "react";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
@@ -132,14 +133,15 @@ export function EmptyState({
     const renderIcon = () => {
         if (!icon) return null;
 
-        // If it's a Lucide icon component
-        if (typeof icon === "function") {
-            const IconComponent = icon as LucideIcon;
-            return <IconComponent className={currentSize.iconSize} />;
+        // If it's already a React Element (e.g. <Icon />), return it
+        if (React.isValidElement(icon)) {
+            return icon;
         }
 
-        // It's already a ReactNode
-        return icon;
+        // If it's a component type (function or object with render), render it
+        // Lucide icons can be functions or forwardRef objects
+        const IconComponent = icon as React.ElementType;
+        return <IconComponent className={currentSize.iconSize} />;
     };
 
     return (

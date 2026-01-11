@@ -65,6 +65,7 @@ export function RetryBoundary({
 
       return () => clearTimeout(timeoutId);
     }
+    return undefined;
   }, [error, retryCount, autoRetry, maxRetries, retryDelay]);
 
   const handleRetry = async () => {

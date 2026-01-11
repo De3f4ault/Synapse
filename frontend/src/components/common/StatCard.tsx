@@ -53,7 +53,6 @@ export function StatCard({
   // Animated counter
   const count = useMotionValue(0);
   const rounded = useTransform(count, (latest) => {
-    const numValue = typeof value === "number" ? value : parseFloat(value) || 0;
     return `${prefix}${latest.toFixed(decimals)}${suffix}`;
   });
 

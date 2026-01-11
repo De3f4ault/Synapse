@@ -69,6 +69,7 @@ export interface EnhancedDocument extends DocumentResponse {
     reading_progress?: number | null;
     // Content fields
     content_text?: string | null;
+    thumbnail_url?: string | null;
 }
 
 // ==================== CORE STATE ====================

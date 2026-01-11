@@ -14,9 +14,12 @@
 
 // Components
 export { WeakAreasList } from "./components";
+export { IntelligencePanel } from "./components";
 
-// Main hook (primary export)
+// Main hooks (primary exports)
 export { useInsights } from "./hooks";
+export { useDashboardIntelligence } from "./hooks";
+export type { DiagnosticInsight, DashboardIntelligenceState } from "./hooks";
 
 // Engine functions (for direct use or testing)
 export {

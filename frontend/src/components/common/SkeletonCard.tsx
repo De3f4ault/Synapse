@@ -160,13 +160,14 @@ function SkeletonDetailed({
  * @example
  * <Skeleton className="h-4 w-32" />
  */
-export function Skeleton({ className }: { className?: string }) {
+export function Skeleton({ className, style }: { className?: string; style?: React.CSSProperties }) {
   return (
     <div
       className={cn(
         "animate-shimmer bg-gradient-to-r from-muted via-muted/50 to-muted bg-[length:400%_100%] rounded",
         className,
       )}
+      style={style}
       aria-hidden="true"
     />
   );

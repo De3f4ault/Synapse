@@ -31,6 +31,9 @@ from .webhook import Webhook
 from .link import Link, LinkType, EntityType
 from .synapse_task import SynapseTask, TaskStatus, TaskType, TaskName
 
+from .intelligence import IntelligenceAdaptationLog
+from .ranking_weight import RankingWeight
+
 __all__ = [
     "Base",
     "User",
@@ -63,4 +66,6 @@ __all__ = [
     "TaskStatus",
     "TaskType",
     "TaskName",
+    "IntelligenceAdaptationLog",
+    "RankingWeight",
 ]

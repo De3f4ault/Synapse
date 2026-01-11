@@ -1,4 +1,4 @@
-import React, { Component, ComponentType, ErrorInfo, ReactNode } from "react";
+import { Component, ComponentType, ErrorInfo, ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {

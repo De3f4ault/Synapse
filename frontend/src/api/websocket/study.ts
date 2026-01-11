@@ -14,7 +14,7 @@ import type {
  */
 export class StudyWebSocketClient {
   private ws: WebSocket | null = null;
-  private sessionId: number;
+  private _sessionId: number;
   private url: string;
   private options: Required<{
     autoReconnect: boolean;
@@ -33,7 +33,7 @@ export class StudyWebSocketClient {
     maxReconnectAttempts: number;
     connectionTimeout: number;
   }> = {}) {
-    this.sessionId = sessionId;
+    this._sessionId = sessionId;
 
     // Get WebSocket URL from environment
     const wsUrl = import.meta.env.VITE_WS_URL || "ws://localhost:8000";
@@ -225,5 +225,12 @@ export class StudyWebSocketClient {
 
   private notifyMessageHandlers(message: StudyWSMessage): void {
     this.messageHandlers.forEach((handler) => handler(message));
+  }
+
+  /**
+   * Get the session ID for this connection
+   */
+  getSessionId(): number {
+    return this._sessionId;
   }
 }

@@ -81,7 +81,7 @@ export function SkeletonTable({
                   <Skeleton
                     className="h-4"
                     style={{
-                      width: `${columnWidths[colIndex] - Math.random() * 20}%`,
+                      width: `${(columnWidths[colIndex] ?? 70) - Math.random() * 20}%`,
                     }}
                   />
                 </TableCell>

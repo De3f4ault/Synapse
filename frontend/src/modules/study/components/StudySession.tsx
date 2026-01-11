@@ -55,7 +55,7 @@ export function StudySession({
   const [flaggedItems, setFlaggedItems] = useState<Set<number>>(new Set());
   const [showEndConfirm, setShowEndConfirm] = useState(false);
 
-  const { startSession, completeSession, isStarting, isCompleting } =
+  const { startSession, completeSession, isStarting } =
     useStudySession({
       onComplete,
     });
@@ -65,12 +65,13 @@ export function StudySession({
     const modules = Array.from(new Set(items.map((item) => item.type)));
     startSession(
       {
-        session_type: sessionType,
+        // Cast to API type - values are compatible but TypeScript needs explicit cast
+        session_type: sessionType as unknown as import("@/api/generated").StudySessionCreate["session_type"],
         modules,
       },
       {
         onSuccess: (result) => {
-          setSessionId(result.id);
+          setSessionId(result.response.id);
         },
       },
     );
@@ -78,6 +79,10 @@ export function StudySession({
 
   // Keyboard shortcuts
   useEffect(() => {
+    // Ensure currentItem is defined before using it in the effect
+    const currentItem = items[currentIndex];
+    if (!currentItem) return;
+
     const handleKeyPress = (e: KeyboardEvent) => {
       if (e.key === " " || e.key === "Spacebar") {
         e.preventDefault();
@@ -110,7 +115,7 @@ export function StudySession({
     } else {
       // Session complete
       if (sessionId) {
-        completeSession(sessionId);
+        completeSession();
       }
     }
   };
@@ -136,7 +141,7 @@ export function StudySession({
 
   const handleEndSession = () => {
     if (sessionId) {
-      completeSession(sessionId);
+      completeSession();
     }
   };
 
@@ -168,6 +173,9 @@ export function StudySession({
   }
 
   const currentItem = items[currentIndex];
+  if (!currentItem) {
+    return null; // Guard for undefined
+  }
   const progress = ((currentIndex + 1) / items.length) * 100;
   const accuracy = calculateAccuracy();
 
@@ -306,7 +314,7 @@ export function StudySession({
                     className={cn(
                       "h-4 w-4",
                       flaggedItems.has(currentIndex) &&
-                        "fill-yellow-500 text-yellow-500",
+                      "fill-yellow-500 text-yellow-500",
                     )}
                   />
                 </Button>
@@ -446,8 +454,8 @@ export function StudySession({
         onConfirm={handleEndSession}
         title="End Session Early?"
         description={`You've completed ${itemsCompleted} out of ${items.length} items. End session now?`}
-        confirmText="End Session"
-        cancelText="Continue"
+        confirmLabel="End Session"
+        cancelLabel="Continue"
       />
     </div>
   );

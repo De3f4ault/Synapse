@@ -208,6 +208,9 @@ class BaseAgent(ABC):
             # Log execution start
             self.logger.info("agent_execution_started", user_id=user_id, input_length=len(input))
 
+            # Inject input into context for middleware visibility
+            context["input"] = input
+
             # ================================================================
             # PRE-EXECUTION MIDDLEWARE
             # ================================================================

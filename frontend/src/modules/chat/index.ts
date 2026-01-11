@@ -50,3 +50,16 @@ export {
 // Title Generation
 export { useTitleGeneration } from "./hooks/useTitleGeneration";
 
+// Evidence Retrieval (Unified Search Integration)
+export {
+  useChatEvidence,
+  formatEvidenceForPrompt,
+  formatGroundedPrompt,
+  getEvidenceMetadata,
+  createEvidenceUsageSignal,
+  GROUNDING_SYSTEM_PROMPT,
+  GROUNDING_INSTRUCTION,
+  type ChatEvidence,
+  type ChatEvidenceState,
+  type EvidenceUsage,
+} from "./hooks/useChatEvidence";

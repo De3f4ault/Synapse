@@ -17,7 +17,6 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { getWebSocketManager } from "@/api/websocket/manager";
 import type { ChatMessageResponse } from "@/api/generated";
-import { MessageRole } from "@/api/generated";
 
 // ==================== TYPES ====================
 
@@ -29,14 +28,14 @@ export type WebSocketState =
 
 interface ChatWSMessage {
   type:
-    | "subscribed"
-    | "thinking"
-    | "token"
-    | "sources"
-    | "complete"
-    | "error"
-    | "tool_call"
-    | "tool_result";
+  | "subscribed"
+  | "thinking"
+  | "token"
+  | "sources"
+  | "complete"
+  | "error"
+  | "tool_call"
+  | "tool_result";
   channel?: string;
   data?: any;
   event?: string;
@@ -299,7 +298,7 @@ export const useChatStreaming = ({
         const optimisticUserMessage: ChatMessageResponse = {
           id: -Date.now(), // Negative ID indicates optimistic
           session_id: sessionId,
-          role: MessageRole.USER,
+          role: "user" as ChatMessageResponse["role"],
           content,
           tokens: Math.ceil(content.length / 4),
           model_used: null,

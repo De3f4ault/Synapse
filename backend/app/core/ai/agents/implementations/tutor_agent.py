@@ -12,11 +12,7 @@ Based on 2025 best practices:
 """
 
 from typing import Dict, Any, List, Optional
-from app.core.ai.agents.base_agent import (
-    BaseAgent,
-    AgentConfig,
-    AgentCapability
-)
+from app.core.ai.agents.base_agent import BaseAgent, AgentConfig, AgentCapability
 import structlog
 
 logger = structlog.get_logger(__name__)
@@ -81,8 +77,8 @@ class TutorAgent(BaseAgent):
         if weak_areas:
             weak_areas_text = "\n**Student's Current Weak Areas:**\n"
             for area in weak_areas[:3]:  # Top 3 weak areas
-                topic = area.get('topic', 'Unknown')
-                accuracy = area.get('accuracy', 0)
+                topic = area.get("topic", "Unknown")
+                accuracy = area.get("accuracy", 0)
                 weak_areas_text += f"- {topic}: {accuracy:.1%} accuracy (needs improvement)\n"
 
         # Build mastery summary
@@ -204,13 +200,19 @@ plan(
 Now, let's help this student learn! 🎓
 """
 
+        # Inject grounding evidence if available
+        grounding = context.get("grounding")
+        if (
+            grounding
+            and hasattr(grounding, "formatted_prompt_block")
+            and grounding.formatted_prompt_block
+        ):
+            prompt += f"\n\n**Relevant Context from Student's Notes:**\n{grounding.formatted_prompt_block}\n\nUse the evidence above when relevant. If evidence does not fully answer the question, say so explicitly and guide the student to discover the answer."
+
         return prompt
 
     async def _handle_learning_request(
-        self,
-        user_id: int,
-        topic: str,
-        context: Dict[str, Any]
+        self, user_id: int, topic: str, context: Dict[str, Any]
     ) -> str:
         """
         Handle specific learning requests with structured approach
@@ -223,25 +225,14 @@ Now, let's help this student learn! 🎓
         Returns:
             Teaching response
         """
-        logger.info(
-            "tutor_learning_request",
-            user_id=user_id,
-            topic=topic
-        )
+        logger.info("tutor_learning_request", user_id=user_id, topic=topic)
 
         # Check if topic is a weak area
         weak_areas = context.get("weak_areas", [])
-        is_weak_area = any(
-            area.get("topic", "").lower() in topic.lower()
-            for area in weak_areas
-        )
+        is_weak_area = any(area.get("topic", "").lower() in topic.lower() for area in weak_areas)
 
         if is_weak_area:
-            logger.info(
-                "tutor_addressing_weak_area",
-                user_id=user_id,
-                topic=topic
-            )
+            logger.info("tutor_addressing_weak_area", user_id=user_id, topic=topic)
 
         # Normal execution through base agent
         return await super().execute(user_id, topic, context)
@@ -263,7 +254,7 @@ def create_tutor_agent_config() -> AgentConfig:
             AgentCapability.CHAT,
             AgentCapability.TOOL_USE,
             AgentCapability.MEMORY,
-            AgentCapability.PLANNING
+            AgentCapability.PLANNING,
         ],
         system_prompt="",  # Built dynamically with context
         model="gemini-2.5-flash",  # Fast for interactive teaching,
@@ -272,5 +263,5 @@ def create_tutor_agent_config() -> AgentConfig:
         tools=[],  # Set by factory
         middleware=[],  # Set by factory
         enabled=True,
-        requires_review=False
+        requires_review=False,
     )

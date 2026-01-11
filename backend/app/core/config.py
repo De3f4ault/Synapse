@@ -103,6 +103,24 @@ class Settings(BaseSettings):
     )
     WEBHOOK_TIMEOUT: int = Field(default=10, description="Webhook HTTP request timeout in seconds")
 
+    # Phase 3B.1 - Adaptive Ranking (DISABLED BY DEFAULT)
+    ENABLE_ADAPTIVE_RANKING: bool = Field(
+        default=False,
+        description="Enable Phase 3B.1 adaptive ranking weights (PRODUCTION: require explicit opt-in)",
+    )
+    ADAPTIVE_RANKING_SHADOW_MODE: bool = Field(
+        default=True,
+        description="Shadow mode: log weight applications without affecting results",
+    )
+    ADAPTIVE_RANKING_WEIGHT_MULTIPLIER: float = Field(
+        default=1.05,
+        description="Default boost multiplier for trusted evidence (1.05 = 5% boost)",
+    )
+    ADAPTIVE_RANKING_TTL_DAYS: int = Field(
+        default=10,
+        description="Days until ranking weights expire",
+    )
+
     model_config = SettingsConfigDict(
         env_file=".env", env_file_encoding="utf-8", case_sensitive=True, extra="ignore"
     )

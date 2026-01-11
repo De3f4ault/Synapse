@@ -10,6 +10,8 @@ import { ChatConversationView } from "./ChatConversationView";
 import { LiveVoiceOverlay } from "../../voice/components/LiveVoiceOverlay";
 import { useChatMessages } from "../hooks/useChatMessages";
 import { useChatStreaming } from "../hooks/useChatStreaming";
+import { useImplicitFeedback } from "@/modules/chat/hooks/useImplicitFeedback";
+import { useAuthStore } from "@/stores/authStore";
 
 interface ChatMainProps {
   sessionId: number;
@@ -19,8 +21,15 @@ export function ChatMain({ sessionId }: ChatMainProps) {
   const [message, setMessage] = useState("");
   const [isVoiceOpen, setIsVoiceOpen] = useState(false);
 
+  // Get user ID for telemetry
+  const user = useAuthStore((state) => state.user);
+  const userId = user?.id ?? 0;
+
   // Fetch messages for this session
   const { data: messages = [], isLoading } = useChatMessages(sessionId);
+
+  // Wire up implicit feedback loop for telemetry
+  useImplicitFeedback(sessionId, messages, userId);
 
   // WebSocket streaming
   const {
@@ -70,7 +79,7 @@ export function ChatMain({ sessionId }: ChatMainProps) {
   }
 
   return (
-    <>
+    <div className="h-full flex flex-col">
       {isConversationStarted ? (
         <ChatConversationView
           messages={messages}
@@ -100,6 +109,6 @@ export function ChatMain({ sessionId }: ChatMainProps) {
         systemInstruction="You are Synapse, a helpful AI learning assistant."
         enableSearch={true}
       />
-    </>
+    </div>
   );
 }

@@ -12,6 +12,7 @@ import { QuestionReview } from "./QuestionReview";
 import { AIInsights } from "./AIInsights";
 import type { QuizPerformance } from "../core";
 import type { QuizResultResponse, QuizInsightsResponse } from "@/api/generated";
+import { AuroraBackground } from "@/shared/ui";
 
 interface QuizResultsProps {
     results: QuizResultResponse;
@@ -35,7 +36,7 @@ export const QuizResults: React.FC<QuizResultsProps> = ({
     const [view, setView] = useState<"summary" | "review">("summary");
 
     return (
-        <div className="h-full flex flex-col relative overflow-hidden bg-[#08080c]">
+        <AuroraBackground className="h-full flex flex-col relative overflow-hidden" fixed={false}>
             {/* Back to Summary Button (when in review) */}
             {view === "review" && (
                 <div className="absolute top-0 left-0 right-0 z-20 p-6 bg-gradient-to-b from-[#08080c] to-transparent pointer-events-none">
@@ -111,6 +112,6 @@ export const QuizResults: React.FC<QuizResultsProps> = ({
                     </div>
                 </div>
             )}
-        </div>
+        </AuroraBackground>
     );
 };

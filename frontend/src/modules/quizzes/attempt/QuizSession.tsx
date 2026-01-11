@@ -20,6 +20,7 @@ import { cn } from "@/lib/utils";
 import { QuizAttemptState, type LocalQuestionState } from "../core";
 import { ProgressBar, QuestionRenderer } from "./components";
 import type { QuizAttemptStart } from "@/api/generated";
+import { AuroraBackground } from "@/shared/ui";
 
 interface QuizSessionProps {
     state: QuizAttemptState;
@@ -118,7 +119,7 @@ export const QuizSession: React.FC<QuizSessionProps> = ({
     };
 
     return (
-        <div className="h-screen bg-[#08080c] flex flex-col overflow-hidden">
+        <AuroraBackground className="h-screen flex flex-col overflow-hidden" fixed>
             {/* Header */}
             <div className="h-16 flex items-center justify-between px-8 bg-[#08080c]/80 backdrop-blur-sm border-b border-white/[0.04] shrink-0 z-20">
                 <button
@@ -272,6 +273,6 @@ export const QuizSession: React.FC<QuizSessionProps> = ({
                     </button>
                 )}
             </div>
-        </div>
+        </AuroraBackground>
     );
 };

@@ -568,6 +568,49 @@ async def handle_chat_message(
                 chat_session.total_tokens_used += user_message.tokens + assistant_message.tokens
 
                 await db.commit()
+                await db.refresh(assistant_message)
+
+                # Generate embedding for hybrid search (Q+A pair strategy)
+                try:
+                    from app.services.search.chat_embedding import embed_assistant_message
+
+                    await embed_assistant_message(
+                        db_session=db,
+                        message_id=assistant_message.id,
+                        content=full_response or "",
+                        parent_content=content,  # User's question
+                        session_title=chat_session.title if chat_session else None,
+                    )
+                    await db.commit()
+                except Exception as embed_error:
+                    # Don't fail message saving if embedding fails
+                    logger.warning(
+                        "chat_embedding_failed",
+                        message_id=assistant_message.id,
+                        error=str(embed_error)[:100],
+                    )
+
+                # Generate AI title for session (if this is the first exchange)
+                try:
+                    from app.services.chat.title_generator import maybe_generate_title
+
+                    new_title = await maybe_generate_title(
+                        session_id=session_id,
+                        first_message=content,
+                        first_response=full_response or "",
+                        db_session=db,
+                    )
+                    if new_title:
+                        # Broadcast title update to client
+                        await channel_manager.broadcast_to_user_channel(
+                            user_id=user_id,
+                            channel=channel,
+                            event="title_updated",
+                            data={"session_id": session_id, "title": new_title},
+                        )
+                except Exception as title_error:
+                    # Don't fail if title generation fails
+                    logger.warning("title_generation_failed", error=str(title_error)[:100])
 
                 logger.info(
                     "assistant_message_saved",

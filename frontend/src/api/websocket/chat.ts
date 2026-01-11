@@ -16,7 +16,7 @@ import type {
  */
 export class ChatWebSocketClient {
   private ws: WebSocket | null = null;
-  private sessionId: number;
+  private _sessionId: number;
   private url: string;
   private options: Required<WebSocketOptions>;
   private reconnectAttempts = 0;
@@ -25,7 +25,7 @@ export class ChatWebSocketClient {
   private stateHandlers: Set<(state: WebSocketState) => void> = new Set();
 
   constructor(sessionId: number, options: WebSocketOptions = {}) {
-    this.sessionId = sessionId;
+    this._sessionId = sessionId;
 
     // Get WebSocket URL from environment
     const wsUrl = import.meta.env.VITE_WS_URL || "ws://localhost:8000";
@@ -182,5 +182,12 @@ export class ChatWebSocketClient {
 
   private notifyMessageHandlers(message: ChatWSMessage): void {
     this.messageHandlers.forEach((handler) => handler(message));
+  }
+
+  /**
+   * Get the session ID for this connection
+   */
+  getSessionId(): number {
+    return this._sessionId;
   }
 }

@@ -1,5 +1,11 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { SimpleDropdownMenu } from "@/components/custom/SimpleDropdownMenu";
+import {
+  SimpleDropdownMenu,
+  SimpleDropdownMenuTrigger,
+  SimpleDropdownMenuContent,
+  SimpleDropdownMenuItem,
+} from "@/components/custom/SimpleDropdownMenu";
 import {
   MessageSquare,
   BookOpen,
@@ -22,17 +28,17 @@ import {
 interface QuickActionsProps {
   resourceType: "document" | "note" | "deck" | "quiz";
   resourceId: number;
-  resourceTitle: string;
+  resourceTitle?: string; // Optional, used for context
   className?: string;
 }
 
 export function QuickActions({
   resourceType,
   resourceId,
-  resourceTitle,
   className,
 }: QuickActionsProps) {
   const navigate = useNavigate();
+  const [isOpen, setIsOpen] = useState(false);
 
   const documentActions = [
     {
@@ -96,24 +102,41 @@ export function QuickActions({
     },
   ];
 
-  const actions = {
+  const actionsMap = {
     document: documentActions,
     note: noteActions,
     deck: deckActions,
     quiz: quizActions,
   };
 
+  const actions = actionsMap[resourceType];
+
   return (
-    <SimpleDropdownMenu
-      trigger={
-        <button
-          className={`synapse-icon-button ${className}`}
-          title="Quick Actions"
-        >
-          <MoreHorizontal className="h-4 w-4" />
-        </button>
-      }
-      items={actions[resourceType]}
-    />
+    <SimpleDropdownMenu>
+      <SimpleDropdownMenuTrigger
+        className={`synapse-icon-button ${className || ""}`}
+        title="Quick Actions"
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <MoreHorizontal className="h-4 w-4" />
+      </SimpleDropdownMenuTrigger>
+      {isOpen && (
+        <SimpleDropdownMenuContent>
+          {actions.map((action, index) => (
+            <SimpleDropdownMenuItem
+              key={index}
+              onClick={() => {
+                action.onClick();
+                setIsOpen(false);
+              }}
+            >
+              {action.icon}
+              <span className="ml-2">{action.label}</span>
+            </SimpleDropdownMenuItem>
+          ))}
+        </SimpleDropdownMenuContent>
+      )}
+    </SimpleDropdownMenu>
   );
 }
+

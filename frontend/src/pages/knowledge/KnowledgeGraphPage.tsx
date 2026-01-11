@@ -8,9 +8,8 @@ import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { MenuIcon, PanelLeftIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { GridPattern } from "@/components/ui/grid-pattern";
 import { LoadingScreen } from "@/components/layout/LoadingScreen";
-
+import { AuroraBackground } from "@/shared/ui";
 export const KnowledgeGraphPage: React.FC = () => {
   // State
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
@@ -129,18 +128,16 @@ export const KnowledgeGraphPage: React.FC = () => {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden nm-bg nm-constellation-bg">
-      {/* Desktop Sidebar - Retractable */}
-      <div
-        className={cn(
-          "hidden md:block transition-all duration-300 ease-in-out",
-          sidebarCollapsed ? "w-0" : "w-80",
-        )}
-      >
+    <AuroraBackground
+      className="flex h-screen overflow-hidden text-slate-200"
+      fixed
+    >
+      <div className="flex flex-1 w-full h-full overflow-hidden">
+        {/* Desktop Sidebar - Retractable */}
         <div
           className={cn(
-            "h-full overflow-hidden",
-            sidebarCollapsed && "opacity-0",
+            "hidden md:block transition-all duration-300 ease-in-out relative z-10",
+            sidebarCollapsed ? "w-0" : "w-64",
           )}
         >
           <KnowledgeSidebar
@@ -150,60 +147,59 @@ export const KnowledgeGraphPage: React.FC = () => {
             onToggleFilter={handleToggleFilter}
             onRefresh={refetch}
             stats={data?.stats}
-            className="h-full border-r border-white/5"
+            className="h-full border-r border-white/5 w-64"
+            isCollapsed={sidebarCollapsed}
           />
         </div>
-      </div>
 
-      {/* Mobile Sidebar (Drawer) */}
-      <Sheet open={mobileSidebarOpen} onOpenChange={setMobileSidebarOpen}>
-        <SheetContent
-          side="left"
-          className="w-80 p-0 border-none [&>button]:hidden bg-transparent"
-        >
-          <KnowledgeSidebar
-            searchQuery={searchQuery}
-            onSearchChange={setSearchQuery}
-            activeFilters={activeFilters}
-            onToggleFilter={handleToggleFilter}
-            onRefresh={refetch}
-            stats={data?.stats}
-            className="h-full"
-          />
-        </SheetContent>
-      </Sheet>
-
-      {/* Main Content Area */}
-      <div className="flex flex-1 flex-col overflow-hidden relative">
-        {/* Floating Header Actions */}
-        <div className="absolute top-4 left-4 z-50 flex items-center gap-2 pointer-events-none">
-          {/* Desktop Toggle */}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggleSidebar}
-            className="hidden md:flex pointer-events-auto hover:bg-muted/50 rounded-full"
-          >
-            <PanelLeftIcon className="size-5 text-muted-foreground" />
-          </Button>
-
-          {/* Mobile Hamburger */}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setMobileSidebarOpen(true)}
-            className="md:hidden pointer-events-auto hover:bg-muted/50 rounded-full"
-          >
-            <MenuIcon className="size-5 text-muted-foreground" />
-          </Button>
+        {/* Mobile Sidebar (Drawer) */}
+        <div className="md:hidden">
+          <Sheet open={mobileSidebarOpen} onOpenChange={setMobileSidebarOpen}>
+            <SheetContent
+              side="left"
+              className="w-64 p-0 border-none [&>button]:hidden bg-transparent"
+            >
+              <KnowledgeSidebar
+                searchQuery={searchQuery}
+                onSearchChange={setSearchQuery}
+                activeFilters={activeFilters}
+                onToggleFilter={handleToggleFilter}
+                onRefresh={refetch}
+                stats={data?.stats}
+                className="h-full w-64"
+                isCollapsed={sidebarCollapsed}
+              />
+            </SheetContent>
+          </Sheet>
         </div>
+        {/* Main Content Area */}
+        <div className="flex-1 flex flex-col overflow-hidden relative">
+          {/* Floating Header Actions */}
+          <div className="absolute top-4 left-4 z-50 flex items-center gap-2 pointer-events-none">
+            {/* Desktop Toggle */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleSidebar}
+              className="hidden md:flex pointer-events-auto hover:bg-white/10 text-slate-400 hover:text-white rounded-xl transition-colors"
+            >
+              <PanelLeftIcon className="size-5" />
+            </Button>
 
-        {/* Graph Area with Grid Pattern */}
-        <div className="flex-1 overflow-hidden relative">
-          <GridPattern className="pointer-events-none opacity-50" />
+            {/* Mobile Hamburger */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setMobileSidebarOpen(true)}
+              className="md:hidden pointer-events-auto hover:bg-white/10 text-slate-400 hover:text-white rounded-xl transition-colors"
+            >
+              <MenuIcon className="size-5" />
+            </Button>
+          </div>
 
-          <div ref={containerRef} className="relative z-10 w-full h-full">
-            {containerDimensions.width > 0 && (
+          {/* Graph Area */}
+          <div ref={containerRef} className="flex-1 w-full h-full min-h-0">
+            {containerDimensions.width > 0 && containerDimensions.height > 0 && (
               <KnowledgeGraph
                 nodes={nodes}
                 edges={edges}
@@ -226,7 +222,7 @@ export const KnowledgeGraphPage: React.FC = () => {
           className="z-50"
         />
       )}
-    </div>
+    </AuroraBackground>
   );
 };
 

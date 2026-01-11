@@ -69,15 +69,15 @@ export function AnimatedCounter({
   });
 
   useEffect(() => {
-    const controls = animate(motionValue, value, {
+    const controls = animate(prevValueRef.current, value, {
       duration,
       ease: "easeOut",
-      from: prevValueRef.current,
+      onUpdate: (latest) => motionValue.set(latest),
     });
 
     prevValueRef.current = value;
 
-    return controls.stop;
+    return () => controls.stop();
   }, [value, duration, motionValue]);
 
   return (

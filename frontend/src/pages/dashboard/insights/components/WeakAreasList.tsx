@@ -83,12 +83,12 @@ export function WeakAreasList({ data, className }: WeakAreasListProps) {
                         </p>
                     </div>
                 ) : (
-                    data.slice(0, 5).map((area) => {
+                    data.slice(0, 5).map((area, index) => {
                         const sourceInfo = getSourceInfo(area.source);
 
                         return (
                             <div
-                                key={area.topic}
+                                key={`${area.topic}-${area.source}-${index}`}
                                 className="space-y-2 group cursor-pointer"
                                 onClick={() => navigate(`/study?focus=concept:${encodeURIComponent(area.topic)}`)}
                             >

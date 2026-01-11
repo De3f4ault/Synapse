@@ -15,6 +15,7 @@ export {
   ProcessingStatus,
   ProcessingStatusBadge,
 } from "./components/ProcessingStatus";
+export { DocumentsHub } from "./components/DocumentsHub";
 
 // Hooks
 export {

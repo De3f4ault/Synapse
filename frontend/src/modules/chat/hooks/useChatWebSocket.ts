@@ -1,7 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { WS_BASE_URL, CHAT } from "@/lib/constants";
 import { STORAGE_KEYS } from "@/hooks/useLocalStorage";
-import type { ChatMessageResponse, MessageRole } from "@/api/generated";
+import type { ChatMessageResponse } from "@/api/generated";
+
+// Extract role type from ChatMessageResponse
+type MessageRole = ChatMessageResponse["role"];
 
 export type WebSocketStatus =
   | "connecting"

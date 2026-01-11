@@ -35,11 +35,7 @@ interface BreadcrumbsProps {
 export function Breadcrumbs({ items, maxItems = 4 }: BreadcrumbsProps) {
   const shouldCollapse = items.length > maxItems;
 
-  // If collapsing, show first, last, and "..." for middle items
-  const visibleItems = shouldCollapse
-    ? [items[0], ...items.slice(1, -1), items[items.length - 1]]
-    : items;
-
+  // Hidden items for dropdown when collapsing
   const hiddenItems = shouldCollapse ? items.slice(1, -1) : [];
 
   return (
