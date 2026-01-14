@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import mermaid from 'mermaid';
-import GlassCard from '@/components/ui/GlassCard';
+import { GlassCard } from "@/shared/ui";
 import CodeBlock from '@/shared/rendering/components/CodeBlock';
 import { AlertCircle, FileCode, Maximize2, Download, Copy, Check, ZoomIn, ZoomOut, RotateCcw, X, Code } from 'lucide-react';
 import { cn } from '@/lib/utils';

@@ -29,17 +29,18 @@ export * from "./core";
 // ============================================================================
 
 export {
-    // Components
-    NoteTree,
-    NeuralItem,
-    NoteCard,
-    NoteSearch,
-    // State
-    useListStore,
-    useIsExpanded,
-    useIsSelected,
-    // Hooks
-    useNotesList,
+  // Components
+  NoteTree,
+  NeuralItem,
+  NoteCard,
+  NoteListItem,
+  NoteSearch,
+  // State
+  useListStore,
+  useIsExpanded,
+  useIsSelected,
+  // Hooks
+  useNotesList,
 } from "./list";
 
 // ============================================================================
@@ -47,54 +48,68 @@ export {
 // ============================================================================
 
 export {
-    // Engine (Pure Functions)
-    wrapText,
-    makeBold,
-    makeItalic,
-    makeCode,
-    makeInlineCode,
-    makeLink,
-    makeHeading,
-    makeListItem,
-    makeList,
-    stripMarkdown,
-    countWords,
-    countCharacters,
-    estimateReadingTime,
-    extractHeadings,
-    generateTOC,
-    getTextAreaSelection,
-    insertTextAtCursor,
-    wrapSelection,
-    markdownFormatters,
-    getCurrentLine,
-    replaceCurrentLine,
-    // State
-    useEditorStore,
-    useEditorIsDirty,
-    useEditorIsAutosaving,
-    useEditorMode,
-    useEditorHasError,
-    useEditorError,
-    // Hooks
-    useNoteEditor,
-    useEditorShortcuts,
-    // Components
-    NoteEditor,
-    EditorToolbar,
-    MarkdownPreview,
+  // Engine (Pure Functions)
+  wrapText,
+  makeBold,
+  makeItalic,
+  makeCode,
+  makeInlineCode,
+  makeLink,
+  makeHeading,
+  makeListItem,
+  makeList,
+  stripMarkdown,
+  countWords,
+  countCharacters,
+  estimateReadingTime,
+  extractHeadings,
+  generateTOC,
+  getTextAreaSelection,
+  insertTextAtCursor,
+  wrapSelection,
+  markdownFormatters,
+  getCurrentLine,
+  replaceCurrentLine,
+  // State
+  useEditorStore,
+  useEditorIsDirty,
+  useEditorIsAutosaving,
+  useEditorMode,
+  useEditorHasError,
+  useEditorError,
+  // Hooks
+  useNoteEditor,
+  useEditorShortcuts,
+  // Components
+
+  EditorToolbar,
+  MarkdownPreview,
 } from "./editor";
 export type { Heading, TextAreaSelection, LineInfo } from "./editor";
+
+// BlockNote Integration (New)
+export {
+  BlockNoteEditor,
+  blockNoteAdapter,
+  computeStats,
+  toStorageFormat,
+  fromStorageFormat,
+} from "./editor";
+export type {
+  BlockNoteEditorProps,
+  NoteStats as BlockNoteStats,
+  ValidationResult,
+} from "./editor";
 
 // ============================================================================
 // Versions (Temporal Dimension)
 // ============================================================================
 
 export {
-    // Hooks
-    useNoteVersions,
-    // Components
-    VersionHistory,
+  // Hooks
+  useNoteVersions,
+  // Components
+  VersionHistory,
 } from "./versions";
 export type { NoteVersion } from "./versions";
 
@@ -103,10 +118,10 @@ export type { NoteVersion } from "./versions";
 // ============================================================================
 
 export {
-    // Hooks
-    useNoteAI,
-    // Components
-    AIInsightsPanel,
+  // Hooks
+  useNoteAI,
+  // Components
+  AIInsightsPanel,
 } from "./ai";
 export type { AIInsight } from "./ai";
 

@@ -1,7 +1,7 @@
 import React from "react";
 import { AnimatePresence } from "framer-motion";
 import { ScanLine } from "lucide-react";
-import { DocumentCard } from "./DocumentCard";
+import { DocumentListItem } from "./DocumentListItem";
 import { useThumbnails } from "../hooks/useThumbnails";
 import type { EnhancedDocument } from "../../core";
 
@@ -38,7 +38,7 @@ export const DocumentGrid: React.FC<DocumentGridProps> = ({
             <div className="w-full h-full p-6 grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-4 overflow-visible content-start">
                 <AnimatePresence mode="popLayout">
                     {documents.map((doc, i) => (
-                        <DocumentCard
+                        <DocumentListItem
                             key={doc.id}
                             doc={doc}
                             index={i}

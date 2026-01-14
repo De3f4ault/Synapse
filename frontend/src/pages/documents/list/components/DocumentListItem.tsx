@@ -1,10 +1,10 @@
 import React from "react";
 import { Loader2, ScanLine } from "lucide-react";
 import { useAuthStore } from "@/stores/authStore";
-import GlassCard from "@/components/ui/GlassCard";
+import { GlassCard } from "@/shared/ui";
 import type { EnhancedDocument } from "../../core";
 
-interface DocumentCardProps {
+interface DocumentListItemProps {
     doc: EnhancedDocument;
     index: number;
     onSelect: (doc: EnhancedDocument) => void;
@@ -41,9 +41,12 @@ const FileIcon: React.FC<{ type: string; className?: string }> = ({
 };
 
 /**
- * Paperless-style Card with Thumbnail Preview
+ * DocumentListItem - Paperless-style Card with Thumbnail Preview
+ * 
+ * This is the list-view/action-heavy variant for document displays.
+ * For the hub/grid visual identity, use DocumentCard from modules/documents.
  */
-export const DocumentCard = React.forwardRef<HTMLDivElement, DocumentCardProps>(
+export const DocumentListItem = React.forwardRef<HTMLDivElement, DocumentListItemProps>(
     ({ doc, index: _index, onSelect, logAction, thumbnailUrl }, ref) => {
         const [imgError, setImgError] = React.useState(false);
         const token = useAuthStore((state) => state.token);
@@ -144,4 +147,4 @@ export const DocumentCard = React.forwardRef<HTMLDivElement, DocumentCardProps>(
     },
 );
 
-DocumentCard.displayName = "DocumentCard";
+DocumentListItem.displayName = "DocumentListItem";

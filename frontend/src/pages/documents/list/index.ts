@@ -15,7 +15,7 @@
  */
 
 // Components
-export { DocumentCard, DocumentGrid, DocumentTable } from "./components";
+export { DocumentListItem, DocumentGrid, DocumentTable } from "./components";
 
 // Hooks
 export { useDocuments, useThumbnails } from "./hooks";

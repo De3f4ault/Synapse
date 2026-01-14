@@ -20,7 +20,7 @@ import { z } from 'zod';
 // Module imports
 import { useCreateDeck, type DeckCreateInput } from './list';
 import { AuroraBackground } from '@/shared/ui';
-import GlassCard from '@/components/ui/GlassCard';
+import { GlassCard } from "@/shared/ui";
 
 // Schema
 const deckCreateSchema = z.object({

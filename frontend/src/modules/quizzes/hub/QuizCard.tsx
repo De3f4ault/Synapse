@@ -9,7 +9,7 @@ import { motion, type Variants } from "framer-motion";
 import { Cpu, FileQuestion, Trophy, Play } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { QuizResponse } from "@/api/generated";
-import GlassCard from "@/components/ui/GlassCard";
+import { GlassCard } from "@/shared/ui";
 
 interface QuizCardProps {
     quiz: QuizResponse;
@@ -61,7 +61,7 @@ export const QuizCard = ({
             <div
                 onClick={onStart}
                 className={cn(
-                    "cursor-pointer h-full"
+                    "cursor-pointer h-64"
                 )}
             >
                 <GlassCard

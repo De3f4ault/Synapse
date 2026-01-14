@@ -37,7 +37,7 @@ import { useActiveDeck, type Flashcard, type LearningState } from './core';
 
 // Shared
 import { EmptyState } from '@/shared/ui';
-import GlassCard from '@/components/ui/GlassCard';
+import { GlassCard } from "@/shared/ui";
 
 // ----------------------------------------------------------------------
 // TYPES & HELPERS

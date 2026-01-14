@@ -16,7 +16,7 @@ import { queryKeys } from '@/lib/queryKeys';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { AuroraBackground } from '@/shared/ui';
-import GlassCard from '@/components/ui/GlassCard';
+import { GlassCard } from "@/shared/ui";
 import type { FlashcardCreateInput } from './core';
 
 export function CreateCardPage() {

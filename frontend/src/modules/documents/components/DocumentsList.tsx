@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { FileText, Download, Share2, Trash2 } from "lucide-react";
-import GlassCard from "@/components/ui/GlassCard";
+import { GlassCard } from "@/shared/ui";
 import type { EnhancedDocument } from "../core/types";
 import { format } from "date-fns";
 

@@ -9,7 +9,7 @@
 
 import { Activity, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
-import GlassCard from "@/components/ui/GlassCard";
+import { GlassCard } from "@/shared/ui";
 import { useSessionTracking } from "../hooks";
 import { ActivityItem } from "./ActivityItem";
 import { useActivityFilter } from "../state";

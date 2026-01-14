@@ -1,6 +1,9 @@
 /**
- * GlassCard - "Synapse" Base Component
- * * Features:
+ * GlassCard - Shared UI Primitive
+ * 
+ * CANONICAL SOURCE - Do not fork.
+ * 
+ * Features:
  * - Specific backdrop blur and noise texture for the sci-fi look
  * - Neon border glow on hover
  * - Standardized rounded corners and padding
@@ -17,7 +20,7 @@ export interface GlassCardProps extends Omit<MotionProps, "children"> {
     onClick?: () => void;
 }
 
-const GlassCard = React.forwardRef<HTMLDivElement, GlassCardProps>(
+export const GlassCard = React.forwardRef<HTMLDivElement, GlassCardProps>(
     ({ children, className, hover = false, onClick, ...motionProps }, ref) => {
         return (
             <motion.div

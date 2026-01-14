@@ -23,6 +23,7 @@ interface ChatConversationViewProps {
   isStreaming?: boolean;
   streamingContent?: string;
   streamingThinking?: string;
+  sessionTitle?: string;
 }
 
 export function ChatConversationView({
@@ -36,6 +37,7 @@ export function ChatConversationView({
   isStreaming = false,
   streamingContent = "",
   streamingThinking = "",
+  // sessionTitle, // Unused
 }: ChatConversationViewProps) {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -145,44 +147,67 @@ export function ChatConversationView({
     <div className="flex flex-col h-full w-full">
       {/* Search Bar - Fixed at top when open */}
       {isSearchOpen && (
-        <div className="shrink-0">
-          <SearchBar
-            state={search.state}
-            occurrences={search.state.occurrences}
-            onQueryChange={search.setQuery}
-            onOptionsChange={search.setOptions}
-            onNext={search.goToNext}
-            onPrev={search.goToPrev}
-            onClose={handleCloseSearch}
-            onJumpTo={search.goToOccurrence}
-          />
+        <div className="shrink-0 bg-background/50 backdrop-blur-md border-b border-white/5 z-20">
+          <div className="max-w-[1600px] mx-auto">
+            <SearchBar
+              state={search.state}
+              occurrences={search.state.occurrences}
+              onQueryChange={search.setQuery}
+              onOptionsChange={search.setOptions}
+              onNext={search.goToNext}
+              onPrev={search.goToPrev}
+              onClose={handleCloseSearch}
+              onJumpTo={search.goToOccurrence}
+            />
+          </div>
         </div>
       )}
 
-      {/* Messages Area - Scrollable, takes remaining space */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-hide px-4 md:px-8 py-8 min-h-0">
-        <div className="max-w-4xl mx-auto space-y-6">
-          <div className="flex justify-end gap-2 mb-2">
-            {/* Search Toggle Button */}
-            <Button
-              variant="secondary"
-              size="icon"
-              onClick={() => setIsSearchOpen(!isSearchOpen)}
-              className="size-8 rounded-full border bg-background/50 hover:bg-background"
-              title="Search (Ctrl+F)"
-            >
-              <Search className="size-4" />
-            </Button>
+      {/* Hub-Style Header */}
+      <div className="fixed top-0 left-0 right-0 z-10 bg-[#050505]/80 backdrop-blur-md border-b border-white/5">
+        <div className="max-w-[1600px] mx-auto w-full px-8 py-4 pl-12 lg:pl-8 flex items-center justify-end">
+           {/* Actions (Search / Reset) - Now right-aligned since title is gone */}
+           <div className="flex items-center gap-2">
+             {isSearchOpen ? (
+                <div className="flex items-center gap-2 bg-zinc-900/50 p-1 rounded-lg border border-white/10 animate-in fade-in slide-in-from-right-4 duration-200">
+                  <SearchBar
+                    state={search.state}
+                    occurrences={search.state.occurrences}
+                    onQueryChange={search.setQuery}
+                    onOptionsChange={search.setOptions}
+                    onNext={search.goToNext}
+                    onPrev={search.goToPrev}
+                    onClose={() => setIsSearchOpen(false)}
+                    onJumpTo={search.goToOccurrence}
+                  />
+                </div>
+             ) : (
+               <Button
+                 variant="ghost"
+                 size="icon"
+                 onClick={() => setIsSearchOpen(true)}
+                 className="text-zinc-500 hover:text-white hover:bg-white/10"
+                 title="Search in conversation"
+               >
+                 <Search className="size-4" />
+               </Button>
+             )}
 
-            <Button
-              variant="secondary"
-              size="icon"
-              onClick={onReset}
-              className="size-8 rounded-full border bg-background/50 hover:bg-background"
-            >
-              <XIcon className="size-4" />
-            </Button>
-          </div>
+             <Button
+               variant="ghost"
+               size="icon"
+               onClick={onReset}
+               className="text-zinc-500 hover:text-white hover:bg-white/10"
+               title="New Chat / Reset"
+             >
+               <XIcon className="size-4" />
+             </Button>
+           </div>
+        </div>
+      </div>
+      {/* Messages Area - Scrollable, takes remaining space */}
+      <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-hide px-4 md:px-8 pb-4 min-h-0">
+        <div className="max-w-4xl mx-auto space-y-6">
 
           {messages.map((msg) => (
             <ChatMessage

@@ -10,7 +10,7 @@
 import { motion } from "framer-motion";
 import { Flame, Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
-import GlassCard from "@/components/ui/GlassCard";
+import { GlassCard } from "@/shared/ui";
 
 export interface StreakCardProps {
     streakDays: number;

@@ -1,14 +1,7 @@
 /**
  * DeckCard Component
  * 
- * Solid dark card design for deck display.
- * 
- * @visual-constraints (per FLASHCARDS_ARCHITECTURE.md)
- * - No gradients
- * - No backdrop-filter / blur
- * - No opacity layers > 0.95
- * - Solid background: bg-[#0a0a0f]
- * - Single subtle border
+ * Glassy card design matching NoteCard and QuizCard styling.
  */
 
 import React from 'react';
@@ -20,6 +13,7 @@ import {
     Trash2,
     Layers,
     Zap,
+    BrainCircuit,
 } from 'lucide-react';
 import {
     DropdownMenu,
@@ -27,6 +21,8 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { GlassCard } from '@/shared/ui';
+import { cn } from '@/lib/utils';
 import type { Deck } from '../../core';
 
 interface DeckCardProps {
@@ -39,12 +35,12 @@ interface DeckCardProps {
     onClick: () => void;
 }
 
-// Color accent based on mastery
-function getAccentColor(masteryPercent: number): string {
-    if (masteryPercent >= 80) return 'text-emerald-400 border-emerald-500/30';
-    if (masteryPercent >= 50) return 'text-cyan-400 border-cyan-500/30';
-    if (masteryPercent >= 30) return 'text-amber-400 border-amber-500/30';
-    return 'text-red-400 border-red-500/30';
+// Color accent based on mastery - using same cyan-centric palette as Notes/Quizzes
+function getMasteryBadge(masteryPercent: number): { text: string; className: string } {
+    if (masteryPercent >= 80) return { text: 'Mastered', className: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' };
+    if (masteryPercent >= 50) return { text: 'Learning', className: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20' };
+    if (masteryPercent >= 30) return { text: 'Started', className: 'bg-amber-500/10 text-amber-400 border-amber-500/20' };
+    return { text: 'New', className: 'bg-purple-500/10 text-purple-400 border-purple-500/20' };
 }
 
 export const DeckCard = React.memo(function DeckCard({
@@ -56,136 +52,92 @@ export const DeckCard = React.memo(function DeckCard({
     onReview,
     onClick,
 }: DeckCardProps) {
-    const accentColor = getAccentColor(masteryPercent);
-    const accentClass = accentColor.split(' ')[0];
-    const borderClass = accentColor.split(' ')[1];
-
-    // Mastery ring calculations
-    const radius = 28;
-    const circumference = 2 * Math.PI * radius;
-    const strokeDashoffset = circumference - (masteryPercent / 100) * circumference;
+    const badge = getMasteryBadge(masteryPercent);
 
     return (
         <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            whileHover={{ y: -4, scale: 1.02 }}
+            transition={{ duration: 0.2 }}
             onClick={onClick}
-            whileHover={{ y: -4 }}
-            className={`
-        group h-72 rounded-2xl cursor-pointer
-        bg-[#0a0a0f] border border-white/10
-        hover:border-white/20
-        transition-colors duration-200
-        flex flex-col overflow-hidden
-      `}
+            className="group cursor-pointer h-64"
         >
-            {/* Header with mastery ring */}
-            <div className="h-[45%] flex items-center justify-center relative border-b border-white/5">
-                {/* Actions dropdown */}
-                <div className="absolute top-3 right-3 z-20 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                            <button className="h-8 w-8 rounded-full flex items-center justify-center bg-white/5 text-white/70 hover:bg-white/10 hover:text-white transition-colors">
-                                <MoreVertical size={16} />
-                            </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent
-                            align="end"
-                            className="bg-[#0a0a0f] border-white/10 text-slate-200"
-                        >
-                            <DropdownMenuItem
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    onEdit();
-                                }}
-                            >
-                                <Edit className="mr-2 h-4 w-4" /> Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    onDelete();
-                                }}
-                                className="text-red-400"
-                            >
-                                <Trash2 className="mr-2 h-4 w-4" /> Delete
-                            </DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
+            <GlassCard className="h-full p-6 flex flex-col relative overflow-hidden">
+                {/* Background Glow - matching NoteCard */}
+                <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/10 blur-[50px] rounded-full group-hover:bg-cyan-500/20 transition-all duration-500" />
+
+                {/* Header */}
+                <div className="flex justify-between items-start mb-4 relative z-10">
+                    <div className="p-2.5 rounded-xl bg-cyan-500/5 border border-cyan-500/10 text-cyan-400">
+                        <BrainCircuit size={20} />
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <span className={cn(
+                            "px-3 py-1 rounded-full text-xs font-medium border capitalize",
+                            badge.className
+                        )}>
+                            {badge.text}
+                        </span>
+                        {/* Actions dropdown */}
+                        <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                    <button className="h-7 w-7 rounded-full flex items-center justify-center bg-white/5 text-white/70 hover:bg-white/10 hover:text-white transition-colors">
+                                        <MoreVertical size={14} />
+                                    </button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent
+                                    align="end"
+                                    className="bg-zinc-900 border-white/10 text-slate-200"
+                                >
+                                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit(); }}>
+                                        <Edit className="mr-2 h-4 w-4" /> Edit
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onDelete(); }} className="text-red-400">
+                                        <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        </div>
+                    </div>
                 </div>
 
-                {/* Mastery ring */}
-                <div className="relative w-20 h-20 flex items-center justify-center">
-                    <svg className="absolute inset-0 w-full h-full -rotate-90">
-                        {/* Track */}
-                        <circle
-                            cx="40"
-                            cy="40"
-                            r={radius}
-                            stroke="rgba(255,255,255,0.1)"
-                            strokeWidth="4"
-                            fill="transparent"
-                        />
-                        {/* Progress */}
-                        <circle
-                            cx="40"
-                            cy="40"
-                            r={radius}
-                            stroke="currentColor"
-                            strokeWidth="4"
-                            fill="transparent"
-                            strokeDasharray={circumference}
-                            strokeDashoffset={strokeDashoffset}
-                            strokeLinecap="round"
-                            className={`${accentClass} transition-all duration-700`}
-                        />
-                    </svg>
-                    <span className={`font-mono text-lg font-bold ${accentClass}`}>
-                        {masteryPercent}%
-                    </span>
-                </div>
-            </div>
-
-            {/* Content */}
-            <div className="flex-1 px-5 py-4 flex flex-col justify-between">
-                <div className="text-center">
-                    <h3 className="text-base font-bold text-white mb-1 line-clamp-1 group-hover:text-cyan-400 transition-colors">
+                {/* Content */}
+                <div className="flex-1 relative z-10">
+                    <h3 className="text-lg font-bold text-white mb-2 line-clamp-1 group-hover:text-cyan-300 transition-colors">
                         {deck.name}
                     </h3>
-                    <p className="text-xs text-slate-500 line-clamp-2 h-8">
-                        {deck.description || 'No description'}
+                    <p className="text-sm text-slate-400 line-clamp-2 leading-relaxed">
+                        {deck.description || 'No description provided.'}
                     </p>
                 </div>
 
-                {/* Stats */}
-                <div className="flex items-center justify-center gap-4 text-[10px] font-medium text-slate-500 uppercase tracking-wider pt-2 border-t border-white/5">
-                    <div className="flex items-center gap-1.5">
-                        <Layers size={12} className="text-slate-400" />
-                        {deck.card_count || 0} cards
-                    </div>
-                    <div className="w-1 h-1 rounded-full bg-slate-700" />
-                    <div className="flex items-center gap-1.5">
-                        <Zap size={12} className="text-amber-400" />
-                        {dueCount} due
-                    </div>
-                </div>
 
-                {/* Review button */}
-                <button
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        onReview();
-                    }}
-                    className={`
-            w-full mt-3 py-2.5 rounded-xl
-            flex items-center justify-center gap-2
-            bg-white/5 border ${borderClass}
-            text-sm font-bold ${accentClass}
-            hover:bg-white/10 transition-colors
-          `}
-                >
-                    <Play size={14} className="fill-current" />
-                    Review
-                </button>
-            </div>
+                {/* Footer Stats - matching NoteCard/QuizCard */}
+                <div className="mt-auto pt-4 border-t border-white/5 flex items-center justify-between relative z-10">
+                    <div className="flex items-center gap-4 text-xs font-mono text-slate-600">
+                        <span className="flex items-center gap-1.5">
+                            <Layers size={12} className="text-slate-500" />
+                            {deck.card_count || 0} cards
+                        </span>
+                        <span className="flex items-center gap-1.5">
+                            <Zap size={12} className="text-amber-400" />
+                            {dueCount} due
+                        </span>
+                    </div>
+
+                    <motion.button
+                        onClick={(e) => { e.stopPropagation(); onReview(); }}
+                        className="p-2 rounded-full bg-cyan-500/10 text-cyan-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.9 }}
+                    >
+                        <Play size={14} fill="currentColor" />
+                    </motion.button>
+                </div>
+            </GlassCard>
         </motion.div>
     );
 });
+

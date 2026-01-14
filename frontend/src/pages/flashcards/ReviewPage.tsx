@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import Confetti from 'react-confetti';
 import { Trophy, Loader2, X } from 'lucide-react';
+import { useEffect } from 'react';
 import {
   useStudySession,
   useStudyShortcuts,
@@ -12,6 +13,11 @@ import {
 } from './study';
 import { useActiveDeck } from './core';
 import { EmptyState } from './shared';
+import {
+  useTTSFlashcard,
+  useAutonomousAudio,
+  notificationClient,
+} from '@/platform/audio';
 
 // Minimalist time formatter
 function formatTime(ms: number): string {
@@ -41,6 +47,23 @@ export function ReviewPage() {
     submitReview,
     endSession,
   } = useStudySession({ deckId: parsedDeckId });
+
+  // Audio Integration: TTS for flashcard answers
+  useTTSFlashcard({
+    cardId: currentCard?.id ?? null,
+    answerText: currentCard?.back_text ?? '',
+    isFlipped,
+  });
+
+  // Audio Integration: Autonomous music behavior
+  useAutonomousAudio();
+
+  // Audio Integration: Notification on session complete
+  useEffect(() => {
+    if (isSessionComplete) {
+      notificationClient.play('success');
+    }
+  }, [isSessionComplete]);
 
   useStudyShortcuts({
     enabled: isSessionActive && !!currentCard,

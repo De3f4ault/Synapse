@@ -57,6 +57,7 @@ import { useAuthStore } from "@/stores/authStore";
 import { useThemeStore } from "@/stores/themeStore";
 import { useWebSocket } from "@/api/websocket/hooks/useWebSocket";
 import { useCmdKSearch } from "@/api/unified-search";
+import { AudioTrigger } from "@/platform/audio";
 
 interface HeaderProps {
   className?: string;
@@ -322,6 +323,9 @@ export function Header({ className }: HeaderProps) {
               })}
             </DropdownMenuContent>
           </DropdownMenu>
+
+          {/* Focus Audio Trigger */}
+          <AudioTrigger />
 
           {/* Notifications */}
           <button className="relative group p-2 rounded-full hover:bg-white/10 hover:text-cyan-400 transition-colors text-slate-400">

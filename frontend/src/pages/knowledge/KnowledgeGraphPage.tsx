@@ -136,8 +136,8 @@ export const KnowledgeGraphPage: React.FC = () => {
         {/* Desktop Sidebar - Retractable */}
         <div
           className={cn(
-            "hidden md:block transition-all duration-300 ease-in-out relative z-10",
-            sidebarCollapsed ? "w-0" : "w-64",
+            "hidden md:block transition-all duration-300 ease-in-out relative z-10 py-4 pl-3",
+            sidebarCollapsed ? "w-0 p-0" : "w-[17rem]",
           )}
         >
           <KnowledgeSidebar
@@ -147,7 +147,7 @@ export const KnowledgeGraphPage: React.FC = () => {
             onToggleFilter={handleToggleFilter}
             onRefresh={refetch}
             stats={data?.stats}
-            className="h-full border-r border-white/5 w-64"
+            className="h-full rounded-2xl border border-white/5 w-full"
             isCollapsed={sidebarCollapsed}
           />
         </div>

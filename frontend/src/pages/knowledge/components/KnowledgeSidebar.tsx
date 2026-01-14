@@ -2,7 +2,7 @@ import React from "react";
 import { Search, Filter, Layers, RefreshCw } from "lucide-react";
 import { ENTITY_CONFIG } from "../types";
 import { cn } from "@/lib/utils";
-import GlassCard from "@/components/ui/GlassCard";
+import { GlassCard } from "@/shared/ui";
 
 interface KnowledgeSidebarProps {
   searchQuery: string;

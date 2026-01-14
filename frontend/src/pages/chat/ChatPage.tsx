@@ -25,7 +25,6 @@ import { useIsVoiceActive, LiveVoiceOverlay } from "./voice";
 
 // Layout and providers
 import { ChatProviders } from "./ChatProviders";
-import { AuroraBackground } from "@/shared/ui";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { MenuIcon, PanelLeftIcon } from "lucide-react";
@@ -125,25 +124,24 @@ export const ChatPage: React.FC = () => {
   }
 
   // ==================== RENDER ====================
-  // Pattern copied EXACTLY from DocumentsHub.tsx which works correctly
-
+  // Pattern copied EXACTLY from DocumentsHub.tsx
   return (
     <ChatProviders sessionId={sessionId}>
-      <AuroraBackground className="fixed inset-0 min-h-screen flex flex-col pt-16" fixed>
+      <div className="fixed inset-0 min-h-screen flex flex-col pt-16 bg-[#050505]">
         <div className="flex flex-1 overflow-hidden">
           {/* Desktop Sidebar - Standardized Collapsible Pattern */}
           <div
             className={cn(
-              "hidden lg:block transition-all duration-300 ease-in-out relative z-10",
-              sidebarCollapsed ? "w-0" : "w-64",
+              "hidden lg:block transition-all duration-300 ease-in-out relative z-10 h-full py-4 pl-3",
+              sidebarCollapsed ? "w-0 p-0" : "w-[17rem]",
             )}
           >
-            <div className={cn("h-full overflow-hidden", sidebarCollapsed && "opacity-0")}>
-              <ChatSidebar
-                currentSessionId={sessionId}
-                className="w-full h-full"
-              />
-            </div>
+            <ChatSidebar
+              currentSessionId={sessionId}
+              className="w-full h-full rounded-2xl"
+              isCollapsed={sidebarCollapsed}
+              onToggleCollapse={toggleSidebar}
+            />
           </div>
 
           {/* Mobile Sidebar (Drawer) */}
@@ -184,9 +182,12 @@ export const ChatPage: React.FC = () => {
               </Button>
             </div>
 
-            {/* Chat Content - with proper padding like DocumentsHub */}
-            <div className="flex-1 overflow-hidden p-4 lg:p-0 relative">
-              <ChatMain sessionId={sessionId} />
+            {/* Chat Content */}
+            <div className="flex-1 flex flex-col min-h-0 relative">
+              <ChatMain 
+                sessionId={sessionId} 
+                sessionTitle={sessions.find(s => s.id === sessionId)?.title}
+              />
             </div>
           </div>
         </div>
@@ -196,7 +197,7 @@ export const ChatPage: React.FC = () => {
           isOpen={voiceOverlayOpen || isVoiceActive}
           onClose={() => setVoiceOverlayOpen(false)}
         />
-      </AuroraBackground>
+      </div>
     </ChatProviders>
   );
 };

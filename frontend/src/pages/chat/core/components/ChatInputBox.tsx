@@ -8,7 +8,7 @@
 import { PaperclipIcon, SendIcon, Mic, Search, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import GlassCard from "@/components/ui/GlassCard";
+import { GlassCard } from "@/shared/ui";
 import { cn } from "@/lib/utils";
 import { useState, useRef } from "react";
 import { useMentionController, EntityPicker } from "@/shared/platform/mentions";

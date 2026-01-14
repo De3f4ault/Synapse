@@ -9,7 +9,7 @@ import {
   Share2,
   ScanEye,
 } from "lucide-react";
-import GlassCard from "@/components/ui/GlassCard";
+import { GlassCard } from "@/shared/ui";
 import { GraphNode, ENTITY_CONFIG } from "../types";
 
 interface NodeDetailsPanelProps {

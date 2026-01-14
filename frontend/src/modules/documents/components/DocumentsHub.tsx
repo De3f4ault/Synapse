@@ -67,8 +67,8 @@ export const DocumentsHub = ({
                 {/* Desktop Sidebar - Standardized Collapsible Pattern */}
                 <div
                     className={cn(
-                        "hidden lg:block transition-all duration-300 ease-in-out relative z-10",
-                        sidebarCollapsed ? "w-0" : "w-64",
+                        "hidden lg:block transition-all duration-300 ease-in-out relative z-10 py-4 pl-3",
+                        sidebarCollapsed ? "w-0 p-0" : "w-[17rem]",
                     )}
                 >
                     <DocumentsSidebar
@@ -77,7 +77,7 @@ export const DocumentsHub = ({
                         totalDocuments={documents.length}
                         sectors={sectors}
                         onUpload={onUpload}
-                        className="w-full"
+                        className="w-full h-full rounded-2xl"
                         isCollapsed={sidebarCollapsed}
                     />
                 </div>

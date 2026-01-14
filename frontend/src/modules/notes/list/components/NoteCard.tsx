@@ -8,7 +8,7 @@
 import { motion } from "framer-motion";
 import { FileText, Clock } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
-import GlassCard from "@/components/ui/GlassCard";
+import { GlassCard } from "@/shared/ui";
 import type { NoteResponse } from "../../core";
 
 // ============================================================================
@@ -18,14 +18,14 @@ import type { NoteResponse } from "../../core";
 interface NoteCardProps {
     note: NoteResponse;
     onClick: () => void;
-    index: number;
+
 }
 
 // ============================================================================
 // Component
 // ============================================================================
 
-export const NoteCard = ({ note, onClick, index }: NoteCardProps) => {
+export const NoteCard = ({ note, onClick }: NoteCardProps) => {
     // Get color accent based on first tag or default
     const getAccentClass = (): string => {
         const colorPalettes = [
@@ -49,7 +49,35 @@ export const NoteCard = ({ note, onClick, index }: NoteCardProps) => {
 
     // Extract preview text
     const getPreview = () => {
-        const text = (note.content || "")
+        let text = note.content || "";
+
+        // Check for BlockNote JSON structure
+        if (text.trim().startsWith("[") || text.trim().startsWith("{")) {
+            try {
+                const parsed = JSON.parse(text);
+                if (Array.isArray(parsed)) {
+                    // It's likely a BlockNote array of blocks
+                    // Extract text from blocks
+                    const textContent = parsed
+                        .map((block: any) => {
+                             if (block.content) {
+                                  // block.content can be an array of inline content
+                                  if (Array.isArray(block.content)) {
+                                      return block.content.map((c: any) => c.text).join("");
+                                  }
+                                  return block.content; // fallback
+                             }
+                             return "";
+                        })
+                        .join(" ");
+                    text = textContent;
+                }
+            } catch (e) {
+                // Not valid JSON, treat as plain text
+            }
+        }
+
+        text = text
             .replace(/[#*`_\[\]]/g, "")
             .replace(/\n+/g, " ")
             .trim();
@@ -63,20 +91,19 @@ export const NoteCard = ({ note, onClick, index }: NoteCardProps) => {
 
     return (
         <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.03, type: "spring", stiffness: 300 }}
-            whileHover={{ y: -6, transition: { duration: 0.2 } }}
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            whileHover={{ y: -4, scale: 1.02 }}
+            transition={{ duration: 0.2 }}
             onClick={onClick}
-            className="group relative cursor-pointer h-full"
+            className="group cursor-pointer h-full"
         >
-            <GlassCard
-                hover
-                className="h-full flex flex-col p-6 border-transparent transition-all duration-300"
-            >
-                {/* Header: Tags and Menu */}
-                <div className="flex items-start justify-between mb-4">
-                    {/* Tags */}
+            <GlassCard className="h-full p-6 flex flex-col relative overflow-hidden">
+                {/* Background Glow */}
+                <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/10 blur-[50px] rounded-full group-hover:bg-cyan-500/20 transition-all duration-500" />
+
+                {/* Header: Tags */}
+                <div className="flex items-start justify-between mb-4 relative z-10">
                     <div className="flex flex-wrap gap-1.5">
                         {tags.length > 0 ? (
                             tags.slice(0, 2).map((tag: any, i: number) => (
@@ -101,23 +128,22 @@ export const NoteCard = ({ note, onClick, index }: NoteCardProps) => {
                 </div>
 
                 {/* Title */}
-                <h3 className="text-lg font-bold text-slate-200 mb-3 line-clamp-2 group-hover:text-white transition-colors">
+                <h3 className="relative z-10 text-lg font-bold text-white mb-2 line-clamp-2 group-hover:text-cyan-300 transition-colors">
                     {note.title || "Untitled Note"}
                 </h3>
 
                 {/* Content Preview */}
-                <div className="flex-1">
+                <div className="flex-1 relative z-10">
                     {note.content && (
-                        <p className="text-sm text-slate-500 mb-4 line-clamp-3 leading-relaxed group-hover:text-slate-400 transition-colors">
+                        <p className="text-sm text-slate-400 mb-4 line-clamp-3 leading-relaxed">
                             {getPreview()}
                         </p>
                     )}
                 </div>
 
                 {/* Footer: Metadata */}
-                <div className="flex items-center justify-between pt-4 border-t border-white/5 mt-auto">
+                <div className="relative z-10 flex items-center justify-between pt-4 border-t border-white/5 mt-auto">
                     <div className="flex items-center gap-3 text-xs text-slate-600 font-mono">
-                        {/* Last updated */}
                         <div className="flex items-center gap-1.5">
                             <Clock size={12} />
                             <span>
@@ -128,7 +154,6 @@ export const NoteCard = ({ note, onClick, index }: NoteCardProps) => {
                         </div>
                     </div>
 
-                    {/* Read time badge */}
                     <div className="flex items-center gap-1.5 text-[10px] font-medium text-cyan-500/80 bg-cyan-500/10 px-2 py-1 rounded-md border border-cyan-500/10">
                         <FileText size={10} />
                         {readTime} min

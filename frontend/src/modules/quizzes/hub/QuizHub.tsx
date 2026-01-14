@@ -5,16 +5,20 @@
  * Orchestrates card grid and generation modal.
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, Wand2, FileQuestion, X } from "lucide-react";
+import { FileQuestion, PanelLeftIcon, MenuIcon } from "lucide-react"; // Icons for empty state & toggle
 import { cn } from "@/lib/utils";
 import { useQuizHub } from "./hooks/useQuizHub";
 import { QuizCard } from "./QuizCard";
 import { QuizGenerator } from "./QuizGenerator";
 import type { QuizResponse } from "@/api/generated";
 import { EmptyState, AuroraBackground } from "@/shared/ui";
+import { QuizzesSidebar } from "./QuizzesSidebar"; // New Sidebar
+import { QuizDock } from "./QuizDock"; // New Dock
+import { Sheet, SheetContent } from "@/components/ui/sheet"; // For Mobile Sidebar
+import { Button } from "@/components/ui/button"; // For Toggles
 
 export function QuizHub() {
     const navigate = useNavigate();
@@ -22,8 +26,28 @@ export function QuizHub() {
 
     const [searchQuery, setSearchQuery] = useState("");
     const [showGenerator, setShowGenerator] = useState(false);
+    
+    // Layout State
+    const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+    const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+    const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+    const [activeFilter, setActiveFilter] = useState("All");
 
-    // Filter quizzes by search
+    // Load sidebar state
+    useEffect(() => {
+        const saved = localStorage.getItem("quizzesSidebarCollapsed");
+        if (saved) {
+            setSidebarCollapsed(JSON.parse(saved));
+        }
+    }, []);
+
+    const toggleSidebar = () => {
+        const newState = !sidebarCollapsed;
+        setSidebarCollapsed(newState);
+        localStorage.setItem("quizzesSidebarCollapsed", JSON.stringify(newState));
+    };
+
+    // Filter quizzes
     const filteredQuizzes = (quizzes as QuizResponse[]).filter((quiz) =>
         quiz.title.toLowerCase().includes(searchQuery.toLowerCase())
     );
@@ -47,144 +71,164 @@ export function QuizHub() {
     };
 
     return (
-        <AuroraBackground className="relative min-h-screen flex flex-col" fixed>
-
-            {/* Hide scrollbar */}
+        <AuroraBackground className="fixed inset-0 min-h-screen flex flex-col pt-16" fixed>
             <style>{`
-        .scrollbar-hide::-webkit-scrollbar { display: none; }
-        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
-      `}</style>
+                .scrollbar-hide::-webkit-scrollbar { display: none; }
+                .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+            `}</style>
 
-            <div className="relative z-10 flex flex-col h-full">
-                {/* Top Bar: Search */}
-                <div className="flex-none pt-8 pb-4 px-8 z-30">
-                    <div className="max-w-2xl mx-auto">
-                        <div className="relative group">
-                            <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-slate-500 group-focus-within:text-cyan-400 transition-colors">
-                                <Search size={18} />
+            <div className="flex flex-1 overflow-hidden">
+                {/* Desktop Sidebar */}
+                <div
+                    className={cn(
+                        "hidden lg:block transition-all duration-300 ease-in-out relative z-10 py-4 pl-3",
+                        sidebarCollapsed ? "w-0 p-0" : "w-[17rem]",
+                    )}
+                >
+                    <QuizzesSidebar
+                        activeFilter={activeFilter}
+                        onFilterChange={setActiveFilter}
+                        totalQuizzes={quizzes?.length || 0}
+                        onNewQuiz={() => setShowGenerator(true)}
+                        className="w-full h-full rounded-2xl"
+                        isCollapsed={sidebarCollapsed}
+                    />
+                </div>
+
+                {/* Mobile Sidebar */}
+                <Sheet open={mobileSidebarOpen} onOpenChange={setMobileSidebarOpen}>
+                    <SheetContent
+                        side="left"
+                        className="w-64 p-0 border-none [&>button]:hidden bg-[#050505]/95 backdrop-blur-xl"
+                    >
+                        <QuizzesSidebar
+                            activeFilter={activeFilter}
+                            onFilterChange={(f) => { setActiveFilter(f); setMobileSidebarOpen(false); }}
+                            totalQuizzes={quizzes?.length || 0}
+                            onNewQuiz={() => { setShowGenerator(true); setMobileSidebarOpen(false); }}
+                            className="w-64"
+                        />
+                    </SheetContent>
+                </Sheet>
+
+                {/* Main Content Area */}
+                <div className="flex-1 flex flex-col overflow-hidden relative z-0">
+                    {/* Always Visible Toggle Button */}
+                    <div className="absolute top-4 left-4 z-50 flex items-center gap-2 pointer-events-none">
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={toggleSidebar}
+                            className="hidden lg:flex pointer-events-auto hover:bg-white/10 text-slate-400 hover:text-white rounded-xl transition-colors"
+                        >
+                            <PanelLeftIcon className="size-5" />
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setMobileSidebarOpen(true)}
+                            className="lg:hidden pointer-events-auto hover:bg-white/10 text-slate-400 hover:text-white rounded-xl transition-colors"
+                        >
+                            <MenuIcon className="size-5" />
+                        </Button>
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto p-8 pb-32 relative scrollbar-hide">
+                         <div className="max-w-[1600px] mx-auto">
+                            <div className="mb-8 pt-2 pl-12 lg:pl-0">
+                                {/* Page Header */}
+                                <h1 className="text-3xl font-bold text-white mb-2 tracking-tight">
+                                    {activeFilter === "All" ? "All Quizzes" : activeFilter}
+                                </h1>
+                                <p className="text-slate-400">Test your knowledge and track your progress.</p>
                             </div>
-                            <input
-                                type="text"
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                placeholder="Search quizzes..."
-                                className={cn(
-                                    "w-full h-12 pl-12 pr-12",
-                                    "bg-white/[0.03] border border-white/[0.06] rounded-xl backdrop-blur-md",
-                                    "text-slate-200 placeholder:text-slate-500",
-                                    "focus:outline-none focus:border-cyan-500/40 focus:bg-white/[0.05]",
-                                    "transition-all"
-                                )}
-                            />
-                            {searchQuery && (
-                                <button
-                                    onClick={() => setSearchQuery("")}
-                                    className="absolute inset-y-0 right-4 flex items-center text-slate-500 hover:text-white"
+
+                            {/* Loading State */}
+                            {isLoading && (
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                                    {[...Array(8)].map((_, i) => (
+                                        <div
+                                            key={i}
+                                            className="h-64 rounded-2xl bg-white/[0.02] border border-white/[0.04] animate-pulse"
+                                        />
+                                    ))}
+                                </div>
+                            )}
+
+                            {/* Empty State */}
+                            {!isLoading && filteredQuizzes.length === 0 && (
+                                <EmptyState
+                                    className="mt-20"
+                                    icon={FileQuestion}
+                                    title={searchQuery ? "No quizzes found" : "No quizzes yet"}
+                                    description={
+                                        searchQuery
+                                            ? "Try a different search term to find what you're looking for."
+                                            : "Create your first quiz to start testing your knowledge."
+                                    }
+                                    action={
+                                        !searchQuery ? {
+                                            label: "Generate Quiz",
+                                            onClick: () => setShowGenerator(true),
+                                        } : undefined
+                                    }
+                                />
+                            )}
+
+                            {/* Quiz Grid */}
+                            {!isLoading && filteredQuizzes.length > 0 && (
+                                <motion.div
+                                    variants={containerVariants}
+                                    initial="hidden"
+                                    animate="visible"
+                                    className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
                                 >
-                                    <X size={16} />
-                                </button>
+                                    {filteredQuizzes.map((quiz) => (
+                                        <QuizCard
+                                            key={quiz.id}
+                                            quiz={quiz}
+                                            variants={cardVariants}
+                                            onStart={() => navigate(`/quizzes/${quiz.id}/take`)}
+                                        />
+                                    ))}
+                                </motion.div>
                             )}
                         </div>
                     </div>
                 </div>
-
-                {/* Main Content */}
-                <div className="flex-1 overflow-y-auto scrollbar-hide p-8 pt-0 pb-32">
-                    {/* Loading State */}
-                    {isLoading && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                            {[...Array(8)].map((_, i) => (
-                                <div
-                                    key={i}
-                                    className="h-64 rounded-2xl bg-white/[0.02] border border-white/[0.04] animate-pulse"
-                                />
-                            ))}
-                        </div>
-                    )}
-
-                    {/* Empty State */}
-                    {!isLoading && filteredQuizzes.length === 0 && (
-                        <EmptyState
-                            className="mt-20"
-                            icon={FileQuestion}
-                            title={searchQuery ? "No quizzes found" : "No quizzes yet"}
-                            description={
-                                searchQuery
-                                    ? "Try a different search term to find what you're looking for."
-                                    : "Create your first quiz to start testing your knowledge."
-                            }
-                            action={
-                                !searchQuery ? {
-                                    label: "Generate Quiz",
-                                    onClick: () => setShowGenerator(true),
-                                } : undefined
-                            }
-                        />
-                    )}
-
-                    {/* Quiz Grid */}
-                    {!isLoading && filteredQuizzes.length > 0 && (
-                        <motion.div
-                            variants={containerVariants}
-                            initial="hidden"
-                            animate="visible"
-                            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
-                        >
-                            {filteredQuizzes.map((quiz) => (
-                                <QuizCard
-                                    key={quiz.id}
-                                    quiz={quiz}
-                                    variants={cardVariants}
-                                    onStart={() => navigate(`/quizzes/${quiz.id}/take`)}
-                                />
-                            ))}
-                        </motion.div>
-                    )}
-                </div>
-
-                {/* FAB: New Quiz */}
-                <div className="fixed bottom-8 right-8 z-40">
-                    <motion.button
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={() => setShowGenerator(true)}
-                        className={cn(
-                            "h-14 px-8 rounded-full flex items-center gap-2",
-                            "bg-gradient-to-r from-purple-600 to-indigo-600 text-white",
-                            "font-bold tracking-wide text-base",
-                            "shadow-xl shadow-purple-500/20",
-                            "hover:shadow-[0_0_25px_rgba(168,85,247,0.4)]",
-                            "transition-all"
-                        )}
-                    >
-                        <Wand2 size={20} strokeWidth={2.5} />
-                        New Quiz
-                    </motion.button>
-                </div>
-
-                {/* Generator Modal */}
-                <AnimatePresence>
-                    {showGenerator && (
-                        <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-6"
-                            onClick={(e) => e.target === e.currentTarget && setShowGenerator(false)}
-                        >
-                            <QuizGenerator
-                                onGenerate={(request) => {
-                                    generateQuiz(request, {
-                                        onSuccess: () => setShowGenerator(false),
-                                    });
-                                }}
-                                isGenerating={isGenerating}
-                                onClose={() => setShowGenerator(false)}
-                            />
-                        </motion.div>
-                    )}
-                </AnimatePresence>
             </div>
+
+            {/* Floating Dock */}
+            <QuizDock
+                viewMode={viewMode}
+                onViewChange={setViewMode}
+                searchQuery={searchQuery}
+                onSearchChange={setSearchQuery}
+                onImport={() => {}} // Placeholder for now
+            />
+
+            {/* Generator Modal */}
+            <AnimatePresence>
+                {showGenerator && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-6"
+                        onClick={(e) => e.target === e.currentTarget && setShowGenerator(false)}
+                    >
+                        <QuizGenerator
+                            onGenerate={(request) => {
+                                generateQuiz(request, {
+                                    onSuccess: () => setShowGenerator(false),
+                                });
+                            }}
+                            isGenerating={isGenerating}
+                            onClose={() => setShowGenerator(false)}
+                        />
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </AuroraBackground>
     );
 }

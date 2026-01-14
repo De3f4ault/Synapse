@@ -36,7 +36,7 @@ export {
 
 // List - Discovery and organization
 export {
-  DocumentCard,
+  DocumentListItem,
   DocumentGrid,
   DocumentTable,
   useDocuments,

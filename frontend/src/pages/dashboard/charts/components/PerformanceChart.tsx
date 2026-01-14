@@ -17,7 +17,7 @@ import {
     Legend,
 } from "recharts";
 import { TrendingUp } from "lucide-react";
-import GlassCard from "@/components/ui/GlassCard";
+import { GlassCard } from "@/shared/ui";
 import type { PerformanceTrend } from "@/api/generated";
 import { useShowGrid, useShowLegend } from "../state";
 

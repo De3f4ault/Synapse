@@ -8,7 +8,7 @@ import React from "react";
 import { CheckCircle, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-import GlassCard from "@/components/ui/GlassCard";
+import { GlassCard } from "@/shared/ui";
 
 interface QuestionReviewProps {
     questionText: string;

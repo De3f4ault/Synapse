@@ -1,7 +1,7 @@
 import { Filter, Layers, Hash, Clock, Plus, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NeumorphicButton } from "@/components/neumorphic";
-import GlassCard from "@/components/ui/GlassCard";
+import { GlassCard } from "@/shared/ui";
 
 interface FlashcardsSidebarProps {
     className?: string;
@@ -53,12 +53,13 @@ export const FlashcardsSidebar = ({
                 )}
 
                 {/* Primary Actions */}
-                <div className={cn("flex flex-col gap-2", isCollapsed ? "items-center" : "")}>
+                {/* Primary Actions */}
+                <div className="flex flex-col gap-2">
                     <NeumorphicButton
                         onClick={onCreate}
                         className={cn(
-                            "flex items-center justify-center gap-2 font-semibold text-white bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 border-none shadow-lg shadow-purple-900/20",
-                            isCollapsed ? "p-3 rounded-full aspect-square w-12" : "w-full py-3 rounded-xl"
+                            "w-full flex items-center justify-center gap-2 font-semibold text-white bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 border-none shadow-lg shadow-purple-900/20",
+                            isCollapsed ? "p-3 rounded-full aspect-square w-12" : "py-3 rounded-xl"
                         )}
                         title="Create Deck"
                     >
@@ -69,8 +70,8 @@ export const FlashcardsSidebar = ({
                     <NeumorphicButton
                         onClick={onAiGenerate}
                         className={cn(
-                            "flex items-center justify-center gap-2 font-semibold text-purple-200 bg-white/5 hover:bg-white/10 border border-white/10",
-                            isCollapsed ? "p-3 rounded-full aspect-square w-12" : "w-full py-3 rounded-xl"
+                            "w-full flex items-center justify-center gap-2 font-semibold text-purple-200 bg-white/5 hover:bg-white/10 border border-white/10",
+                            isCollapsed ? "p-3 rounded-full aspect-square w-12" : "py-3 rounded-xl"
                         )}
                         title="AI Generate"
                     >

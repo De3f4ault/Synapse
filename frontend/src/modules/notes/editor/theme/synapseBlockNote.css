@@ -1,0 +1,345 @@
+/**
+ * Synapse BlockNote Theme
+ * Cyberpunk-styled overrides for BlockNote editor.
+ * 
+ * PRINCIPLE: BlockNote provides capability. Synapse provides identity.
+ * This file skins BlockNote's DOM to match Synapse's aesthetic.
+ */
+
+/* ============================================================================
+   CSS Variable Overrides
+   Map BlockNote variables to Synapse design tokens
+   ============================================================================ */
+
+.bn-container[data-theme="synapse"] {
+  /* Colors */
+  --bn-colors-editor-text: var(--synapse-text-primary);
+  --bn-colors-editor-background: transparent;
+  --bn-colors-menu-text: var(--synapse-text-primary);
+  --bn-colors-menu-background: var(--synapse-panel-bg);
+  --bn-colors-tooltip-text: var(--synapse-text-primary);
+  --bn-colors-tooltip-background: var(--synapse-panel-bg);
+  --bn-colors-hovered-text: var(--synapse-text-primary);
+  --bn-colors-hovered-background: rgba(34, 211, 238, 0.1);
+  --bn-colors-selected-text: var(--synapse-text-primary);
+  --bn-colors-selected-background: rgba(34, 211, 238, 0.2);
+  --bn-colors-disabled-text: var(--synapse-text-dim);
+  --bn-colors-disabled-background: transparent;
+  --bn-colors-shadow: rgba(0, 0, 0, 0.5);
+  --bn-colors-border: var(--synapse-border-subtle);
+  --bn-colors-side-menu: var(--synapse-text-tertiary);
+  --bn-colors-highlights-gray-text: var(--synapse-text-secondary);
+  --bn-colors-highlights-gray-background: rgba(128, 128, 128, 0.2);
+
+  /* Fonts */
+  --bn-font-family: var(--font-serif, Georgia, serif);
+
+  /* Spacing */
+  --bn-border-radius: 8px;
+}
+
+/* ============================================================================
+   Editor Surface
+   ============================================================================ */
+
+.bn-container[data-theme="synapse"] .bn-editor {
+  background: transparent;
+  color: var(--synapse-text-secondary, #94a3b8); /* Fallback to cool gray */
+  font-size: 1.125rem;
+  line-height: 1.75;
+  caret-color: var(--synapse-cyan, #22d3ee);
+}
+
+/* Placeholder text */
+.bn-container[data-theme="synapse"]
+  .bn-block-content[data-is-empty-and-focused="true"]::before,
+.bn-container[data-theme="synapse"]
+  .bn-inline-content[data-is-empty-and-focused="true"]::before {
+  color: var(--synapse-text-dim);
+  font-style: italic;
+}
+
+/* ============================================================================
+   Blocks
+   ============================================================================ */
+
+/* Block hover effect - neural glow */
+.bn-container[data-theme="synapse"] .bn-block-outer:hover {
+  background: linear-gradient(
+    90deg,
+    rgba(34, 211, 238, 0.03) 0%,
+    transparent 100%
+  );
+}
+
+/* Block selection */
+.bn-container[data-theme="synapse"] .bn-block-outer[data-is-selected="true"] {
+  background: rgba(34, 211, 238, 0.08);
+  border-left: 2px solid var(--synapse-cyan);
+}
+
+/* Headings */
+.bn-container[data-theme="synapse"] h1 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--synapse-text-primary);
+  text-shadow: 0 0 20px rgba(34, 211, 238, 0.2);
+  margin-bottom: 1rem;
+}
+
+.bn-container[data-theme="synapse"] h2 {
+  font-size: 2rem;
+  font-weight: 600;
+  color: var(--synapse-text-primary);
+  border-bottom: 1px solid var(--synapse-border-subtle);
+  padding-bottom: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.bn-container[data-theme="synapse"] h3 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--synapse-text-primary);
+}
+
+/* ============================================================================
+   Code Blocks
+   ============================================================================ */
+
+.bn-container[data-theme="synapse"] pre {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--synapse-border-subtle);
+  border-radius: 8px;
+  padding: 1rem;
+  font-family: "JetBrains Mono", "Fira Code", monospace;
+  font-size: 0.875rem;
+  overflow-x: auto;
+}
+
+.bn-container[data-theme="synapse"] code {
+  color: var(--synapse-cyan);
+  background: rgba(34, 211, 238, 0.1);
+  padding: 0.125rem 0.375rem;
+  border-radius: 4px;
+  font-family: "JetBrains Mono", "Fira Code", monospace;
+  font-size: 0.9em;
+}
+
+.bn-container[data-theme="synapse"] pre code {
+  background: transparent;
+  padding: 0;
+  color: inherit;
+}
+
+/* ============================================================================
+   Lists
+   ============================================================================ */
+
+.bn-container[data-theme="synapse"] ul,
+.bn-container[data-theme="synapse"] ol {
+  padding-left: 1.5rem;
+}
+
+.bn-container[data-theme="synapse"] li::marker {
+  color: var(--synapse-cyan);
+}
+
+/* Checkbox lists */
+.bn-container[data-theme="synapse"] input[type="checkbox"] {
+  accent-color: var(--synapse-cyan);
+}
+
+/* ============================================================================
+   Links
+   ============================================================================ */
+
+.bn-container[data-theme="synapse"] a {
+  color: var(--synapse-cyan);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.2s ease;
+}
+
+.bn-container[data-theme="synapse"] a:hover {
+  border-bottom-color: var(--synapse-cyan);
+  text-shadow: 0 0 8px rgba(34, 211, 238, 0.5);
+}
+
+/* ============================================================================
+   Blockquotes
+   ============================================================================ */
+
+.bn-container[data-theme="synapse"] blockquote {
+  border-left: 3px solid var(--synapse-cyan);
+  padding-left: 1rem;
+  margin-left: 0;
+  color: var(--synapse-text-tertiary);
+  font-style: italic;
+  background: linear-gradient(
+    90deg,
+    rgba(34, 211, 238, 0.05) 0%,
+    transparent 100%
+  );
+}
+
+/* ============================================================================
+   Tables
+   ============================================================================ */
+
+.bn-container[data-theme="synapse"] table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.bn-container[data-theme="synapse"] th,
+.bn-container[data-theme="synapse"] td {
+  border: 1px solid var(--synapse-border-subtle);
+  padding: 0.75rem;
+  text-align: left;
+}
+
+.bn-container[data-theme="synapse"] th {
+  background: rgba(34, 211, 238, 0.1);
+  color: var(--synapse-text-primary);
+  font-weight: 600;
+}
+
+.bn-container[data-theme="synapse"] tr:hover td {
+  background: rgba(34, 211, 238, 0.05);
+}
+
+/* ============================================================================
+   Side Menu (Drag Handle + Add Block)
+   ============================================================================ */
+
+.bn-container[data-theme="synapse"] .bn-side-menu {
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.bn-container[data-theme="synapse"] .bn-block-outer:hover .bn-side-menu {
+  opacity: 1;
+}
+
+.bn-container[data-theme="synapse"] .bn-side-menu button {
+  color: var(--synapse-text-dim);
+  transition:
+    color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.bn-container[data-theme="synapse"] .bn-side-menu button:hover {
+  color: var(--synapse-cyan);
+  transform: scale(1.1);
+}
+
+/* ============================================================================
+   Slash Menu
+   ============================================================================ */
+
+.bn-container[data-theme="synapse"] .bn-slash-menu,
+.bn-container[data-theme="synapse"] .bn-suggestion-menu {
+  background: var(--synapse-panel-bg);
+  border: 1px solid var(--synapse-border-subtle);
+  border-radius: 12px;
+  box-shadow:
+    0 4px 20px rgba(0, 0, 0, 0.5),
+    0 0 40px rgba(34, 211, 238, 0.1);
+  backdrop-filter: blur(12px);
+  overflow: hidden;
+}
+
+.bn-container[data-theme="synapse"] .bn-slash-menu-item,
+.bn-container[data-theme="synapse"] .bn-suggestion-menu-item {
+  padding: 0.75rem 1rem;
+  color: var(--synapse-text-secondary);
+  transition: all 0.15s ease;
+}
+
+.bn-container[data-theme="synapse"] .bn-slash-menu-item:hover,
+.bn-container[data-theme="synapse"] .bn-suggestion-menu-item:hover,
+.bn-container[data-theme="synapse"]
+  .bn-slash-menu-item[data-is-selected="true"],
+.bn-container[data-theme="synapse"]
+  .bn-suggestion-menu-item[data-is-selected="true"] {
+  background: rgba(34, 211, 238, 0.15);
+  color: var(--synapse-text-primary);
+}
+
+.bn-container[data-theme="synapse"] .bn-slash-menu-item-icon,
+.bn-container[data-theme="synapse"] .bn-suggestion-menu-item-icon {
+  color: var(--synapse-cyan);
+}
+
+/* ============================================================================
+   Formatting Toolbar
+   ============================================================================ */
+
+.bn-container[data-theme="synapse"] .bn-formatting-toolbar {
+  background: var(--synapse-panel-bg);
+  border: 1px solid var(--synapse-border-subtle);
+  border-radius: 10px;
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.4),
+    0 0 30px rgba(34, 211, 238, 0.08);
+  backdrop-filter: blur(12px);
+  padding: 0.25rem;
+}
+
+.bn-container[data-theme="synapse"] .bn-formatting-toolbar button {
+  color: var(--synapse-text-secondary);
+  border-radius: 6px;
+  transition: all 0.15s ease;
+}
+
+.bn-container[data-theme="synapse"] .bn-formatting-toolbar button:hover {
+  background: rgba(34, 211, 238, 0.15);
+  color: var(--synapse-text-primary);
+}
+
+.bn-container[data-theme="synapse"]
+  .bn-formatting-toolbar
+  button[data-is-active="true"] {
+  background: rgba(34, 211, 238, 0.2);
+  color: var(--synapse-cyan);
+  box-shadow: 0 0 8px rgba(34, 211, 238, 0.3);
+}
+
+/* ============================================================================
+   Focus States - Neural Glow
+   ============================================================================ */
+
+.bn-container[data-theme="synapse"] *:focus {
+  outline: none;
+}
+
+.bn-container[data-theme="synapse"] .bn-editor:focus-within {
+  box-shadow: inset 0 0 40px rgba(34, 211, 238, 0.03);
+}
+
+/* ============================================================================
+   Selection Highlight
+   ============================================================================ */
+
+.bn-container[data-theme="synapse"] ::selection {
+  background: rgba(34, 211, 238, 0.3);
+  color: var(--synapse-text-primary);
+}
+
+/* ============================================================================
+   Animations
+   ============================================================================ */
+
+@keyframes synapse-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(34, 211, 238, 0);
+  }
+  50% {
+    box-shadow: 0 0 20px 2px rgba(34, 211, 238, 0.2);
+  }
+}
+
+.bn-container[data-theme="synapse"] .bn-block-outer[data-is-dragging="true"] {
+  animation: synapse-pulse 1s ease-in-out infinite;
+}

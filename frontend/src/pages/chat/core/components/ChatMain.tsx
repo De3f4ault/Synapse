@@ -12,12 +12,14 @@ import { useChatMessages } from "../hooks/useChatMessages";
 import { useChatStreaming } from "../hooks/useChatStreaming";
 import { useImplicitFeedback } from "@/modules/chat/hooks/useImplicitFeedback";
 import { useAuthStore } from "@/stores/authStore";
+import { useTTSAutoRead } from "@/platform/audio";
 
 interface ChatMainProps {
   sessionId: number;
+  sessionTitle?: string;
 }
 
-export function ChatMain({ sessionId }: ChatMainProps) {
+export function ChatMain({ sessionId, sessionTitle }: ChatMainProps) {
   const [message, setMessage] = useState("");
   const [isVoiceOpen, setIsVoiceOpen] = useState(false);
 
@@ -41,6 +43,14 @@ export function ChatMain({ sessionId }: ChatMainProps) {
   } = useChatStreaming({
     sessionId,
     autoConnect: true,
+  });
+
+  // Audio Integration: Read AI responses aloud when streaming completes
+  // TODO: Get ttsEnabled from user settings store
+  useTTSAutoRead({
+    enabled: true, // Replace with userSettings.ttsEnabled when available
+    content: streamingContent,
+    isStreaming,
   });
 
   const isConversationStarted = messages.length > 0;
@@ -84,6 +94,7 @@ export function ChatMain({ sessionId }: ChatMainProps) {
         <ChatConversationView
           messages={messages}
           message={message}
+          sessionTitle={sessionTitle}
           onMessageChange={setMessage}
           onSend={handleSend}
           onReset={handleReset}

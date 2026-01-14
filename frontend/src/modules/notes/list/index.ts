@@ -7,6 +7,7 @@
 // Components
 export { NoteTree, NeuralItem } from "./components/NoteTree";
 export { NoteCard } from "./components/NoteCard";
+export { NoteListItem } from "./components/NoteListItem";
 export { NoteSearch } from "./components/NoteSearch";
 
 // State

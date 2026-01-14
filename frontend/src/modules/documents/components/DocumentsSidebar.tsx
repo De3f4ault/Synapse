@@ -1,7 +1,7 @@
 import { Filter, Layers, FolderOpen, Hash, Clock, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { NeumorphicButton } from "@/components/neumorphic";
-import GlassCard from "@/components/ui/GlassCard";
+import { GlassCard } from "@/shared/ui";
 
 interface DocumentsSidebarProps {
     className?: string;
@@ -28,7 +28,7 @@ export const DocumentsSidebar = ({
     return (
         <GlassCard
             className={cn(
-                "flex h-full w-full flex-col bg-zinc-950/40 backdrop-blur-3xl border-r border-white/10 rounded-none transition-all duration-300 ease-in-out",
+                "flex h-full w-full flex-col bg-zinc-950/40 backdrop-blur-3xl border border-white/10 transition-all duration-300 ease-in-out",
                 className
             )}
         >

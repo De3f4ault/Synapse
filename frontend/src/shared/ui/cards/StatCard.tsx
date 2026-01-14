@@ -1,19 +1,23 @@
 /**
- * StatCard - HUD-style metric display with animated counter
+ * StatCard - Shared UI Card Primitive
+ * 
+ * CANONICAL SOURCE - Do not fork.
+ * 
+ * HUD-style metric display with animated counter.
  * 
  * Features:
  * - Animated number transitions
  * - Trend indicators
  * - Optional sparkline (not yet implemented)
  * 
- * Includes specialized wrappers: TotalReviewsCard, AccuracyCard, StudyTimeCard, StreakCard
+ * Includes specialized wrappers: TotalReviewsCard, AccuracyCard, StudyTimeCard, StreakStatCard
  */
 
 import React from "react";
 import { LucideIcon, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { AnimatedCounter } from "@/components/common/AnimatedCounter";
 import { cn } from "@/lib/utils";
-import GlassCard from "@/components/ui/GlassCard";
+import { GlassCard } from "./GlassCard";
 
 export interface StatCardProps {
     label: string;

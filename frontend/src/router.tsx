@@ -10,6 +10,7 @@ import { useAuthStore } from "@/stores/authStore";
 import { AppShell } from "@/components/layout/AppShell";
 import { LoadingScreen } from "@/components/layout/LoadingScreen";
 import { ErrorBoundary } from "@/components/common/ErrorBoundary";
+import { RouteContextProvider } from "@/platform/audio";
 
 // ==================== LAZY LOADED PAGES ====================
 
@@ -125,7 +126,10 @@ const NotFoundPage = React.lazy(() =>
 
 /**
  * ProtectedRoute Component
- * Wraps authenticated routes with AppShell layout
+ * Wraps authenticated routes with:
+ * - AppShell layout (header, sidebar, content area)
+ * - RouteContextProvider (audio context based on current route)
+ * - ErrorBoundary (module-level error handling)
  * Redirects to login if not authenticated
  */
 function ProtectedRoute() {
@@ -137,9 +141,11 @@ function ProtectedRoute() {
 
   return (
     <AppShell>
-      <ErrorBoundary level="module">
-        <Outlet />
-      </ErrorBoundary>
+      <RouteContextProvider>
+        <ErrorBoundary level="module">
+          <Outlet />
+        </ErrorBoundary>
+      </RouteContextProvider>
     </AppShell>
   );
 }

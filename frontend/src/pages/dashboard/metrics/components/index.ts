@@ -6,16 +6,16 @@
 export { StatusCard } from "./StatusCard";
 export type { StatusCardProps } from "./StatusCard";
 
-export { StatCard, StatCardGrid } from "./StatCard";
-export type { StatCardProps } from "./StatCard";
-
-// Specialized wrappers
+// StatCard - Re-exported from shared/ui (canonical source)
 export {
+    StatCard,
+    StatCardGrid,
     TotalReviewsCard,
     AccuracyCard,
     StudyTimeCard,
     StreakStatCard,
-} from "./StatCard";
+    type StatCardProps,
+} from "@/shared/ui";
 
 // Full visualization component
 export { StreakCard } from "./StreakCard";

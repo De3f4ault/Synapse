@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 import { FileText, Book, Image as ImageIcon, MoreVertical, File } from "lucide-react";
 import { cn } from "@/lib/utils";
-import GlassCard from "@/components/ui/GlassCard";
+import { GlassCard } from "@/shared/ui";
 import type { EnhancedDocument } from "../core/types";
 
 interface DocumentCardProps {
@@ -69,73 +69,76 @@ export const DocumentCard = ({ document, onClick, thumbnailUrl }: DocumentCardPr
         >
             <div onClick={onClick} className="cursor-pointer h-full relative preserve-3d">
                 <GlassCard
-                    className="h-[280px] flex flex-col p-0 overflow-hidden relative border-white/5 hover:border-cyan-500/30 transition-colors"
+                    className="h-[280px] p-0 overflow-hidden relative border-white/5 hover:border-cyan-500/30 transition-colors"
                     hover
                 >
-                    {/* Cover Preview Area */}
-                    <div className={cn(
-                        "flex-1 flex items-center justify-center relative overflow-hidden",
-                        "bg-gradient-to-br from-white/[0.02] to-white/[0.05]"
-                    )}>
-                        {/* Abstract Background Pattern - visible only if no thumbnail */}
-                        {!finalThumbnail && (
-                            <div className="absolute inset-0 opacity-20 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-cyan-900/40 via-transparent to-transparent" />
-                        )}
+                    {/* Flex container INSIDE GlassCard to properly handle layout */}
+                    <div className="h-full flex flex-col">
+                        {/* Cover Preview Area - TOP (flex-1 to fill available space) */}
+                        <div className={cn(
+                            "flex-1 flex items-center justify-center relative overflow-hidden min-h-0",
+                            "bg-gradient-to-br from-white/[0.02] to-white/[0.05]"
+                        )}>
+                            {/* Abstract Background Pattern - visible only if no thumbnail */}
+                            {!finalThumbnail && (
+                                <div className="absolute inset-0 opacity-20 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-cyan-900/40 via-transparent to-transparent" />
+                            )}
 
-                        {/* Thumbnail or Icon */}
-                        {finalThumbnail ? (
-                            <div className="absolute inset-0">
-                                <img
-                                    src={finalThumbnail}
-                                    alt={document.filename}
-                                    className="w-full h-full object-cover object-top opacity-80 group-hover:opacity-100 transition-opacity"
-                                />
-                                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                            </div>
-                        ) : (
-                            <motion.div
-                                className={cn("p-4 rounded-2xl border backdrop-blur-md shadow-2xl", colorClass)}
-                                whileHover={{ scale: 1.1, rotate: -5 }}
-                            >
-                                <Icon size={48} strokeWidth={1.5} />
-                            </motion.div>
-                        )}
+                            {/* Thumbnail or Icon */}
+                            {finalThumbnail ? (
+                                <div className="absolute inset-0">
+                                    <img
+                                        src={finalThumbnail}
+                                        alt={document.filename}
+                                        className="w-full h-full object-cover object-top opacity-80 group-hover:opacity-100 transition-opacity"
+                                    />
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                                </div>
+                            ) : (
+                                <motion.div
+                                    className={cn("p-4 rounded-2xl border backdrop-blur-md shadow-2xl", colorClass)}
+                                    whileHover={{ scale: 1.1, rotate: -5 }}
+                                >
+                                    <Icon size={48} strokeWidth={1.5} />
+                                </motion.div>
+                            )}
 
-                        {/* Status Indicator */}
-                        {document.status === "processing" && (
-                            <div className="absolute top-3 right-3 z-10">
-                                <span className="relative flex h-3 w-3">
-                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
-                                    <span className="relative inline-flex rounded-full h-3 w-3 bg-cyan-500"></span>
-                                </span>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Content Footer */}
-                    <div className="p-4 bg-black/40 backdrop-blur-md border-t border-white/10 z-10 relative">
-                        <div className="flex justify-between items-start gap-2">
-                            <div className="flex-1 min-w-0">
-                                <h3 className="text-sm font-semibold text-slate-200 truncate group-hover:text-cyan-400 transition-colors" title={document.filename}>
-                                    {document.filename}
-                                </h3>
-                                <div className="flex items-center gap-2 mt-1.5">
-                                    <span className={cn(
-                                        "text-[10px] uppercase font-mono px-1.5 py-0.5 rounded border",
-                                        colorClass,
-                                        finalThumbnail ? "bg-black/50 border-white/20" : ""
-                                    )}>
-                                        {document.type}
-                                    </span>
-                                    <span className="text-xs text-slate-500 truncate">
-                                        {document.size}
+                            {/* Status Indicator */}
+                            {document.status === "processing" && (
+                                <div className="absolute top-3 right-3 z-10">
+                                    <span className="relative flex h-3 w-3">
+                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+                                        <span className="relative inline-flex rounded-full h-3 w-3 bg-cyan-500"></span>
                                     </span>
                                 </div>
-                            </div>
+                            )}
+                        </div>
 
-                            <button className="text-slate-500 hover:text-white transition-colors p-1 rounded-md hover:bg-white/5">
-                                <MoreVertical size={16} />
-                            </button>
+                        {/* Content Footer - BOTTOM (fixed height) */}
+                        <div className="shrink-0 p-4 bg-black/40 backdrop-blur-md border-t border-white/10 z-10 relative">
+                            <div className="flex justify-between items-start gap-2">
+                                <div className="flex-1 min-w-0">
+                                    <h3 className="text-sm font-semibold text-slate-200 truncate group-hover:text-cyan-400 transition-colors" title={document.filename}>
+                                        {document.filename}
+                                    </h3>
+                                    <div className="flex items-center gap-2 mt-1.5">
+                                        <span className={cn(
+                                            "text-[10px] uppercase font-mono px-1.5 py-0.5 rounded border",
+                                            colorClass,
+                                            finalThumbnail ? "bg-black/50 border-white/20" : ""
+                                        )}>
+                                            {document.type}
+                                        </span>
+                                        <span className="text-xs text-slate-500 truncate">
+                                            {document.size}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <button className="text-slate-500 hover:text-white transition-colors p-1 rounded-md hover:bg-white/5">
+                                    <MoreVertical size={16} />
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </GlassCard>

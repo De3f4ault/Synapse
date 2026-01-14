@@ -14,6 +14,7 @@
 import React from "react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { useAudioSignals } from "@/platform/audio";
 
 // ============================================================================
 // Types
@@ -36,6 +37,13 @@ export interface AuroraBackgroundProps {
 
     /** Intensity of the glow (0-1) */
     intensity?: number;
+
+    /** Audio Reactivity Signals (Optional) */
+    audioReactivity?: {
+        energy: number;
+        bass: number;
+        treble: number;
+    } | null;
 }
 
 // ============================================================================
@@ -102,12 +110,63 @@ export function AuroraBackground({
     fixed = true,
     className,
     intensity = 1,
+    audioReactivity: propReactivity,
 }: AuroraBackgroundProps) {
     const config = variantConfigs[variant];
+    
+    // Auto-wire signals if not passed expicitly
+    const hookSignals = useAudioSignals();
+    const audioReactivity = propReactivity || hookSignals;
 
     // Opacity multiplier based on intensity
     const baseOpacity = 0.3 * intensity;
     const secondaryOpacity = 0.2 * intensity;
+
+    // Reactivity overrides
+    const isReactive = !!audioReactivity;
+    
+    // Primary (Bass/Energy)
+    // Scale: 1 + bass*0.3 (pulses size)
+    // Opacity: base + energy*0.3 (pulses brightness)
+    const primaryAnimate = isReactive ? {
+        scale: 1 + (audioReactivity.bass * 0.3),
+        opacity: baseOpacity + (audioReactivity.energy * 0.3),
+        x: 0, // Reset movement to focus on pulse
+    } : {
+        scale: [1, 1.2, 1],
+        opacity: [baseOpacity, baseOpacity + 0.1, baseOpacity],
+        x: [0, 50, 0],
+    };
+
+    const primaryTransition = isReactive ? {
+        type: "tween", ease: "linear", duration: 0.1
+    } : {
+        duration: 15,
+        repeat: Infinity,
+        ease: "easeInOut",
+    };
+
+    // Secondary (Treble/Energy)
+    // Scale: 1 + treble*0.2
+    // Opacity: secondary + treble*0.2
+    const secondaryAnimate = isReactive ? {
+        scale: 1 + (audioReactivity.treble * 0.25),
+        opacity: secondaryOpacity + (audioReactivity.treble * 0.2),
+        x: 0,
+    } : {
+        scale: [1, 1.3, 1],
+        opacity: [secondaryOpacity, secondaryOpacity + 0.1, secondaryOpacity],
+        x: [0, -50, 0],
+    };
+
+    const secondaryTransition = isReactive ? {
+        type: "tween", ease: "linear", duration: 0.1
+    } : {
+        duration: 20,
+        repeat: Infinity,
+        ease: "easeInOut",
+        delay: 2,
+    };
 
     return (
         <div
@@ -121,16 +180,8 @@ export function AuroraBackground({
 
             {/* Top Left - Primary Glow */}
             <motion.div
-                animate={{
-                    scale: [1, 1.2, 1],
-                    opacity: [baseOpacity, baseOpacity + 0.1, baseOpacity],
-                    x: [0, 50, 0],
-                }}
-                transition={{
-                    duration: 15,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                }}
+                animate={primaryAnimate}
+                transition={primaryTransition}
                 className={cn(
                     "absolute -top-32 -left-32 w-[600px] h-[600px] rounded-full blur-[128px]",
                     config.primary
@@ -139,17 +190,8 @@ export function AuroraBackground({
 
             {/* Bottom Right - Secondary Glow */}
             <motion.div
-                animate={{
-                    scale: [1, 1.3, 1],
-                    opacity: [secondaryOpacity, secondaryOpacity + 0.1, secondaryOpacity],
-                    x: [0, -50, 0],
-                }}
-                transition={{
-                    duration: 20,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                    delay: 2,
-                }}
+                animate={secondaryAnimate}
+                transition={secondaryTransition}
                 className={cn(
                     "absolute -bottom-48 -right-48 w-[800px] h-[800px] rounded-full blur-[128px]",
                     config.secondary

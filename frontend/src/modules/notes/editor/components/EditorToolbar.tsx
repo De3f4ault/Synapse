@@ -25,7 +25,6 @@ import {
 import { cn } from "@/lib/utils";
 import { markdownFormatters } from "../engine/selection";
 import type { EditorMode, ToolDockAction } from "../../core";
-import { NeumorphicButton } from "@/components/neumorphic";
 
 // ============================================================================
 // Types
@@ -82,23 +81,54 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
         }
     };
 
+    const ToolbarButton = ({ 
+        onClick, 
+        active = false, 
+        disabled = false, 
+        children, 
+        title,
+        className 
+    }: { 
+        onClick: () => void; 
+        active?: boolean; 
+        disabled?: boolean; 
+        children: React.ReactNode; 
+        title?: string;
+        className?: string;
+    }) => (
+        <button
+            onClick={onClick}
+            disabled={disabled}
+            title={title}
+            className={cn(
+                "w-9 h-9 flex items-center justify-center rounded-full transition-all duration-200",
+                active 
+                    ? "bg-white/10 text-cyan-400" 
+                    : "text-slate-400 hover:text-white hover:bg-white/5",
+                disabled && "opacity-50 cursor-not-allowed",
+                className
+            )}
+        >
+            {children}
+        </button>
+    );
+
     return (
         <motion.div
             initial={{ y: 50, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            className="flex items-center gap-1 p-1 bg-[#13151a]/90 backdrop-blur-xl border border-white/10 rounded-full shadow-2xl"
+            className="flex items-center gap-1 p-1 bg-[#050505]/80 backdrop-blur-xl border border-white/10 rounded-full shadow-2xl"
         >
             {/* Edit/View Toggle */}
             <div className="flex items-center gap-1 px-1 pr-2 border-r border-white/10">
-                <NeumorphicButton
-                    variant={isEditing ? "primary" : "ghost"}
-                    size="icon"
+                <ToolbarButton
+                    active={isEditing}
                     onClick={() => onAction("toggle_edit")}
-                    className="w-10 h-10 rounded-full"
+                    className="w-10 h-10"
                     title={isEditing ? "View Mode (⌘E)" : "Edit Mode (⌘E)"}
                 >
                     {isEditing ? <Edit3 size={18} /> : <Eye size={18} />}
-                </NeumorphicButton>
+                </ToolbarButton>
             </div>
 
             {/* Formatting Tools */}
@@ -111,72 +141,34 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
                         transition={{ duration: 0.2 }}
                         className="flex items-center gap-1 px-1 overflow-hidden"
                     >
-                        <NeumorphicButton
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleFormat("bold")}
-                            className="w-9 h-9 rounded-full"
-                            title="Bold (⌘B)"
-                        >
+                        <ToolbarButton onClick={() => handleFormat("bold")} title="Bold (⌘B)">
                             <Bold size={16} />
-                        </NeumorphicButton>
-                        <NeumorphicButton
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleFormat("italic")}
-                            className="w-9 h-9 rounded-full"
-                            title="Italic (⌘I)"
-                        >
+                        </ToolbarButton>
+                        <ToolbarButton onClick={() => handleFormat("italic")} title="Italic (⌘I)">
                             <Italic size={16} />
-                        </NeumorphicButton>
-                        <NeumorphicButton
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleFormat("heading")}
-                            className="w-9 h-9 rounded-full"
-                            title="Heading"
-                        >
+                        </ToolbarButton>
+                        <ToolbarButton onClick={() => handleFormat("heading")} title="Heading">
                             <Heading2 size={16} />
-                        </NeumorphicButton>
-                        <NeumorphicButton
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleFormat("list")}
-                            className="w-9 h-9 rounded-full"
-                            title="List"
-                        >
+                        </ToolbarButton>
+                        <ToolbarButton onClick={() => handleFormat("list")} title="List">
                             <List size={16} />
-                        </NeumorphicButton>
-                        <NeumorphicButton
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleFormat("code")}
-                            className="w-9 h-9 rounded-full"
-                            title="Code"
-                        >
+                        </ToolbarButton>
+                        <ToolbarButton onClick={() => handleFormat("code")} title="Code">
                             <Code size={16} />
-                        </NeumorphicButton>
-                        <NeumorphicButton
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleFormat("link")}
-                            className="w-9 h-9 rounded-full"
-                            title="Link"
-                        >
+                        </ToolbarButton>
+                        <ToolbarButton onClick={() => handleFormat("link")} title="Link">
                             <Link size={16} />
-                        </NeumorphicButton>
+                        </ToolbarButton>
                     </motion.div>
                 )}
             </AnimatePresence>
 
             {/* AI Actions */}
             <div className="flex items-center gap-1 px-1 pl-2 border-l border-white/10">
-                <NeumorphicButton
-                    variant="ghost"
-                    size="icon"
+                <ToolbarButton
                     onClick={() => onAction("ai_summarize")}
                     disabled={isProcessing}
-                    className="w-9 h-9 rounded-full hover:text-purple-400"
+                    className="hover:text-purple-400 hover:bg-purple-500/10"
                     title="Neural Synthesis"
                 >
                     {isProcessing ? (
@@ -184,17 +176,15 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
                     ) : (
                         <Sparkles size={18} />
                     )}
-                </NeumorphicButton>
-                <NeumorphicButton
-                    variant="ghost"
-                    size="icon"
+                </ToolbarButton>
+                <ToolbarButton
                     onClick={() => onAction("ai_tags")}
                     disabled={isProcessing}
-                    className="w-9 h-9 rounded-full hover:text-cyan-400"
+                    className="hover:text-cyan-400 hover:bg-cyan-500/10"
                     title="Auto-Tag"
                 >
                     <Tag size={18} />
-                </NeumorphicButton>
+                </ToolbarButton>
             </div>
 
             {/* Save Button */}
@@ -206,7 +196,7 @@ export const EditorToolbar: React.FC<EditorToolbarProps> = ({
                         "w-10 h-10 rounded-full flex items-center justify-center text-white shadow-lg transition-all disabled:opacity-50",
                         hasUnsavedChanges
                             ? "bg-gradient-to-r from-cyan-500 to-blue-500 hover:shadow-[0_0_20px_rgba(6,182,212,0.5)] hover:scale-105 active:scale-95"
-                            : "bg-emerald-500/20 text-emerald-400 border border-emerald-500/20",
+                            : "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20",
                     )}
                     animate={
                         hasUnsavedChanges && !isSaving ? { scale: [1, 1.05, 1] } : {}
