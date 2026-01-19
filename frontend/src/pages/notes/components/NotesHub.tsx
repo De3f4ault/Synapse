@@ -8,15 +8,14 @@ import { cn } from "@/lib/utils";
 import { NotesSidebar } from "./NotesSidebar";
 import { NotesDock } from "./NotesDock";
  
-import type { NoteResponse } from "@/modules/notes/core";
+import type { DocMeta } from "@/modules/notes/engine/blocksuiteStore";
 
-// We need to import NoteCard and NoteListItem, but I previously exported them from modules/notes/index.ts
-// Let's use the module index import
+// We need to import NoteCard and NoteListItem
 import { NoteCard as NoteCardComponent, NoteListItem as NoteListItemComponent } from "@/modules/notes";
 
 
 interface NotesHubProps {
-    notes: NoteResponse[];
+    notes: DocMeta[];
     isLoading: boolean;
     viewMode: "grid" | "list";
     onViewChange: (mode: "grid" | "list") => void;
@@ -25,7 +24,8 @@ interface NotesHubProps {
     activeFilter: string;
     onFilterChange: (filter: string) => void;
     onCreate: () => void;
-    onNoteClick: (id: number) => void;
+    onNoteClick: (id: string) => void;
+    onNoteDelete?: (id: string) => void;
 }
 
 export const NotesHub = ({
@@ -38,7 +38,8 @@ export const NotesHub = ({
     activeFilter,
     onFilterChange,
     onCreate,
-    onNoteClick
+    onNoteClick,
+    onNoteDelete: _onNoteDelete  // TODO: Wire up to NoteCard
 }: NotesHubProps) => {
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
     const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);

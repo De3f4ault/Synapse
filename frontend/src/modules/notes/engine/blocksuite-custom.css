@@ -1,0 +1,108 @@
+/**
+ * BlockSuite Custom CSS Overrides
+ *
+ * Extends default BlockSuite styling for Synapse integration.
+ * Import this file in BlockSuiteContainer.tsx after the theme CSS.
+ */
+
+/* ============================================================================
+ * Slash Menu Enhancements
+ * ============================================================================ */
+
+/* Make the slash menu taller to show more items */
+.slash-menu {
+  max-height: 450px !important;
+  min-height: 200px !important;
+}
+
+/* Ensure scrollbar is visible on hover */
+.slash-menu:hover {
+  overflow-y: auto !important;
+}
+
+/* Improve group labels visibility */
+.slash-menu-group-name {
+  color: var(--affine-text-secondary-color, #8e8d91) !important;
+  font-weight: 600 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  margin-top: 8px !important;
+}
+
+/* ============================================================================
+ * Format Toolbar Enhancements
+ * ============================================================================ */
+
+/* Ensure format bar is fully visible */
+affine-format-bar-widget {
+  z-index: 100 !important;
+}
+
+/* ============================================================================
+ * Editor Focus / Click Improvements  
+ * ============================================================================ */
+
+/* Ensure editor content is clickable */
+affine-editor-container {
+  pointer-events: auto !important;
+}
+
+/* Page mode - ensure paragraph is clickable even when empty */
+affine-paragraph[data-block-id] {
+  min-height: 24px !important;
+  cursor: text !important;
+}
+
+/* Empty note placeholder styling */
+affine-note[data-block-id] {
+  min-height: 50px;
+}
+
+/* ============================================================================
+ * Dark Theme Enhancements
+ * ============================================================================ */
+
+/* Ensure dark theme variables are applied */
+[data-theme="dark"] {
+  --affine-background-primary-color: #0a0a0a;
+  --affine-background-secondary-color: #141414;
+  --affine-text-primary-color: #ffffff;
+  --affine-text-secondary-color: #8e8d91;
+  --affine-border-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Improve slash menu visibility in dark mode */
+[data-theme="dark"] .slash-menu {
+  background: #1a1a1a !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+[data-theme="dark"] .slash-menu-item:hover {
+  background: rgba(255, 255, 255, 0.05) !important;
+}
+
+/* ============================================================================
+ * Editor Layout & Width Overrides
+ * ============================================================================ */
+
+/* Increase default editor width */
+:root {
+  --affine-editor-width: 1200px !important;
+}
+
+/* Override BlockSuite's internal Page Root max-width */
+.affine-page-root {
+  max-width: var(--affine-editor-width, 1200px) !important;
+  width: 100% !important;
+  margin: 0 auto !important;
+  padding-left: 20px !important;
+  padding-right: 20px !important;
+}
+
+/* Ensure title and property blocks also respect the width */
+.doc-title-container, 
+affine-doc-title {
+  max-width: var(--affine-editor-width, 1200px) !important;
+  margin: 0 auto !important;
+}
+

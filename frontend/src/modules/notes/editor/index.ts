@@ -5,7 +5,7 @@
  */
 
 // ============================================================================
-// Engine (Pure Functions)
+// Engine (Pure Functions - Legacy Markdown Support)
 // ============================================================================
 
 export {
@@ -51,31 +51,43 @@ export {
 } from "./state/editorStore";
 
 // ============================================================================
-// Hooks
+// BlockSuite Engine (New V2 Engine)
 // ============================================================================
 
-export { useNoteEditor } from "./hooks/useNoteEditor";
-export { useEditorShortcuts } from "./hooks/useEditorShortcuts";
+export {
+  // Component
+  BlockSuiteContainer,
+  
+  // Hook
+  useBlockSuiteDoc,
+  
+  // Store / Utilities
+  getWorkspace,
+  createDoc,
+  getDoc,
+  removeDoc,
+  isDocEmpty,
+  initializeEmptyDoc,
+  
+  // Migration
+  detectFormat,
+  migrateLegacyContent,
+} from "../engine"; // Valid import path from src/modules/notes/engine/index.ts
+
+export type {
+  BlockSuiteContainerProps,
+  EditorMode,
+  UseBlockSuiteDocOptions,
+  UseBlockSuiteDocResult,
+  LegacyFormat,
+} from "../engine";
 
 // ============================================================================
-// Components
+// Legacy / Deprecated
 // ============================================================================
 
-
+// Components below are deprecated or need updating to work with BlockSuite
 export { EditorToolbar } from "./components/EditorToolbar";
 export { MarkdownPreview } from "./components/MarkdownPreview";
 
-// BlockNote Integration
-export {
-  BlockNoteEditor,
-  blocksToPlainText,
-  calculateBlockStats,
-} from "./components/BlockNoteEditor";
-export type { BlockNoteEditorProps } from "./components/BlockNoteEditor";
-export {
-  blockNoteAdapter,
-  toStorageFormat,
-  fromStorageFormat,
-  computeStats,
-} from "./adapters/blockNoteAdapter";
-export type { NoteStats, ValidationResult } from "./adapters/blockNoteAdapter";
+// BlockNote exports REMOVED

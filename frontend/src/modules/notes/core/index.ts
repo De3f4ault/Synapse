@@ -140,3 +140,19 @@ export {
 // ============================================================================
 
 export { useActiveNote } from "./hooks";
+
+// Journal hooks
+export {
+    useJournal,
+    useJournalDates,
+    useUpdateJournal,
+    journalKeys,
+} from "./hooks/useJournal";
+export type { JournalNote, JournalDateEntry } from "./hooks/useJournal";
+
+// Favorites hooks
+export {
+    useFavorites,
+    useToggleFavorite,
+    favoritesKeys,
+} from "./hooks/useFavorites";

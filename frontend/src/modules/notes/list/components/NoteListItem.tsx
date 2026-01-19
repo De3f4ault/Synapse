@@ -1,19 +1,27 @@
+/**
+ * Notes Module - NoteListItem Component
+ * List view item for note display.
+ * Uses DocMeta from local workspace.
+ *
+ * ============================================================================
+ * ARCHITECTURE: LOCAL-FIRST (Phase 1)
+ * ============================================================================
+ */
+
 import { motion } from "framer-motion";
 import { FileText, Clock } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
-import type { NoteResponse } from "../../core";
+import type { DocMeta } from "../../engine/blocksuiteStore";
 
 interface NoteListItemProps {
-    note: NoteResponse;
+    note: DocMeta;
     onClick: () => void;
 }
 
 export const NoteListItem = ({ note, onClick }: NoteListItemProps) => {
-
-
-    const wordCount = note.content?.split(/\s+/).length || 0;
+    const wordCount = note.preview?.split(/\s+/).filter(Boolean).length || 0;
     const readTime = Math.max(1, Math.ceil(wordCount / 200));
-    const tags = (note as any).tags || [];
+    const tags = note.tags || [];
 
     return (
         <motion.div
@@ -35,7 +43,7 @@ export const NoteListItem = ({ note, onClick }: NoteListItemProps) => {
                      <div className="flex items-center gap-1">
                         <Clock size={12} />
                         <span>
-                            {formatDistanceToNow(new Date(note.updated_at), {
+                            {formatDistanceToNow(new Date(note.updatedDate), {
                                 addSuffix: true,
                             })}
                         </span>
@@ -46,9 +54,9 @@ export const NoteListItem = ({ note, onClick }: NoteListItemProps) => {
             </div>
 
             <div className="hidden md:flex gap-2">
-                {tags.slice(0, 3).map((tag: any) => (
-                    <span key={tag.id || tag.name} className="px-2 py-1 rounded bg-black/20 text-xs text-slate-500 border border-white/5">
-                        {tag.name || tag}
+                {tags.slice(0, 3).map((tag, i) => (
+                    <span key={i} className="px-2 py-1 rounded bg-black/20 text-xs text-slate-500 border border-white/5">
+                        {tag}
                     </span>
                 ))}
             </div>

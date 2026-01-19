@@ -64,7 +64,7 @@ export function useNotesList() {
             result = result.filter(
                 (note) =>
                     note.title.toLowerCase().includes(query) ||
-                    note.content.toLowerCase().includes(query)
+                    (typeof note.content === "string" ? note.content.toLowerCase().includes(query) : false)
             );
             // Emit search event for analytics
             emitNoteEvent(noteSearched(searchQuery, result.length));

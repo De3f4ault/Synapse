@@ -48,7 +48,7 @@ export {
 // ============================================================================
 
 export {
-  // Engine (Pure Functions)
+  // Engine (Pure Functions - Legacy)
   wrapText,
   makeBold,
   makeItalic,
@@ -78,28 +78,44 @@ export {
   useEditorHasError,
   useEditorError,
   // Hooks
-  useNoteEditor,
-  useEditorShortcuts,
   // Components
-
   EditorToolbar,
   MarkdownPreview,
 } from "./editor";
 export type { Heading, TextAreaSelection, LineInfo } from "./editor";
 
-// BlockNote Integration (New)
+// BlockSuite Integration (New V2 Engine - Local-First)
 export {
-  BlockNoteEditor,
-  blockNoteAdapter,
-  computeStats,
-  toStorageFormat,
-  fromStorageFormat,
-} from "./editor";
+  BlockSuiteContainer,
+  useBlockSuiteDoc,
+  useWorkspaceDocs,
+  // Utilities
+  getWorkspace,
+  createDoc,
+  getDoc,
+  removeDoc,
+  hardDeleteDoc,
+  listDocMetas,
+  setDocMeta,
+  getDocMeta,
+  extractDocTitle,
+  extractDocPreview,
+  isDocEmpty,
+  initializeEmptyDoc,
+  // Migration (Legacy)
+  detectFormat,
+  migrateLegacyContent,
+} from "./engine";
+export type { DocMeta } from "./engine";
+
 export type {
-  BlockNoteEditorProps,
-  NoteStats as BlockNoteStats,
-  ValidationResult,
-} from "./editor";
+  BlockSuiteContainerProps,
+  EditorMode,
+  UseBlockSuiteDocOptions,
+  UseBlockSuiteDocResult,
+  UseWorkspaceDocsResult,
+  LegacyFormat,
+} from "./engine";
 
 // ============================================================================
 // Versions (Temporal Dimension)

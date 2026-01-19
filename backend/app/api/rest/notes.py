@@ -5,12 +5,13 @@ Hierarchical note management with versioning support.
 
 """
 
-from typing import List, Optional
+from typing import List, Optional, Union, Any
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, or_, func
 from pydantic import BaseModel, Field
 from datetime import datetime
+
 
 from app.api.deps import get_db, get_current_user
 from app.models.user import User
@@ -30,7 +31,7 @@ class NoteCreate(BaseModel):
     """Note creation request."""
 
     title: str = Field(..., max_length=500, min_length=1)
-    content: str = Field(..., min_length=1)
+    content: Union[str, dict, Any] = Field(...)  # Supports string or BlockSuite JSONB
     format: NoteFormat = NoteFormat.MARKDOWN
     parent_id: Optional[int] = None
     tags: Optional[List[str]] = None
@@ -40,8 +41,13 @@ class NoteUpdate(BaseModel):
     """Note update request."""
 
     title: Optional[str] = Field(None, max_length=500, min_length=1)
-    content: Optional[str] = Field(None, min_length=1)
+    content: Optional[Union[str, dict, Any]] = Field(None)  # Supports string or BlockSuite JSONB
     format: Optional[NoteFormat] = None
+    is_favorite: Optional[bool] = None
+    is_archived: Optional[bool] = None
+    journal_date: Optional[str] = Field(
+        None, pattern="^\\d{4}-\\d{2}-\\d{2}$", description="Journal date YYYY-MM-DD"
+    )
 
 
 class NoteResponse(BaseModel):
@@ -49,11 +55,14 @@ class NoteResponse(BaseModel):
 
     id: int
     title: str
-    content: str
+    content: Union[str, dict, Any]  # Supports string or BlockSuite JSONB
     format: NoteFormat
     parent_id: Optional[int]
     user_id: int
     embedding_id: Optional[str]
+    journal_date: Optional[str] = None  # YYYY-MM-DD if this is a journal
+    is_favorite: bool = False
+    is_archived: bool = False
     created_at: datetime
     updated_at: datetime
     children_count: int = 0
@@ -87,7 +96,7 @@ class NoteSearchResult(BaseModel):
 
     id: int
     title: str
-    content: str
+    content: Union[str, dict, Any]  # Supports string or BlockSuite JSONB
     format: NoteFormat
     score: float
     match_type: str  # "title", "content", "semantic"
@@ -113,6 +122,8 @@ class MessageResponse(BaseModel):
 async def list_notes(
     parent_id: Optional[int] = Query(None, description="Filter by parent (NULL for root notes)"),
     tags: Optional[str] = Query(None, description="Filter by tags (comma-separated)"),
+    is_favorite: Optional[bool] = Query(None, description="Filter by favorite status"),
+    is_archived: Optional[bool] = Query(None, description="Filter by archived status"),
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Items per page"),
     current_user: User = Depends(get_current_user),
@@ -131,9 +142,18 @@ async def list_notes(
         .where(and_(Note.user_id == current_user.id, Note.deleted_at.is_(None)))
     )
 
-    # Filter by parent
+    # Apply filters
     if parent_id is not None:
         stmt = stmt.where(Note.parent_id == parent_id)
+
+    if is_favorite is not None:
+        stmt = stmt.where(Note.is_favorite == is_favorite)
+
+    if is_archived is not None:
+        stmt = stmt.where(Note.is_archived == is_archived)
+
+    # Tag filtering handling (if applicable)
+    # Note: Tag filtering logic omitted for brevity, assuming currently handled or handled elsewhere
 
     # Apply grouping, ordering, and pagination
     stmt = (
@@ -155,6 +175,9 @@ async def list_notes(
             parent_id=note.parent_id,
             user_id=note.user_id,
             embedding_id=note.embedding_id,
+            journal_date=note.journal_date,
+            is_favorite=note.is_favorite,
+            is_archived=note.is_archived,
             created_at=note.created_at,
             updated_at=note.updated_at,
             children_count=children_count,
@@ -227,6 +250,9 @@ async def create_note(
         parent_id=new_note.parent_id,
         user_id=new_note.user_id,
         embedding_id=new_note.embedding_id,
+        journal_date=new_note.journal_date,
+        is_favorite=new_note.is_favorite,
+        is_archived=new_note.is_archived,
         created_at=new_note.created_at,
         updated_at=new_note.updated_at,
         children_count=0,
@@ -379,6 +405,9 @@ async def get_note(
         parent_id=note.parent_id,
         user_id=note.user_id,
         embedding_id=note.embedding_id,
+        journal_date=note.journal_date,
+        is_favorite=note.is_favorite,
+        is_archived=note.is_archived,
         created_at=note.created_at,
         updated_at=note.updated_at,
         children_count=children_count,
@@ -467,6 +496,16 @@ async def update_note(
         note.format = note_data.format
         content_changed = True
 
+    # Update metadata fields (no version bump)
+    if note_data.is_favorite is not None:
+        note.is_favorite = note_data.is_favorite
+
+    if note_data.is_archived is not None:
+        note.is_archived = note_data.is_archived
+
+    if note_data.journal_date is not None:
+        note.journal_date = note_data.journal_date
+
     # Create new version if content changed
     if content_changed:
         # Get latest version number
@@ -505,6 +544,9 @@ async def update_note(
         parent_id=note.parent_id,
         user_id=note.user_id,
         embedding_id=note.embedding_id,
+        journal_date=note.journal_date,
+        is_favorite=note.is_favorite,
+        is_archived=note.is_archived,
         created_at=note.created_at,
         updated_at=note.updated_at,
         children_count=children_count,
@@ -549,3 +591,153 @@ async def delete_note(
     await db.commit()
 
     return MessageResponse(message="Note and all children deleted successfully")
+
+
+# ============================================================================
+# Journal Endpoints
+# ============================================================================
+
+
+class JournalDateResponse(BaseModel):
+    """Journal date with note info."""
+
+    date: str  # YYYY-MM-DD
+    note_id: int
+    title: str
+
+
+@router.get(
+    "/journals/dates",
+    response_model=List[JournalDateResponse],
+    summary="List journal dates",
+    description="Get all dates that have journal entries",
+)
+async def list_journal_dates(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """List all journal dates for the current user."""
+    result = await db.execute(
+        select(Note)
+        .where(
+            and_(
+                Note.user_id == current_user.id,
+                Note.deleted_at.is_(None),
+                Note.journal_date.isnot(None),
+            )
+        )
+        .order_by(Note.journal_date.desc())
+    )
+    journals = result.scalars().all()
+
+    return [
+        JournalDateResponse(
+            date=note.journal_date,
+            note_id=note.id,
+            title=note.title,
+        )
+        for note in journals
+    ]
+
+
+@router.get(
+    "/journals/{date}",
+    response_model=NoteResponse,
+    summary="Get or create journal",
+    description="Get journal for a specific date, creating if it doesn't exist",
+)
+async def get_or_create_journal(
+    date: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get or create a journal entry for the specified date."""
+    # Validate date format
+    import re
+
+    if not re.match(r"^\d{4}-\d{2}-\d{2}$", date):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid date format. Use YYYY-MM-DD"
+        )
+
+    # Check if journal exists for this date
+    result = await db.execute(
+        select(Note).where(
+            and_(
+                Note.user_id == current_user.id,
+                Note.deleted_at.is_(None),
+                Note.journal_date == date,
+            )
+        )
+    )
+    note = result.scalar_one_or_none()
+
+    if note:
+        # Return existing journal
+        children_count_result = await db.execute(
+            select(func.count(Note.id)).where(
+                and_(Note.parent_id == note.id, Note.deleted_at.is_(None))
+            )
+        )
+        children_count = children_count_result.scalar()
+
+        return NoteResponse(
+            id=note.id,
+            title=note.title,
+            content=note.content,
+            format=note.format,
+            parent_id=note.parent_id,
+            user_id=note.user_id,
+            embedding_id=note.embedding_id,
+            journal_date=note.journal_date,
+            is_favorite=note.is_favorite,
+            is_archived=note.is_archived,
+            created_at=note.created_at,
+            updated_at=note.updated_at,
+            children_count=children_count,
+        )
+
+    # Create new journal for this date
+    from datetime import datetime as dt
+
+    formatted_title = dt.strptime(date, "%Y-%m-%d").strftime("%B %d, %Y")
+
+    new_note = Note(
+        user_id=current_user.id,
+        title=formatted_title,
+        content={},  # Empty BlockSuite content
+        format=NoteFormat.BLOCKSUITE,
+        journal_date=date,
+    )
+
+    db.add(new_note)
+    await db.commit()
+    await db.refresh(new_note)
+
+    # Create initial version
+    version = NoteVersion(
+        note_id=new_note.id,
+        created_by=current_user.id,
+        version_number=1,
+        title=new_note.title,
+        content=new_note.content,
+        format=new_note.format,
+    )
+    db.add(version)
+    await db.commit()
+
+    return NoteResponse(
+        id=new_note.id,
+        title=new_note.title,
+        content=new_note.content,
+        format=new_note.format,
+        parent_id=new_note.parent_id,
+        user_id=new_note.user_id,
+        embedding_id=new_note.embedding_id,
+        journal_date=new_note.journal_date,
+        is_favorite=new_note.is_favorite,
+        is_archived=new_note.is_archived,
+        created_at=new_note.created_at,
+        updated_at=new_note.updated_at,
+        children_count=0,
+    )

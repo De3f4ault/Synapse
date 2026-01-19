@@ -1,89 +1,82 @@
-import { useState, useMemo } from "react";
-import { useNavigate } from "react-router-dom";
-import { useNotesList } from "@/modules/notes";
-import { useCreateNote } from "@/api/hooks/useNotes";
-import { NotesHub } from "./components/NotesHub";
-
 /**
  * NotesPage - Main notes hub
- * Orchestrates list, search, and navigation using modules/notes
+ * 
+ * Lists all notes from local workspace.
+ * Local-first: No API sync, docs persist via IndexedDB.
+ *
+ * ============================================================================
+ * ARCHITECTURE: LOCAL-FIRST (Phase 1)
+ * ============================================================================
  */
+
+import { useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
+import { useWorkspaceDocs } from "@/modules/notes/engine/useWorkspaceDocs";
+import { NotesHub } from "./components/NotesHub";
+
 export function NotesPage() {
   const navigate = useNavigate();
 
-  // List state from module
-  const {
-    notes,
-    isLoading,
-    viewMode,
-    setViewMode,
-    searchQuery,
-    setSearchQuery,
-  } = useNotesList();
+  // Get docs from workspace (local-first)
+  const { docs, isLoading, createDoc, deleteDoc } = useWorkspaceDocs();
 
-  // Local filter state (mimicking Flashcards/Documents patterns)
+  // Local UI state
   const [activeFilter, setActiveFilter] = useState("All");
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [searchQuery, setSearchQuery] = useState("");
 
-  // Mutations
-  const createNoteMutation = useCreateNote();
-  // const deleteNoteMutation = useDeleteNote(); // Kept for future use if inline delete is added
-
-  // Handlers
+  // Create new note
   const handleCreateNote = () => {
-    createNoteMutation.mutate(
-      {
-        title: "", // Empty title for new note
-        content: " ",
-        tags: [],
-      },
-      {
-        onSuccess: (data: any) => {
-          navigate(`/notes/${data.id}`);
-        },
-      },
-    );
+    const newId = createDoc();
+    navigate(`/notes/${newId}`);
   };
 
-  const handleSelectNote = (id: number) => {
+  // Open note
+  const handleSelectNote = (id: string | number) => {
     navigate(`/notes/${id}`);
   };
 
-  // Filter logic (combines Search + Tag Filter)
-  const filteredNotes = useMemo(() => {
-    if (!notes) return [];
-    
-    return notes.filter((note: any) => {
-        // 1. Tag Filter
-        if (activeFilter !== "All") {
-             const hasTag = note.tags?.some((t: any) => (t.name || t) === activeFilter);
-             if (!hasTag) return false;
-        }
-        
-        // 2. Search Query (already filtered by API usually, but if client-side:)
-        // The useNotesList hook likely handles searchQuery via API, but if it's client-side:
-        if (searchQuery) {
-            const lowerQuery = searchQuery.toLowerCase();
-            const titleMatch = note.title?.toLowerCase().includes(lowerQuery);
-            const contentMatch = note.content?.toLowerCase().includes(lowerQuery);
-            return titleMatch || contentMatch;
-        }
+  // Delete note
+  const handleDeleteNote = (id: string) => {
+    deleteDoc(id);
+  };
 
-        return true;
+  // Filter logic (Search + Tag Filter)
+  const filteredNotes = useMemo(() => {
+    if (!docs) return [];
+    
+    return docs.filter((note) => {
+      // 1. Tag Filter
+      if (activeFilter !== "All") {
+        const hasTag = note.tags?.some((t) => t === activeFilter);
+        if (!hasTag) return false;
+      }
+      
+      // 2. Search Query
+      if (searchQuery) {
+        const lowerQuery = searchQuery.toLowerCase();
+        const titleMatch = note.title?.toLowerCase().includes(lowerQuery);
+        const previewMatch = note.preview?.toLowerCase().includes(lowerQuery);
+        return titleMatch || previewMatch;
+      }
+
+      return true;
     });
-  }, [notes, activeFilter, searchQuery]);
+  }, [docs, activeFilter, searchQuery]);
 
   return (
     <NotesHub 
-        notes={filteredNotes}
-        isLoading={isLoading}
-        viewMode={(viewMode === 'grid' || viewMode === 'list') ? viewMode : 'grid'}
-        onViewChange={setViewMode}
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        activeFilter={activeFilter}
-        onFilterChange={setActiveFilter}
-        onCreate={handleCreateNote}
-        onNoteClick={handleSelectNote}
+      notes={filteredNotes}
+      isLoading={isLoading}
+      viewMode={viewMode}
+      onViewChange={setViewMode}
+      searchQuery={searchQuery}
+      onSearchChange={setSearchQuery}
+      activeFilter={activeFilter}
+      onFilterChange={setActiveFilter}
+      onCreate={handleCreateNote}
+      onNoteClick={handleSelectNote}
+      onNoteDelete={handleDeleteNote}
     />
   );
 }
