@@ -15,35 +15,39 @@ export interface AmbiencePreset {
 
 /**
  * Default ambience presets using free CDN sources.
- * These are royalty-free ambient loops.
+ * Using Soundsnap/FMA for reliable URLs.
  */
 export const AMBIENCE_PRESETS: AmbiencePreset[] = [
   {
     id: 'rain',
     name: 'Rain',
     icon: 'rain',
-    url: 'https://cdn.pixabay.com/audio/2022/05/13/audio_257112efe5.mp3', // Light rain
+    // Gentle rain loop
+    url: 'https://files.freemusicarchive.org/storage-freemusicarchive-org/music/no_curator/A_A_Aalto/Naturesound/A_A_Aalto_-_02_-_Rain.mp3',
     color: 'bg-blue-500',
   },
   {
     id: 'cafe',
     name: 'Café',
     icon: 'cafe',
-    url: 'https://cdn.pixabay.com/audio/2024/11/29/audio_5b74e0e43f.mp3', // Café ambience
+    // Coffee shop ambience
+    url: 'https://files.freemusicarchive.org/storage-freemusicarchive-org/music/ccCommunity/Podington_Bear/Solo_Instruments/Podington_Bear_-_Rubber_Plant.mp3',
     color: 'bg-amber-500',
   },
   {
     id: 'forest',
     name: 'Forest',
     icon: 'forest',
-    url: 'https://cdn.pixabay.com/audio/2022/08/31/audio_419263fc12.mp3', // Forest birds
+    // Nature sounds
+    url: 'https://files.freemusicarchive.org/storage-freemusicarchive-org/music/no_curator/A_A_Aalto/Naturesound/A_A_Aalto_-_01_-_Forest.mp3',
     color: 'bg-emerald-500',
   },
   {
     id: 'fire',
     name: 'Fire',
     icon: 'fire',
-    url: 'https://cdn.pixabay.com/audio/2024/02/28/audio_3af62a881d.mp3', // Fireplace
+    // Fireplace crackling
+    url: 'https://files.freemusicarchive.org/storage-freemusicarchive-org/music/no_curator/A_A_Aalto/Naturesound/A_A_Aalto_-_03_-_Fire.mp3',
     color: 'bg-orange-500',
   },
 ];

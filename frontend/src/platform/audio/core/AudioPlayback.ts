@@ -70,11 +70,11 @@ export class AudioPlayback {
     try {
       setPlaybackStatus('loading');
 
+      // Stop existing source IMMEDIATELY to prevent overlap
+      this.stopTrack(type);
+
       const buffer = await this.loadBuffer(urlOrBlob, thisGeneration);
       if (!buffer) return; // Cancelled
-
-      // Stop existing source
-      this.stopTrack(type);
 
       // Create new source
       const source = this.context.createBufferSource();

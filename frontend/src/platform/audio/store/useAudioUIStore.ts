@@ -55,6 +55,8 @@ interface AudioUIState {
   // Track Selection
   activeMusicId: string | null;
   activeAmbienceId: string | null;
+  isMusicPlaying: boolean;
+  isAmbiencePlaying: boolean;
   
   // The Crate (Metadata Cache)
   crateTracks: TrackMeta[];
@@ -64,17 +66,21 @@ interface AudioUIState {
   autoDuckEnabled: boolean;
   ttsEnabled: boolean;
   ttsRate: number;  // 0.5 - 2.0
+  commandBarVisible: boolean;
   
-  // Intent Actions (call audioEngine explicitly)
   setPlayIntent: (intent: boolean) => void;
   togglePlayPause: () => void;
   setVolume: (volume: number) => void;
   setMix: (type: 'music' | 'ambience', level: number) => void;
   setActiveTrack: (type: 'music' | 'ambience', id: string | null) => void;
+  setMusicPlaying: (playing: boolean) => void;
+  setAmbiencePlaying: (playing: boolean) => void;
   toggleSynesthesia: () => void;
   toggleAutoDuck: () => void;
   setTtsEnabled: (enabled: boolean) => void;
   setTtsRate: (rate: number) => void;
+  toggleCommandBar: () => void;
+  setCommandBarVisible: (visible: boolean) => void;
   
   // Status Actions (called by engine only)
   setIsDucked: (ducked: boolean) => void;
@@ -105,12 +111,15 @@ export const useAudioUIStore = create<AudioUIState>()(
       
       activeMusicId: 'default-lofi',
       activeAmbienceId: null,
+      isMusicPlaying: false,
+      isAmbiencePlaying: false,
       crateTracks: [],
       
       synesthesiaEnabled: false,
       autoDuckEnabled: true,
       ttsEnabled: true,
       ttsRate: 1.0,
+      commandBarVisible: true,
       
       // Intent Actions - explicitly call engine
       setPlayIntent: (playIntent) => {
@@ -149,6 +158,9 @@ export const useAudioUIStore = create<AudioUIState>()(
         }
       },
       
+      setMusicPlaying: (isMusicPlaying) => set({ isMusicPlaying }),
+      setAmbiencePlaying: (isAmbiencePlaying) => set({ isAmbiencePlaying }),
+      
       toggleSynesthesia: () => set((state) => ({ 
         synesthesiaEnabled: !state.synesthesiaEnabled 
       })),
@@ -159,6 +171,11 @@ export const useAudioUIStore = create<AudioUIState>()(
       
       setTtsEnabled: (ttsEnabled) => set({ ttsEnabled }),
       setTtsRate: (ttsRate) => set({ ttsRate: Math.max(0.5, Math.min(2, ttsRate)) }),
+      
+      toggleCommandBar: () => set((state) => ({ 
+        commandBarVisible: !state.commandBarVisible 
+      })),
+      setCommandBarVisible: (commandBarVisible) => set({ commandBarVisible }),
       
       // Status Actions - called by engine (read-only from UI perspective)
       setIsDucked: (isDucked) => set({ isDucked }),

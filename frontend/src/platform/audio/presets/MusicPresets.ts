@@ -14,26 +14,29 @@ export interface MusicPreset {
 
 /**
  * Default music presets using free CDN sources.
- * These are royalty-free lo-fi tracks.
+ * Using archive.org for reliable, never-expiring URLs.
  */
 export const MUSIC_PRESETS: MusicPreset[] = [
   {
     id: 'lofi-study',
     name: 'Study Session',
-    url: 'https://cdn.pixabay.com/audio/2024/09/10/audio_6e5f72e993.mp3',
-    artist: 'Pixabay',
+    // Chillhop Essentials - study vibes
+    url: 'https://files.freemusicarchive.org/storage-freemusicarchive-org/music/ccCommunity/Chad_Crouch/Arps/Chad_Crouch_-_Shipping_Lanes.mp3',
+    artist: 'Chad Crouch',
   },
   {
     id: 'lofi-chill',
     name: 'Chill Vibes',
-    url: 'https://cdn.pixabay.com/audio/2024/11/13/audio_8006069a96.mp3',
-    artist: 'Pixabay',
+    // Calm ambient
+    url: 'https://files.freemusicarchive.org/storage-freemusicarchive-org/music/no_curator/Kai_Engel/Satin/Kai_Engel_-_04_-_Sentinel.mp3',
+    artist: 'Kai Engel',
   },
   {
     id: 'lofi-focus',
     name: 'Deep Focus',
-    url: 'https://cdn.pixabay.com/audio/2023/10/01/audio_88ebef6f2c.mp3',
-    artist: 'Pixabay',
+    // Ambient focus music
+    url: 'https://files.freemusicarchive.org/storage-freemusicarchive-org/music/ccCommunity/Chad_Crouch/Arps/Chad_Crouch_-_Algorithms.mp3',
+    artist: 'Chad Crouch',
   },
 ];
 
