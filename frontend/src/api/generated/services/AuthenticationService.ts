@@ -2,7 +2,7 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-import type { app__api__rest__links__MessageResponse } from '../models/app__api__rest__links__MessageResponse';
+import type { app__api__rest__uploads__MessageResponse } from '../models/app__api__rest__uploads__MessageResponse';
 import type { TokenResponse } from '../models/TokenResponse';
 import type { UserLogin } from '../models/UserLogin';
 import type { UserRegister } from '../models/UserRegister';
@@ -55,12 +55,12 @@ export class AuthenticationService {
      * User logout
      * Invalidate current session by blacklisting JWT token
      * @param token Auth token for image/file requests
-     * @returns app__api__rest__links__MessageResponse Successful Response
+     * @returns app__api__rest__uploads__MessageResponse Successful Response
      * @throws ApiError
      */
     public static logoutApiV1AuthLogoutPost(
         token?: (string | null),
-    ): CancelablePromise<app__api__rest__links__MessageResponse> {
+    ): CancelablePromise<app__api__rest__uploads__MessageResponse> {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/api/v1/auth/logout',

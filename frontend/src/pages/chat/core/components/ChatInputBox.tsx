@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { GlassCard } from "@/shared/ui";
 import { cn } from "@/lib/utils";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useMentionController, EntityPicker } from "@/shared/platform/mentions";
 import { useEntitySearch } from "@/shared/platform/hooks/useEntitySearch";
 import type { EntitySearchResult } from "@/shared/platform/types";
@@ -36,6 +36,24 @@ export function ChatInputBox({
 }: ChatInputBoxProps) {
   const [isFocused, setIsFocused] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Auto-resize textarea when message changes (e.g. cleared externally)
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (textarea) {
+      // Reset to auto to correctly calculate new scrollHeight (shrink if needed)
+      textarea.style.height = 'auto';
+      
+      // Calculate new height based on content
+      const newHeight = Math.min(textarea.scrollHeight, 300);
+      
+      // Apply new height
+      textarea.style.height = `${newHeight}px`;
+      
+      // Handle scrolling if max height reached
+      textarea.style.overflowY = textarea.scrollHeight > 300 ? 'auto' : 'hidden';
+    }
+  }, [message]);
 
   // Mention System
   const handleSelectEntity = (entity: EntitySearchResult) => {

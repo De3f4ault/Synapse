@@ -1,3 +1,28 @@
+/**
+ * ============================================================================
+ * FROZEN: PHASE 2 - Backend Sync
+ * ============================================================================
+ * 
+ * These hooks are TEMPORARILY DISABLED. Notes are stored locally using 
+ * BlockSuite's IndexedDB persistence.
+ * 
+ * CURRENT STATE: Notes work locally only. No cross-device sync.
+ * 
+ * TO RE-ENABLE BACKEND SYNC:
+ * 1. Create a SyncService that watches workspace.slots.docUpdated
+ * 2. Debounce and batch changes, push to API via useUpdateNote
+ * 3. On app load, fetch remote docs and merge with local using Y.js
+ * 4. Handle conflicts via Y.js CRDT resolution
+ * 
+ * LOCAL-FIRST ARCHITECTURE:
+ * - NotesPage.tsx uses useWorkspaceDocs instead of useNotes
+ * - NoteDetailPage.tsx uses useBlockSuiteDoc (no API save)
+ * - All data persists in IndexedDB via BlockSuite workspace
+ * 
+ * See: implementation_plan.md for full migration path
+ * ============================================================================
+ */
+
 // Notes hooks using TanStack Query
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { NotesService } from "../generated";

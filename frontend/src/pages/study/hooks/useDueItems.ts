@@ -65,6 +65,7 @@ function transformStudyItem(item: StudyItemResponse): StudyItem {
     type: item.type as StudyItemType,
     title: item.data.front_text || item.data.title || "Untitled",
     module: item.type === "flashcard" ? "flashcards" : "quizzes",
+    rawData: item.data, // Preserve raw data for specialized view rendering
   };
 
   // Flashcard-specific transformation

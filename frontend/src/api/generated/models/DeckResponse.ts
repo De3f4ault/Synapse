@@ -13,6 +13,7 @@ export type DeckResponse = {
     is_public: boolean;
     ai_generated: boolean;
     card_count: number;
+    due_count: number;
     user_id: number;
     created_at: string;
     updated_at: string;

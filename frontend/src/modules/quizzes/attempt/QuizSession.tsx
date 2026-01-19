@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { QuizAttemptState, type LocalQuestionState } from "../core";
-import { ProgressBar, QuestionRenderer } from "./components";
+import { QuestionRenderer } from "./components";
 import type { QuizAttemptStart } from "@/api/generated";
 import { AuroraBackground } from "@/shared/ui";
 
@@ -118,43 +118,50 @@ export const QuizSession: React.FC<QuizSessionProps> = ({
         submit();
     };
 
+
     return (
         <AuroraBackground className="h-screen flex flex-col overflow-hidden" fixed>
-            {/* Header */}
-            <div className="h-16 flex items-center justify-between px-8 bg-[#08080c]/80 backdrop-blur-sm border-b border-white/[0.04] shrink-0 z-20">
-                <button
-                    onClick={handleExit}
-                    className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors"
-                >
-                    <ArrowLeft size={18} />
-                    <span className="font-medium">Exit</span>
-                </button>
+            {/* Floating Exit Button - Top Left */}
+            <button
+                onClick={handleExit}
+                className="fixed top-6 left-6 flex items-center gap-2 px-3 py-2 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors z-20 opacity-60 hover:opacity-100"
+            >
+                <ArrowLeft size={18} />
+                <span className="text-sm font-medium">Exit</span>
+            </button>
 
-                <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2">
-                    <span className="text-cyan-400 font-mono text-lg font-bold">
-                        Q{currentIndex + 1}
-                    </span>
-                    <span className="text-slate-600 font-mono">/</span>
-                    <span className="text-slate-500 font-mono">{questions.length}</span>
-                </div>
+            {/* Floating Progress - Top Center */}
+            <div className="fixed top-6 left-1/2 -translate-x-1/2 flex items-center gap-2 z-20 opacity-60 hover:opacity-100 transition-opacity">
+                <span className="text-cyan-400 font-mono text-lg font-bold">
+                    Q{currentIndex + 1}
+                </span>
+                <span className="text-slate-600 font-mono">/</span>
+                <span className="text-slate-500 font-mono">{questions.length}</span>
+            </div>
 
-                <div className="flex items-center gap-6 text-sm font-mono">
-                    <div className="flex items-center gap-2 text-slate-400 bg-white/[0.03] px-3 py-1.5 rounded-full border border-white/[0.06]">
+            {/* Floating Stats - Top Right */}
+            <div className="fixed top-6 right-6 flex flex-col items-end gap-2 z-20 opacity-60 hover:opacity-100 transition-opacity">
+                <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 text-slate-400 bg-white/[0.05] px-3 py-1.5 rounded-full text-sm font-mono">
                         <Clock size={14} className="text-cyan-500" />
                         {formatTime(elapsedTime)}
                     </div>
-                    <div className="flex items-center gap-2 text-emerald-400 bg-emerald-500/10 px-3 py-1.5 rounded-full border border-emerald-500/20">
+                    <div className="flex items-center gap-2 text-emerald-400 bg-emerald-500/10 px-3 py-1.5 rounded-full text-sm font-mono">
                         <CheckCircle size={14} />
                         {correctCount}
                     </div>
                 </div>
+                {/* Mini Progress Bar */}
+                <div className="w-32 h-1 bg-white/10 rounded-full overflow-hidden">
+                    <div
+                        className="h-full bg-cyan-500 transition-all duration-500"
+                        style={{ width: `${((currentIndex + 1) / questions.length) * 100}%` }}
+                    />
+                </div>
             </div>
 
-            {/* Progress Bar */}
-            <ProgressBar current={currentIndex} total={questions.length} />
-
-            {/* Main Content */}
-            <div className="flex-1 overflow-y-auto px-6 py-8 flex justify-center">
+            {/* Main Content - Centered with more vertical space */}
+            <div className="flex-1 overflow-y-auto px-6 py-8 pt-20 flex justify-center">
                 <div className="max-w-3xl w-full space-y-8">
                     <motion.div
                         key={currentIndex}
@@ -204,75 +211,74 @@ export const QuizSession: React.FC<QuizSessionProps> = ({
                 </div>
             </div>
 
-            {/* Bottom Controls */}
-            <div className="h-20 border-t border-white/[0.04] bg-[#0a0a0f]/80 backdrop-blur-md px-8 shrink-0 flex items-center justify-between">
-                <button
-                    onClick={previous}
-                    disabled={currentIndex === 0}
-                    className="flex items-center gap-2 text-slate-400 hover:text-white disabled:opacity-30 disabled:hover:text-slate-400 transition-colors font-medium px-4 py-2"
-                >
-                    <ArrowLeft size={16} />
-                    Previous
-                </button>
+            {/* Floating Previous Button - Bottom Left */}
+            <button
+                onClick={previous}
+                disabled={currentIndex === 0}
+                className="fixed bottom-6 left-6 flex items-center gap-2 px-4 py-2.5 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white disabled:opacity-30 disabled:hover:text-slate-400 disabled:hover:bg-white/5 transition-colors z-20 opacity-60 hover:opacity-100"
+            >
+                <ArrowLeft size={16} />
+                <span className="text-sm font-medium">Previous</span>
+            </button>
 
-                {/* Question Dots */}
-                <div className="flex gap-1.5 overflow-x-auto max-w-md px-4">
-                    {questions.map((q, idx) => {
-                        const qState = getQuestionState(questionStates, q.id);
-                        return (
-                            <button
-                                key={idx}
-                                onClick={() => goToQuestion(idx)}
-                                className={cn(
-                                    "w-2.5 h-2.5 rounded-full transition-all",
-                                    idx === currentIndex
-                                        ? "bg-cyan-400 scale-125 shadow-[0_0_8px_rgba(34,211,238,0.6)]"
-                                        : qState.answered
-                                            ? qState.isCorrect
-                                                ? "bg-emerald-500/50"
-                                                : "bg-red-500/50"
-                                            : "bg-white/10 hover:bg-white/30"
-                                )}
-                                title={`Question ${idx + 1}`}
-                            />
-                        );
-                    })}
-                </div>
-
-                {isLastQuestion ? (
-                    <button
-                        onClick={handleSubmit}
-                        disabled={isSubmitting}
-                        className={cn(
-                            "px-8 py-2.5 rounded-lg font-medium flex items-center gap-2",
-                            "bg-gradient-to-r from-cyan-600 to-blue-600 text-white",
-                            "hover:from-cyan-500 hover:to-blue-500",
-                            "disabled:opacity-50 disabled:cursor-not-allowed",
-                            "transition-all shadow-lg shadow-cyan-500/20"
-                        )}
-                    >
-                        {isSubmitting ? (
-                            <>
-                                <Loader2 size={16} className="animate-spin" />
-                                Submitting...
-                            </>
-                        ) : (
-                            <>
-                                <Award size={16} />
-                                Finish Quiz
-                            </>
-                        )}
-                    </button>
-                ) : (
-                    <button
-                        onClick={next}
-                        className="px-8 py-2.5 rounded-lg font-medium flex items-center gap-2 bg-white/[0.04] text-white hover:bg-white/[0.08] border border-white/[0.06] transition-colors"
-                    >
-                        Next
-                        <ArrowRight size={16} />
-                    </button>
-                )}
+            {/* Floating Question Dots - Bottom Center */}
+            <div className="fixed bottom-6 left-1/2 -translate-x-1/2 flex gap-1.5 z-20 opacity-60 hover:opacity-100 transition-opacity">
+                {questions.map((q, idx) => {
+                    const qState = getQuestionState(questionStates, q.id);
+                    return (
+                        <button
+                            key={idx}
+                            onClick={() => goToQuestion(idx)}
+                            className={cn(
+                                "w-2.5 h-2.5 rounded-full transition-all",
+                                idx === currentIndex
+                                    ? "bg-cyan-400 scale-125 shadow-[0_0_8px_rgba(34,211,238,0.6)]"
+                                    : qState.answered
+                                        ? qState.isCorrect
+                                            ? "bg-emerald-500/50"
+                                            : "bg-red-500/50"
+                                        : "bg-white/10 hover:bg-white/30"
+                            )}
+                            title={`Question ${idx + 1}`}
+                        />
+                    );
+                })}
             </div>
+
+            {/* Floating Next/Finish Button - Bottom Right */}
+            {isLastQuestion ? (
+                <button
+                    onClick={handleSubmit}
+                    disabled={isSubmitting}
+                    className={cn(
+                        "fixed bottom-6 right-6 px-6 py-2.5 rounded-full font-medium flex items-center gap-2 z-20",
+                        "bg-gradient-to-r from-cyan-600 to-blue-600 text-white",
+                        "hover:from-cyan-500 hover:to-blue-500",
+                        "disabled:opacity-50 disabled:cursor-not-allowed",
+                        "transition-all shadow-lg shadow-cyan-500/20"
+                    )}
+                >
+                    {isSubmitting ? (
+                        <>
+                            <Loader2 size={16} className="animate-spin" />
+                            <span className="text-sm">Submitting...</span>
+                        </>
+                    ) : (
+                        <>
+                            <Award size={16} />
+                            <span className="text-sm">Finish</span>
+                        </>
+                    )}
+                </button>
+            ) : (
+                <button
+                    onClick={next}
+                    className="fixed bottom-6 right-6 flex items-center gap-2 px-6 py-2.5 rounded-full bg-white/5 hover:bg-white/10 text-white transition-colors z-20 opacity-60 hover:opacity-100"
+                >
+                    <span className="text-sm font-medium">Next</span>
+                    <ArrowRight size={16} />
+                </button>
+            )}
         </AuroraBackground>
     );
 };

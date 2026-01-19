@@ -2,9 +2,11 @@
  * StudySession - Main study session component
  * 
  * Integrates with graph decay engine for memory reinforcement.
+ * Composes polished view components (FlashcardView, RatingControls) for immersive experience.
  */
 
-import { X, Brain, FileQuestion, BookOpen, Clock, Play, TrendingUp, TrendingDown, Sparkles } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Brain, FileQuestion, BookOpen, Clock, Play, TrendingUp, TrendingDown, Sparkles, Trophy } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useStudySession } from "../../hooks/useStudySession";
 import { useReviewReinforcement } from "../../hooks/useReviewReinforcement";
@@ -14,6 +16,10 @@ import type {
   StudySessionResponse,
 } from "../../types/study.types";
 import { cn } from "@/lib/utils";
+
+// Reuse polished components from flashcard review
+import { FlashcardView, RatingControls } from "@/pages/flashcards/study";
+import type { Flashcard, ReviewRating } from "@/pages/flashcards/core";
 
 interface StudySessionProps {
   items: StudyItem[];
@@ -26,19 +32,27 @@ export function StudySession({
   items,
   sessionType = "mixed",
   onComplete,
-  onCancel,
+  onCancel: _onCancel,
 }: StudySessionProps) {
   const {
     session,
     currentItem,
     elapsedTime,
-    progress,
+    progress: _progress,
     handleAnswer,
-    handleSkip,
+    handleSkip: _handleSkip,
     pauseSession,
     resumeSession,
-    cancelSession,
+    cancelSession: _cancelSession,
   } = useStudySession(items);
+
+  // Flashcard flip state for immersive view
+  const [isFlipped, setIsFlipped] = useState(false);
+  
+  // Reset flip state when moving to a new card
+  useEffect(() => {
+    setIsFlipped(false);
+  }, [currentItem?.id]);
 
   // Graph reinforcement integration
   const {
@@ -46,6 +60,27 @@ export function StudySession({
     reinforceIncorrect,
     sessionStats: graphStats,
   } = useReviewReinforcement();
+
+  // Convert StudyItem to Flashcard format for FlashcardView
+  const toFlashcard = (item: StudyItem): Flashcard | null => {
+    if (item.type !== "flashcard" || !item.rawData) return null;
+    return {
+      id: item.id,
+      deck_id: item.deckId || 0,
+      front_text: item.rawData.front_text || item.title,
+      back_text: item.rawData.back_text || "",
+      learning_state: (item.rawData.learning_state || "new") as any,
+      front_media_url: item.rawData.front_media_url,
+      back_media_url: item.rawData.back_media_url,
+    };
+  };
+
+  // Handle SM-2 rating from RatingControls (for flashcards)
+  const handleFlashcardRating = (rating: ReviewRating) => {
+    const isCorrect = rating >= 2; // Good (2) or Easy (3) = correct
+    handleAnswerWithReinforcement(isCorrect);
+    setIsFlipped(false); // Reset for next card
+  };
 
   // Wrapped answer handler with graph reinforcement
   const handleAnswerWithReinforcement = (isCorrect: boolean) => {
@@ -194,129 +229,118 @@ export function StudySession({
     );
   }
 
-  const Icon = getItemIcon(currentItem.type);
+  const _Icon = getItemIcon(currentItem.type);
+  const flashcard = toFlashcard(currentItem);
 
   return (
-    <div className="relative h-full flex flex-col p-6">
-      {/* Header with timer and cancel */}
-      <div className="flex items-center justify-between mb-8">
+    <div className="relative h-full w-full flex flex-col">
+      {/* Floating Timer - Unobtrusive top edge, blends with parent floating controls */}
+      <div className="fixed top-6 left-1/2 -translate-x-1/2 z-20 opacity-50 hover:opacity-100 transition-opacity">
         <SessionTimer
           elapsedTime={elapsedTime}
           isPaused={session.status === "paused"}
           onPause={pauseSession}
           onResume={resumeSession}
         />
-        <button
-          onClick={() => {
-            if (confirm("Cancel this session? Progress will be lost.")) {
-              cancelSession();
-              onCancel();
-            }
-          }}
-          className="text-slate-500 hover:text-red-400 transition-colors"
-        >
-          <X className="h-5 w-5" />
-        </button>
       </div>
 
-      {/* Content Area */}
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={currentItem.id}
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -20 }}
-          transition={{ duration: 0.3 }}
-          className="flex-1 flex flex-col max-w-3xl mx-auto w-full"
-        >
-          {/* Progress Bar */}
-          <div className="mb-6">
-            <div className="flex justify-between text-xs text-slate-500 mb-2 font-mono uppercase tracking-wider">
-              <span>
-                Item {session.currentIndex + 1} / {items.length}
-              </span>
-              <span>{Math.round(progress)}%</span>
-            </div>
-            <div className="h-1 bg-white/5 rounded-full overflow-hidden">
-              <motion.div
-                className="h-full bg-cyan-500"
-                initial={{ width: 0 }}
-                animate={{ width: `${progress}%` }}
-                transition={{ duration: 0.5 }}
+      {/* Floating Progress Counter - Below timer, very subtle */}
+      <div className="fixed top-[4.5rem] left-1/2 -translate-x-1/2 z-10 opacity-40">
+        <span className="text-xs font-mono text-slate-500 tracking-widest">
+          {session.currentIndex + 1} / {items.length}
+        </span>
+      </div>
+
+      {/* Main Stage - Centered Flashcard/Quiz (matching ReviewPage) */}
+      <div className="flex-1 w-full flex items-center justify-center pt-24 p-4 z-10">
+        <AnimatePresence mode="wait">
+          {currentItem.type === "flashcard" && flashcard ? (
+            <motion.div
+              key={currentItem.id}
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 1.1, filter: 'blur(10px)' }}
+              transition={{ duration: 0.4, ease: "easeOut" }}
+              className="w-full max-w-md h-[70vh] flex items-center justify-center"
+            >
+              <FlashcardView
+                card={flashcard}
+                isFlipped={isFlipped}
+                onFlip={() => setIsFlipped(!isFlipped)}
               />
-            </div>
-          </div>
-
-          {/* Card Container */}
-          <div className="bg-[#0A0A0A] border border-white/10 rounded-2xl p-8 shadow-2xl relative overflow-hidden flex-1 min-h-[300px] flex flex-col">
-            {/* Type Indicator */}
-            <div className="flex items-start justify-between mb-6">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-white/5 rounded-lg border border-white/5 text-cyan-400">
-                  <Icon size={20} />
-                </div>
-                <div>
-                  <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                    {currentItem.type}
-                  </div>
-                  <div className="text-lg font-bold text-white line-clamp-1">
-                    {currentItem.title}
-                  </div>
-                </div>
-              </div>
-              {currentItem.difficulty && (
-                <div
-                  className={cn(
-                    "px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider border",
-                    "bg-white/5 border-white/10 text-slate-400",
-                  )}
-                >
-                  Level {currentItem.difficulty}
-                </div>
-              )}
-            </div>
-
-            {/* Content Placeholder */}
-            <div className="flex-1 flex flex-col items-center justify-center p-8 border border-dashed border-white/10 rounded-xl bg-white/[0.02] mb-6">
-              <BookOpen className="w-12 h-12 text-slate-700 mb-4 opacity-50" />
-              <p className="text-slate-500 text-center text-sm max-w-md">
-                Content for this item would be rendered here.
-                <br />
-                <span className="text-xs opacity-50 mt-1 block">
-                  (Flashcard Front/Back, Quiz Question, etc.)
-                </span>
+            </motion.div>
+          ) : (
+            // Quiz/other content with minimal styling
+            <motion.div
+              key={currentItem.id}
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="w-full max-w-md text-center space-y-6"
+            >
+              <h2 className="text-3xl font-bold text-white">
+                {currentItem.title}
+              </h2>
+              <p className="text-slate-400">
+                {currentItem.type === "quiz" 
+                  ? "Rate your answer" 
+                  : "Review this content"}
               </p>
-            </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
 
-            {/* Session Controls */}
-            <div className="grid grid-cols-2 gap-4">
+      {/* Bottom Controls - Fixed at bottom, matching ReviewPage pattern */}
+      <div className="h-32 flex items-center justify-center p-6 z-20">
+        <AnimatePresence mode="wait">
+          {currentItem.type === "flashcard" && isFlipped ? (
+            // SM-2 Rating Controls after flip
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+            >
+              <RatingControls onRate={handleFlashcardRating} disabled={session.status === "paused"} />
+            </motion.div>
+          ) : currentItem.type === "flashcard" && !isFlipped ? (
+            // Reveal Answer button
+            <motion.button
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsFlipped(true)}
+              disabled={session.status === "paused"}
+              className="px-8 py-4 rounded-full bg-white/5 border border-white/10 text-slate-300 font-medium hover:bg-white/10 transition-colors tracking-widest uppercase text-sm"
+            >
+              Reveal Answer
+            </motion.button>
+          ) : (
+            // Quiz controls
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="flex gap-4"
+            >
               <button
-                onClick={() => handleSkip()}
-                className="synapse-button justify-center py-4"
+                onClick={() => handleAnswerWithReinforcement(false)}
+                className="px-6 py-3 rounded-full bg-white/5 border border-white/10 text-slate-300 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/30 transition-colors uppercase text-sm tracking-wider"
                 disabled={session.status === "paused"}
               >
-                Skip Item
+                Incorrect
               </button>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => handleAnswerWithReinforcement(false)}
-                  className="flex-1 synapse-button hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/30 justify-center py-4 text-xs"
-                  disabled={session.status === "paused"}
-                >
-                  Incorrect
-                </button>
-                <button
-                  onClick={() => handleAnswerWithReinforcement(true)}
-                  className="flex-1 synapse-button-primary justify-center py-4 flex items-center gap-2"
-                  disabled={session.status === "paused"}
-                >
-                  Correct
-                </button>
-              </div>
-            </div>
-          </div>
-        </motion.div>
-      </AnimatePresence>
+              <button
+                onClick={() => handleAnswerWithReinforcement(true)}
+                className="px-6 py-3 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 hover:bg-cyan-500/20 transition-colors uppercase text-sm tracking-wider"
+                disabled={session.status === "paused"}
+              >
+                Correct
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
 
       {/* Pause Overlay */}
       <AnimatePresence>
@@ -388,6 +412,3 @@ function getItemIcon(type: string) {
   };
   return icons[type as keyof typeof icons] || BookOpen;
 }
-
-// Import Trophy separately or add to imports
-import { Trophy } from "lucide-react";

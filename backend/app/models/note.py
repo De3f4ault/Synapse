@@ -1,14 +1,17 @@
 """
 Note model.
 
-Hierarchical note-taking system with support for markdown, HTML, and plain text.
+BlockSuite-powered note system with JSONB content storage.
 Supports parent-child relationships for organizing notes.
+
+VAULT RULE: Database stores raw BlockSuite snapshots. No parsing or modification.
 """
 
-from typing import Optional
+from typing import Optional, Any
 import enum
 
-from sqlalchemy import String, Text, ForeignKey, Enum as SQLEnum
+from sqlalchemy import String, ForeignKey, Enum as SQLEnum
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base
@@ -17,19 +20,20 @@ from app.db.types import Vector
 
 
 class NoteFormat(str, enum.Enum):
-    """Enum for note content formats."""
+    """Enum for note content formats. DEPRECATED - kept for migration compatibility."""
 
     MARKDOWN = "markdown"
     HTML = "html"
     PLAIN = "plain"
+    BLOCKSUITE = "blocksuite"  # New default
 
 
 class Note(Base, TimestampMixin, SoftDeleteMixin, UserOwnedMixin):
     """
     Note model with hierarchical structure.
 
-    Supports parent-child relationships for organizing notes in a tree structure.
-    Can store content in multiple formats (markdown, HTML, plain text).
+    Content is stored as raw JSONB (BlockSuite Doc snapshot).
+    The backend never parses or modifies this data - Engine Sovereignty.
     """
 
     __tablename__ = "notes"
@@ -40,13 +44,27 @@ class Note(Base, TimestampMixin, SoftDeleteMixin, UserOwnedMixin):
     # Content
     title: Mapped[str] = mapped_column(String(500), nullable=False, doc="Title of the note")
 
-    content: Mapped[str] = mapped_column(Text, nullable=False, doc="Content of the note")
+    content: Mapped[Any] = mapped_column(
+        JSONB,
+        nullable=False,
+        default=dict,
+        doc="Raw BlockSuite snapshot (JSONB). Backend MUST NOT parse or modify.",
+    )
 
+    # Editor version tracking
+    editor_version: Mapped[Optional[str]] = mapped_column(
+        String(50),
+        nullable=True,
+        default=None,
+        doc="Editor version (e.g., 'blocksuite@1'). NULL = legacy data.",
+    )
+
+    # DEPRECATED: Kept for backwards compatibility during migration
     format: Mapped[NoteFormat] = mapped_column(
         SQLEnum(NoteFormat, native_enum=False),
-        default=NoteFormat.MARKDOWN,
+        default=NoteFormat.BLOCKSUITE,
         nullable=False,
-        doc="Format of the note content",
+        doc="DEPRECATED: Format enum. New notes use BLOCKSUITE.",
     )
 
     # Hierarchy
@@ -84,6 +102,31 @@ class Note(Base, TimestampMixin, SoftDeleteMixin, UserOwnedMixin):
         nullable=True,
         default="PENDING",
         doc="Embedding status: PENDING, READY, FAILED, STALE",
+    )
+
+    # Journal date (YYYY-MM-DD format) - marks this note as a journal for that date
+    journal_date: Mapped[Optional[str]] = mapped_column(
+        String(10),
+        nullable=True,
+        default=None,
+        index=True,
+        doc="Journal date in YYYY-MM-DD format. NULL = not a journal.",
+    )
+
+    # Favorites flag
+    is_favorite: Mapped[bool] = mapped_column(
+        default=False,
+        nullable=False,
+        index=True,
+        doc="Whether this note is marked as favorite",
+    )
+
+    # Archive flag (for Smart Views)
+    is_archived: Mapped[bool] = mapped_column(
+        default=False,
+        nullable=False,
+        index=True,
+        doc="Whether this note is archived",
     )
 
     # Relationships

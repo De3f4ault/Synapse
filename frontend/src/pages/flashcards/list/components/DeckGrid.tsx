@@ -76,7 +76,7 @@ export function DeckGrid({
                         <DeckCard
                             deck={deck}
                             masteryPercent={estimateMastery(deck)}
-                            dueCount={Math.min(deck.card_count || 0, 10)}
+                            dueCount={deck.due_count ?? 0}
                             onClick={() => onDeckClick(deck.id)}
                             onDelete={() => onDeckDelete(deck.id)}
                             onEdit={() => onDeckEdit(deck.id)}

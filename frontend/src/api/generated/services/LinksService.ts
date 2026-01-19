@@ -2,10 +2,10 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-import type { app__api__rest__links__MessageResponse } from '../models/app__api__rest__links__MessageResponse';
+import type { app__api__rest__uploads__MessageResponse } from '../models/app__api__rest__uploads__MessageResponse';
+import type { app__models__link__EntityType } from '../models/app__models__link__EntityType';
 import type { ConnectedEntityResponse } from '../models/ConnectedEntityResponse';
 import type { EntityLinksResponse } from '../models/EntityLinksResponse';
-import type { EntityType } from '../models/EntityType';
 import type { KnowledgeGraphResponse } from '../models/KnowledgeGraphResponse';
 import type { LinkCreate } from '../models/LinkCreate';
 import type { LinkResponse } from '../models/LinkResponse';
@@ -29,8 +29,8 @@ export class LinksService {
      */
     public static listLinksApiV1LinksGet(
         linkType?: (LinkType | null),
-        sourceType?: (EntityType | null),
-        targetType?: (EntityType | null),
+        sourceType?: (app__models__link__EntityType | null),
+        targetType?: (app__models__link__EntityType | null),
         page: number = 1,
         pageSize: number = 50,
         token?: (string | null),
@@ -116,7 +116,7 @@ export class LinksService {
      * @throws ApiError
      */
     public static getEntityLinksApiV1LinksEntityEntityTypeEntityIdGet(
-        entityType: EntityType,
+        entityType: app__models__link__EntityType,
         entityId: number,
         token?: (string | null),
     ): CancelablePromise<EntityLinksResponse> {
@@ -146,7 +146,7 @@ export class LinksService {
      * @throws ApiError
      */
     public static getConnectedEntitiesApiV1LinksEntityEntityTypeEntityIdConnectedGet(
-        entityType: EntityType,
+        entityType: app__models__link__EntityType,
         entityId: number,
         depth: number = 1,
         token?: (string | null),
@@ -178,7 +178,7 @@ export class LinksService {
      * @throws ApiError
      */
     public static getSuggestedLinksApiV1LinksSuggestedGet(
-        entityType?: (EntityType | null),
+        entityType?: (app__models__link__EntityType | null),
         entityId?: (number | null),
         limit: number = 20,
         token?: (string | null),
@@ -258,13 +258,13 @@ export class LinksService {
      * Delete a link
      * @param linkId
      * @param token Auth token for image/file requests
-     * @returns app__api__rest__links__MessageResponse Successful Response
+     * @returns app__api__rest__uploads__MessageResponse Successful Response
      * @throws ApiError
      */
     public static deleteLinkApiV1LinksLinkIdDelete(
         linkId: number,
         token?: (string | null),
-    ): CancelablePromise<app__api__rest__links__MessageResponse> {
+    ): CancelablePromise<app__api__rest__uploads__MessageResponse> {
         return __request(OpenAPI, {
             method: 'DELETE',
             url: '/api/v1/links/{link_id}',

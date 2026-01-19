@@ -3,4 +3,4 @@
  */
 
 export { useChartsData } from "./useChartsData";
-export type { ChartsData } from "./useChartsData";
+export type { ChartsData, TimeBucket } from "./useChartsData";

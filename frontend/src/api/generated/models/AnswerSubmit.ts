@@ -3,10 +3,11 @@
 /* tslint:disable */
 /* eslint-disable */
 /**
- * Answer submission.
+ * Answer submission with per-question timing (Phase Q1).
  */
 export type AnswerSubmit = {
     question_id: number;
     answer: string;
+    duration_ms?: (number | null);
 };
 

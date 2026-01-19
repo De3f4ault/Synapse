@@ -1,31 +1,27 @@
-import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import { Target, Sparkles } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { DueItems } from "./components/queue/DueItems";
 import { Recommendations } from "./components/recommendations/Recommendations";
-import { StudySession } from "./components/session/StudySession";
 import { StudyStats } from "./components/shared/StudyStats";
 import { StreakIndicator } from "./components/shared/StreakIndicator";
 import { useDueItemsStats } from "./hooks/useDueItems";
 import { useRecommendations } from "./hooks/useRecommendations";
+import { useTodayStats } from "./hooks/useTodayStats";
 import { UsersService } from "@/api/generated";
 import { cn } from "@/lib/utils";
-import type {
-  StudyItem,
-  StudyStreak,
-} from "./types/study.types";
+import { useState } from "react";
+import type { StudyStreak } from "./types/study.types";
 
 export function StudyPage() {
-  const [activeSession, setActiveSession] = useState<{
-    items: StudyItem[];
-    type: "due" | "recommended";
-  } | null>(null);
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<"due" | "recommendations">("due");
 
-  // Fetch stats for the overview
+  // Data Hooks
   const dueStats = useDueItemsStats();
   const { data: recommendations } = useRecommendations(10);
+  const { data: todayStats } = useTodayStats();
 
   const { data: userStats } = useQuery({
     queryKey: ["user-statistics"],
@@ -43,78 +39,16 @@ export function StudyPage() {
     weeklyProgress: Math.min(userStats?.study_streak_days || 0, 7),
   };
 
-  const handleStartDueSession = (items: StudyItem[]) => {
-    setActiveSession({ items, type: "due" });
+  // Navigate to immersive study session
+  const handleStartDueSession = () => {
+    navigate("/study/session?type=due");
   };
 
-  const handleStartRecommendedSession = (items: StudyItem[]) => {
-    setActiveSession({ items, type: "recommended" });
+  const handleStartRecommendedSession = () => {
+    navigate("/study/session?type=recommended");
   };
 
-  const handleSessionComplete = () => {
-    setActiveSession(null);
-  };
-
-  const handleCancelSession = () => {
-    setActiveSession(null);
-  };
-
-  // Active Session View
-  if (activeSession) {
-    return (
-      <div className="h-[calc(100vh-64px)] overflow-hidden flex flex-col relative bg-[#020408]">
-        {/* Background Noise */}
-        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10 pointer-events-none" />
-
-        <div className="flex-1 flex flex-col p-6 max-w-5xl mx-auto w-full relative z-10 overflow-y-auto custom-scrollbar">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="flex-1 flex flex-col"
-          >
-            <div className="mb-6 flex items-center justify-between">
-              <div>
-                <span
-                  className={cn(
-                    "px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider border",
-                    activeSession.type === "due"
-                      ? "bg-purple-500/10 text-purple-400 border-purple-500/20"
-                      : "bg-cyan-500/10 text-cyan-400 border-cyan-500/20",
-                  )}
-                >
-                  {activeSession.type === "due"
-                    ? "Review Session"
-                    : "AI Recommendation"}
-                </span>
-                <h1 className="text-3xl font-bold text-white mt-2">
-                  Study Session
-                </h1>
-              </div>
-              <div className="text-right">
-                <div className="text-2xl font-mono font-bold text-white">
-                  {activeSession.items.length}
-                </div>
-                <div className="text-xs text-slate-500 uppercase tracking-wider">
-                  Items
-                </div>
-              </div>
-            </div>
-
-            <div className="flex-1 bg-black/20 border border-white/5 rounded-2xl overflow-hidden backdrop-blur-sm">
-              <StudySession
-                items={activeSession.items}
-                sessionType={activeSession.type}
-                onComplete={handleSessionComplete}
-                onCancel={handleCancelSession}
-              />
-            </div>
-          </motion.div>
-        </div>
-      </div>
-    );
-  }
-
-  // Dashboard View
+  // Dashboard View (session now navigates to /study/session)
   return (
     <div className="h-[calc(100vh-64px)] overflow-hidden flex flex-col p-6 space-y-6">
       {/* Header */}
@@ -157,7 +91,7 @@ export function StudyPage() {
             dueCount={dueStats.total}
             recommendedCount={recommendations?.length || 0}
             avgAccuracy={Math.round((userStats?.overall_accuracy || 0) * 100)}
-            totalTimeToday={0}
+            totalTimeToday={todayStats?.study_time_minutes || 0}
           />
           <div className="md:col-span-1">
             <StreakIndicator streak={streak} />

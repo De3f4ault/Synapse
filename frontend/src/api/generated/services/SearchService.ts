@@ -5,11 +5,80 @@
 import type { FlashcardHybridResponse } from '../models/FlashcardHybridResponse';
 import type { HybridSearchResponse } from '../models/HybridSearchResponse';
 import type { NoteHybridResponse } from '../models/NoteHybridResponse';
+import type { SearchIntent } from '../models/SearchIntent';
 import type { SearchResponse } from '../models/SearchResponse';
+import type { UnifiedSearchRequest } from '../models/UnifiedSearchRequest';
+import type { UnifiedSearchResponse } from '../models/UnifiedSearchResponse';
 import type { CancelablePromise } from '../core/CancelablePromise';
 import { OpenAPI } from '../core/OpenAPI';
 import { request as __request } from '../core/request';
 export class SearchService {
+    /**
+     * Unified Search
+     * Execute search across all participating engines based on intent.
+     *
+     * Returns results per-engine in envelopes, preserving:
+     * - Raw scores (no normalization)
+     * - Role semantics (navigation, evidence, diagnostic)
+     * - Assertion types (factual, inferential, heuristic)
+     * - Temporal validity
+     *
+     * Consumers (UI) decide how to filter, rank, and display.
+     * @param requestBody
+     * @param token Auth token for image/file requests
+     * @returns UnifiedSearchResponse Successful Response
+     * @throws ApiError
+     */
+    public static unifiedSearchApiV1SearchUnifiedPost(
+        requestBody: UnifiedSearchRequest,
+        token?: (string | null),
+    ): CancelablePromise<UnifiedSearchResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/search/unified',
+            query: {
+                'token': token,
+            },
+            body: requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Unified Search (GET)
+     * GET version of unified search for simple queries.
+     * @param q Search query
+     * @param intent Search intent
+     * @param surface
+     * @param limit Max results per engine
+     * @param token Auth token for image/file requests
+     * @returns UnifiedSearchResponse Successful Response
+     * @throws ApiError
+     */
+    public static unifiedSearchGetApiV1SearchUnifiedGet(
+        q: string,
+        intent: SearchIntent = 'navigate',
+        surface: 'cmdk' | 'chat' | 'dashboard' | 'study_hub' = 'cmdk',
+        limit: number = 20,
+        token?: (string | null),
+    ): CancelablePromise<UnifiedSearchResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/search/unified',
+            query: {
+                'q': q,
+                'intent': intent,
+                'surface': surface,
+                'limit': limit,
+                'token': token,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
     /**
      * Search All
      * Advanced cross-module search (now using pg_search BM25).

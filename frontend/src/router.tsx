@@ -66,14 +66,21 @@ const EditCardPage = React.lazy(() =>
 );
 
 // Notes
-const NotesPage = React.lazy(() =>
-  import("@/pages/notes/NotesPage").then((module) => ({
-    default: module.NotesPage,
-  })),
-);
+// const NotesPage = React.lazy(() =>
+//   import("@/pages/notes/NotesPage").then((module) => ({
+//     default: module.NotesPage,
+//   })),
+// );
 const NoteDetailPage = React.lazy(() =>
   import("@/pages/notes/NoteDetailPage").then((module) => ({
     default: module.NoteDetailPage,
+  })),
+);
+
+// Journals
+const JournalsPage = React.lazy(() =>
+  import("@/pages/journals/JournalsPage").then((module) => ({
+    default: module.JournalsPage,
   })),
 );
 
@@ -102,6 +109,11 @@ const StudyPage = React.lazy(() =>
     default: module.StudyPage,
   })),
 );
+const StudySessionPage = React.lazy(() =>
+  import("@/pages/study/StudySessionPage").then((module) => ({
+    default: module.StudySessionPage,
+  })),
+);
 
 // Chat
 const ChatPage = React.lazy(() =>
@@ -121,6 +133,19 @@ const KnowledgeGraphPage = React.lazy(() =>
 const NotFoundPage = React.lazy(() =>
   import("@/pages/NotFoundPage").then((module) => ({
     default: module.NotFoundPage,
+  })),
+);
+
+// Notes Layout
+const NotesLayout = React.lazy(() =>
+  import("@/pages/notes/NotesLayout").then((module) => ({
+    default: module.NotesLayout,
+  })),
+);
+
+const AllDocsPage = React.lazy(() =>
+  import("@/pages/notes/AllDocsPage").then((module) => ({
+    default: module.AllDocsPage,
   })),
 );
 
@@ -147,6 +172,25 @@ function ProtectedRoute() {
         </ErrorBoundary>
       </RouteContextProvider>
     </AppShell>
+  );
+}
+
+/**
+ * ImmersiveRoute Component
+ * For full-screen experiences (like BlockSuite editor) without AppShell header.
+ * Provides authentication but no layout wrapper.
+ */
+function ImmersiveRoute() {
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+
+  if (!isAuthenticated) {
+    return <Navigate to="/auth/login" replace />;
+  }
+
+  return (
+    <ErrorBoundary level="module">
+      <Outlet />
+    </ErrorBoundary>
   );
 }
 
@@ -214,7 +258,7 @@ export function Router() {
             <Route path="/flashcards" element={<FlashcardsPage />} />
             <Route path="/flashcards/create" element={<CreateDeckPage />} />
             <Route path="/flashcards/:deckId" element={<DeckDetailPage />} />
-            <Route path="/flashcards/:deckId/review" element={<ReviewPage />} />
+            {/* ReviewPage moved to ImmersiveRoute for full-screen experience */}
             <Route
               path="/flashcards/:deckId/cards/new"
               element={<CreateCardPage />}
@@ -223,19 +267,21 @@ export function Router() {
               path="/flashcards/:deckId/cards/:cardId/edit"
               element={<EditCardPage />}
             />
-            {/* Global review (all decks) */}
-            <Route path="/flashcards/review" element={<ReviewPage />} />
 
-            {/* ========== NOTES (Neural Codex) ========== */}
-            <Route path="/notes" element={<NotesPage />} />
-            <Route path="/notes/:noteId" element={<NoteDetailPage />} />
+            {/* ========== NOTES ECOSYSTEM (Wrapped in Left Sidebar) ========== */}
+            <Route element={<NotesLayout />}>
+              <Route path="/notes" element={<AllDocsPage />} />
+              <Route path="/journals" element={<JournalsPage />} />
+            </Route>
+
+            {/* NoteDetailPage remains immersive for now */}
 
             {/* ========== DOCUMENTS (Omni-Kinetic) ========== */}
             <Route path="/documents" element={<DocumentsPage />} />
 
             {/* ========== QUIZZES (Protocol: Crucible) ========== */}
             <Route path="/quizzes" element={<QuizzesPage />} />
-            <Route path="/quizzes/:quizId/take" element={<QuizTakePage />} />
+            {/* QuizTakePage moved to ImmersiveRoute for full-screen experience */}
 
             {/* ========== STUDY (Unified Hub) ========== */}
             <Route path="/study" element={<StudyPage />} />
@@ -253,6 +299,20 @@ export function Router() {
               path="/analytics"
               element={<Navigate to="/dashboard" replace />}
             />
+          </Route>
+
+          {/* ==================== IMMERSIVE ROUTES ==================== */}
+          {/* Full-screen experiences without AppShell header */}
+          <Route element={<ImmersiveRoute />}>
+            <Route path="/notes/:noteId" element={<NoteDetailPage />} />
+            {/* Journals - Moved to NotesLayout */}
+            {/* Flashcard study sessions - full immersive experience */}
+            <Route path="/flashcards/:deckId/review" element={<ReviewPage />} />
+            <Route path="/flashcards/review" element={<ReviewPage />} />
+            {/* Quiz sessions - full immersive experience */}
+            <Route path="/quizzes/:quizId/take" element={<QuizTakePage />} />
+            {/* Unified Study sessions - full immersive experience */}
+            <Route path="/study/session" element={<StudySessionPage />} />
           </Route>
 
           {/* ==================== 404 FALLBACK ==================== */}

@@ -121,6 +121,31 @@ class Settings(BaseSettings):
         description="Days until ranking weights expire",
     )
 
+    # ========================================================================
+    # LEARNING LEDGER FEATURE FLAGS (Dashboard Truth System v2.0)
+    # ========================================================================
+    # All learning ledger analytics reads are gated behind this flag.
+    # When False, analytics falls back to legacy logic for safe rollout.
+
+    ENABLE_LEARNING_LEDGER: bool = Field(
+        default=False,
+        description="Enable Learning Ledger analytics (read from ActivityLog learning events)",
+    )
+
+    # Duration guardrail: cap per-review duration to prevent pollution
+    # from idle tabs, backgrounding, or replay attacks
+    MAX_REVIEW_DURATION_SECONDS: int = Field(
+        default=600,  # 10 minutes max per single review
+        description="Maximum duration (seconds) for a single review event (guardrail)",
+    )
+
+    # Streak calculation timezone policy
+    # True = UTC (simpler, honest), False = user-local (better UX, more work)
+    STREAK_USE_UTC: bool = Field(
+        default=True,
+        description="Calculate streaks in UTC (True) or user-local time (False)",
+    )
+
     model_config = SettingsConfigDict(
         env_file=".env", env_file_encoding="utf-8", case_sensitive=True, extra="ignore"
     )

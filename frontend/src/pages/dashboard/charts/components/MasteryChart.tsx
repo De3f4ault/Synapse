@@ -50,10 +50,12 @@ export function MasteryChart({ data, className }: MasteryChartProps) {
                             <Award className="w-8 h-8" />
                         </div>
                         <p className="text-sm text-slate-300 mb-1">
-                            Study more topics to see your mastery radar.
+                            {chartData.length === 0 
+                                ? "Review cards to unlock mastery radar"
+                                : `Need ${3 - chartData.length} more topic${3 - chartData.length > 1 ? 's' : ''} for radar`}
                         </p>
                         <p className="text-xs text-slate-500">
-                            Review cards across different subjects
+                            Review flashcards across at least 3 different decks
                         </p>
                     </div>
                 ) : (

@@ -3,10 +3,11 @@
 /* tslint:disable */
 /* eslint-disable */
 /**
- * Enum for note content formats.
+ * Enum for note content formats. DEPRECATED - kept for migration compatibility.
  */
 export enum NoteFormat {
     MARKDOWN = 'markdown',
     HTML = 'html',
     PLAIN = 'plain',
+    BLOCKSUITE = 'blocksuite',
 }

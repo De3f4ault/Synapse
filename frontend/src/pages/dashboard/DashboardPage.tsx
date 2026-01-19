@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Layers,
@@ -13,13 +13,23 @@ import {
 import { DashboardProviders } from "./core";
 
 // Metrics
-import { StatusCard, useMetrics } from "./metrics";
+import {
+  StatusCard,
+  useMetrics,
+  TodaysProgressCard,
+  ReviewForecastCard,
+  LastSessionCard,
+  useTodayStats,
+  useForecast,
+  useLastSession,
+} from "./metrics";
 
 // Charts
 import {
   ActivityGraph,
   MasteryChart,
   useChartsData,
+  type TimeBucket,
 } from "./charts";
 
 // Insights
@@ -51,10 +61,16 @@ function DashboardContent() {
 
   // Data Hooks
   const { metrics, isLoading: isMetricsLoading, error: metricsError } = useMetrics();
-  const { data: chartsData, isLoading: isChartsLoading } = useChartsData();
+  const [bucket, setBucket] = useState<TimeBucket>("day");
+  const { data: chartsData, isLoading: isChartsLoading, isFetching } = useChartsData(bucket);
   const { isLoading: isActivityLoading } = useActivityData();
   const { weakAreas, isLoading: isInsightsLoading } = useInsights();
   const { data: recentContent, isLoading: isRecentLoading } = useRecentContent();
+  
+  // New awareness cards data
+  const { data: todayStats, isLoading: isTodayLoading } = useTodayStats();
+  const { data: forecast, isLoading: isForecastLoading } = useForecast();
+  const { data: lastSession, isLoading: isLastSessionLoading } = useLastSession();
 
   const isLoading =
     isMetricsLoading ||
@@ -163,7 +179,11 @@ function DashboardContent() {
               />
               <StatusCard
                 title="Total Time"
-                value={`${Math.floor((metrics?.totalStudyTimeMinutes || 0) / 60)}h`}
+                value={
+                  (metrics?.totalStudyTimeMinutes || 0) >= 60
+                    ? `${((metrics?.totalStudyTimeMinutes || 0) / 60).toFixed(1)}h`
+                    : `${metrics?.totalStudyTimeMinutes || 0}m`
+                }
                 subtitle="Focused learning"
                 icon={Clock}
                 color="amber"
@@ -174,19 +194,102 @@ function DashboardContent() {
 
         {/* MAIN BENTO GRID */}
         <div className="grid gap-6 md:grid-cols-4 lg:grid-cols-4">
-          {/* Row 1: Activity Graph + Mastery */}
-          <div className="col-span-4 lg:col-span-3">
+          {/* Row 1: Activity Graph (2 cols) + Stacked Cards (1 col) + Topic Mastery (1 col) */}
+          <div className="col-span-4 lg:col-span-2">
             <ActivityGraph
               data={chartsData.performance}
               isLoading={isChartsLoading}
+              isFetching={isFetching}
+              bucket={bucket}
+              onBucketChange={setBucket}
             />
           </div>
 
-          <div className="col-span-4 lg:col-span-1">
+          {/* Stacked Flashcard + Quiz Cards (1 col) */}
+          {!isLoading && (
+            <div className="col-span-2 lg:col-span-1 flex flex-col gap-4">
+              {/* Compact Flashcard Card */}
+              <div className="flex-1 rounded-xl bg-gradient-to-br from-cyan-500/10 to-blue-500/5 border border-cyan-500/20 p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-7 h-7 rounded-lg bg-cyan-500/20 flex items-center justify-center">
+                    <Layers className="w-3.5 h-3.5 text-cyan-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold text-white">Flashcards</h3>
+                    <p className="text-[10px] text-slate-500">{metrics?.totalCards || 0} cards</p>
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[10px] text-slate-400">Due Now</span>
+                    <span className="text-base font-bold text-cyan-400">{metrics?.dueCards || 0}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-[10px] text-slate-400">Accuracy</span>
+                    <span className="text-sm font-medium text-cyan-300">{(metrics?.flashcardAccuracy || 0).toFixed(0)}%</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Compact Quiz Card */}
+              <div className="flex-1 rounded-xl bg-gradient-to-br from-purple-500/10 to-pink-500/5 border border-purple-500/20 p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-7 h-7 rounded-lg bg-purple-500/20 flex items-center justify-center">
+                    <Target className="w-3.5 h-3.5 text-purple-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold text-white">Quizzes</h3>
+                    <p className="text-[10px] text-slate-500">{metrics?.totalQuizzes || 0} quizzes</p>
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[10px] text-slate-400">Attempts</span>
+                    <span className="text-base font-bold text-purple-400">{metrics?.totalQuizAttempts || 0}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-[10px] text-slate-400">Accuracy</span>
+                    <span className="text-sm font-medium text-purple-300">{(metrics?.quizAccuracy || 0).toFixed(0)}%</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Topic Mastery (1 col) */}
+          <div className="col-span-2 lg:col-span-1">
             <MasteryChart data={chartsData.topicMastery} />
           </div>
 
-          {/* Row 2: Weak Areas + Recent Files */}
+          {/* Row 2: Progress + Forecast */}
+          <div className="col-span-4 lg:col-span-1">
+            <TodaysProgressCard
+              reviewsCompleted={todayStats?.reviews_completed || 0}
+              totalDue={forecast?.due_today || 0}
+              studyTimeMinutes={todayStats?.study_time_minutes || 0}
+              isLoading={isTodayLoading || isForecastLoading}
+            />
+          </div>
+          <div className="col-span-4 lg:col-span-1">
+            <ReviewForecastCard
+              tomorrow={forecast?.due_tomorrow || 0}
+              thisWeek={forecast?.due_this_week || 0}
+              overdue={forecast?.overdue || 0}
+              isLoading={isForecastLoading}
+            />
+          </div>
+          <div className="col-span-4 lg:col-span-2">
+            <LastSessionCard
+              cardsReviewed={lastSession?.cards_reviewed || 0}
+              durationMinutes={lastSession?.duration_minutes || 0}
+              accuracyPercent={lastSession?.accuracy_percent || 0}
+              qualityLabel={lastSession?.quality_label || "No sessions yet"}
+              hasSession={lastSession?.has_session || false}
+              isLoading={isLastSessionLoading}
+            />
+          </div>
+          
+          {/* Row 3: Weak Areas + Recent Files */}
           <div className="col-span-4 lg:col-span-2">
             <WeakAreasList data={weakAreas} />
           </div>
@@ -195,6 +298,13 @@ function DashboardContent() {
               documents={recentContent.documents}
               notes={recentContent.notes}
             />
+          </div>
+          
+          {/* Transparency Footer */}
+          <div className="col-span-4 text-center py-2">
+            <span className="text-xs text-slate-500">
+              Based on {todayStats?.learning_events || 0} learning events
+            </span>
           </div>
         </div>
       </div>

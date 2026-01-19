@@ -47,7 +47,7 @@ export function DeckTable({
             <div className="divide-y divide-white/5">
                 {decks.map((deck, index) => {
                     const mastery = estimateMastery(deck);
-                    const dueCount = Math.min(deck.card_count || 0, 10);
+                    const dueCount = deck.due_count ?? 0;
 
                     return (
                         <motion.div

@@ -2,7 +2,7 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-import type { app__api__rest__links__MessageResponse } from '../models/app__api__rest__links__MessageResponse';
+import type { app__api__rest__uploads__MessageResponse } from '../models/app__api__rest__uploads__MessageResponse';
 import type { DeckCreate } from '../models/DeckCreate';
 import type { DeckResponse } from '../models/DeckResponse';
 import type { DeckUpdate } from '../models/DeckUpdate';
@@ -136,16 +136,16 @@ export class FlashcardsService {
     }
     /**
      * Delete deck
-     * Delete a deck (soft delete)
+     * Delete a deck (soft delete with cascade to flashcards)
      * @param deckId
      * @param token Auth token for image/file requests
-     * @returns app__api__rest__links__MessageResponse Successful Response
+     * @returns app__api__rest__uploads__MessageResponse Successful Response
      * @throws ApiError
      */
     public static deleteDeckApiV1DecksDeckIdDelete(
         deckId: number,
         token?: (string | null),
-    ): CancelablePromise<app__api__rest__links__MessageResponse> {
+    ): CancelablePromise<app__api__rest__uploads__MessageResponse> {
         return __request(OpenAPI, {
             method: 'DELETE',
             url: '/api/v1/decks/{deck_id}',
@@ -415,13 +415,13 @@ export class FlashcardsService {
      * Delete a flashcard (soft delete)
      * @param cardId
      * @param token Auth token for image/file requests
-     * @returns app__api__rest__links__MessageResponse Successful Response
+     * @returns app__api__rest__uploads__MessageResponse Successful Response
      * @throws ApiError
      */
     public static deleteCardApiV1CardsCardIdDelete(
         cardId: number,
         token?: (string | null),
-    ): CancelablePromise<app__api__rest__links__MessageResponse> {
+    ): CancelablePromise<app__api__rest__uploads__MessageResponse> {
         return __request(OpenAPI, {
             method: 'DELETE',
             url: '/api/v1/cards/{card_id}',

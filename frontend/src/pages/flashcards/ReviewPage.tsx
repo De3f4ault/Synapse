@@ -185,55 +185,52 @@ export function ReviewPage() {
   // Active Session
   return (
     <AuroraBackground>
-      {/* Top Controls (Minimal) */}
-      <div className="absolute top-0 left-0 right-0 p-6 flex justify-between items-start z-20 opacity-50 hover:opacity-100 transition-opacity">
-        <button
-          onClick={() => {
-            if (confirm('End session?')) {
-              endSession();
-              navigate('/flashcards');
-            }
-          }}
-          className="p-2 rounded-full hover:bg-white/10 transition-colors"
-        >
-          <X size={20} className="text-slate-400" />
-        </button>
+      {/* Floating Close Button - Top Left */}
+      <button
+        onClick={() => {
+          if (confirm('End session?')) {
+            endSession();
+            navigate('/flashcards');
+          }
+        }}
+        className="fixed top-6 left-6 p-2 rounded-full hover:bg-white/10 transition-colors z-20 opacity-50 hover:opacity-100"
+      >
+        <X size={20} className="text-slate-400" />
+      </button>
 
-        <div className="flex flex-col items-end gap-1">
-          <div className="text-xs font-mono text-slate-500 tracking-widest">
-            {progress.current} / {progress.total}
-          </div>
-          <div className="w-32 h-1 bg-white/10 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-slate-500 transition-all duration-500"
-              style={{ width: `${(progress.completed / progress.total) * 100}%` }}
-            />
-          </div>
+      {/* Floating Progress - Top Right */}
+      <div className="fixed top-6 right-6 flex flex-col items-end gap-1 z-20 opacity-50 hover:opacity-100 transition-opacity">
+        <div className="text-xs font-mono text-slate-500 tracking-widest">
+          {progress.current} / {progress.total}
+        </div>
+        <div className="w-32 h-1 bg-white/10 rounded-full overflow-hidden">
+          <div
+            className="h-full bg-slate-500 transition-all duration-500"
+            style={{ width: `${(progress.completed / progress.total) * 100}%` }}
+          />
         </div>
       </div>
 
-      {/* Main Stage */}
-      <div className="flex-1 flex flex-col items-center justify-center p-4 z-10">
-        <div className="h-[65vh] w-full flex items-center justify-center">
-          <AnimatePresence mode="wait">
-            {currentCard && (
-              <motion.div
-                key={currentCard.id}
-                initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 1.1, filter: 'blur(10px)' }}
-                transition={{ duration: 0.4, ease: "easeOut" }}
-                className="w-full h-full flex items-center justify-center"
-              >
-                <FlashcardView
-                  card={currentCard}
-                  isFlipped={isFlipped}
-                  onFlip={flipCard}
-                />
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+      {/* Main Stage - Centered Flashcard */}
+      <div className="flex-1 w-full flex items-center justify-center pt-24 p-4 z-10">
+        <AnimatePresence mode="wait">
+          {currentCard && (
+            <motion.div
+              key={currentCard.id}
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 1.1, filter: 'blur(10px)' }}
+              transition={{ duration: 0.4, ease: "easeOut" }}
+              className="w-full max-w-md h-[70vh] flex items-center justify-center"
+            >
+              <FlashcardView
+                card={currentCard}
+                isFlipped={isFlipped}
+                onFlip={flipCard}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Bottom Controls */}

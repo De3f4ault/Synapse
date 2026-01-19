@@ -65,7 +65,7 @@ const isDashboardSession = (title: string | null | undefined): boolean => {
   return lower.includes("dashboard") || lower.includes("assistant");
 };
 
-export function ChatSidebar({ currentSessionId, className, isCollapsed = false, onToggleCollapse }: ChatSidebarProps) {
+export function ChatSidebar({ currentSessionId, className, isCollapsed = false }: ChatSidebarProps) {
   const navigate = useNavigate();
   const { data: sessions = [] } = useChatSessions();
   const createSessionMutation = useCreateSession();

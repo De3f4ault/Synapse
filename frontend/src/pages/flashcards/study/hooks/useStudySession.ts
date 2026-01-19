@@ -51,7 +51,7 @@ export function useStudySession({ deckId, limit = 20 }: UseStudySessionOptions):
     const setActiveDeck = useFlashcardStore((s) => s.setActiveDeck);
 
     // Fetch due cards
-    const { data: dueCards, isLoading, error: fetchError } = useQuery({
+    const { data: dueCards, isLoading: isDueLoading, error: fetchError } = useQuery({
         queryKey: ['flashcards', 'due', deckId],
         queryFn: async () => {
             const response = await FlashcardsService.getDueCardsApiV1CardsDueGet(deckId, limit);
@@ -60,6 +60,21 @@ export function useStudySession({ deckId, limit = 20 }: UseStudySessionOptions):
         enabled: deckId > 0,
         staleTime: 5 * 60 * 1000, // 5 minutes
     });
+
+    // Fallback: Fetch all cards in deck if no due cards
+    const { data: allCards, isLoading: isAllCardsLoading } = useQuery({
+        queryKey: ['flashcards', 'deck', deckId, 'cards'],
+        queryFn: async () => {
+            const response = await FlashcardsService.listDeckCardsApiV1DecksDeckIdCardsGet(deckId, 1, limit);
+            // Response might be { cards: [...] } or just an array
+            const cards = Array.isArray(response) ? response : (response?.cards || response?.items || []);
+            return cards as Flashcard[];
+        },
+        enabled: deckId > 0 && !isDueLoading && (!dueCards || dueCards.length === 0),
+        staleTime: 5 * 60 * 1000,
+    });
+
+    const isLoading = isDueLoading || ((!dueCards || dueCards.length === 0) && isAllCardsLoading);
 
     // Review mutation
     const reviewMutation = useMutation({
@@ -87,17 +102,19 @@ export function useStudySession({ deckId, limit = 20 }: UseStudySessionOptions):
         }
     }, [deckId, store.deckId]);
 
-    // Start session handler
+    // Start session handler - use due cards first, fall back to all cards
     const startSession = useCallback(() => {
-        if (!dueCards || dueCards.length === 0) {
-            store.setStudyError('No cards due for review');
+        const cardsToStudy = (dueCards && dueCards.length > 0) ? dueCards : allCards;
+        
+        if (!cardsToStudy || cardsToStudy.length === 0) {
+            store.setStudyError('No cards available in this deck');
             return;
         }
 
         // Sort cards by priority
-        const sortedCards = sortByPriority(dueCards);
+        const sortedCards = sortByPriority(cardsToStudy);
         store.startSession(deckId, sortedCards);
-    }, [dueCards, deckId, store]);
+    }, [dueCards, allCards, deckId, store]);
 
     // Flip card handler
     const flipCard = useCallback(() => {

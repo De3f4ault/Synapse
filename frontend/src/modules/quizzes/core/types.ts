@@ -114,12 +114,15 @@ export interface QuizInsights {
 
 /**
  * Local state for tracking answers during an active attempt.
+ * Phase Q2.2: Added duration_ms for per-question timing (SM-2 quality mapping)
  */
 export interface LocalQuestionState {
     answered: boolean;
     selectedAnswer: string | null;
     isCorrect: boolean | null;
     showExplanation: boolean;
+    /** Time taken to answer in milliseconds (Phase Q2.2) */
+    duration_ms?: number;
 }
 
 /**

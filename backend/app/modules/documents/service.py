@@ -38,8 +38,8 @@ class DocumentService:
             filename=filename,
             file_path=f"uploads/{user_id}/{filename}",
             file_type=file_type,
-            file_size=len(file.read()) if hasattr(file, 'read') else 0,
-            processing_status=ProcessingStatus.PENDING
+            file_size=len(file.read()) if hasattr(file, "read") else 0,
+            processing_status=ProcessingStatus.PENDING,
         )
 
         self.session.add(document)
@@ -83,7 +83,7 @@ class DocumentService:
                     content=chunk_data["content"],
                     chunk_index=chunk_data["chunk_index"],
                     start_char=chunk_data["start_char"],
-                    end_char=chunk_data["end_char"]
+                    end_char=chunk_data["end_char"],
                 )
                 self.session.add(chunk)
 
@@ -93,6 +93,25 @@ class DocumentService:
             document.processing_status = ProcessingStatus.COMPLETED
 
             await self.session.commit()
+
+            # Send notification
+            try:
+                from app.services.notification_service import NotificationService
+                from app.models.notification import NotificationType, NotificationCategory
+
+                notification_service = NotificationService(self.session)
+                await notification_service.send(
+                    user_id=document.user_id,
+                    type=NotificationType.SUCCESS,
+                    category=NotificationCategory.SYSTEM,
+                    title="Document Ready",
+                    message=f"'{document.filename}' has been processed and is ready for AI queries.",
+                    action_url=f"/documents/{document.id}",
+                    action_label="View Document",
+                    meta_data={"document_id": document.id, "word_count": word_count},
+                )
+            except Exception:
+                pass  # Don't fail processing on notification error
 
         except Exception as e:
             document.processing_status = ProcessingStatus.FAILED
@@ -107,7 +126,7 @@ class DocumentService:
             and_(
                 Document.id == document_id,
                 Document.user_id == user_id,
-                Document.deleted_at.is_(None)
+                Document.deleted_at.is_(None),
             )
         )
 
@@ -123,12 +142,11 @@ class DocumentService:
         """List user's documents"""
         from app.models.document import Document
 
-        query = select(Document).where(
-            and_(
-                Document.user_id == user_id,
-                Document.deleted_at.is_(None)
-            )
-        ).order_by(Document.created_at.desc())
+        query = (
+            select(Document)
+            .where(and_(Document.user_id == user_id, Document.deleted_at.is_(None)))
+            .order_by(Document.created_at.desc())
+        )
 
         result = await self.session.execute(query)
         documents = result.scalars().all()
@@ -140,10 +158,7 @@ class DocumentService:
         from app.models.document import Document
 
         query = select(Document).where(
-            and_(
-                Document.id == document_id,
-                Document.user_id == user_id
-            )
+            and_(Document.id == document_id, Document.user_id == user_id)
         )
 
         result = await self.session.execute(query)
@@ -171,5 +186,5 @@ class DocumentService:
             "processing_status": document.processing_status,
             "page_count": document.page_count,
             "word_count": document.word_count,
-            "created_at": document.created_at
+            "created_at": document.created_at,
         }

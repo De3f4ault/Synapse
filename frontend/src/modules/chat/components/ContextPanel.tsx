@@ -280,7 +280,7 @@ export function ContextPanel({
                         {note.title}
                       </p>
                       <p className="text-xs text-muted-foreground truncate">
-                        {note.content.slice(0, 60)}...
+                        {typeof note.content === "string" ? note.content.slice(0, 60) : "[BlockSuite content]"}...
                       </p>
                     </motion.div>
                   ))}

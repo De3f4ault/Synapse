@@ -2,7 +2,7 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-import type { app__api__rest__links__MessageResponse } from '../models/app__api__rest__links__MessageResponse';
+import type { app__api__rest__uploads__MessageResponse } from '../models/app__api__rest__uploads__MessageResponse';
 import type { Body_replace_document_api_v1_documents__document_id__replace_put } from '../models/Body_replace_document_api_v1_documents__document_id__replace_put';
 import type { Body_upload_document_api_v1_documents_upload_post } from '../models/Body_upload_document_api_v1_documents_upload_post';
 import type { DocumentChunkResponse } from '../models/DocumentChunkResponse';
@@ -102,14 +102,14 @@ export class DocumentsService {
      * @param documentId
      * @param keepFile Keep physical file on disk (default: delete it)
      * @param token Auth token for image/file requests
-     * @returns app__api__rest__links__MessageResponse Successful Response
+     * @returns app__api__rest__uploads__MessageResponse Successful Response
      * @throws ApiError
      */
     public static deleteDocumentApiV1DocumentsDocumentIdDelete(
         documentId: number,
         keepFile: boolean = false,
         token?: (string | null),
-    ): CancelablePromise<app__api__rest__links__MessageResponse> {
+    ): CancelablePromise<app__api__rest__uploads__MessageResponse> {
         return __request(OpenAPI, {
             method: 'DELETE',
             url: '/api/v1/documents/{document_id}',
@@ -248,13 +248,13 @@ export class DocumentsService {
      * Manually trigger document processing (if pending or failed)
      * @param documentId
      * @param token Auth token for image/file requests
-     * @returns app__api__rest__links__MessageResponse Successful Response
+     * @returns app__api__rest__uploads__MessageResponse Successful Response
      * @throws ApiError
      */
     public static triggerProcessingApiV1DocumentsDocumentIdProcessPost(
         documentId: number,
         token?: (string | null),
-    ): CancelablePromise<app__api__rest__links__MessageResponse> {
+    ): CancelablePromise<app__api__rest__uploads__MessageResponse> {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/api/v1/documents/{document_id}/process',

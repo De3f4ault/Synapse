@@ -28,8 +28,10 @@ logger = structlog.get_logger()
 # Request/Response Schemas
 # ============================================================================
 
+
 class FlashcardCreate(BaseModel):
     """Flashcard creation request."""
+
     deck_id: int
     front_text: str = Field(..., min_length=1)
     back_text: str = Field(..., min_length=1)
@@ -39,6 +41,7 @@ class FlashcardCreate(BaseModel):
 
 class FlashcardUpdate(BaseModel):
     """Flashcard update request."""
+
     front_text: Optional[str] = Field(None, min_length=1)
     back_text: Optional[str] = Field(None, min_length=1)
     front_media_url: Optional[str] = None
@@ -47,6 +50,7 @@ class FlashcardUpdate(BaseModel):
 
 class ReviewSubmit(BaseModel):
     """Review submission request."""
+
     quality: int = Field(..., ge=0, le=5, description="Quality rating 0-5")
     time_taken_ms: int = Field(..., ge=0, description="Time taken in milliseconds")
 
@@ -58,6 +62,7 @@ class FlashcardResponse(BaseModel):
     Note: This differs from the Flashcard database model because
     get_due_cards() returns calculated fields for prioritization.
     """
+
     id: int
     deck_id: int
     front_text: str
@@ -90,6 +95,7 @@ class FlashcardResponse(BaseModel):
 
 class ReviewResult(BaseModel):
     """Review result response."""
+
     next_review_date: datetime
     new_interval: int
     new_ease_factor: float  # Changed from Decimal to float
@@ -99,6 +105,7 @@ class ReviewResult(BaseModel):
 
 class MessageResponse(BaseModel):
     """Simple message response."""
+
     message: str
 
 
@@ -106,17 +113,18 @@ class MessageResponse(BaseModel):
 # Endpoints
 # ============================================================================
 
+
 @router.post(
     "",
     response_model=FlashcardResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Create flashcard",
-    description="Create a new flashcard in a deck"
+    description="Create a new flashcard in a deck",
 )
 async def create_card(
     card_data: FlashcardCreate,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """Create a new flashcard using service layer."""
     service = FlashcardService(db)
@@ -130,30 +138,27 @@ async def create_card(
                 "back_text": card_data.back_text,
                 "front_media_url": card_data.front_media_url,
                 "back_media_url": card_data.back_media_url,
-            }
+            },
         )
         await db.commit()
         return result
     except Exception as e:
         logger.error("create_card_error", error=str(e), user_id=current_user.id)
         await db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
 @router.get(
     "/due",
     response_model=List[FlashcardResponse],
     summary="Get due cards",
-    description="Retrieve cards due for review"
+    description="Retrieve cards due for review",
 )
 async def get_due_cards(
     deck_id: Optional[int] = Query(None, description="Filter by deck"),
     limit: int = Query(20, ge=1, le=100, description="Maximum cards to return"),
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Get cards due for review.
@@ -163,47 +168,32 @@ async def get_due_cards(
     """
     try:
         # Log the request for debugging
-        logger.info(
-            "get_due_cards_request",
-            user_id=current_user.id,
-            deck_id=deck_id,
-            limit=limit
-        )
+        logger.info("get_due_cards_request", user_id=current_user.id, deck_id=deck_id, limit=limit)
 
         # Try using service layer first
         service = FlashcardService(db)
 
         # Check if method exists before calling
-        if not hasattr(service, 'get_due_cards'):
+        if not hasattr(service, "get_due_cards"):
             logger.warning(
                 "get_due_cards_method_not_found",
                 user_id=current_user.id,
-                message="FlashcardService.get_due_cards() method not implemented"
+                message="FlashcardService.get_due_cards() method not implemented",
             )
             # Use fallback query
             return await _fallback_get_due_cards(db, current_user.id, deck_id, limit)
 
-        cards = await service.get_due_cards(
-            user_id=current_user.id,
-            deck_id=deck_id,
-            limit=limit
-        )
+        cards = await service.get_due_cards(user_id=current_user.id, deck_id=deck_id, limit=limit)
 
         logger.info(
-            "get_due_cards_success",
-            user_id=current_user.id,
-            cards_count=len(cards) if cards else 0
+            "get_due_cards_success", user_id=current_user.id, cards_count=len(cards) if cards else 0
         )
 
         return cards if cards is not None else []
 
     except AttributeError as e:
         # Service method doesn't exist - use fallback query
-        logger.warning(
-            "get_due_cards_service_not_available",
-            error=str(e),
-            user_id=current_user.id
-        )
+        logger.warning("get_due_cards_service_not_available", error=str(e), user_id=current_user.id)
         return await _fallback_get_due_cards(db, current_user.id, deck_id, limit)
 
     except Exception as e:
@@ -216,7 +206,7 @@ async def get_due_cards(
             user_id=current_user.id,
             deck_id=deck_id,
             limit=limit,
-            exc_info=True
+            exc_info=True,
         )
 
         # Try rollback to clean up any transaction issues
@@ -230,10 +220,7 @@ async def get_due_cards(
 
 
 async def _fallback_get_due_cards(
-    db: AsyncSession,
-    user_id: int,
-    deck_id: Optional[int],
-    limit: int
+    db: AsyncSession, user_id: int, deck_id: Optional[int], limit: int
 ) -> List[Flashcard]:
     """
     Fallback query when service layer is unavailable.
@@ -250,10 +237,7 @@ async def _fallback_get_due_cards(
                     Deck.user_id == user_id,
                     Flashcard.deleted_at.is_(None),
                     Deck.deleted_at.is_(None),
-                    or_(
-                        Flashcard.next_review.is_(None),
-                        Flashcard.next_review <= func.now()
-                    )
+                    or_(Flashcard.next_review.is_(None), Flashcard.next_review <= func.now()),
                 )
             )
             .order_by(Flashcard.next_review.asc().nullsfirst())
@@ -266,11 +250,7 @@ async def _fallback_get_due_cards(
         result = await db.execute(query)
         cards = result.scalars().all()
 
-        logger.info(
-            "fallback_get_due_cards_success",
-            user_id=user_id,
-            cards_count=len(cards)
-        )
+        logger.info("fallback_get_due_cards_success", user_id=user_id, cards_count=len(cards))
 
         return list(cards)
 
@@ -280,7 +260,7 @@ async def _fallback_get_due_cards(
             error=str(e),
             error_type=type(e).__name__,
             user_id=user_id,
-            exc_info=True
+            exc_info=True,
         )
         # Even fallback returns empty list on error
         return []
@@ -290,28 +270,81 @@ async def _fallback_get_due_cards(
     "/{card_id}/review",
     response_model=ReviewResult,
     summary="Review card",
-    description="Submit a review for a flashcard (SM-2 algorithm via SQL)"
+    description="Submit a review for a flashcard (SM-2 algorithm via SQL)",
 )
 async def review_card(
     card_id: int,
     review_data: ReviewSubmit,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Review a flashcard.
 
     Uses service layer which calls repository -> SQL function calculate_sm2().
     No Python SM-2 logic here - single source of truth in PostgreSQL.
+
+    LEARNING LEDGER: Emits a FLASHCARD_REVIEW learning event with:
+    - Normalized accuracy (quality / 5.0)
+    - Duration guardrail (capped to MAX_REVIEW_DURATION_SECONDS)
     """
+    from app.core.config import settings
+    from app.models.activity_log import ActivityLog, ActivityType, ModuleType
+    import uuid
+
     service = FlashcardService(db)
 
     try:
         result = await service.review_card(
-            card_id=card_id,
-            user_id=current_user.id,
-            quality=review_data.quality
+            card_id=card_id, user_id=current_user.id, quality=review_data.quality
         )
+
+        # =====================================================================
+        # LEARNING LEDGER: Emit FLASHCARD_REVIEW event
+        # =====================================================================
+        # This is the canonical learning event - append-only, never updated
+
+        # Duration guardrail: clamp to prevent pollution from idle tabs
+        raw_duration_seconds = review_data.time_taken_ms // 1000
+        clamped_duration = min(raw_duration_seconds, settings.MAX_REVIEW_DURATION_SECONDS)
+        was_clamped = clamped_duration != raw_duration_seconds
+
+        # Normalized accuracy: quality / 5.0 (NOT binary thresholded)
+        normalized_accuracy = review_data.quality / 5.0
+
+        # Generate idempotency key for deduplication
+        event_uid = str(uuid.uuid4())
+
+        learning_event = ActivityLog(
+            user_id=current_user.id,
+            activity_type=ActivityType.FLASHCARD_REVIEW,
+            module=ModuleType.FLASHCARDS,
+            resource_id=card_id,
+            event_uid=event_uid,
+            duration_seconds=clamped_duration,
+            accuracy=normalized_accuracy,
+            quality_score=review_data.quality,
+            is_learning_event=True,
+            meta_data={
+                "raw_duration_ms": review_data.time_taken_ms,
+                "was_clamped": was_clamped,
+                "new_interval": result["new_interval"],
+                "new_ease_factor": str(result["new_ease_factor"]),
+            },
+        )
+        db.add(learning_event)
+
+        logger.info(
+            "learning_event_emitted",
+            event_type="FLASHCARD_REVIEW",
+            user_id=current_user.id,
+            card_id=card_id,
+            quality=review_data.quality,
+            accuracy=normalized_accuracy,
+            duration_seconds=clamped_duration,
+            was_clamped=was_clamped,
+        )
+        # =====================================================================
 
         await db.commit()
 
@@ -320,7 +353,7 @@ async def review_card(
             new_interval=result["new_interval"],
             new_ease_factor=float(result["new_ease_factor"]),  # Convert to float
             success=True,
-            message="Review recorded successfully"
+            message="Review recorded successfully",
         )
     except Exception as e:
         logger.error(
@@ -328,25 +361,20 @@ async def review_card(
             error=str(e),
             card_id=card_id,
             user_id=current_user.id,
-            exc_info=True
+            exc_info=True,
         )
         await db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
 @router.get(
     "/{card_id}",
     response_model=FlashcardResponse,
     summary="Get flashcard",
-    description="Retrieve a specific flashcard"
+    description="Retrieve a specific flashcard",
 )
 async def get_card(
-    card_id: int,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    card_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
 ):
     """Get a specific flashcard using service layer."""
     service = FlashcardService(db)
@@ -355,29 +383,21 @@ async def get_card(
         result = await service.get_card(card_id=card_id, user_id=current_user.id)
         return result
     except Exception as e:
-        logger.error(
-            "get_card_error",
-            error=str(e),
-            card_id=card_id,
-            user_id=current_user.id
-        )
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Card not found"
-        )
+        logger.error("get_card_error", error=str(e), card_id=card_id, user_id=current_user.id)
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Card not found")
 
 
 @router.put(
     "/{card_id}",
     response_model=FlashcardResponse,
     summary="Update flashcard",
-    description="Update an existing flashcard"
+    description="Update an existing flashcard",
 )
 async def update_card(
     card_id: int,
     card_data: FlashcardUpdate,
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Update a flashcard.
@@ -388,12 +408,14 @@ async def update_card(
     try:
         # Verify card exists and user owns it
         result = await db.execute(
-            select(Flashcard).join(Deck).where(
+            select(Flashcard)
+            .join(Deck)
+            .where(
                 and_(
                     Flashcard.id == card_id,
                     Deck.user_id == current_user.id,
                     Flashcard.deleted_at.is_(None),
-                    Deck.deleted_at.is_(None)
+                    Deck.deleted_at.is_(None),
                 )
             )
         )
@@ -401,8 +423,7 @@ async def update_card(
 
         if not card:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Card not found or access denied"
+                status_code=status.HTTP_404_NOT_FOUND, detail="Card not found or access denied"
             )
 
         # Update only provided fields
@@ -421,7 +442,7 @@ async def update_card(
             "update_card_success",
             card_id=card_id,
             user_id=current_user.id,
-            updated_fields=list(update_data.keys())
+            updated_fields=list(update_data.keys()),
         )
 
         return card
@@ -434,12 +455,11 @@ async def update_card(
             error=str(e),
             card_id=card_id,
             user_id=current_user.id,
-            exc_info=True
+            exc_info=True,
         )
         await db.rollback()
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to update card"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to update card"
         )
 
 
@@ -447,31 +467,28 @@ async def update_card(
     "/{card_id}",
     response_model=MessageResponse,
     summary="Delete flashcard",
-    description="Delete a flashcard (soft delete)"
+    description="Delete a flashcard (soft delete)",
 )
 async def delete_card(
-    card_id: int,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    card_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
 ):
     """Delete a flashcard (soft delete)."""
     try:
         result = await db.execute(
-            select(Flashcard).join(Deck).where(
+            select(Flashcard)
+            .join(Deck)
+            .where(
                 and_(
                     Flashcard.id == card_id,
                     Deck.user_id == current_user.id,
-                    Flashcard.deleted_at.is_(None)
+                    Flashcard.deleted_at.is_(None),
                 )
             )
         )
         card = result.scalar_one_or_none()
 
         if not card:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Card not found"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Card not found")
 
         card.deleted_at = datetime.utcnow()
         await db.commit()
@@ -481,14 +498,8 @@ async def delete_card(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(
-            "delete_card_error",
-            error=str(e),
-            card_id=card_id,
-            user_id=current_user.id
-        )
+        logger.error("delete_card_error", error=str(e), card_id=card_id, user_id=current_user.id)
         await db.rollback()
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to delete card"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to delete card"
         )

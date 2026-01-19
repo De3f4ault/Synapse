@@ -19,10 +19,17 @@ from .document_chunk import DocumentChunk
 from .quiz import Quiz
 from .quiz_question import QuizQuestion
 from .quiz_attempt import QuizAttempt
+from .question_learning_state import QuestionLearningState
 from .chat_session import ChatSession
 from .chat_message import ChatMessage
 from .study_session import StudySession
-from .activity_log import ActivityLog, ActivityType, ModuleType
+from .activity_log import (
+    ActivityLog,
+    ActivityType,
+    ModuleType,
+    ACTIVITY_CONTRACTS,
+    is_learning_activity_type,
+)
 from .tag import Tag
 from .ai_usage import AIUsage
 from .agent_metric import AgentMetric
@@ -33,6 +40,7 @@ from .synapse_task import SynapseTask, TaskStatus, TaskType, TaskName
 
 from .intelligence import IntelligenceAdaptationLog
 from .ranking_weight import RankingWeight
+from .notification import Notification, NotificationType, NotificationCategory, NotificationStatus
 
 __all__ = [
     "Base",
@@ -47,12 +55,15 @@ __all__ = [
     "Quiz",
     "QuizQuestion",
     "QuizAttempt",
+    "QuestionLearningState",
     "ChatSession",
     "ChatMessage",
     "StudySession",
     "ActivityLog",
     "ActivityType",
     "ModuleType",
+    "ACTIVITY_CONTRACTS",
+    "is_learning_activity_type",
     "Tag",
     "AIUsage",
     "AgentMetric",
@@ -68,4 +79,8 @@ __all__ = [
     "TaskName",
     "IntelligenceAdaptationLog",
     "RankingWeight",
+    "Notification",
+    "NotificationType",
+    "NotificationCategory",
+    "NotificationStatus",
 ]

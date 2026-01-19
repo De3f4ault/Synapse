@@ -12,11 +12,13 @@ export interface Deck {
     name: string;
     description: string | null;
     card_count: number;
+    due_count: number;  // Cards due for review (next_review <= now)
     created_at: string;
     updated_at: string;
     tags?: string[] | null;
     is_public?: boolean;
     user_id?: number;
+    ai_generated?: boolean;
 }
 
 export interface Flashcard {

@@ -2,7 +2,7 @@
  * useChartsData - Hook for fetching data required by charts
  * 
  * Fetches:
- * - Performance trends (last 30 days)
+ * - Performance trends (with configurable time bucket)
  * - Topic mastery
  * 
  * Note: Heatmap data is managed by the Activity module (useActivityData).
@@ -13,16 +13,18 @@ import { queryKeys } from "@/lib/queryKeys";
 import { AnalyticsService } from "@/api/generated";
 import type { PerformanceTrend, TopicMastery } from "@/api/generated";
 
+export type TimeBucket = "day" | "week" | "month";
+
 export interface ChartsData {
     performance: PerformanceTrend[];
     topicMastery: TopicMastery[];
 }
 
-export function useChartsData() {
-    // Performance trends (last 30 days)
+export function useChartsData(bucket: TimeBucket = "day") {
+    // Performance trends with time bucket
     const performanceQuery = useQuery({
-        queryKey: queryKeys.analytics.performance(30),
-        queryFn: () => AnalyticsService.getPerformanceApiV1AnalyticsPerformanceGet(30),
+        queryKey: [...queryKeys.analytics.performance(30), bucket],
+        queryFn: () => AnalyticsService.getPerformanceApiV1AnalyticsPerformanceGet(30, bucket),
         staleTime: 1000 * 60 * 10, // 10 minutes
     });
 
@@ -39,6 +41,7 @@ export function useChartsData() {
             topicMastery: topicMasteryQuery.data || [],
         },
         isLoading: performanceQuery.isLoading || topicMasteryQuery.isLoading,
+        isFetching: performanceQuery.isFetching,
         error: performanceQuery.error || topicMasteryQuery.error,
         refetch: () => {
             performanceQuery.refetch();
@@ -46,3 +49,4 @@ export function useChartsData() {
         },
     };
 }
+

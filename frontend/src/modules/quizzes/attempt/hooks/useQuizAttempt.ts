@@ -33,6 +33,8 @@ interface AttemptHookState {
     questionStates: Map<number, LocalQuestionState>;
     startTime: number;
     elapsedTime: number;
+    /** Phase Q2.2: Track when current question was first viewed */
+    questionStartTime: number;
     results: QuizResultResponse | null;
     error: string | null;
 }
@@ -59,6 +61,7 @@ const createInitialState = (): AttemptHookState => ({
     questionStates: new Map(),
     startTime: Date.now(),
     elapsedTime: 0,
+    questionStartTime: Date.now(), // Phase Q2.2
     results: null,
     error: null,
 });
@@ -274,12 +277,16 @@ export function useQuizAttempt(quizId: QuizId): UseQuizAttemptReturn {
                 selectedOption.toLowerCase().trim() === correctAnswer.toLowerCase().trim();
 
             setHookState((prev) => {
+                // Phase Q2.2: Calculate duration for this question
+                const duration_ms = Date.now() - prev.questionStartTime;
+                
                 const newMap = new Map(prev.questionStates);
                 newMap.set(questionId, {
                     answered: true,
                     selectedAnswer: selectedOption,
                     isCorrect,
                     showExplanation: true,
+                    duration_ms, // Phase Q2.2: Store timing for SM-2 quality mapping
                 });
                 return { ...prev, questionStates: newMap };
             });
@@ -291,7 +298,8 @@ export function useQuizAttempt(quizId: QuizId): UseQuizAttemptReturn {
         setHookState((prev) => {
             const totalQuestions = prev.attemptData?.questions.length ?? 0;
             if (index >= 0 && index < totalQuestions) {
-                return { ...prev, currentIndex: index };
+                // Phase Q2.2: Reset question timer on navigation
+                return { ...prev, currentIndex: index, questionStartTime: Date.now() };
             }
             return prev;
         });
@@ -301,7 +309,8 @@ export function useQuizAttempt(quizId: QuizId): UseQuizAttemptReturn {
         setHookState((prev) => {
             const totalQuestions = prev.attemptData?.questions.length ?? 0;
             if (prev.currentIndex < totalQuestions - 1) {
-                return { ...prev, currentIndex: prev.currentIndex + 1 };
+                // Phase Q2.2: Reset question timer on navigation
+                return { ...prev, currentIndex: prev.currentIndex + 1, questionStartTime: Date.now() };
             }
             return prev;
         });
@@ -310,7 +319,8 @@ export function useQuizAttempt(quizId: QuizId): UseQuizAttemptReturn {
     const previous = useCallback(() => {
         setHookState((prev) => {
             if (prev.currentIndex > 0) {
-                return { ...prev, currentIndex: prev.currentIndex - 1 };
+                // Phase Q2.2: Reset question timer on navigation
+                return { ...prev, currentIndex: prev.currentIndex - 1, questionStartTime: Date.now() };
             }
             return prev;
         });
@@ -320,12 +330,14 @@ export function useQuizAttempt(quizId: QuizId): UseQuizAttemptReturn {
         if (hookState.state !== QuizAttemptState.ACTIVE) return;
 
         // Build answers array from question states
+        // Phase Q2.2: Include per-question timing for SM-2 quality mapping
         const answersArray: AnswerSubmit[] = [];
         hookState.questionStates.forEach((state, questionId) => {
             if (state.selectedAnswer) {
                 answersArray.push({
                     question_id: questionId,
                     answer: state.selectedAnswer,
+                    duration_ms: state.duration_ms, // Phase Q2.2: Per-question timing
                 });
             }
         });
@@ -350,6 +362,7 @@ export function useQuizAttempt(quizId: QuizId): UseQuizAttemptReturn {
         questionStates: hookState.questionStates,
         startTime: hookState.startTime,
         elapsedTime: hookState.elapsedTime,
+        questionStartTime: hookState.questionStartTime, // Phase Q2.2
         results: hookState.results,
         error: hookState.error,
 

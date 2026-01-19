@@ -17,7 +17,7 @@ import {
   MessageSquare,
   FileStack,
   Atom,
-  Bell,
+  // Bell,
   User,
   Settings,
   LogOut,
@@ -36,6 +36,7 @@ import {
   Files,
   Loader2,
   Brain,
+  CalendarDays,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -58,6 +59,7 @@ import { useThemeStore } from "@/stores/themeStore";
 import { useWebSocket } from "@/api/websocket/hooks/useWebSocket";
 import { useCmdKSearch } from "@/api/unified-search";
 import { AudioTrigger } from "@/platform/audio";
+import { NotificationCenter } from "@/components/layout/NotificationCenter";
 
 interface HeaderProps {
   className?: string;
@@ -328,10 +330,7 @@ export function Header({ className }: HeaderProps) {
           <AudioTrigger />
 
           {/* Notifications */}
-          <button className="relative group p-2 rounded-full hover:bg-white/10 hover:text-cyan-400 transition-colors text-slate-400">
-            <Bell className="w-5 h-5" />
-            <span className="absolute top-2.5 right-2.5 w-1.5 h-1.5 bg-cyan-500 rounded-full" />
-          </button>
+          <NotificationCenter />
 
           {/* User Avatar - Control Panel Trigger */}
           <button

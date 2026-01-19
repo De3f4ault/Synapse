@@ -26,23 +26,37 @@ class QuizService:
             title=data["title"],
             description=data.get("description"),
             difficulty=data.get("difficulty"),
-            time_limit_minutes=data.get("time_limit_minutes")
+            time_limit_minutes=data.get("time_limit_minutes"),
         )
 
         self.session.add(quiz)
         await self.session.flush()
 
-        # Add questions
+        # Add questions with inline embedding (Phase Q2.1)
+        from app.core.ai.embeddings.boundary import (
+            embed_text_sync,
+            EMBEDDING_VERSION,
+        )
+
         for i, q_data in enumerate(data.get("questions", [])):
+            question_text = q_data["question_text"]
+
+            # Embed question text for semantic routing
+            embedding, embed_status = embed_text_sync(question_text)
+
             question = QuizQuestion(
                 quiz_id=quiz.id,
-                question_text=q_data["question_text"],
+                question_text=question_text,
                 question_type=q_data["question_type"],
                 options=q_data.get("options"),
                 correct_answer=q_data["correct_answer"],
                 explanation=q_data.get("explanation"),
                 points=q_data.get("points", 1),
-                order=i
+                order=i,
+                # Embedding fields
+                prompt_embedding=embedding,
+                embedding_model=EMBEDDING_VERSION if embedding else None,
+                embedding_status=embed_status.value,
             )
             self.session.add(question)
 
@@ -55,12 +69,7 @@ class QuizService:
         """Get quiz (without answers)"""
         from app.models.quiz import Quiz
 
-        query = select(Quiz).where(
-            and_(
-                Quiz.id == quiz_id,
-                Quiz.deleted_at.is_(None)
-            )
-        )
+        query = select(Quiz).where(and_(Quiz.id == quiz_id, Quiz.deleted_at.is_(None)))
 
         result = await self.session.execute(query)
         quiz = result.scalar_one_or_none()
@@ -74,21 +83,13 @@ class QuizService:
         """Start a quiz attempt"""
         from app.models.quiz_attempt import QuizAttempt
 
-        attempt = QuizAttempt(
-            quiz_id=quiz_id,
-            user_id=user_id,
-            started_at=datetime.utcnow()
-        )
+        attempt = QuizAttempt(quiz_id=quiz_id, user_id=user_id, started_at=datetime.utcnow())
 
         self.session.add(attempt)
         await self.session.commit()
         await self.session.refresh(attempt)
 
-        return {
-            "attempt_id": attempt.id,
-            "quiz_id": quiz_id,
-            "started_at": attempt.started_at
-        }
+        return {"attempt_id": attempt.id, "quiz_id": quiz_id, "started_at": attempt.started_at}
 
     async def submit_quiz(self, attempt_id: int, user_id: int, answers: List[Dict]) -> Dict:
         """Submit and grade quiz"""
@@ -97,10 +98,7 @@ class QuizService:
 
         # Get attempt
         query = select(QuizAttempt).where(
-            and_(
-                QuizAttempt.id == attempt_id,
-                QuizAttempt.user_id == user_id
-            )
+            and_(QuizAttempt.id == attempt_id, QuizAttempt.user_id == user_id)
         )
 
         result = await self.session.execute(query)
@@ -125,22 +123,22 @@ class QuizService:
                 continue
 
             is_correct = self._check_answer(
-                question.correct_answer,
-                answer["answer"],
-                question.question_type
+                question.correct_answer, answer["answer"], question.question_type
             )
 
             points = question.points if is_correct else 0
             total_score += points
 
-            graded_answers.append({
-                "question_id": question.id,
-                "your_answer": answer["answer"],
-                "correct_answer": question.correct_answer,
-                "is_correct": is_correct,
-                "points": points,
-                "explanation": question.explanation
-            })
+            graded_answers.append(
+                {
+                    "question_id": question.id,
+                    "your_answer": answer["answer"],
+                    "correct_answer": question.correct_answer,
+                    "is_correct": is_correct,
+                    "points": points,
+                    "explanation": question.explanation,
+                }
+            )
 
         # Update attempt
         attempt.completed_at = datetime.utcnow()
@@ -150,11 +148,33 @@ class QuizService:
 
         await self.session.commit()
 
+        # Send notification with score
+        try:
+            from app.services.notification_service import NotificationService
+            from app.models.notification import NotificationType, NotificationCategory
+
+            notification_service = NotificationService(self.session)
+            percentage = (total_score / max_score * 100) if max_score > 0 else 0
+            ntype = NotificationType.SUCCESS if percentage >= 70 else NotificationType.INFO
+
+            await notification_service.send(
+                user_id=user_id,
+                type=ntype,
+                category=NotificationCategory.LEARNING,
+                title="Quiz Completed",
+                message=f"You scored {total_score}/{max_score} ({percentage:.0f}%).",
+                action_url=f"/quizzes/{attempt.quiz_id}/results/{attempt_id}",
+                action_label="View Results",
+                meta_data={"score": total_score, "max_score": max_score, "percentage": percentage},
+            )
+        except Exception:
+            pass  # Don't fail quiz on notification error
+
         return {
             "score": total_score,
             "max_score": max_score,
             "percentage": (total_score / max_score * 100) if max_score > 0 else 0,
-            "answers": graded_answers
+            "answers": graded_answers,
         }
 
     def _check_answer(self, correct: str, user_answer: str, question_type: str) -> bool:
@@ -175,5 +195,5 @@ class QuizService:
             "description": quiz.description,
             "difficulty": quiz.difficulty,
             "time_limit_minutes": quiz.time_limit_minutes,
-            "created_at": quiz.created_at
+            "created_at": quiz.created_at,
         }

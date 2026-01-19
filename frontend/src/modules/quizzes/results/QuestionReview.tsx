@@ -2,6 +2,7 @@
  * QuestionReview - Individual Question Review Card
  *
  * Shows question, user's answer, and correct answer.
+ * Phase Q3.3: Shows related flashcards for incorrect questions.
  */
 
 import React from "react";
@@ -9,8 +10,10 @@ import { CheckCircle, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 import { GlassCard } from "@/shared/ui";
+import { RelatedFlashcards } from "./RelatedFlashcards";
 
 interface QuestionReviewProps {
+    questionId: number;
     questionText: string;
     userAnswer: string;
     correctAnswer: string;
@@ -19,6 +22,7 @@ interface QuestionReviewProps {
 }
 
 export const QuestionReview: React.FC<QuestionReviewProps> = ({
+    questionId,
     questionText,
     userAnswer,
     correctAnswer,
@@ -69,6 +73,11 @@ export const QuestionReview: React.FC<QuestionReviewProps> = ({
                             </p>
                         )}
                     </div>
+
+                    {/* Phase Q3.3: Related flashcards for incorrect questions */}
+                    {!isCorrect && (
+                        <RelatedFlashcards questionId={questionId} className="mt-4" />
+                    )}
                 </div>
             </div>
         </GlassCard>

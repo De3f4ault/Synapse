@@ -16,3 +16,8 @@ export * from "./constants";
 
 // Events
 export * from "./events";
+
+// Note: learningApi is NOT re-exported here to avoid dynamic import issues.
+// Import directly: import { getRelatedFlashcards } from "./learningApi";
+
+

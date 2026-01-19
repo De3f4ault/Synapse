@@ -22,10 +22,13 @@ export {
     AccuracyCard,
     StudyTimeCard,
     StreakStatCard,
+    TodaysProgressCard,
+    ReviewForecastCard,
+    LastSessionCard,
 } from "./components";
 
 export type { StatusCardProps, StatCardProps, StreakCardProps } from "./components";
 
 // Hooks
-export { useMetrics } from "./hooks";
-export type { DashboardMetrics } from "./hooks";
+export { useMetrics, useTodayStats, useForecast, useLastSession } from "./hooks";
+export type { DashboardMetrics, TodayStats, ReviewForecast, LastSessionStats } from "./hooks";

@@ -20,3 +20,8 @@ export {
 // Full visualization component
 export { StreakCard } from "./StreakCard";
 export type { StreakCardProps } from "./StreakCard";
+
+// Dashboard awareness cards
+export { TodaysProgressCard } from "./TodaysProgressCard";
+export { ReviewForecastCard } from "./ReviewForecastCard";
+export { LastSessionCard } from "./LastSessionCard";

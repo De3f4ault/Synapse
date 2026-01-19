@@ -1,14 +1,37 @@
 /**
  * Consumer-Side Contract Assertions
  * 
- * Enforces that consumers receive results matching their expected contract.
- * This prevents silent regressions and documents intent in code.
+ * TWO-LAYER ARCHITECTURE:
+ * 1. Structural Validation - Throws for malformed data (rare, at API boundary)
+ * 2. Consumer Eligibility - Pure predicates for filtering (common, in UI)
+ * 
+ * This prevents "assertion abuse" where expected filtering is logged as errors.
  */
 
-import type { UnifiedSearchResult, SearchSurface } from './types';
+import type { UnifiedSearchResult, SearchSurface, SearchRole } from './types';
+
+// =============================================================================
+// CONSUMER ROLE MATRIX (Data-Driven Policy)
+// =============================================================================
+// This is the single source of truth for which roles each consumer accepts.
+// Policy changes happen here, not scattered through code.
+
+export type Consumer = 'chat' | 'dashboard' | 'cmdk';
+
+export const CONSUMER_ROLE_MATRIX: Record<Consumer, SearchRole[]> = {
+    chat: ['evidence'],                    // Chat = RAG grounding only
+    dashboard: ['diagnostic', 'suggestion'], // Dashboard = intelligence/weak areas
+    cmdk: ['navigation', 'diagnostic'],    // CMD+K = navigation + quick diagnostics
+};
+
+// =============================================================================
+// LAYER 1: STRUCTURAL VALIDATION (Throwing, Rare)
+// =============================================================================
+// Use ONLY at API boundaries or in tests. Never in UI filters.
 
 /**
- * Contract violations that consumers should never see.
+ * Contract violations for malformed/invalid data.
+ * Should ONLY be thrown for true schema violations.
  */
 export class ContractViolationError extends Error {
     constructor(
@@ -22,174 +45,163 @@ export class ContractViolationError extends Error {
 }
 
 /**
- * Asserts that a result is valid for CMD+K consumption.
- * 
- * CMD+K Rules:
- * - Must be 'navigation' or 'diagnostic' role
- * - Must NOT be 'evidence' (that's for Chat/RAG)
- * - If 'navigation', must be 'factual' assertion type
+ * Validates that a result is structurally valid.
+ * Call this once per result batch at API boundary, not in filters.
+ */
+export function validateUnifiedResult(result: UnifiedSearchResult): void {
+    // Must have an id
+    if (!result.id || !result.id.id) {
+        throw new ContractViolationError(
+            'validation',
+            'Result missing required id.item_id',
+            result
+        );
+    }
+
+    // Must have a role
+    if (!result.role) {
+        throw new ContractViolationError(
+            'validation',
+            'Result missing required role',
+            result
+        );
+    }
+
+    // Must have assertion_type
+    if (!result.assertion_type) {
+        throw new ContractViolationError(
+            'validation',
+            'Result missing required assertion_type',
+            result
+        );
+    }
+
+    // Evidence MUST link to source
+    if (result.role === 'evidence' && !result.id.parent_id && !result.id.root_id) {
+        throw new ContractViolationError(
+            'validation',
+            'Evidence result must have parent_id or root_id',
+            result
+        );
+    }
+}
+
+// =============================================================================
+// LAYER 2: CONSUMER ELIGIBILITY (Pure Predicates, Common)
+// =============================================================================
+// Use these for filtering. They are silent, pure, and declarative.
+
+/**
+ * Pure predicate: Is this result consumable by CMD+K?
+ */
+export function isCmdKConsumable(result: UnifiedSearchResult): boolean {
+    return CONSUMER_ROLE_MATRIX.cmdk.includes(result.role);
+}
+
+/**
+ * Pure predicate: Is this result consumable by Dashboard?
+ */
+export function isDashboardConsumable(result: UnifiedSearchResult): boolean {
+    return CONSUMER_ROLE_MATRIX.dashboard.includes(result.role);
+}
+
+/**
+ * Pure predicate: Is this result consumable by Chat?
+ */
+export function isChatConsumable(result: UnifiedSearchResult): boolean {
+    return CONSUMER_ROLE_MATRIX.chat.includes(result.role);
+}
+
+/**
+ * Generic: Is this result consumable by a given consumer?
+ */
+export function isConsumable(result: UnifiedSearchResult, consumer: Consumer): boolean {
+    return CONSUMER_ROLE_MATRIX[consumer].includes(result.role);
+}
+
+// =============================================================================
+// FILTER FUNCTIONS (Pure, Silent)
+// =============================================================================
+
+/**
+ * Filter results for CMD+K.
+ * Pure filter - no throwing, no logging for expected non-matches.
+ */
+export function filterForCmdK(results: UnifiedSearchResult[]): UnifiedSearchResult[] {
+    return results.filter(isCmdKConsumable);
+}
+
+/**
+ * Filter results for Dashboard.
+ * Pure filter - no throwing, no logging for expected non-matches.
+ */
+export function filterForDashboard(results: UnifiedSearchResult[]): UnifiedSearchResult[] {
+    return results.filter(isDashboardConsumable);
+}
+
+/**
+ * Filter results for Chat.
+ * Pure filter - no throwing, no logging for expected non-matches.
+ */
+export function filterForChat(results: UnifiedSearchResult[]): UnifiedSearchResult[] {
+    return results.filter(isChatConsumable);
+}
+
+/**
+ * Generic filter for any consumer.
+ */
+export function filterForConsumer(
+    results: UnifiedSearchResult[],
+    consumer: Consumer
+): UnifiedSearchResult[] {
+    return results.filter((r) => isConsumable(r, consumer));
+}
+
+// =============================================================================
+// LEGACY ASSERTIONS (Dev/Test Only)
+// =============================================================================
+// These are kept for backwards compatibility but should only be used in tests
+// or development-only validation paths.
+
+/**
+ * @deprecated Use isCmdKConsumable + filterForCmdK instead
+ * Kept for test assertions only.
  */
 export function assertCmdKResult(result: UnifiedSearchResult): void {
-    // CMD+K must never receive evidence results
-    if (result.role === 'evidence') {
+    if (!isCmdKConsumable(result)) {
         throw new ContractViolationError(
             'cmdk',
-            'CMD+K must never receive evidence results',
-            result
-        );
-    }
-
-    // Navigation results must be factual
-    if (result.role === 'navigation' && result.assertion_type !== 'factual') {
-        console.warn(
-            `[cmdk] Navigation result with non-factual assertion: ${result.assertion_type}`,
+            `CMD+K cannot consume role: ${result.role}`,
             result
         );
     }
 }
 
 /**
- * Asserts that a result is valid for Dashboard consumption.
- * 
- * Dashboard Rules (STRICT):
- * - MUST be 'diagnostic' role
- * - MUST be 'heuristic' assertion type
- * - MUST come from 'graph' source
- * - Must NOT be 'navigation' or 'evidence'
- * 
- * Dashboard is read-only intelligence. It does not navigate or ground.
+ * @deprecated Use isDashboardConsumable + filterForDashboard instead
+ * Kept for test assertions only.
  */
 export function assertDashboardResult(result: UnifiedSearchResult): void {
-    // Dashboard only accepts diagnostic role
-    if (result.role !== 'diagnostic') {
+    if (!isDashboardConsumable(result)) {
         throw new ContractViolationError(
             'dashboard',
-            `Dashboard only accepts diagnostic role, got: ${result.role}`,
-            result
-        );
-    }
-
-    // Dashboard only accepts heuristic assertions (computed/inferred, not facts)
-    if (result.assertion_type !== 'heuristic') {
-        throw new ContractViolationError(
-            'dashboard',
-            `Dashboard only accepts heuristic assertions, got: ${result.assertion_type}`,
-            result
-        );
-    }
-
-    // Dashboard should only receive graph signals
-    if (result.source !== 'graph') {
-        console.warn(
-            `[dashboard] Expected source=graph, got: ${result.source}`,
+            `Dashboard cannot consume role: ${result.role}`,
             result
         );
     }
 }
 
 /**
- * Asserts that a result is valid for Chat consumption.
- * 
- * Chat Rules (STRICTEST):
- * - MUST be 'evidence' role ONLY (for RAG grounding)
- * - MUST be 'inferential' assertion type (retrieved, not authored)
- * - MUST have parent_id or root_id (link to source document)
- * - Must NOT be 'navigation' (that's for CMD+K)
- * - Must NOT be 'diagnostic' (that's for Dashboard)
- * - Must NOT be 'suggestion'
- * 
- * This protects the LLM from contamination.
- * The LLM reasons about evidence credibility, not ranking.
+ * @deprecated Use isChatConsumable + filterForChat instead
+ * Kept for test assertions only.
  */
 export function assertChatResult(result: UnifiedSearchResult): void {
-    // Chat may ONLY consume evidence
-    if (result.role !== 'evidence') {
+    if (!isChatConsumable(result)) {
         throw new ContractViolationError(
             'chat',
-            `Chat may only consume evidence results, got: ${result.role}`,
-            result
-        );
-    }
-
-    // Chat evidence must be inferential (retrieved, not user-authored facts)
-    if (result.assertion_type !== 'inferential') {
-        throw new ContractViolationError(
-            'chat',
-            `Chat evidence must be inferential, got: ${result.assertion_type}`,
-            result
-        );
-    }
-
-    // Evidence MUST link to a source document
-    if (!result.id.parent_id && !result.id.root_id) {
-        throw new ContractViolationError(
-            'chat',
-            'Evidence must link to a document (missing parent_id and root_id)',
-            result
-        );
-    }
-
-    // Evidence should come from RAG
-    if (result.source !== 'rag') {
-        console.warn(
-            `[chat] Expected source=rag for evidence, got: ${result.source}`,
+            `Chat cannot consume role: ${result.role}`,
             result
         );
     }
 }
 
-/**
- * Filter results for CMD+K with contract enforcement.
- * Returns only results that are valid for navigation.
- */
-export function filterForCmdK(
-    results: UnifiedSearchResult[]
-): UnifiedSearchResult[] {
-    return results.filter((r) => {
-        try {
-            assertCmdKResult(r);
-            // CMD+K shows navigation (factual) and diagnostic (weak areas)
-            return (
-                (r.role === 'navigation' && r.assertion_type === 'factual') ||
-                r.role === 'diagnostic'
-            );
-        } catch (e) {
-            console.error(e);
-            return false;
-        }
-    });
-}
-
-/**
- * Filter results for Dashboard with contract enforcement.
- */
-export function filterForDashboard(
-    results: UnifiedSearchResult[]
-): UnifiedSearchResult[] {
-    return results.filter((r) => {
-        try {
-            assertDashboardResult(r);
-            return r.role === 'diagnostic' || r.role === 'suggestion';
-        } catch (e) {
-            console.error(e);
-            return false;
-        }
-    });
-}
-
-/**
- * Filter results for Chat with contract enforcement.
- */
-export function filterForChat(
-    results: UnifiedSearchResult[]
-): UnifiedSearchResult[] {
-    return results.filter((r) => {
-        try {
-            assertChatResult(r);
-            return r.role === 'evidence';
-        } catch (e) {
-            console.error(e);
-            return false;
-        }
-    });
-}

@@ -18,6 +18,13 @@ from app.models.user import User
 from app.models.quiz import Quiz, QuizSourceType, QuizDifficulty
 from app.models.quiz_question import QuizQuestion, QuestionType
 from app.models.quiz_attempt import QuizAttempt
+from app.models.activity_log import ActivityLog, ActivityType
+from app.core.config import settings
+from app.core.ai.embeddings.boundary import (
+    embed_text_sync,
+    EmbeddingStatus,
+    EMBEDDING_VERSION,
+)
 
 router = APIRouter()
 
@@ -76,10 +83,11 @@ class QuizResponse(BaseModel):
 
 
 class AnswerSubmit(BaseModel):
-    """Answer submission."""
+    """Answer submission with per-question timing (Phase Q1)."""
 
     question_id: int
     answer: str
+    duration_ms: Optional[int] = None  # Per-question timing for SM-2 quality mapping
 
 
 class QuizAttemptStart(BaseModel):
@@ -158,9 +166,190 @@ class QuizGenerateResponse(BaseModel):
     message: str
 
 
+class DueQuestionResponse(BaseModel):
+    """Due question for SM-2 review (Phase Q1)."""
+
+    question_id: int
+    question_text: str
+    question_type: QuestionType
+    options: Optional[dict]
+    quiz_id: int
+    quiz_title: str
+    # Learning state
+    interval_days: int
+    ease_factor: float
+    repetitions: int
+    last_reviewed_at: Optional[datetime]
+    learning_state: str
+
+
+class DueQuestionsResponse(BaseModel):
+    """Response for due questions endpoint."""
+
+    questions: List[DueQuestionResponse]
+    total_due: int
+
+
 # ============================================================================
 # Endpoints
 # ============================================================================
+
+
+@router.get("/due-questions", response_model=DueQuestionsResponse)
+async def get_due_questions(
+    quiz_id: Optional[int] = Query(None, description="Filter to specific quiz"),
+    limit: int = Query(20, ge=1, le=50, description="Max questions to return"),
+    bias_by_weakness: bool = Query(
+        False, description="Phase Q2.5: Reorder by proximity to weak areas"
+    ),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Get questions due for SM-2 review (Phase Q1).
+
+    Returns questions that are scheduled for review based on spaced repetition.
+    Can be filtered to a specific quiz or return due questions across all quizzes.
+
+    Phase Q2.5: When bias_by_weakness=true, reorders questions by semantic
+    proximity to user's weak areas. INVARIANT: Only reorders, never expands the set.
+    """
+    from sqlalchemy import or_
+    from app.models.question_learning_state import QuestionLearningState
+    from app.models.quiz import Quiz
+    import structlog
+
+    logger = structlog.get_logger(__name__)
+    now = datetime.utcnow()
+
+    # Build query for due questions
+    query = (
+        select(QuestionLearningState, QuizQuestion, Quiz)
+        .join(QuizQuestion, QuizQuestion.id == QuestionLearningState.question_id)
+        .join(Quiz, Quiz.id == QuizQuestion.quiz_id)
+        .where(
+            QuestionLearningState.user_id == current_user.id,
+            or_(
+                QuestionLearningState.next_review <= now,
+                QuestionLearningState.next_review.is_(None),
+            ),
+        )
+        .order_by(QuestionLearningState.next_review.asc().nullsfirst())
+    )
+
+    if quiz_id:
+        query = query.where(QuizQuestion.quiz_id == quiz_id)
+
+    result = await db.execute(query.limit(limit))
+    rows = result.all()
+
+    # Build response list
+    due_questions = []
+    for state, question, quiz in rows:
+        due_questions.append(
+            {
+                "state": state,
+                "question": question,
+                "quiz": quiz,
+                "_weakness_proximity": 0.0,  # Will be set if bias_by_weakness
+            }
+        )
+
+    # =====================================================================
+    # Phase Q2.5: Priority Biasing (reorder only, never expand)
+    # =====================================================================
+    if bias_by_weakness and due_questions:
+        try:
+            from app.core.ai.rag.synapse_integration import get_synapse_bridge
+            from app.core.ai.embeddings.boundary import embed_text_sync
+            import numpy as np
+
+            # Get weak areas from SynapseContextBridge
+            bridge = await get_synapse_bridge(db)
+            context = await bridge.get_user_context(current_user.id)
+            weak_areas = context.get("weak_areas", [])
+
+            if weak_areas:
+                # Calculate weakness centroid by embedding weak area texts
+                weak_embeddings = []
+                for area in weak_areas[:5]:  # Limit to top 5 weak areas
+                    if isinstance(area, dict):
+                        area_text = area.get("topic", "") or area.get("name", "")
+                    else:
+                        area_text = str(area)
+
+                    if area_text:
+                        emb, status = embed_text_sync(area_text)
+                        if emb:
+                            weak_embeddings.append(emb)
+
+                if weak_embeddings:
+                    # Calculate centroid of weak areas
+                    weak_centroid = np.mean(weak_embeddings, axis=0)
+                    weak_centroid = weak_centroid / np.linalg.norm(weak_centroid)  # Normalize
+
+                    # Score each due question by proximity to weakness
+                    for item in due_questions:
+                        question = item["question"]
+                        if question.prompt_embedding:
+                            q_emb = np.array(question.prompt_embedding)
+                            q_emb = q_emb / np.linalg.norm(q_emb)  # Normalize
+                            # Cosine similarity
+                            similarity = float(np.dot(q_emb, weak_centroid))
+                            item["_weakness_proximity"] = similarity
+
+                    # Reorder by weakness proximity (higher = more relevant to weak areas)
+                    due_questions.sort(key=lambda x: x["_weakness_proximity"], reverse=True)
+
+                    logger.debug(
+                        "due_questions_biased_by_weakness",
+                        user_id=current_user.id,
+                        weak_areas_count=len(weak_areas),
+                        questions_count=len(due_questions),
+                    )
+        except Exception as e:
+            # Bias is advisory - don't fail the request
+            logger.warning("weakness_biasing_failed", error=str(e))
+
+    # Convert to response format
+    response_questions = []
+    for item in due_questions:
+        state = item["state"]
+        question = item["question"]
+        quiz = item["quiz"]
+        response_questions.append(
+            DueQuestionResponse(
+                question_id=question.id,
+                question_text=question.question_text,
+                question_type=question.question_type,
+                options=question.options,
+                quiz_id=quiz.id,
+                quiz_title=quiz.title,
+                interval_days=state.interval,
+                ease_factor=float(state.ease_factor),
+                repetitions=state.repetitions,
+                last_reviewed_at=state.last_reviewed_at,
+                learning_state=state.learning_state.value,
+            )
+        )
+
+    # Get total count of due questions
+    count_query = select(func.count(QuestionLearningState.id)).where(
+        QuestionLearningState.user_id == current_user.id,
+        or_(
+            QuestionLearningState.next_review <= now,
+            QuestionLearningState.next_review.is_(None),
+        ),
+    )
+    if quiz_id:
+        count_query = count_query.join(
+            QuizQuestion, QuizQuestion.id == QuestionLearningState.question_id
+        ).where(QuizQuestion.quiz_id == quiz_id)
+
+    total_result = await db.execute(count_query)
+    total_due = total_result.scalar() or 0
+
+    return DueQuestionsResponse(questions=response_questions, total_due=total_due)
 
 
 @router.post("", response_model=QuizResponse, status_code=status.HTTP_201_CREATED)
@@ -187,8 +376,12 @@ async def create_quiz(
     db.add(new_quiz)
     await db.flush()
 
-    # Create questions
+    # Create questions with inline embedding (Phase Q2.1)
+    # INVARIANT: Embeddings define SEMANTIC NEIGHBORHOODS, not authority or scheduling
     for idx, q_data in enumerate(quiz_data.questions):
+        # Embed question text for semantic routing
+        embedding, embed_status = embed_text_sync(q_data.question_text)
+
         question = QuizQuestion(
             quiz_id=new_quiz.id,
             question_text=q_data.question_text,
@@ -198,6 +391,10 @@ async def create_quiz(
             explanation=q_data.explanation,
             points=q_data.points,
             order=idx,
+            # Embedding fields
+            prompt_embedding=embedding,
+            embedding_model=EMBEDDING_VERSION if embedding else None,
+            embedding_status=embed_status.value,
         )
         db.add(question)
 
@@ -327,18 +524,27 @@ Return ONLY valid JSON in this exact format:
         db.add(new_quiz)
         await db.flush()
 
-        # Create questions
+        # Create questions with inline embedding (Phase Q2.1)
         questions_created = 0
         for idx, q_data in enumerate(quiz_data["questions"]):
+            question_text = q_data.get("question", "")
+
+            # Embed question text for semantic routing
+            embedding, embed_status = embed_text_sync(question_text)
+
             question = QuizQuestion(
                 quiz_id=new_quiz.id,
-                question_text=q_data.get("question", ""),
+                question_text=question_text,
                 question_type=QuestionType.MULTIPLE_CHOICE,
                 options=q_data.get("options", {}),
                 correct_answer=q_data.get("correct_answer", "A"),
                 explanation=q_data.get("explanation"),
                 points=1,
                 order=idx,
+                # Embedding fields
+                prompt_embedding=embedding,
+                embedding_model=EMBEDDING_VERSION if embedding else None,
+                embedding_status=embed_status.value,
             )
             db.add(question)
             questions_created += 1
@@ -559,6 +765,93 @@ async def submit_quiz_attempt(
 
     attempt.time_taken_seconds = int((completed - started).total_seconds())
     attempt.answers = {"answers": db_answers}  # Store dicts, not AnswerResult objects
+
+    await db.commit()
+
+    # ========== Phase Q1: Per-Question Learning Events ==========
+    # Log QUIZ_QUESTION_ATTEMPT per question and update SM-2 state
+    from app.services.quiz_quality import map_quality_score, clamp_duration, normalize_accuracy
+    from app.services.question_sm2_service import update_question_learning_state
+    from app.models.activity_log import ModuleType
+    import structlog
+
+    logger = structlog.get_logger(__name__)
+
+    # Build a map of question_id -> duration_ms from the original submission
+    answer_durations = {a.question_id: a.duration_ms for a in answers}
+
+    for db_answer in db_answers:
+        question_id = db_answer["question_id"]
+        is_correct = db_answer["is_correct"]
+
+        # Get duration for this question (default to 30s if not provided)
+        duration_ms = answer_durations.get(question_id) or 30000
+        duration_seconds = duration_ms // 1000
+        clamped_duration, was_clamped = clamp_duration(duration_seconds)
+
+        # Map to SM-2 quality score
+        quality = map_quality_score(is_correct, clamped_duration)
+        accuracy = normalize_accuracy(quality)
+
+        # Log per-question learning event
+        question_event = ActivityLog(
+            user_id=current_user.id,
+            activity_type=ActivityType.QUIZ_QUESTION_ATTEMPT,
+            resource_id=question_id,
+            module=ModuleType.QUIZZES,
+            duration_seconds=clamped_duration,
+            quality_score=quality,
+            accuracy=accuracy,
+            is_learning_event=True,
+            metadata={
+                "quiz_id": attempt.quiz_id,
+                "attempt_id": attempt.id,
+                "is_correct": is_correct,
+                "raw_duration_ms": duration_ms,
+                "was_clamped": was_clamped,
+            },
+        )
+        db.add(question_event)
+
+        # Update question learning state (SM-2)
+        await update_question_learning_state(db, current_user.id, question_id, quality)
+
+        logger.debug(
+            "quiz_question_attempt_logged",
+            user_id=current_user.id,
+            question_id=question_id,
+            quality=quality,
+            is_correct=is_correct,
+        )
+
+    # ========== Quiz Summary Event (presentation only, not scheduling) ==========
+    if getattr(settings, "ENABLE_LEARNING_LEDGER", True):
+        correct_count = sum(1 for a in db_answers if a["is_correct"])
+        quiz_accuracy = correct_count / len(db_answers) if db_answers else 0.0
+
+        # Apply duration guardrail (same as flashcards: max 1 hour)
+        max_duration = getattr(settings, "MAX_REVIEW_DURATION_SECONDS", 3600)
+        clamped_quiz_duration = min(attempt.time_taken_seconds or 0, max_duration)
+
+        activity_log = ActivityLog(
+            user_id=current_user.id,
+            activity_type=ActivityType.QUIZ_COMPLETE,
+            target_id=attempt.quiz_id,
+            target_type="quiz",
+            description=f"Completed quiz: {float(attempt.percentage):.0f}% ({correct_count}/{len(db_answers)})",
+            duration_seconds=clamped_quiz_duration,
+            accuracy=quiz_accuracy,
+            is_learning_event=False,  # Summary only, questions are the learning events
+            metadata={
+                "attempt_id": attempt.id,
+                "score": float(attempt.score),
+                "max_score": attempt.max_score,
+                "correct_count": correct_count,
+                "total_questions": len(db_answers),
+                "time_taken": attempt.time_taken_seconds,
+            },
+        )
+        db.add(activity_log)
 
     await db.commit()
 
@@ -869,3 +1162,176 @@ async def save_partial_answers(
     await db.commit()
 
     return {"status": "saved", "count": len(answers)}
+
+
+# ============================================================================
+# Phase Q3: Cross-Module Surfacing (Advisory Only)
+# ============================================================================
+
+
+class RelatedFlashcardResponse(BaseModel):
+    """Related flashcard surfaced via semantic neighborhood (advisory)."""
+
+    id: int
+    front_text: str
+    similarity: float
+    evidence_strength: str
+    last_quality: Optional[int] = None
+    days_since_review: Optional[int] = None
+
+
+class RelatedFlashcardsResponse(BaseModel):
+    """Response for related flashcards endpoint."""
+
+    flashcards: List[RelatedFlashcardResponse]
+    advisory_message: str
+
+
+class ContextNoteResponse(BaseModel):
+    """Note surfaced as context for weak areas (advisory)."""
+
+    id: int
+    title: str
+    similarity: float
+
+
+class ContextForWeaknessResponse(BaseModel):
+    """Response for context-for-weakness endpoint."""
+
+    notes: List[ContextNoteResponse]
+    advisory_message: str
+
+
+@router.get(
+    "/questions/{question_id}/related-flashcards",
+    response_model=RelatedFlashcardsResponse,
+    summary="Get related flashcards (Phase Q3.1)",
+)
+async def get_related_flashcards(
+    question_id: int,
+    limit: int = Query(5, ge=1, le=20),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Surface flashcards semantically close to a quiz question.
+
+    Phase Q3.1: Connect applied recall (quiz) to isolated recall (flashcard)
+    without coupling. Call this after a user struggles with a question.
+
+    INVARIANT: Advisory only. Nothing is scheduled or reset.
+    """
+    from app.services.semantic_neighbor_service import SemanticNeighborService
+    from app.services.evidence_overlay_service import EvidenceOverlayService
+
+    # Get semantic neighbors (flashcards only)
+    neighbors = await SemanticNeighborService.get_neighbors_for_question(
+        db, question_id, current_user.id, entity_types=["flashcard"], limit=limit
+    )
+
+    if not neighbors:
+        return RelatedFlashcardsResponse(
+            flashcards=[], advisory_message="No related flashcards found"
+        )
+
+    # Enrich with learning evidence
+    enriched = await EvidenceOverlayService.enrich_with_evidence(db, current_user.id, neighbors)
+
+    # Convert to response
+    flashcards = []
+    for e in enriched:
+        flashcards.append(
+            RelatedFlashcardResponse(
+                id=e.id,
+                front_text=e.content_preview,
+                similarity=round(e.similarity, 3),
+                evidence_strength=e.evidence_strength,
+                last_quality=e.last_quality,
+                days_since_review=e.days_since_review,
+            )
+        )
+
+    return RelatedFlashcardsResponse(
+        flashcards=flashcards, advisory_message="Related recall cards in this semantic area"
+    )
+
+
+@router.get(
+    "/learning/context-for-weakness",
+    response_model=ContextForWeaknessResponse,
+    summary="Get context notes for weak areas (Phase Q3.2)",
+)
+async def get_context_for_weakness(
+    lookback_days: int = Query(7, ge=1, le=30),
+    limit: int = Query(3, ge=1, le=10),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Surface notes related to recent low-quality quiz attempts.
+
+    Phase Q3.2: Notes inform but never decay. Surface as optional reference
+    material near areas where the user has shown difficulty.
+
+    INVARIANT: Notes NEVER enter SM-2. Only advisory.
+    """
+    from sqlalchemy import text
+    from app.services.semantic_neighbor_service import SemanticNeighborService
+    import numpy as np
+
+    # Get recent failures (low quality scores)
+    failures_result = await db.execute(
+        text(
+            """
+        SELECT qq.prompt_embedding
+        FROM activity_logs al
+        JOIN quiz_questions qq ON qq.id = al.resource_id
+        WHERE al.user_id = :user_id
+          AND al.activity_type = 'quiz_question_attempt'
+          AND al.quality_score < 3
+          AND al.created_at > NOW() - INTERVAL ':days days'
+          AND qq.prompt_embedding IS NOT NULL
+          AND al.is_learning_event = true
+        ORDER BY al.created_at DESC
+        LIMIT 10
+    """.replace(":days", str(lookback_days))
+        ),
+        {"user_id": current_user.id},
+    )
+
+    embeddings = []
+    for row in failures_result:
+        if row.prompt_embedding:
+            embeddings.append(row.prompt_embedding)
+
+    if not embeddings:
+        return ContextForWeaknessResponse(
+            notes=[], advisory_message="No recent difficulty patterns detected"
+        )
+
+    # Calculate weakness centroid
+    weak_centroid = np.mean(embeddings, axis=0)
+    weak_centroid = (weak_centroid / np.linalg.norm(weak_centroid)).tolist()
+
+    # Find notes near the weakness centroid
+    neighbors = await SemanticNeighborService.get_neighbors_for_embedding(
+        db, weak_centroid, current_user.id, entity_types=["note"], limit=limit
+    )
+
+    if not neighbors:
+        return ContextForWeaknessResponse(notes=[], advisory_message="No relevant notes found")
+
+    # Convert to response
+    notes = []
+    for n in neighbors:
+        notes.append(
+            ContextNoteResponse(
+                id=n.id,
+                title=n.content_preview,
+                similarity=round(n.similarity, 3),
+            )
+        )
+
+    return ContextForWeaknessResponse(
+        notes=notes, advisory_message="Reference material near recent difficulty areas"
+    )

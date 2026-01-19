@@ -23,6 +23,7 @@ from app.core.config import settings
 from app.core.security import decode_token
 from app.models.user import User
 from app.services.cache.client import CacheClient
+
 # Import schemas from the shared schemas module
 from app.schemas.auth import UserLogin, UserRegister, TokenResponse
 
@@ -30,16 +31,17 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 # Password hashing context - Argon2 primary, bcrypt fallback for legacy hashes
-pwd_context = CryptContext(
-    schemes=["argon2", "bcrypt"],
-    deprecated="auto"
-)
+pwd_context = CryptContext(schemes=["argon2", "bcrypt"], deprecated="auto")
 
 # Redis client for token blacklisting
 cache_client = CacheClient(
-    host=settings.REDIS_URL.split("://")[1].split(":")[0] if "://" in settings.REDIS_URL else "localhost",
-    port=int(settings.REDIS_URL.split(":")[-1].split("/")[0]) if ":" in settings.REDIS_URL else 6379,
-    db=int(settings.REDIS_URL.split("/")[-1]) if "/" in settings.REDIS_URL else 0
+    host=settings.REDIS_URL.split("://")[1].split(":")[0]
+    if "://" in settings.REDIS_URL
+    else "localhost",
+    port=int(settings.REDIS_URL.split(":")[-1].split("/")[0])
+    if ":" in settings.REDIS_URL
+    else 6379,
+    db=int(settings.REDIS_URL.split("/")[-1]) if "/" in settings.REDIS_URL else 0,
 )
 
 
@@ -49,8 +51,10 @@ cache_client = CacheClient(
 
 from pydantic import BaseModel, Field
 
+
 class UserResponse(BaseModel):
     """User profile response."""
+
     id: int
     email: str
     full_name: str
@@ -67,11 +71,14 @@ class UserResponse(BaseModel):
 
 class MessageResponse(BaseModel):
     """Simple message response."""
+
     message: str
+
 
 # ============================================================================
 # Helper Functions - Password & Token
 # ============================================================================
+
 
 def hash_password(password: str) -> str:
     """
@@ -129,17 +136,9 @@ def create_access_token(user_id: int, expires_delta: Optional[timedelta] = None)
     else:
         expire = datetime.utcnow() + timedelta(minutes=settings.JWT_EXPIRATION_MINUTES)
 
-    to_encode = {
-        "sub": str(user_id),
-        "exp": expire,
-        "iat": datetime.utcnow()
-    }
+    to_encode = {"sub": str(user_id), "exp": expire, "iat": datetime.utcnow()}
 
-    encoded_jwt = jwt.encode(
-        to_encode,
-        settings.JWT_SECRET_KEY,
-        algorithm=settings.JWT_ALGORITHM
-    )
+    encoded_jwt = jwt.encode(to_encode, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
 
     return encoded_jwt
 
@@ -178,11 +177,7 @@ async def add_token_to_blacklist(token: str, user_id: int, expiry_seconds: int) 
     """
     try:
         blacklist_key = f"blacklisted_tokens:{user_id}:{token[:20]}"
-        success = cache_client.set(
-            blacklist_key,
-            "1",
-            ex=expiry_seconds
-        )
+        success = cache_client.set(blacklist_key, "1", ex=expiry_seconds)
 
         if success:
             logger.info(f"Token blacklisted for user {user_id}")
@@ -199,17 +194,15 @@ async def add_token_to_blacklist(token: str, user_id: int, expiry_seconds: int) 
 # Endpoints
 # ============================================================================
 
+
 @router.post(
     "/register",
     response_model=TokenResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Register new user",
-    description="Create a new user account and return access token"
+    description="Create a new user account and return access token",
 )
-async def register(
-    user_data: UserRegister,
-    db: AsyncSession = Depends(get_db)
-):
+async def register(user_data: UserRegister, db: AsyncSession = Depends(get_db)):
     """
     Register a new user.
 
@@ -217,15 +210,12 @@ async def register(
     an access token for immediate authentication.
     """
     # Check if email already exists
-    result = await db.execute(
-        select(User).where(User.email == user_data.email)
-    )
+    result = await db.execute(select(User).where(User.email == user_data.email))
     existing_user = result.scalar_one_or_none()
 
     if existing_user:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Email already registered"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered"
         )
 
     # Create new user with Argon2-hashed password
@@ -235,7 +225,7 @@ async def register(
         full_name=user_data.full_name,
         is_active=True,
         is_admin=False,
-        email_verified=False
+        email_verified=False,
     )
 
     db.add(new_user)
@@ -244,13 +234,32 @@ async def register(
 
     logger.info(f"New user registered: {new_user.email}")
 
+    # Send welcome notification
+    try:
+        from app.services.notification_service import NotificationService
+        from app.models.notification import NotificationType, NotificationCategory
+
+        notification_service = NotificationService(db)
+        await notification_service.send(
+            user_id=new_user.id,
+            type=NotificationType.INFO,
+            category=NotificationCategory.SYSTEM,
+            title="Welcome to Synapse!",
+            message="Your account is ready. Start by uploading a document or creating flashcards.",
+            action_url="/dashboard",
+            action_label="Get Started",
+            force=True,  # Bypass any preference checks for new users
+        )
+    except Exception:
+        pass  # Don't fail registration on notification error
+
     # Generate access token
     access_token = create_access_token(new_user.id)
 
     return TokenResponse(
         access_token=access_token,
         token_type="bearer",
-        expires_in=settings.JWT_EXPIRATION_MINUTES * 60
+        expires_in=settings.JWT_EXPIRATION_MINUTES * 60,
     )
 
 
@@ -258,12 +267,9 @@ async def register(
     "/login",
     response_model=TokenResponse,
     summary="User login",
-    description="Authenticate user and return access token"
+    description="Authenticate user and return access token",
 )
-async def login(
-    credentials: UserLogin,
-    db: AsyncSession = Depends(get_db)
-):
+async def login(credentials: UserLogin, db: AsyncSession = Depends(get_db)):
     """
     Authenticate user and return access token.
 
@@ -271,9 +277,7 @@ async def login(
     Supports both Argon2 and legacy bcrypt hashes.
     """
     # Find user by email
-    result = await db.execute(
-        select(User).where(User.email == credentials.email)
-    )
+    result = await db.execute(select(User).where(User.email == credentials.email))
     user = result.scalar_one_or_none()
 
     # Verify user exists and password is correct
@@ -289,8 +293,7 @@ async def login(
     if not user.is_active:
         logger.warning(f"Login attempt for inactive user: {user.email}")
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="User account is inactive"
+            status_code=status.HTTP_403_FORBIDDEN, detail="User account is inactive"
         )
 
     # Update last login timestamp
@@ -305,7 +308,7 @@ async def login(
     return TokenResponse(
         access_token=access_token,
         token_type="bearer",
-        expires_in=settings.JWT_EXPIRATION_MINUTES * 60
+        expires_in=settings.JWT_EXPIRATION_MINUTES * 60,
     )
 
 
@@ -313,11 +316,9 @@ async def login(
     "/logout",
     response_model=MessageResponse,
     summary="User logout",
-    description="Invalidate current session by blacklisting JWT token"
+    description="Invalidate current session by blacklisting JWT token",
 )
-async def logout(
-    current_user: User = Depends(get_current_user)
-):
+async def logout(current_user: User = Depends(get_current_user)):
     """
     Logout current user.
 
@@ -329,11 +330,7 @@ async def logout(
 
         # Create a marker that this user's active sessions are invalidated
         blacklist_key = f"user_logout:{current_user.id}"
-        success = cache_client.set(
-            blacklist_key,
-            datetime.utcnow().isoformat(),
-            ex=expiry_seconds
-        )
+        success = cache_client.set(blacklist_key, datetime.utcnow().isoformat(), ex=expiry_seconds)
 
         if success:
             logger.info(f"User logged out: {current_user.id}")
@@ -352,11 +349,9 @@ async def logout(
     "/me",
     response_model=UserResponse,
     summary="Get current user",
-    description="Retrieve authenticated user's profile information"
+    description="Retrieve authenticated user's profile information",
 )
-async def get_current_user_profile(
-    current_user: User = Depends(get_current_user)
-):
+async def get_current_user_profile(current_user: User = Depends(get_current_user)):
     """
     Get current authenticated user's profile.
 
@@ -369,11 +364,9 @@ async def get_current_user_profile(
     "/refresh",
     response_model=TokenResponse,
     summary="Refresh access token",
-    description="Generate new access token using existing valid token"
+    description="Generate new access token using existing valid token",
 )
-async def refresh_token(
-    current_user: User = Depends(get_current_user)
-):
+async def refresh_token(current_user: User = Depends(get_current_user)):
     """
     Refresh access token.
 
@@ -387,5 +380,5 @@ async def refresh_token(
     return TokenResponse(
         access_token=access_token,
         token_type="bearer",
-        expires_in=settings.JWT_EXPIRATION_MINUTES * 60
+        expires_in=settings.JWT_EXPIRATION_MINUTES * 60,
     )

@@ -90,6 +90,7 @@ class DeckResponse(BaseModel):
     is_public: bool
     ai_generated: bool
     card_count: int
+    due_count: int  # Cards due: new (NULL) or scheduled (next_review <= now)
     user_id: int
     created_at: datetime
     updated_at: datetime
@@ -123,12 +124,36 @@ async def list_decks(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """List user's decks with card counts (optimized - single query)."""
-    # Single query with LEFT OUTER JOIN to get decks and card counts together
+    """List user's decks with card counts and due counts (optimized - single query).
+
+    Due count includes:
+    - New cards (next_review IS NULL) - never reviewed
+    - Scheduled cards (next_review <= now) - need review
+
+    This matches the dashboard materialized view definition.
+    """
+    from datetime import datetime as dt
+    from sqlalchemy import or_
+
+    now = dt.utcnow()
+
+    # Single query with LEFT OUTER JOIN to get decks, card counts, and due counts together
+    # Due count: NULL (new) OR next_review <= now (scheduled)
     stmt = (
         select(
             Deck,
             func.count(Flashcard.id).filter(Flashcard.deleted_at.is_(None)).label("card_count"),
+            func.count(Flashcard.id)
+            .filter(
+                and_(
+                    Flashcard.deleted_at.is_(None),
+                    or_(
+                        Flashcard.next_review.is_(None),  # New cards
+                        Flashcard.next_review <= now,  # Scheduled due
+                    ),
+                )
+            )
+            .label("due_count"),
         )
         .outerjoin(Flashcard, Flashcard.deck_id == Deck.id)
         .where(and_(Deck.user_id == current_user.id, Deck.deleted_at.is_(None)))
@@ -160,11 +185,12 @@ async def list_decks(
             is_public=deck.is_public,
             ai_generated=deck.ai_generated,
             card_count=card_count,
+            due_count=due_count,
             user_id=deck.user_id,
             created_at=deck.created_at,
             updated_at=deck.updated_at,
         )
-        for deck, card_count in decks_with_counts
+        for deck, card_count, due_count in decks_with_counts
     ]
 
 
@@ -201,6 +227,7 @@ async def create_deck(
         is_public=new_deck.is_public,
         ai_generated=new_deck.ai_generated,
         card_count=0,
+        due_count=0,
         user_id=new_deck.user_id,
         created_at=new_deck.created_at,
         updated_at=new_deck.updated_at,
@@ -216,6 +243,8 @@ async def create_deck(
 async def get_deck(
     deck_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
 ):
+    from datetime import datetime as dt
+
     result = await db.execute(
         select(Deck).where(
             and_(Deck.id == deck_id, Deck.user_id == current_user.id, Deck.deleted_at.is_(None))
@@ -226,12 +255,32 @@ async def get_deck(
     if not deck:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Deck not found")
 
+    now = dt.utcnow()
+
+    # Get card count
     card_count_result = await db.execute(
         select(func.count(Flashcard.id)).where(
             and_(Flashcard.deck_id == deck.id, Flashcard.deleted_at.is_(None))
         )
     )
     card_count = card_count_result.scalar()
+
+    # Get due count (new cards + scheduled due cards)
+    from sqlalchemy import or_
+
+    due_count_result = await db.execute(
+        select(func.count(Flashcard.id)).where(
+            and_(
+                Flashcard.deck_id == deck.id,
+                Flashcard.deleted_at.is_(None),
+                or_(
+                    Flashcard.next_review.is_(None),  # New cards
+                    Flashcard.next_review <= now,  # Scheduled due
+                ),
+            )
+        )
+    )
+    due_count = due_count_result.scalar()
 
     return DeckResponse(
         id=deck.id,
@@ -241,6 +290,7 @@ async def get_deck(
         is_public=deck.is_public,
         ai_generated=deck.ai_generated,
         card_count=card_count,
+        due_count=due_count or 0,
         user_id=deck.user_id,
         created_at=deck.created_at,
         updated_at=deck.updated_at,
@@ -348,12 +398,32 @@ async def update_deck(
     await db.commit()
     await db.refresh(deck)
 
+    from datetime import datetime as dt
+
+    now = dt.utcnow()
+
     card_count_result = await db.execute(
         select(func.count(Flashcard.id)).where(
             and_(Flashcard.deck_id == deck.id, Flashcard.deleted_at.is_(None))
         )
     )
     card_count = card_count_result.scalar()
+
+    from sqlalchemy import or_
+
+    due_count_result = await db.execute(
+        select(func.count(Flashcard.id)).where(
+            and_(
+                Flashcard.deck_id == deck.id,
+                Flashcard.deleted_at.is_(None),
+                or_(
+                    Flashcard.next_review.is_(None),  # New cards
+                    Flashcard.next_review <= now,  # Scheduled due
+                ),
+            )
+        )
+    )
+    due_count = due_count_result.scalar()
 
     return DeckResponse(
         id=deck.id,
@@ -363,6 +433,7 @@ async def update_deck(
         is_public=deck.is_public,
         ai_generated=deck.ai_generated,
         card_count=card_count,
+        due_count=due_count or 0,
         user_id=deck.user_id,
         created_at=deck.created_at,
         updated_at=deck.updated_at,
@@ -682,6 +753,25 @@ Return ONLY valid JSON in this exact format:
             deck_id=deck["id"],
             cards_created=cards_created,
         )
+
+        # Send notification
+        try:
+            from app.services.notification_service import NotificationService
+            from app.models.notification import NotificationType, NotificationCategory
+
+            notification_service = NotificationService(db)
+            await notification_service.send(
+                user_id=current_user.id,
+                type=NotificationType.SUCCESS,
+                category=NotificationCategory.LEARNING,
+                title="Flashcards Generated",
+                message=f"{cards_created} flashcards about '{request_data.topic}' are ready for review.",
+                action_url=f"/decks/{deck['id']}",
+                action_label="Review Now",
+                meta_data={"deck_id": deck["id"], "cards_created": cards_created},
+            )
+        except Exception as notify_err:
+            logger.warning("notification_send_failed", error=str(notify_err))
 
         return FlashcardGenerateResponse(
             deck_id=deck["id"],

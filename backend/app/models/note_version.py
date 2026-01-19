@@ -7,7 +7,8 @@ Preserves complete history of note changes.
 
 from datetime import datetime
 
-from sqlalchemy import String, Text, Integer, DateTime, ForeignKey, func
+from sqlalchemy import String, Integer, DateTime, ForeignKey, func
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import Enum as SQLEnum
 
@@ -28,50 +29,36 @@ class NoteVersion(Base):
     __tablename__ = "note_versions"
 
     # Primary Key
-    id: Mapped[int] = mapped_column(
-        primary_key=True,
-        autoincrement=True,
-        doc="Primary key"
-    )
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True, doc="Primary key")
 
     # Foreign Keys
     note_id: Mapped[int] = mapped_column(
         ForeignKey("notes.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
-        doc="ID of the note this version belongs to"
+        doc="ID of the note this version belongs to",
     )
 
     created_by: Mapped[int] = mapped_column(
         ForeignKey("users.id", ondelete="SET NULL"),
         nullable=False,
-        doc="ID of the user who created this version"
+        doc="ID of the user who created this version",
     )
 
     # Version Information
     version_number: Mapped[int] = mapped_column(
-        Integer,
-        nullable=False,
-        doc="Sequential version number (1, 2, 3, ...)"
+        Integer, nullable=False, doc="Sequential version number (1, 2, 3, ...)"
     )
 
     # Snapshot of Content
-    title: Mapped[str] = mapped_column(
-        String(500),
-        nullable=False,
-        doc="Title at this version"
-    )
+    title: Mapped[str] = mapped_column(String(500), nullable=False, doc="Title at this version")
 
-    content: Mapped[str] = mapped_column(
-        Text,
-        nullable=False,
-        doc="Content at this version"
+    content: Mapped[dict | str] = mapped_column(
+        JSONB, nullable=False, doc="Content at this version (string or BlockSuite JSONB)"
     )
 
     format: Mapped[NoteFormat] = mapped_column(
-        SQLEnum(NoteFormat, native_enum=False),
-        nullable=False,
-        doc="Format at this version"
+        SQLEnum(NoteFormat, native_enum=False), nullable=False, doc="Format at this version"
     )
 
     # Timestamp
@@ -80,7 +67,7 @@ class NoteVersion(Base):
         server_default=func.now(),
         nullable=False,
         index=True,
-        doc="Timestamp when this version was created"
+        doc="Timestamp when this version was created",
     )
 
     # Relationships

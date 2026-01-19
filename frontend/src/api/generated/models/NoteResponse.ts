@@ -9,7 +9,7 @@ import type { NoteFormat } from './NoteFormat';
 export type NoteResponse = {
     id: number;
     title: string;
-    content: string;
+    content: (string | Record<string, any>);
     format: NoteFormat;
     parent_id: (number | null);
     user_id: number;

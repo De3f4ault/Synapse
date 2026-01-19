@@ -9,7 +9,7 @@ import type { NoteFormat } from './NoteFormat';
 export type NoteSearchResult = {
     id: number;
     title: string;
-    content: string;
+    content: (string | Record<string, any>);
     format: NoteFormat;
     score: number;
     match_type: string;

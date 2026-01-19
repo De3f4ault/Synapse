@@ -8,7 +8,7 @@ import type { NoteFormat } from './NoteFormat';
  */
 export type NoteUpdate = {
     title?: (string | null);
-    content?: (string | null);
+    content?: (string | Record<string, any> | null);
     format?: (NoteFormat | null);
 };
 

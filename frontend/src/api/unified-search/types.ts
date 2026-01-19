@@ -72,7 +72,7 @@ export type SearchIntent =
     | 'retrieve_context'
     | 'diagnose';
 
-export type SearchSurface = 'cmdk' | 'chat' | 'dashboard' | 'study_hub';
+export type SearchSurface = 'cmdk' | 'chat' | 'dashboard' | 'study_hub' | 'validation';
 
 export interface SearchContext {
     user_id: number;

@@ -2,15 +2,15 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-import type { EntityType } from './EntityType';
+import type { app__models__link__EntityType } from './app__models__link__EntityType';
 import type { LinkType } from './LinkType';
 /**
  * Link creation request.
  */
 export type LinkCreate = {
-    source_type: EntityType;
+    source_type: app__models__link__EntityType;
     source_id: number;
-    target_type: EntityType;
+    target_type: app__models__link__EntityType;
     target_id: number;
     link_type?: LinkType;
     strength?: number;

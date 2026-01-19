@@ -11,7 +11,7 @@ export {
 } from "./components";
 
 // Hooks
-export { useChartsData } from "./hooks";
+export { useChartsData, type TimeBucket } from "./hooks";
 
 // State (UI-only)
 export {

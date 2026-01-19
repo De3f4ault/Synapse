@@ -3,29 +3,27 @@ Note schemas.
 """
 
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Union, Any
 from pydantic import BaseModel, Field
 
 
 # Tag Schemas
 
+
 class TagBase(BaseModel):
     """Base tag schema."""
 
     name: str = Field(min_length=1, max_length=100, description="Tag name")
-    color: Optional[str] = Field(default=None, pattern="^#[0-9A-Fa-f]{6}$", description="Tag color (hex)")
+    color: Optional[str] = Field(
+        default=None, pattern="^#[0-9A-Fa-f]{6}$", description="Tag color (hex)"
+    )
 
 
 class TagCreate(TagBase):
     """Tag creation schema."""
 
     class Config:
-        json_schema_extra = {
-            "example": {
-                "name": "biology",
-                "color": "#4CAF50"
-            }
-        }
+        json_schema_extra = {"example": {"name": "biology", "color": "#4CAF50"}}
 
 
 class TagResponse(TagBase):
@@ -43,19 +41,22 @@ class TagResponse(TagBase):
                 "user_id": 1,
                 "name": "biology",
                 "color": "#4CAF50",
-                "created_at": "2025-11-01T10:00:00Z"
+                "created_at": "2025-11-01T10:00:00Z",
             }
         }
 
 
 # Note Schemas
 
+
 class NoteBase(BaseModel):
     """Base note schema."""
 
     title: str = Field(min_length=1, max_length=500, description="Note title")
-    content: str = Field(min_length=1, max_length=1000000, description="Note content")
-    format: str = Field(default="markdown", pattern="^(markdown|html|plain)$", description="Content format")
+    content: Union[str, dict, Any] = Field(description="Note content (string or BlockSuite JSONB)")
+    format: str = Field(
+        default="markdown", pattern="^(markdown|html|plain)$", description="Content format"
+    )
 
 
 class NoteCreate(NoteBase):
@@ -71,7 +72,7 @@ class NoteCreate(NoteBase):
                 "content": "# Cell Structure\n\n## Nucleus\nThe nucleus is the control center...",
                 "format": "markdown",
                 "parent_id": None,
-                "tags": ["biology", "cells"]
+                "tags": ["biology", "cells"],
             }
         }
 
@@ -79,9 +80,15 @@ class NoteCreate(NoteBase):
 class NoteUpdate(BaseModel):
     """Note update schema."""
 
-    title: Optional[str] = Field(default=None, min_length=1, max_length=500, description="Note title")
-    content: Optional[str] = Field(default=None, min_length=1, max_length=1000000, description="Note content")
-    format: Optional[str] = Field(default=None, pattern="^(markdown|html|plain)$", description="Content format")
+    title: Optional[str] = Field(
+        default=None, min_length=1, max_length=500, description="Note title"
+    )
+    content: Optional[Union[str, dict, Any]] = Field(
+        default=None, description="Note content (string or BlockSuite JSONB)"
+    )
+    format: Optional[str] = Field(
+        default=None, pattern="^(markdown|html|plain)$", description="Content format"
+    )
     parent_id: Optional[int] = Field(default=None, description="Parent note ID")
     tags: Optional[List[str]] = Field(default=None, description="Tag names")
 
@@ -113,12 +120,12 @@ class NoteResponse(NoteBase):
                         "user_id": 1,
                         "name": "biology",
                         "color": "#4CAF50",
-                        "created_at": "2025-11-01T10:00:00Z"
+                        "created_at": "2025-11-01T10:00:00Z",
                     }
                 ],
                 "children_count": 3,
                 "created_at": "2025-11-01T10:00:00Z",
-                "updated_at": "2025-11-06T12:00:00Z"
+                "updated_at": "2025-11-06T12:00:00Z",
             }
         }
 
@@ -144,15 +151,10 @@ class NoteTreeResponse(BaseModel):
                         "title": "Cell Biology",
                         "parent_id": 1,
                         "children": [
-                            {
-                                "id": 3,
-                                "title": "Cell Structure",
-                                "parent_id": 2,
-                                "children": []
-                            }
-                        ]
+                            {"id": 3, "title": "Cell Structure", "parent_id": 2, "children": []}
+                        ],
                     }
-                ]
+                ],
             }
         }
 
@@ -176,7 +178,7 @@ class NoteVersionResponse(BaseModel):
                 "version_number": 2,
                 "title": "Cell Structure (Updated)",
                 "created_at": "2025-11-06T12:00:00Z",
-                "created_by": 1
+                "created_by": 1,
             }
         }
 
@@ -195,12 +197,12 @@ class NoteSearchResult(BaseModel):
                     "id": 1,
                     "title": "Cell Structure",
                     "content": "...",
-                    "format": "markdown"
+                    "format": "markdown",
                 },
                 "rank": 0.95,
                 "highlights": [
                     "The <mark>nucleus</mark> is the control center...",
-                    "Cell <mark>membrane</mark> regulates..."
-                ]
+                    "Cell <mark>membrane</mark> regulates...",
+                ],
             }
         }

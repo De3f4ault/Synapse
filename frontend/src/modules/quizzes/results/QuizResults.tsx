@@ -98,9 +98,10 @@ export const QuizResults: React.FC<QuizResultsProps> = ({
 
                         {/* Questions */}
                         <div className="space-y-4">
-                            {results.answers.map((answer, idx) => (
+                            {results.answers.map((answer) => (
                                 <QuestionReview
-                                    key={idx}
+                                    key={answer.question_id}
+                                    questionId={answer.question_id}
                                     questionText={answer.question_text}
                                     userAnswer={answer.your_answer}
                                     correctAnswer={answer.correct_answer}

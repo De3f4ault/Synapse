@@ -4,7 +4,11 @@
 /* eslint-disable */
 import type { DashboardOverview } from '../models/DashboardOverview';
 import type { HeatmapData } from '../models/HeatmapData';
+import type { LastSessionStats } from '../models/LastSessionStats';
 import type { PerformanceTrend } from '../models/PerformanceTrend';
+import type { ReviewForecast } from '../models/ReviewForecast';
+import type { TimeBucket } from '../models/TimeBucket';
+import type { TodayStats } from '../models/TodayStats';
 import type { TopicMastery } from '../models/TopicMastery';
 import type { WeakArea } from '../models/WeakArea';
 import type { CancelablePromise } from '../core/CancelablePromise';
@@ -61,14 +65,23 @@ export class AnalyticsService {
     }
     /**
      * Get Performance
-     * Get performance trends over time.
+     * Get performance trends over time with configurable time buckets.
+     *
+     * Aggregation rules:
+     * - accuracy: AVG of all events in bucket (not avg of daily avgs)
+     * - reviews_count: COUNT of events in bucket
+     * - study_time_minutes: SUM of duration in bucket
+     *
+     * Buckets change resolution, not meaning.
      * @param days Number of days to analyze
+     * @param bucket Time bucket: day, week, or month
      * @param token Auth token for image/file requests
      * @returns PerformanceTrend Successful Response
      * @throws ApiError
      */
     public static getPerformanceApiV1AnalyticsPerformanceGet(
         days: number = 30,
+        bucket: TimeBucket = 'day',
         token?: (string | null),
     ): CancelablePromise<Array<PerformanceTrend>> {
         return __request(OpenAPI, {
@@ -76,6 +89,7 @@ export class AnalyticsService {
             url: '/api/v1/analytics/performance',
             query: {
                 'days': days,
+                'bucket': bucket,
                 'token': token,
             },
             errors: {
@@ -120,6 +134,91 @@ export class AnalyticsService {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/v1/analytics/topics',
+            query: {
+                'token': token,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Get Today Stats
+     * Get today's study statistics from the Learning Ledger.
+     *
+     * This endpoint provides real-time today's metrics:
+     * - Total study time in minutes
+     * - Number of learning events
+     * - Reviews completed
+     * - Average accuracy
+     * @param token Auth token for image/file requests
+     * @returns TodayStats Successful Response
+     * @throws ApiError
+     */
+    public static getTodayStatsApiV1AnalyticsTodayGet(
+        token?: (string | null),
+    ): CancelablePromise<TodayStats> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/analytics/today',
+            query: {
+                'token': token,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Get Forecast
+     * Get review forecast for planning.
+     *
+     * Returns counts of reviews due:
+     * - Today
+     * - Tomorrow
+     * - This week (next 7 days)
+     * - Overdue (past due)
+     * @param token Auth token for image/file requests
+     * @returns ReviewForecast Successful Response
+     * @throws ApiError
+     */
+    public static getForecastApiV1AnalyticsForecastGet(
+        token?: (string | null),
+    ): CancelablePromise<ReviewForecast> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/analytics/forecast',
+            query: {
+                'token': token,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Get Last Session
+     * Get last study session quality feedback.
+     *
+     * Session boundary rule (explicit, not magic):
+     * - Find the most recent learning event
+     * - Include all events within SESSION_WINDOW_MINUTES (45) before it
+     * - This forms the "last session"
+     *
+     * Quality labels:
+     * - 90%+ accuracy → "Strong recall"
+     * - 70-89% → "Good practice"
+     * - <70% → "Needs review"
+     * @param token Auth token for image/file requests
+     * @returns LastSessionStats Successful Response
+     * @throws ApiError
+     */
+    public static getLastSessionApiV1AnalyticsLastSessionGet(
+        token?: (string | null),
+    ): CancelablePromise<LastSessionStats> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/analytics/last-session',
             query: {
                 'token': token,
             },

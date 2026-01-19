@@ -3,6 +3,8 @@
 /* tslint:disable */
 /* eslint-disable */
 import type { AnswerSubmit } from '../models/AnswerSubmit';
+import type { ContextForWeaknessResponse } from '../models/ContextForWeaknessResponse';
+import type { DueQuestionsResponse } from '../models/DueQuestionsResponse';
 import type { QuizAttemptResume } from '../models/QuizAttemptResume';
 import type { QuizAttemptStart } from '../models/QuizAttemptStart';
 import type { QuizCreate } from '../models/QuizCreate';
@@ -11,10 +13,47 @@ import type { QuizGenerateResponse } from '../models/QuizGenerateResponse';
 import type { QuizInsightsResponse } from '../models/QuizInsightsResponse';
 import type { QuizResponse } from '../models/QuizResponse';
 import type { QuizResultResponse } from '../models/QuizResultResponse';
+import type { RelatedFlashcardsResponse } from '../models/RelatedFlashcardsResponse';
 import type { CancelablePromise } from '../core/CancelablePromise';
 import { OpenAPI } from '../core/OpenAPI';
 import { request as __request } from '../core/request';
 export class QuizzesService {
+    /**
+     * Get Due Questions
+     * Get questions due for SM-2 review (Phase Q1).
+     *
+     * Returns questions that are scheduled for review based on spaced repetition.
+     * Can be filtered to a specific quiz or return due questions across all quizzes.
+     *
+     * Phase Q2.5: When bias_by_weakness=true, reorders questions by semantic
+     * proximity to user's weak areas. INVARIANT: Only reorders, never expands the set.
+     * @param quizId Filter to specific quiz
+     * @param limit Max questions to return
+     * @param biasByWeakness Phase Q2.5: Reorder by proximity to weak areas
+     * @param token Auth token for image/file requests
+     * @returns DueQuestionsResponse Successful Response
+     * @throws ApiError
+     */
+    public static getDueQuestionsApiV1QuizzesDueQuestionsGet(
+        quizId?: (number | null),
+        limit: number = 20,
+        biasByWeakness: boolean = false,
+        token?: (string | null),
+    ): CancelablePromise<DueQuestionsResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/quizzes/due-questions',
+            query: {
+                'quiz_id': quizId,
+                'limit': limit,
+                'bias_by_weakness': biasByWeakness,
+                'token': token,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
     /**
      * Create Quiz
      * Create a new quiz with questions.
@@ -291,6 +330,72 @@ export class QuizzesService {
             },
             body: requestBody,
             mediaType: 'application/json',
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Get related flashcards (Phase Q3.1)
+     * Surface flashcards semantically close to a quiz question.
+     *
+     * Phase Q3.1: Connect applied recall (quiz) to isolated recall (flashcard)
+     * without coupling. Call this after a user struggles with a question.
+     *
+     * INVARIANT: Advisory only. Nothing is scheduled or reset.
+     * @param questionId
+     * @param limit
+     * @param token Auth token for image/file requests
+     * @returns RelatedFlashcardsResponse Successful Response
+     * @throws ApiError
+     */
+    public static getRelatedFlashcardsApiV1QuizzesQuestionsQuestionIdRelatedFlashcardsGet(
+        questionId: number,
+        limit: number = 5,
+        token?: (string | null),
+    ): CancelablePromise<RelatedFlashcardsResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/quizzes/questions/{question_id}/related-flashcards',
+            path: {
+                'question_id': questionId,
+            },
+            query: {
+                'limit': limit,
+                'token': token,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Get context notes for weak areas (Phase Q3.2)
+     * Surface notes related to recent low-quality quiz attempts.
+     *
+     * Phase Q3.2: Notes inform but never decay. Surface as optional reference
+     * material near areas where the user has shown difficulty.
+     *
+     * INVARIANT: Notes NEVER enter SM-2. Only advisory.
+     * @param lookbackDays
+     * @param limit
+     * @param token Auth token for image/file requests
+     * @returns ContextForWeaknessResponse Successful Response
+     * @throws ApiError
+     */
+    public static getContextForWeaknessApiV1QuizzesLearningContextForWeaknessGet(
+        lookbackDays: number = 7,
+        limit: number = 3,
+        token?: (string | null),
+    ): CancelablePromise<ContextForWeaknessResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/quizzes/learning/context-for-weakness',
+            query: {
+                'lookback_days': lookbackDays,
+                'limit': limit,
+                'token': token,
+            },
             errors: {
                 422: `Validation Error`,
             },
