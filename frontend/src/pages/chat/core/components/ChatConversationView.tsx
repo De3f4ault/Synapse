@@ -207,7 +207,7 @@ export function ChatConversationView({
       </div>
       {/* Messages Area - Scrollable, takes remaining space */}
       <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-hide px-4 md:px-8 pb-4 min-h-0">
-        <div className="max-w-4xl mx-auto space-y-6">
+        <div className="max-w-5xl mx-auto space-y-6">
 
           {messages.map((msg) => (
             <ChatMessage
@@ -233,7 +233,7 @@ export function ChatConversationView({
 
       {/* Input Area - Fixed at bottom */}
       <div className="shrink-0 px-4 md:px-8 pb-6 pt-2 bg-gradient-to-t from-[#050505] via-[#050505]/80 to-transparent">
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-5xl mx-auto">
           <ChatInputBox
             message={message}
             onMessageChange={onMessageChange}

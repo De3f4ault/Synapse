@@ -1,7 +1,8 @@
-import { memo } from "react";
+import { memo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Logo } from "@/components/ui/logo";
-import { Loader2 } from "lucide-react";
+import { Loader2, Copy, Check } from "lucide-react";
+import { toast } from "sonner";
 import { HighlightedText } from "../../search/components/HighlightedText";
 import { MarkdownRenderer } from "@/shared/rendering";
 import { MermaidBlock } from "@/shared/rendering/components/MermaidBlock";
@@ -32,6 +33,19 @@ const ChatMessageComponent = ({
 }: ChatMessageProps) => {
   const isUser = message.role === "user";
   const BotIcon = Logo;
+  const [copied, setCopied] = useState(false);
+
+  // Copy message to clipboard
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(message.content || "");
+      setCopied(true);
+      toast.success("Copied to clipboard");
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error("Failed to copy");
+    }
+  };
 
   // Filter occurrences for this message's first block (simplified)
   // In full implementation, would parse blocks and distribute occurrences
@@ -219,14 +233,33 @@ const ChatMessageComponent = ({
             </div>
           )}
         </div>
-        <span className="text-[10px] text-muted-foreground px-1 opacity-50 flex items-center gap-1.5">
-          {message.created_at
-            ? new Date(message.created_at).toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-            })
-            : "Just now"}
-        </span>
+
+        {/* Message Footer: Time + Actions */}
+        <div className="flex items-center gap-2 px-1">
+          <span className="text-[10px] text-muted-foreground opacity-50">
+            {message.created_at
+              ? new Date(message.created_at).toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+              })
+              : "Just now"}
+          </span>
+
+          {/* Action buttons - visible on hover or always for assistant */}
+          {!isStreaming && (
+            <button
+              onClick={handleCopy}
+              className="p-1 rounded hover:bg-white/10 text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+              title="Copy message"
+            >
+              {copied ? (
+                <Check className="size-3 text-green-400" />
+              ) : (
+                <Copy className="size-3" />
+              )}
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
