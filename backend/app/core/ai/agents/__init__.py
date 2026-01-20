@@ -23,38 +23,32 @@ from app.core.ai.agents.registry import AgentRegistry, get_agent_registry
 # Middleware exports
 from app.core.ai.agents.middleware.context_injection import (
     ContextInjectionMiddleware,
-    context_injection_middleware
+    context_injection_middleware,
 )
-from app.core.ai.agents.middleware.quota_check import (
-    QuotaCheckMiddleware,
-    quota_check_middleware
-)
+from app.core.ai.agents.middleware.quota_check import QuotaCheckMiddleware, quota_check_middleware
 from app.core.ai.agents.middleware.webhook_trigger import (
     WebhookTriggerMiddleware,
-    webhook_trigger_middleware
+    webhook_trigger_middleware,
 )
 
 # Monitoring exports
 from app.core.ai.agents.monitoring.redis_counters import (
     AgentMetrics,
     track_agent_call,
-    get_agent_metrics
+    get_agent_metrics,
 )
-from app.core.ai.agents.monitoring.alerts import (
-    AlertManager,
-    AlertSeverity,
-    send_agent_alert
-)
+from app.core.ai.agents.monitoring.alerts import AlertManager, AlertSeverity, send_agent_alert
 from app.core.ai.agents.monitoring.escalation import (
     EscalationLevel,
     check_escalation,
-    execute_escalation
+    execute_escalation,
 )
 
 # Agent implementations
 from app.core.ai.agents.implementations.tutor_agent import TutorAgent
 from app.core.ai.agents.implementations.document_agent import DocumentAgent
 from app.core.ai.agents.implementations.quiz_agent import QuizAgent
+from app.core.ai.agents.implementations.general_assistant_agent import GeneralAssistantAgent
 
 __all__ = [
     # Core classes
@@ -65,7 +59,6 @@ __all__ = [
     "AgentRegistry",
     "create_agent",
     "get_agent_registry",
-
     # Middleware
     "ContextInjectionMiddleware",
     "context_injection_middleware",
@@ -73,7 +66,6 @@ __all__ = [
     "quota_check_middleware",
     "WebhookTriggerMiddleware",
     "webhook_trigger_middleware",
-
     # Monitoring
     "AgentMetrics",
     "track_agent_call",
@@ -84,11 +76,11 @@ __all__ = [
     "EscalationLevel",
     "check_escalation",
     "execute_escalation",
-
     # Implementations
     "TutorAgent",
     "DocumentAgent",
     "QuizAgent",
+    "GeneralAssistantAgent",
 ]
 
 # Version info

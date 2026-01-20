@@ -5,7 +5,7 @@
  * Glassmorphism effect using custom GlassCard
  */
 
-import { PaperclipIcon, SendIcon, Mic, Search, Sparkles } from "lucide-react";
+import { PaperclipIcon, SendIcon, Mic, Search, GraduationCap, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { GlassCard } from "@/shared/ui";
@@ -14,6 +14,44 @@ import { useState, useRef, useEffect } from "react";
 import { useMentionController, EntityPicker } from "@/shared/platform/mentions";
 import { useEntitySearch } from "@/shared/platform/hooks/useEntitySearch";
 import type { EntitySearchResult } from "@/shared/platform/types";
+import { useChatMode, useToggleChatMode } from "../state/chatSelectors";
+
+/**
+ * Mode Toggle Button - Switches between Tutor and General mode
+ */
+function ModeToggleButton() {
+  const chatMode = useChatMode();
+  const toggleMode = useToggleChatMode();
+
+  const isTutor = chatMode === 'tutor';
+
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={toggleMode}
+      className={cn(
+        "h-8 rounded-full border-zinc-700/50 bg-zinc-800/50 transition-all font-medium text-xs gap-1.5 px-3",
+        isTutor
+          ? "text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 hover:border-emerald-500/30"
+          : "text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10 hover:border-cyan-500/30"
+      )}
+      title={isTutor ? "Tutor Mode: Guides you with questions" : "Direct Mode: Straightforward answers"}
+    >
+      {isTutor ? (
+        <>
+          <GraduationCap className="size-3.5" />
+          <span>Tutor</span>
+        </>
+      ) : (
+        <>
+          <MessageCircle className="size-3.5" />
+          <span>Direct</span>
+        </>
+      )}
+    </Button>
+  );
+}
 
 interface ChatInputBoxProps {
   message: string;
@@ -197,18 +235,9 @@ export function ChatInputBox({
 
         {/* Bottom Toolbar */}
         <div className="flex items-center justify-between px-2 pb-1">
-          {/* Left: DeepSeek-style Controls */}
+          {/* Left: Mode Toggle & Search */}
           <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className={cn(
-                "h-8 rounded-full border-zinc-700/50 bg-zinc-800/50 text-zinc-400 hover:text-cyan-400 hover:bg-zinc-700/50 hover:border-cyan-500/30 transition-all font-medium text-xs gap-1.5 px-3",
-              )}
-            >
-              <Sparkles className="size-3.5" />
-              <span>DeepThink</span>
-            </Button>
+            <ModeToggleButton />
 
             <Button
               variant="ghost"

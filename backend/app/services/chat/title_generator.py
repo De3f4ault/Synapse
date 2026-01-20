@@ -1,11 +1,17 @@
 """AI-powered chat session title generation.
 
 Generates concise, descriptive titles from the first message exchange
-using LLM, similar to ChatGPT's automatic title generation.
+using the Cognitive Router for model selection.
 """
 
 import structlog
 from typing import Optional
+
+from app.core.ai.contracts.task import AITask
+from app.core.ai.router import router
+from app.core.ai.runtime.request import AIRequest
+from app.core.ai.providers.factory import get_provider
+
 
 logger = structlog.get_logger(__name__)
 
@@ -18,8 +24,7 @@ async def generate_session_title(
     """
     Generate a concise, descriptive title for a chat session.
 
-    Uses the first user message (and optionally the AI response) to
-    create a meaningful title that captures the conversation topic.
+    Uses the Cognitive Router to select the best model for summarization.
 
     Args:
         first_message: The user's first message in the session
@@ -30,12 +35,9 @@ async def generate_session_title(
         Generated title string (falls back to truncated message on error)
     """
     try:
-        import google.generativeai as genai
-        from app.core.config import settings
-
-        # Configure Gemini (use flash for speed/cost)
-        genai.configure(api_key=settings.GEMINI_API_KEY)
-        model = genai.GenerativeModel("gemini-2.0-flash-lite")
+        # Route to the best model for summarization (fast, low-cost)
+        decision = router.route(AITask.SUMMARIZATION)
+        provider = get_provider(decision.provider)
 
         # Build prompt
         context = f"User message: {first_message[:500]}"
@@ -55,16 +57,22 @@ Rules:
 
 Title:"""
 
-        # Generate title
-        response = await model.generate_content_async(
-            prompt,
-            generation_config={
-                "temperature": 0.3,
-                "max_output_tokens": 30,
-            },
+        # Create AIRequest
+        request = AIRequest(
+            task=AITask.SUMMARIZATION,
+            prompt=prompt,
+            temperature=0.3,
+            max_tokens=30,
         )
+        request.bind_model(router.get_model_for_decision(decision))
 
-        title = response.text.strip()
+        # Generate title
+        response = await provider.generate(request)
+
+        if not response.success:
+            raise ValueError(f"Generation failed: {response.error}")
+
+        title = response.content.strip()
 
         # Clean up
         title = title.strip("\"'")
@@ -78,7 +86,13 @@ Title:"""
         if len(title) < 3 or len(title.split()) > 10:
             raise ValueError("Generated title seems invalid")
 
-        logger.info("session_title_generated", title=title, message_preview=first_message[:50])
+        logger.info(
+            "session_title_generated",
+            title=title,
+            model=decision.model_id,
+            provider=decision.provider,
+            message_preview=first_message[:50],
+        )
         return title
 
     except Exception as e:

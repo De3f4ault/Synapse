@@ -35,6 +35,20 @@ class Settings(BaseSettings):
     # Gemini API
     GEMINI_API_KEY: str = Field(..., description="Google Gemini API key")
 
+    # Ollama (Cognitive Router)
+    OLLAMA_BASE_URL: str = Field(
+        default="http://localhost:11434",
+        description="Ollama API base URL (local or cloud)",
+    )
+    OLLAMA_API_KEY: Optional[str] = Field(
+        default=None,
+        description="Ollama Cloud API key (optional, for cloud only)",
+    )
+    OLLAMA_TIMEOUT: int = Field(
+        default=120,
+        description="Ollama request timeout in seconds",
+    )
+
     # JWT Authentication
     JWT_SECRET_KEY: str = Field(..., description="Secret key for JWT token signing (min 64 chars)")
     JWT_ALGORITHM: str = Field(default="HS256", description="JWT signing algorithm")

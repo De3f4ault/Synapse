@@ -8,7 +8,7 @@ The neural core of the Synapse ecosystem. This FastAPI-powered engine orchestrat
 - **Database**: PostgreSQL (Relational Data)
 - **ORM**: SQLAlchemy 2.0 (Async) + Alembic (Migrations)
 - **Validation**: Pydantic v2
-- **AI/LLM**: LangChain (Orchestration), OpenAI/DeepSeek (Models)
+- **AI/LLM**: LangChain (Orchestration), OpenAI/DeepSeek (Cloud), Ollama (Local/Private)
 - **Search**: PGVector (Semantic Search & RAG)
 - **Task Queue**: Celery (Async Jobs - planned)
 
@@ -40,6 +40,7 @@ Constructs dynamic context windows for LLMs by retrieving relevant notes using v
 - Python 3.11+
 - PostgreSQL
 - Virtualenv or Conda
+- [Ollama](https://ollama.ai/) (Optional, for local AI)
 
 ### Installation
 
@@ -63,6 +64,9 @@ Constructs dynamic context windows for LLMs by retrieving relevant notes using v
    DATABASE_URL=postgresql+asyncpg://user:pass@localhost:5432/synapse
    SECRET_KEY=your_secret_key
    OPENAI_API_KEY=sk-...
+   
+   # Optional: Local/Private AI
+   OLLAMA_BASE_URL=http://localhost:11434
    ```
 
 4. **Run Migrations**

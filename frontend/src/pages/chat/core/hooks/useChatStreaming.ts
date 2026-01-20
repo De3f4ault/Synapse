@@ -85,7 +85,10 @@ export function useChatStreaming({
             const eventType = message.type || message.event;
             const eventData = message.data || message;
 
-            console.log('[Chat] Received:', eventType, message);
+            // Only log non-token events to reduce console noise
+            if (eventType !== 'token') {
+                console.log('[Chat] Received:', eventType, message);
+            }
             onMessage?.(message);
 
             switch (eventType) {
@@ -221,11 +224,14 @@ export function useChatStreaming({
 
     const sendMessage = useCallback(
         (content: string) => {
+            const chatMode = useChatStore.getState().chatMode;
+            
             console.log('[Chat] sendMessage:', {
                 contentLength: content.length,
                 isConnected: manager.isConnected(),
                 sessionId,
                 subscribedTo: subscribedChannelRef.current,
+                mode: chatMode,
             });
 
             if (!manager.isConnected()) {
@@ -262,9 +268,9 @@ export function useChatStreaming({
                     (old = []) => [...old, optimisticMessage]
                 );
 
-                // Send via WebSocket
-                manager.send({ type: 'message', channel, content });
-                console.log('[Chat] Message sent');
+                // Send via WebSocket with mode
+                manager.send({ type: 'message', channel, content, mode: chatMode });
+                console.log('[Chat] Message sent with mode:', chatMode);
 
                 // Clear any previous streaming state
                 store.clearStreaming();

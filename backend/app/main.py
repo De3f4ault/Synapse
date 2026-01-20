@@ -94,6 +94,7 @@ async def lifespan(app: FastAPI):
                 TutorAgent,
                 DocumentAgent,
                 QuizAgent,
+                GeneralAssistantAgent,
             )
 
             factory = get_agent_factory()
@@ -102,8 +103,9 @@ async def lifespan(app: FastAPI):
             factory.register_agent_class("tutor", TutorAgent)
             factory.register_agent_class("document", DocumentAgent)
             factory.register_agent_class("quiz", QuizAgent)
+            factory.register_agent_class("general", GeneralAssistantAgent)
 
-            logger.info("agents_registered", agents=["tutor", "document", "quiz"])
+            logger.info("agents_registered", agents=["tutor", "document", "quiz", "general"])
         except Exception as e:
             logger.warning("agent_registration_failed", error=str(e))
 

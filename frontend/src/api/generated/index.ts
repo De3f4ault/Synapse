@@ -86,6 +86,7 @@ export type { ImportCard } from './models/ImportCard';
 export type { ImportRequest } from './models/ImportRequest';
 export type { ImportResult } from './models/ImportResult';
 export type { IntelligenceSummary } from './models/IntelligenceSummary';
+export type { JournalDateResponse } from './models/JournalDateResponse';
 export type { KnowledgeGraphResponse } from './models/KnowledgeGraphResponse';
 export type { LastSessionStats } from './models/LastSessionStats';
 export type { LearningEntity } from './models/LearningEntity';

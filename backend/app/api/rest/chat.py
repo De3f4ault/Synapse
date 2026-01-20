@@ -76,22 +76,24 @@ async def generate_ai_response(
     message: str,
     user_id: int,
     session_id: int,
+    mode: str = "tutor",  # "tutor" (Socratic) or "general" (direct answers)
     context: Optional[dict] = None,
     db: Optional[AsyncSession] = None,
     chat_history: Optional[List[dict]] = None,
 ) -> dict:
     """
-    Generate AI response using TutorAgent.
+    Generate AI response using the appropriate agent based on mode.
 
     Args:
         message: User message
         user_id: User ID for context
         session_id: Chat session ID
+        mode: "tutor" for Socratic questioning, "general" for direct answers
         context: Optional user learning context
         db: Database session
 
     Returns:
-        dict with keys: output, model, tokens, function_calls, grounding_sources
+        dict with keys: output, model, tokens, function_calls, grounding_sources, mode
     """
     try:
         from app.core.ai.agents.factory import AgentFactory
@@ -102,8 +104,9 @@ async def generate_ai_response(
             context_engine = ContextEngine(db)
             context = await context_engine.get_user_context(user_id=user_id, focus=message)
 
-        # Create TutorAgent
-        agent = await create_agent("tutor")
+        # Select agent based on mode
+        agent_name = "general" if mode == "general" else "tutor"
+        agent = await create_agent(agent_name)
 
         # Execute agent with user message, context, and chat history
         result = await agent.execute(

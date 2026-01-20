@@ -46,12 +46,7 @@ class ChannelManager:
 
         self.channel_subscriptions[channel][user_id].add(session_id)
 
-        logger.info(
-            "channel_subscribed",
-            user_id=user_id,
-            channel=channel,
-            session_id=session_id
-        )
+        logger.info("channel_subscribed", user_id=user_id, channel=channel, session_id=session_id)
 
     async def unsubscribe(self, user_id: int, channel: str, session_id: str):
         """
@@ -73,19 +68,9 @@ class ChannelManager:
                 if not self.channel_subscriptions[channel]:
                     del self.channel_subscriptions[channel]
 
-        logger.info(
-            "channel_unsubscribed",
-            user_id=user_id,
-            channel=channel,
-            session_id=session_id
-        )
+        logger.info("channel_unsubscribed", user_id=user_id, channel=channel, session_id=session_id)
 
-    async def broadcast_to_channel(
-        self,
-        channel: str,
-        event: str,
-        data: dict
-    ):
+    async def broadcast_to_channel(self, channel: str, event: str, data: dict):
         """
         Broadcast message to all users in a channel.
 
@@ -98,11 +83,7 @@ class ChannelManager:
             logger.debug("broadcast_to_empty_channel", channel=channel)
             return
 
-        message = {
-            "type": event,
-            "event": event,
-            "data": data
-        }
+        message = {"type": event, "event": event, "data": data}
 
         # Broadcast to all users in channel
         for user_id, session_ids in self.channel_subscriptions[channel].items():
@@ -113,16 +94,10 @@ class ChannelManager:
             "channel_broadcast",
             channel=channel,
             event_type=event,
-            users=len(self.channel_subscriptions[channel])
+            users=len(self.channel_subscriptions[channel]),
         )
 
-    async def broadcast_to_user_channel(
-        self,
-        user_id: int,
-        channel: str,
-        event: str,
-        data: dict
-    ):
+    async def broadcast_to_user_channel(self, user_id: int, channel: str, event: str, data: dict):
         """
         Broadcast message to a specific user on a channel.
 
@@ -132,51 +107,40 @@ class ChannelManager:
             event: Event type
             data: Event data
         """
-        # Debug: Log subscription state BEFORE checks
-        logger.info(
-            "broadcast_attempt",
-            channel=channel,
-            user_id=user_id,
-            event_type=event,
-            channel_exists=channel in self.channel_subscriptions,
-            user_subscribed=user_id in self.channel_subscriptions.get(channel, {}),
-            all_channels=list(self.channel_subscriptions.keys()),
-            channel_users=list(self.channel_subscriptions.get(channel, {}).keys()) if channel in self.channel_subscriptions else []
-        )
+        # Only log at debug level for high-frequency token events
+        # Log at info level for start/complete/error events
+        is_token_event = event == "token"
+
+        if not is_token_event:
+            logger.info(
+                "broadcast_event",
+                channel=channel,
+                user_id=user_id,
+                event_type=event,
+            )
+        else:
+            # Use debug for tokens to avoid log spam
+            logger.debug(
+                "broadcast_token",
+                channel=channel,
+                user_id=user_id,
+            )
 
         if channel not in self.channel_subscriptions:
-            logger.debug(
-                "broadcast_to_nonexistent_channel",
-                user_id=user_id,
-                channel=channel
-            )
+            logger.debug("broadcast_to_nonexistent_channel", user_id=user_id, channel=channel)
             return
 
         if user_id not in self.channel_subscriptions[channel]:
-            logger.debug(
-                "broadcast_to_unsubscribed_user",
-                user_id=user_id,
-                channel=channel
-            )
+            logger.debug("broadcast_to_unsubscribed_user", user_id=user_id, channel=channel)
             return
 
-        message = {
-            "type": event,
-            "event": event,
-            "channel": channel,
-            "data": data
-        }
+        message = {"type": event, "event": event, "channel": channel, "data": data}
 
         # Broadcast to all user's sessions on this channel
         for session_id in self.channel_subscriptions[channel][user_id]:
             await manager.broadcast_to_session(session_id, message)
 
-        logger.debug(
-            "user_channel_broadcast",
-            user_id=user_id,
-            channel=channel,
-            event_type=event
-        )
+        logger.debug("user_channel_broadcast", user_id=user_id, channel=channel, event_type=event)
 
     def get_user_channels(self, user_id: int) -> List[str]:
         """

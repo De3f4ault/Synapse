@@ -10,5 +10,11 @@ export type NoteUpdate = {
     title?: (string | null);
     content?: (string | Record<string, any> | null);
     format?: (NoteFormat | null);
+    is_favorite?: (boolean | null);
+    is_archived?: (boolean | null);
+    /**
+     * Journal date YYYY-MM-DD
+     */
+    journal_date?: (string | null);
 };
 

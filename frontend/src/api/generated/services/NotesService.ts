@@ -3,6 +3,7 @@
 /* tslint:disable */
 /* eslint-disable */
 import type { app__api__rest__uploads__MessageResponse } from '../models/app__api__rest__uploads__MessageResponse';
+import type { JournalDateResponse } from '../models/JournalDateResponse';
 import type { NoteCreate } from '../models/NoteCreate';
 import type { NoteResponse } from '../models/NoteResponse';
 import type { NoteSearchResult } from '../models/NoteSearchResult';
@@ -18,6 +19,8 @@ export class NotesService {
      * Retrieve user's notes with pagination and filtering
      * @param parentId Filter by parent (NULL for root notes)
      * @param tags Filter by tags (comma-separated)
+     * @param isFavorite Filter by favorite status
+     * @param isArchived Filter by archived status
      * @param page Page number
      * @param pageSize Items per page
      * @param token Auth token for image/file requests
@@ -27,6 +30,8 @@ export class NotesService {
     public static listNotesApiV1NotesGet(
         parentId?: (number | null),
         tags?: (string | null),
+        isFavorite?: (boolean | null),
+        isArchived?: (boolean | null),
         page: number = 1,
         pageSize: number = 20,
         token?: (string | null),
@@ -37,6 +42,8 @@ export class NotesService {
             query: {
                 'parent_id': parentId,
                 'tags': tags,
+                'is_favorite': isFavorite,
+                'is_archived': isArchived,
                 'page': page,
                 'page_size': pageSize,
                 'token': token,
@@ -221,6 +228,53 @@ export class NotesService {
             url: '/api/v1/notes/{note_id}/versions',
             path: {
                 'note_id': noteId,
+            },
+            query: {
+                'token': token,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * List journal dates
+     * Get all dates that have journal entries
+     * @param token Auth token for image/file requests
+     * @returns JournalDateResponse Successful Response
+     * @throws ApiError
+     */
+    public static listJournalDatesApiV1NotesJournalsDatesGet(
+        token?: (string | null),
+    ): CancelablePromise<Array<JournalDateResponse>> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/notes/journals/dates',
+            query: {
+                'token': token,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Get or create journal
+     * Get journal for a specific date, creating if it doesn't exist
+     * @param date
+     * @param token Auth token for image/file requests
+     * @returns NoteResponse Successful Response
+     * @throws ApiError
+     */
+    public static getOrCreateJournalApiV1NotesJournalsDateGet(
+        date: string,
+        token?: (string | null),
+    ): CancelablePromise<NoteResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/notes/journals/{date}',
+            path: {
+                'date': date,
             },
             query: {
                 'token': token,

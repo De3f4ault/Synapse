@@ -14,6 +14,9 @@ export type NoteResponse = {
     parent_id: (number | null);
     user_id: number;
     embedding_id: (string | null);
+    journal_date?: (string | null);
+    is_favorite?: boolean;
+    is_archived?: boolean;
     created_at: string;
     updated_at: string;
     children_count?: number;

@@ -23,6 +23,11 @@ import structlog
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 from langchain_core.tools import BaseTool
 
+# Cognitive Router imports
+from app.core.ai.contracts.task import AITask
+from app.core.ai.router import router, ModelRoutingDecision
+from app.core.ai.providers.factory import get_provider
+
 logger = structlog.get_logger(__name__)
 
 
@@ -48,7 +53,9 @@ class AgentConfig:
     description: str
     capabilities: List[AgentCapability]
     system_prompt: str
-    model: str = "gemini-2.5-flash"  # Default to Flash for speed
+    # Cognitive Router: specify task type for model selection
+    cognitive_task: AITask = AITask.GENERAL_ASSISTANCE
+    model: str = ""  # Deprecated: will be set by router
     temperature: float = 0.0  # Deterministic by default
     max_iterations: int = 10  # Max ReAct loops
     max_tokens: int = 8000  # Max context window
@@ -139,6 +146,8 @@ class BaseAgent(ABC):
         self.tools_dict = {tool.name: tool for tool in config.tools}
         self.logger = logger.bind(agent=config.name)
         self._validate_config()
+        # Cache routing decision for this agent
+        self._routing_decision: Optional[ModelRoutingDecision] = None
 
     def _validate_config(self) -> None:
         """Validate agent configuration"""
@@ -148,6 +157,32 @@ class BaseAgent(ABC):
             raise ValueError("Agent must have a system prompt")
         if self.config.max_iterations < 1:
             raise ValueError("max_iterations must be >= 1")
+
+    def _get_routed_provider(self):
+        """
+        Get provider via Cognitive Router.
+
+        Routes based on the agent's cognitive_task configuration.
+        Caches the routing decision for reuse within the agent lifecycle.
+
+        Returns:
+            Tuple of (provider, model_id, routing_decision)
+        """
+        if self._routing_decision is None:
+            self._routing_decision = router.route(
+                task=self.config.cognitive_task,
+                context_tokens=self.config.max_tokens,
+            )
+            self.logger.info(
+                "agent_model_routed",
+                task=self.config.cognitive_task.value,
+                model=self._routing_decision.model_id,
+                provider=self._routing_decision.provider,
+                reason=self._routing_decision.decision_reason,
+            )
+
+        provider = get_provider(self._routing_decision.provider)
+        return provider, self._routing_decision.model_id, self._routing_decision
 
     # ============================================================================
     # Abstract Methods - Must be implemented by subclasses
@@ -322,13 +357,20 @@ class BaseAgent(ABC):
             chat_history: Previous messages for context
             **kwargs: Additional arguments
         """
-        from app.core.ai.providers.gemini import GeminiProvider
+        # Get provider via Cognitive Router
+        llm, model_id, routing_decision = self._get_routed_provider()
 
         state = AgentState()
         context = context or {}
 
         try:
-            self.logger.info("agent_stream_started", user_id=user_id, input_length=len(input))
+            self.logger.info(
+                "agent_stream_started",
+                user_id=user_id,
+                input_length=len(input),
+                model=model_id,
+                provider=routing_decision.provider,
+            )
 
             # Build system prompt
             system_prompt = await self._get_system_prompt(context)
@@ -347,16 +389,13 @@ class BaseAgent(ABC):
             # Add current user message
             state.add_message(HumanMessage(content=input))
 
-            # Initialize LLM provider
-            llm = GeminiProvider()
-
-            # Streaming ReAct loop
+            # Streaming ReAct loop (using routed provider)
             for iteration in range(self.config.max_iterations):
                 state.iterations = iteration + 1
 
                 # Format prompt
                 prompt = self._format_messages(state.messages)
-                tools = self._format_tools_for_gemini()
+                tools = self._format_tools_for_gemini()  # TODO: Make provider-agnostic
 
                 # Accumulate text for this iteration
                 iteration_text = ""
@@ -366,7 +405,7 @@ class BaseAgent(ABC):
                 async for chunk in llm.stream_with_tools(
                     prompt=prompt,
                     tools=tools,
-                    model=self.config.model,
+                    model=model_id,  # Use routed model_id, not deprecated config.model
                     temperature=self.config.temperature,
                 ):
                     chunk_type = chunk.get("type")
@@ -474,9 +513,8 @@ class BaseAgent(ABC):
         Returns:
             Final answer from agent
         """
-        from app.core.ai.providers.gemini import GeminiProvider
-
-        llm = GeminiProvider()
+        # Get provider via Cognitive Router
+        llm, model_id, routing_decision = self._get_routed_provider()
 
         for iteration in range(self.config.max_iterations):
             state.iterations = iteration + 1
@@ -485,6 +523,7 @@ class BaseAgent(ABC):
                 "react_iteration",
                 iteration=iteration + 1,
                 max_iterations=self.config.max_iterations,
+                model=model_id,
             )
 
             # ============================================================
@@ -493,8 +532,8 @@ class BaseAgent(ABC):
             try:
                 response = await llm.generate_with_tools(
                     prompt=self._format_messages(state.messages),
-                    tools=self._format_tools_for_gemini(),
-                    model=self.config.model,
+                    tools=self._format_tools_for_gemini(),  # TODO: Make provider-agnostic
+                    model=model_id,
                     temperature=self.config.temperature,
                 )
 

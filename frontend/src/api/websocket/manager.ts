@@ -346,12 +346,17 @@ export class WebSocketManager {
     const handlers = this.subscriptions.get(channel);
 
     if (handlers && handlers.size > 0) {
-      console.log(
-        "[WS Manager] Routing message to",
-        handlers.size,
-        "subscribers on channel:",
-        channel,
-      );
+      // Only log routing for non-token events to reduce console noise
+      if (message.type !== 'token') {
+        console.log(
+          "[WS Manager] Routing:",
+          message.type,
+          "to",
+          handlers.size,
+          "subscribers on",
+          channel,
+        );
+      }
       handlers.forEach((handler) => {
         try {
           handler(message);

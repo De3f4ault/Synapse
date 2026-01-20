@@ -45,11 +45,7 @@ async def validate_token(token: str) -> dict:
     from app.core.config import settings
 
     try:
-        payload = jwt.decode(
-            token,
-            settings.JWT_SECRET_KEY,
-            algorithms=[settings.JWT_ALGORITHM]
-        )
+        payload = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
         user_id = payload.get("sub")
         if user_id is None:
             raise Exception("Invalid token")
@@ -66,7 +62,8 @@ def estimate_tokens(text: str) -> int:
 async def stream_ai_response(
     message: str,
     user_id: int,
-    session_id: int
+    session_id: int,
+    mode: str = "tutor",  # "tutor" or "general"
 ) -> AsyncIterator[dict]:
     """
     Stream AI response with real-time tokens.
@@ -84,6 +81,7 @@ async def stream_ai_response(
         message: User message
         user_id: User ID
         session_id: Session ID
+        mode: "tutor" for Socratic or "general" for direct answers
 
     Yields:
         dict: WebSocket messages with type and data
@@ -102,10 +100,7 @@ async def stream_ai_response(
         try:
             # Build user context in isolated transaction
             context_engine = ContextEngine(context_db)
-            context = await context_engine.get_user_context(
-                user_id=user_id,
-                focus=message
-            )
+            context = await context_engine.get_user_context(user_id=user_id, focus=message)
 
             # Commit the context session (or rollback if it failed)
             await context_db.commit()
@@ -116,7 +111,7 @@ async def stream_ai_response(
                 user_id=user_id,
                 session_id=session_id,
                 error=str(ctx_error),
-                exc_info=True
+                exc_info=True,
             )
             # Rollback the failed context transaction
             await context_db.rollback()
@@ -127,18 +122,19 @@ async def stream_ai_response(
             await context_db.close()
             context_db = None
 
-        # Create tutor agent
-        agent = await create_agent("tutor")
+        # Select agent based on mode
+        agent_name = "general" if mode == "general" else "tutor"
+        agent = await create_agent(agent_name)
 
         # Execute with streaming
-        result = await agent.execute(
-            user_id=user_id,
-            input=message,
-            context=context or {}
-        )
+        result = await agent.execute(user_id=user_id, input=message, context=context or {})
 
         # Get model info
-        model = result.metadata.get("model", "gemini-2.5-flash") if result.metadata else "gemini-2.5-flash"
+        model = (
+            result.metadata.get("model", "gemini-2.5-flash")
+            if result.metadata
+            else "gemini-2.5-flash"
+        )
 
         # Stream thinking process if available
         if result.metadata and result.metadata.get("thinking_process"):
@@ -146,14 +142,10 @@ async def stream_ai_response(
             # Stream thinking in chunks
             chunk_size = 50
             for i in range(0, len(thinking), chunk_size):
-                chunk = thinking[i:i+chunk_size]
+                chunk = thinking[i : i + chunk_size]
                 yield {
                     "type": "thinking",
-                    "data": {
-                        "text": chunk,
-                        "model": model,
-                        "streaming": True
-                    }
+                    "data": {"text": chunk, "model": model, "streaming": True},
                 }
 
         # Stream response tokens
@@ -165,32 +157,16 @@ async def stream_ai_response(
                 token_text = word + (" " if i < len(words) - 1 else "")
                 yield {
                     "type": "token",
-                    "data": {
-                        "text": token_text,
-                        "model": model,
-                        "streaming": True
-                    }
+                    "data": {"text": token_text, "model": model, "streaming": True},
                 }
         else:
             # Error case
             error_msg = result.error or "Failed to generate response"
-            yield {
-                "type": "token",
-                "data": {
-                    "text": error_msg,
-                    "model": model,
-                    "streaming": True
-                }
-            }
+            yield {"type": "token", "data": {"text": error_msg, "model": model, "streaming": True}}
 
         # Send grounding sources if available
         if result.metadata and result.metadata.get("grounding_sources"):
-            yield {
-                "type": "sources",
-                "data": {
-                    "sources": result.metadata["grounding_sources"]
-                }
-            }
+            yield {"type": "sources", "data": {"sources": result.metadata["grounding_sources"]}}
 
         # Send completion message
         yield {
@@ -199,30 +175,25 @@ async def stream_ai_response(
                 "total_tokens": result.total_tokens,
                 "model_used": model,
                 "success": result.success,
-                "function_calls": result.metadata.get("function_calls") if result.metadata else None,
-                "grounding_sources": result.metadata.get("grounding_sources") if result.metadata else None
-            }
+                "function_calls": result.metadata.get("function_calls")
+                if result.metadata
+                else None,
+                "grounding_sources": result.metadata.get("grounding_sources")
+                if result.metadata
+                else None,
+            },
         }
 
     except Exception as e:
         logger.error("stream_ai_error", error=str(e), exc_info=True)
-        yield {
-            "type": "error",
-            "data": {
-                "code": "generation_error",
-                "message": str(e)
-            }
-        }
+        yield {"type": "error", "data": {"code": "generation_error", "message": str(e)}}
     finally:
         # Ensure context session is closed
         if context_db is not None:
             try:
                 await context_db.close()
             except Exception as cleanup_error:
-                logger.error(
-                    "context_session_cleanup_failed",
-                    error=str(cleanup_error)
-                )
+                logger.error("context_session_cleanup_failed", error=str(cleanup_error))
 
 
 @router.websocket("/chat/{session_id}")
@@ -230,7 +201,7 @@ async def chat_websocket(
     websocket: WebSocket,
     session_id: str,
     token: str = Query(..., description="JWT access token"),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """
     Chat WebSocket endpoint.
@@ -264,7 +235,7 @@ async def chat_websocket(
                 and_(
                     ChatSession.id == session_int_id,
                     ChatSession.user_id == user_id,
-                    ChatSession.deleted_at.is_(None)
+                    ChatSession.deleted_at.is_(None),
                 )
             )
         )
@@ -286,13 +257,7 @@ async def chat_websocket(
     await manager.send_message(
         session_id,
         websocket,
-        {
-            "type": "connected",
-            "data": {
-                "session_id": session_int_id,
-                "user_id": user_id
-            }
-        }
+        {"type": "connected", "data": {"session_id": session_int_id, "user_id": user_id}},
     )
 
     try:
@@ -305,7 +270,7 @@ async def chat_websocket(
                 "websocket_message_received",
                 session_id=session_id,
                 user_id=user_id,
-                type=message_type
+                type=message_type,
             )
 
             if message_type == "message":
@@ -320,9 +285,9 @@ async def chat_websocket(
                             "type": "error",
                             "data": {
                                 "code": "empty_message",
-                                "message": "Message content cannot be empty"
-                            }
-                        }
+                                "message": "Message content cannot be empty",
+                            },
+                        },
                     )
                     continue
 
@@ -332,23 +297,21 @@ async def chat_websocket(
                         session_id=session_int_id,
                         role=MessageRole.USER,
                         content=content,
-                        tokens=estimate_tokens(content)
+                        tokens=estimate_tokens(content),
                     )
                     db.add(user_message)
                     await db.commit()
                     await db.refresh(user_message)
 
                     logger.info(
-                        "user_message_saved",
-                        message_id=user_message.id,
-                        session_id=session_id
+                        "user_message_saved", message_id=user_message.id, session_id=session_id
                     )
                 except Exception as save_error:
                     logger.error(
                         "failed_to_save_user_message",
                         session_id=session_id,
                         error=str(save_error),
-                        exc_info=True
+                        exc_info=True,
                     )
                     await db.rollback()
                     await manager.send_message(
@@ -356,13 +319,15 @@ async def chat_websocket(
                         websocket,
                         {
                             "type": "error",
-                            "data": {
-                                "code": "save_error",
-                                "message": "Failed to save message"
-                            }
-                        }
+                            "data": {"code": "save_error", "message": "Failed to save message"},
+                        },
                     )
                     continue
+
+                # Get mode from client message (default to tutor)
+                mode = data.get("mode", "tutor")
+                if mode not in ("tutor", "general"):
+                    mode = "tutor"
 
                 # Stream AI response (uses its own session for context)
                 full_response = ""
@@ -372,9 +337,7 @@ async def chat_websocket(
                 grounding_sources = None
 
                 async for chunk in stream_ai_response(
-                    message=content,
-                    user_id=user_id,
-                    session_id=session_int_id
+                    message=content, user_id=user_id, session_id=session_int_id, mode=mode
                 ):
                     # Send chunk to client
                     await manager.send_message(session_id, websocket, chunk)
@@ -398,12 +361,14 @@ async def chat_websocket(
                             tokens=total_tokens or estimate_tokens(full_response),
                             model_used=model_used,
                             function_calls=function_calls,
-                            grounding_sources=grounding_sources
+                            grounding_sources=grounding_sources,
                         )
                         db.add(assistant_message)
 
                         # Update session token count
-                        chat_session.total_tokens_used += user_message.tokens + assistant_message.tokens
+                        chat_session.total_tokens_used += (
+                            user_message.tokens + assistant_message.tokens
+                        )
 
                         await db.commit()
 
@@ -411,34 +376,27 @@ async def chat_websocket(
                             "assistant_message_saved",
                             message_id=assistant_message.id,
                             session_id=session_id,
-                            tokens=assistant_message.tokens
+                            tokens=assistant_message.tokens,
                         )
                     except Exception as save_error:
                         logger.error(
                             "failed_to_save_assistant_message",
                             session_id=session_id,
                             error=str(save_error),
-                            exc_info=True
+                            exc_info=True,
                         )
                         await db.rollback()
 
             elif message_type == "ping":
                 # Respond to ping
-                await manager.send_message(
-                    session_id,
-                    websocket,
-                    {"type": "pong", "data": {}}
-                )
+                await manager.send_message(session_id, websocket, {"type": "pong", "data": {}})
 
             elif message_type == "stop":
                 # Stop generation (placeholder for future implementation)
                 await manager.send_message(
                     session_id,
                     websocket,
-                    {
-                        "type": "stopped",
-                        "data": {"message": "Generation stopped"}
-                    }
+                    {"type": "stopped", "data": {"message": "Generation stopped"}},
                 )
 
     except WebSocketDisconnect:
@@ -446,23 +404,12 @@ async def chat_websocket(
         logger.info("websocket_disconnected", session_id=session_id)
 
     except Exception as e:
-        logger.error(
-            "websocket_error",
-            session_id=session_id,
-            error=str(e),
-            exc_info=True
-        )
+        logger.error("websocket_error", session_id=session_id, error=str(e), exc_info=True)
         try:
             await manager.send_message(
                 session_id,
                 websocket,
-                {
-                    "type": "error",
-                    "data": {
-                        "code": "internal_error",
-                        "message": str(e)
-                    }
-                }
+                {"type": "error", "data": {"code": "internal_error", "message": str(e)}},
             )
         except:
             pass

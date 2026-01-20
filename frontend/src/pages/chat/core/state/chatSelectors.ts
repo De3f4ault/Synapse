@@ -11,6 +11,11 @@ import { useChatStore } from './chatStore';
 export const useConnectionState = () => useChatStore((s) => s.connectionState);
 export const useIsConnected = () => useChatStore((s) => s.connectionState === 'connected');
 
+// Chat mode
+export const useChatMode = () => useChatStore((s) => s.chatMode);
+export const useToggleChatMode = () => useChatStore((s) => s.toggleChatMode);
+export const useSetChatMode = () => useChatStore((s) => s.setChatMode);
+
 // Streaming state
 export const useStreamingState = () => useChatStore((s) => s.streaming);
 export const useIsStreaming = () => useChatStore((s) => s.streaming.isStreaming);

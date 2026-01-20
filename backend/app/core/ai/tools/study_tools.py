@@ -33,14 +33,11 @@ class GetStudyRecommendationsTool(BaseTool):
             "properties": {
                 "time_available": {
                     "type": "integer",
-                    "description": "Minutes available for studying"
+                    "description": "Minutes available for studying",
                 },
-                "focus_area": {
-                    "type": "string",
-                    "description": "Optional: Area to focus on"
-                }
+                "focus_area": {"type": "string", "description": "Optional: Area to focus on"},
             },
-            "required": ["time_available"]
+            "required": ["time_available"],
         }
 
     @property
@@ -64,57 +61,58 @@ class GetStudyRecommendationsTool(BaseTool):
             due_count = context.get("modules", {}).get("flashcards", {}).get("due_count", 0)
             if due_count > 0:
                 estimated_time = due_count * 0.5  # 30s per card
-                recommendations.append({
-                    "type": "flashcard_review",
-                    "priority": 1,
-                    "title": "Review Due Flashcards",
-                    "description": f"You have {due_count} cards due for review",
-                    "estimated_minutes": int(estimated_time),
-                    "action": "get_due_cards"
-                })
+                recommendations.append(
+                    {
+                        "type": "flashcard_review",
+                        "priority": 1,
+                        "title": "Review Due Flashcards",
+                        "description": f"You have {due_count} cards due for review",
+                        "estimated_minutes": int(estimated_time),
+                        "action": "get_due_cards",
+                    }
+                )
 
             # Priority 2: Weak areas
             weak_areas = context.get("analytics", {}).get("weak_topics", [])
             if weak_areas:
                 for i, topic in enumerate(weak_areas[:3]):
-                    recommendations.append({
-                        "type": "focused_study",
-                        "priority": 2 + i,
-                        "title": f"Focus on {topic}",
-                        "description": f"This topic needs improvement",
-                        "estimated_minutes": 15,
-                        "action": f"search_flashcards?query={topic}"
-                    })
+                    recommendations.append(
+                        {
+                            "type": "focused_study",
+                            "priority": 2 + i,
+                            "title": f"Focus on {topic}",
+                            "description": f"This topic needs improvement",
+                            "estimated_minutes": 15,
+                            "action": f"search_flashcards?query={topic}",
+                        }
+                    )
 
             # Filter by available time
             feasible_recommendations = [
-                rec for rec in recommendations
-                if rec["estimated_minutes"] <= time_available
+                rec for rec in recommendations if rec["estimated_minutes"] <= time_available
             ]
 
             return {
                 "success": True,
                 "data": {
                     "recommendations": feasible_recommendations[:5],
-                    "total_time_needed": sum(r["estimated_minutes"] for r in feasible_recommendations),
+                    "total_time_needed": sum(
+                        r["estimated_minutes"] for r in feasible_recommendations
+                    ),
                     "context_summary": {
                         "due_items": due_count,
-                        "weak_areas_count": len(weak_areas)
-                    }
+                        "weak_areas_count": len(weak_areas),
+                    },
                 },
-                "message": f"Generated {len(feasible_recommendations)} recommendations"
+                "message": f"Generated {len(feasible_recommendations)} recommendations",
             }
 
         except Exception as e:
-            logger.error(
-                "recommendations_failed",
-                user_id=user_id,
-                error=str(e)
-            )
+            logger.error("recommendations_failed", user_id=user_id, error=str(e))
             return {
                 "success": False,
                 "data": {"recommendations": []},
-                "message": f"Failed to get recommendations: {str(e)}"
+                "message": f"Failed to get recommendations: {str(e)}",
             }
 
 
@@ -140,18 +138,15 @@ class CreateStudyPlanTool(BaseTool):
             "properties": {
                 "goal": {
                     "type": "string",
-                    "description": "Learning goal (e.g., 'prepare for biology exam', 'learn calculus')"
+                    "description": "Learning goal (e.g., 'prepare for biology exam', 'learn calculus')",
                 },
-                "duration_days": {
-                    "type": "integer",
-                    "description": "Number of days for the plan"
-                },
+                "duration_days": {"type": "integer", "description": "Number of days for the plan"},
                 "daily_time_minutes": {
                     "type": "integer",
-                    "description": "Minutes available per day"
-                }
+                    "description": "Minutes available per day",
+                },
             },
-            "required": ["goal", "duration_days", "daily_time_minutes"]
+            "required": ["goal", "duration_days", "daily_time_minutes"],
         }
 
     @property
@@ -161,7 +156,10 @@ class CreateStudyPlanTool(BaseTool):
     async def execute(self, user_id: int, **kwargs) -> Dict[str, Any]:
         """Execute study plan creation."""
         try:
-            from app.core.ai.providers.gemini import GeminiProvider
+            from app.core.ai.contracts.task import AITask
+            from app.core.ai.router import router
+            from app.core.ai.runtime.request import AIRequest
+            from app.core.ai.providers.factory import get_provider
             from app.core.context.engine import ContextEngine
 
             # Get user context for personalization
@@ -169,14 +167,14 @@ class CreateStudyPlanTool(BaseTool):
             context = await engine.get_user_context(user_id=user_id)
 
             # Build prompt for plan generation
-            prompt = f"""Create a {kwargs['duration_days']}-day study plan.
+            prompt = f"""Create a {kwargs["duration_days"]}-day study plan.
 
-Goal: {kwargs['goal']}
-Daily time: {kwargs['daily_time_minutes']} minutes
+Goal: {kwargs["goal"]}
+Daily time: {kwargs["daily_time_minutes"]} minutes
 
 User context:
-- Weak areas: {', '.join(context.get('analytics', {}).get('weak_topics', [])[:5])}
-- Current mastery level: {context.get('analytics', {}).get('overall_accuracy', 0.0):.2f}
+- Weak areas: {", ".join(context.get("analytics", {}).get("weak_topics", [])[:5])}
+- Current mastery level: {context.get("analytics", {}).get("overall_accuracy", 0.0):.2f}
 
 Format as JSON with this structure:
 {{
@@ -187,18 +185,27 @@ Format as JSON with this structure:
   "overall_strategy": "description"
 }}"""
 
-            provider = GeminiProvider()
-            plan_json = await provider.generate(prompt=prompt)
+            # Route to TASK_DECOMPOSITION (PLANNER role)
+            decision = router.route(AITask.TASK_DECOMPOSITION)
+            provider = get_provider(decision.provider)
+
+            request = AIRequest(
+                task=AITask.TASK_DECOMPOSITION,
+                prompt=prompt,
+                temperature=0.3,
+            )
+            request.bind_model(router.get_model_for_decision(decision))
+
+            response = await provider.generate(request)
+            plan_json = response.content
 
             # Parse plan (would need robust parsing)
             import json
+
             try:
                 plan = json.loads(plan_json)
             except:
-                plan = {
-                    "days": [],
-                    "overall_strategy": "Custom plan generated"
-                }
+                plan = {"days": [], "overall_strategy": "Custom plan generated"}
 
             # Store plan in database (would implement)
 
@@ -208,22 +215,14 @@ Format as JSON with this structure:
                     "plan_id": None,  # Would generate
                     "goal": kwargs["goal"],
                     "duration_days": kwargs["duration_days"],
-                    "plan": plan
+                    "plan": plan,
                 },
-                "message": "Study plan created successfully"
+                "message": "Study plan created successfully",
             }
 
         except Exception as e:
-            logger.error(
-                "create_plan_failed",
-                user_id=user_id,
-                error=str(e)
-            )
-            return {
-                "success": False,
-                "data": {},
-                "message": f"Failed to create plan: {str(e)}"
-            }
+            logger.error("create_plan_failed", user_id=user_id, error=str(e))
+            return {"success": False, "data": {}, "message": f"Failed to create plan: {str(e)}"}
 
 
 class TrackStudyProgressTool(BaseTool):
@@ -248,22 +247,19 @@ class TrackStudyProgressTool(BaseTool):
             "properties": {
                 "session_type": {
                     "type": "string",
-                    "description": "Type: 'flashcard_review', 'quiz', 'reading', 'practice'"
+                    "description": "Type: 'flashcard_review', 'quiz', 'reading', 'practice'",
                 },
-                "duration_minutes": {
-                    "type": "integer",
-                    "description": "Time spent studying"
-                },
+                "duration_minutes": {"type": "integer", "description": "Time spent studying"},
                 "items_completed": {
                     "type": "integer",
-                    "description": "Number of items completed (cards, questions, etc.)"
+                    "description": "Number of items completed (cards, questions, etc.)",
                 },
                 "items_correct": {
                     "type": "integer",
-                    "description": "Number of items answered correctly"
-                }
+                    "description": "Number of items answered correctly",
+                },
             },
-            "required": ["session_type", "duration_minutes", "items_completed"]
+            "required": ["session_type", "duration_minutes", "items_completed"],
         }
 
     @property
@@ -286,7 +282,7 @@ class TrackStudyProgressTool(BaseTool):
                     ended_at=datetime.utcnow(),
                     items_completed=kwargs["items_completed"],
                     items_correct=kwargs.get("items_correct", 0),
-                    time_spent_seconds=kwargs["duration_minutes"] * 60
+                    time_spent_seconds=kwargs["duration_minutes"] * 60,
                 )
 
                 db.add(session)
@@ -300,6 +296,7 @@ class TrackStudyProgressTool(BaseTool):
 
                 # Invalidate context cache
                 from app.core.context.engine import ContextEngine
+
                 engine = ContextEngine()
                 await engine.invalidate_cache(user_id)
 
@@ -309,19 +306,11 @@ class TrackStudyProgressTool(BaseTool):
                         "session_id": session.id,
                         "duration_minutes": kwargs["duration_minutes"],
                         "items_completed": kwargs["items_completed"],
-                        "accuracy": accuracy
+                        "accuracy": accuracy,
                     },
-                    "message": "Study progress tracked successfully"
+                    "message": "Study progress tracked successfully",
                 }
 
         except Exception as e:
-            logger.error(
-                "track_progress_failed",
-                user_id=user_id,
-                error=str(e)
-            )
-            return {
-                "success": False,
-                "data": {},
-                "message": f"Failed to track progress: {str(e)}"
-            }
+            logger.error("track_progress_failed", user_id=user_id, error=str(e))
+            return {"success": False, "data": {}, "message": f"Failed to track progress: {str(e)}"}

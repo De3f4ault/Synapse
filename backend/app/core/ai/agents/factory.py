@@ -243,6 +243,24 @@ class AgentFactory:
                 "temperature": 0.4,  # Balanced creativity
                 "max_iterations": 12,  # Allow complex operations
             },
+            "general": {
+                "display_name": "AI Assistant",
+                "description": "Helpful AI assistant with direct, clear answers",
+                "capabilities": [
+                    AgentCapability.CHAT,
+                    AgentCapability.TOOL_USE,
+                    AgentCapability.MEMORY,
+                ],
+                "temperature": 0.4,  # Natural conversational tone
+                "max_iterations": 6,
+                "default_tools": [
+                    "search_notes",
+                    "search_flashcards",
+                ],
+                "default_middleware": [
+                    GroundingMiddleware(),
+                ],
+            },
         }
 
         return defaults.get(agent_name, {})

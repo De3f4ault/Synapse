@@ -43,6 +43,9 @@ interface ChatState {
     // Connection state
     connectionState: ConnectionState;
 
+    // Chat mode: "tutor" (Socratic) or "general" (direct answers)
+    chatMode: 'tutor' | 'general';
+
     // Streaming state (ephemeral - cleared on complete)
     streaming: StreamingState;
 
@@ -62,6 +65,10 @@ interface ChatState {
 
     // Actions - Connection
     setConnectionState: (state: ConnectionState) => void;
+
+    // Actions - Chat Mode
+    setChatMode: (mode: 'tutor' | 'general') => void;
+    toggleChatMode: () => void;
 
     // Actions - Streaming
     appendContent: (text: string) => void;
@@ -94,6 +101,7 @@ interface ChatState {
 export const useChatStore = create<ChatState>((set, get) => ({
     // Initial state
     connectionState: 'disconnected',
+    chatMode: 'tutor',  // Default to Socratic tutor mode
     streaming: INITIAL_STREAMING_STATE,
     toolCalls: [],
     error: null,
@@ -104,6 +112,12 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
     // Connection
     setConnectionState: (connectionState) => set({ connectionState }),
+
+    // Chat Mode
+    setChatMode: (chatMode) => set({ chatMode }),
+    toggleChatMode: () => set((state) => ({
+        chatMode: state.chatMode === 'tutor' ? 'general' : 'tutor'
+    })),
 
     // Streaming - append operations (key for token-by-token updates)
     appendContent: (text) => {
