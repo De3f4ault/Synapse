@@ -37,6 +37,8 @@ interface ChatWSMessage {
     | 'token'
     | 'sources'
     | 'complete'
+    | 'cancelled'
+    | 'stopped'
     | 'error'
     | 'tool_call'
     | 'tool_result';
@@ -117,6 +119,18 @@ export function useChatStreaming({
                         total_tokens: eventData.total_tokens,
                         model: eventData.model_used,
                     });
+                    // Intentional fall-through handled below
+                    break;
+
+                case 'cancelled':
+                    console.log('[Chat] Generation cancelled:', eventData);
+                    store.setIsStreaming(false);
+                    break;
+
+                case 'stopped':
+                    console.log('[Chat] Generation stopped:', eventData);
+                    store.setIsStreaming(false);
+                    break;
 
                     if (sessionId) {
                         // Invalidate queries then clear streaming state
@@ -284,6 +298,32 @@ export function useChatStreaming({
         [manager, sessionId, queryClient, store, getChannel]
     );
 
+    // Stop current generation
+    const stopGeneration = useCallback(() => {
+        console.log('[Chat] stopGeneration called');
+
+        if (!manager.isConnected()) {
+            console.warn('[Chat] Cannot stop - WebSocket not connected');
+            return;
+        }
+
+        if (!sessionId) {
+            console.warn('[Chat] Cannot stop - No session ID');
+            return;
+        }
+
+        try {
+            const channel = getChannel(sessionId);
+            manager.send({ type: 'stop', channel });
+            console.log('[Chat] Stop signal sent');
+
+            // Immediately update local state
+            store.setIsStreaming(false);
+        } catch (error) {
+            console.error('[Chat] Failed to send stop:', error);
+        }
+    }, [manager, sessionId, store, getChannel]);
+
     // ==================== LIFECYCLE ====================
 
     // Monitor WebSocketManager connection state
@@ -375,6 +415,7 @@ export function useChatStreaming({
 
         // Methods
         sendMessage,
+        stopGeneration,
         subscribeToChannel: (sid: number) => subscribeToChannel(getChannel(sid)),
         unsubscribeFromChannel,
 

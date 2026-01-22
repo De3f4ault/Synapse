@@ -36,7 +36,6 @@ import {
   Files,
   Loader2,
   Brain,
-  CalendarDays,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {

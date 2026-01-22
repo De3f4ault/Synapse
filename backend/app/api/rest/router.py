@@ -18,6 +18,8 @@ from . import (
     documents,
     quizzes,
     chat,
+    threads,
+    branches,  # Branch navigation for counterfactual exploration
     study,
     search,
     analytics,
@@ -60,6 +62,10 @@ api_router.include_router(documents.router, prefix="/documents", tags=["Document
 api_router.include_router(quizzes.router, prefix="/quizzes", tags=["Quizzes"])
 
 api_router.include_router(chat.router, prefix="/chat", tags=["Chat"])
+
+api_router.include_router(threads.router, prefix="/chat", tags=["Chat Threads"])
+
+api_router.include_router(branches.router, prefix="/chat", tags=["Chat Branches"])
 
 api_router.include_router(study.router, prefix="/study", tags=["Study"])
 

@@ -229,6 +229,7 @@ export function StudySession({
     );
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const _Icon = getItemIcon(currentItem.type);
   const flashcard = toFlashcard(currentItem);
 

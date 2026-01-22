@@ -7,7 +7,7 @@ Supports conversation branching via tree structure.
 """
 
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional, List, TYPE_CHECKING
 import enum
 
 
@@ -17,6 +17,9 @@ from sqlalchemy import Enum as SQLEnum
 
 from .base import Base
 from app.db.types import Vector
+
+if TYPE_CHECKING:
+    from .chat_thread import ChatThread
 
 
 class MessageRole(str, enum.Enum):
@@ -29,19 +32,29 @@ class MessageRole(str, enum.Enum):
 
 class ChatMessage(Base):
     """
-    Chat message model with branching support.
+    Chat message model with branching and threading support.
 
-    Represents individual messages in a conversation tree. Tracks role (user/assistant),
+    Represents individual messages in a conversation. Tracks role (user/assistant),
     content, and metadata about AI generation (model used, tokens, function calls).
 
-    Branching Model (Git-style):
+    INVARIANT: Threads and Branches are MUTUALLY EXCLUSIVE.
+    - If thread_id IS NOT NULL → parent_message_id MUST BE NULL
+    - If parent_message_id IS NOT NULL → thread_id MUST BE NULL
+
+    Threading Model (Topic Isolation):
+    - thread_id: Associates message with a side thread
+    - Threads partition context, not inherit it
+    - Mental model: "Let's talk about something else"
+
+    Branching Model (Counterfactual Exploration):
     - parent_message_id: Creates tree structure for branching
     - version: Tracks edits/regenerations of the same logical message
-    - is_active: Marks which branch is currently "active" (displayed by default)
+    - is_active: Marks which branch is currently "active"
+    - Mental model: "What if we answered differently?"
 
-    Example tree:
-        msg1 (user) -> msg2 (assistant) -> msg3 (user) -> msg4 (assistant)
-                                       └-> msg3' (edited user) -> msg5 (assistant)
+    One-sentence distinction:
+        Threads change the question.
+        Branches change the answer.
     """
 
     __tablename__ = "chat_messages"
@@ -58,11 +71,22 @@ class ChatMessage(Base):
     )
 
     # Branching: Self-referential tree structure
+    # INVARIANT: If thread_id is set, parent_message_id MUST be NULL
     parent_message_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("chat_messages.id", ondelete="SET NULL"),
         nullable=True,
         index=True,
         doc="Parent message ID (NULL for root messages, set for branched/forked messages)",
+    )
+
+    # Thread association (for topic isolation)
+    # INVARIANT: If parent_message_id is set, thread_id MUST be NULL
+    thread_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("chat_threads.id", ondelete="CASCADE"),
+        nullable=True,
+        default=None,
+        index=True,
+        doc="Thread ID (NULL for main conversation, set for thread messages)",
     )
 
     # Version tracking for edits/regenerations
@@ -142,6 +166,15 @@ class ChatMessage(Base):
         foreign_keys=[parent_message_id],
     )
 
+    # Thread relationship (uses thread_id as FK)
+    # IMPORTANT: foreign_keys specified to disambiguate from ChatThread.created_from_message_id
+    thread: Mapped[Optional["ChatThread"]] = relationship(
+        "ChatThread",
+        back_populates="messages",
+        lazy="selectin",
+        foreign_keys=[thread_id],
+    )
+
     def __repr__(self) -> str:
         """String representation of ChatMessage."""
         return f"<ChatMessage(id={self.id}, session_id={self.session_id}, role={self.role.value}, v{self.version})>"
@@ -160,6 +193,16 @@ class ChatMessage(Base):
     def is_root(self) -> bool:
         """Check if this is a root message (no parent)."""
         return self.parent_message_id is None
+
+    @property
+    def in_thread(self) -> bool:
+        """Check if this message belongs to a thread (topic isolation)."""
+        return self.thread_id is not None
+
+    @property
+    def is_branched(self) -> bool:
+        """Check if this message is a branch (counterfactual)."""
+        return self.parent_message_id is not None
 
     @property
     def is_branch_point(self) -> bool:

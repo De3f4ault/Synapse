@@ -89,7 +89,7 @@ export function JournalsPage() {
   }, [journalData, dateString]);
 
   // Auto-save handler (debounced in actual implementation)
-  // TODO: Wire up to BlockSuite doc change events for auto-save
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const _handleSave = useCallback(async () => {
     if (!journalData || !journalDoc) return;
 

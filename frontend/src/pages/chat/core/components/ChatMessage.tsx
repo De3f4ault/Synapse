@@ -1,7 +1,7 @@
 import { memo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Logo } from "@/components/ui/logo";
-import { Loader2, Copy, Check } from "lucide-react";
+import { Loader2, Copy, Check, RefreshCw, MessageSquarePlus } from "lucide-react";
 import { toast } from "sonner";
 import { HighlightedText } from "../../search/components/HighlightedText";
 import { MarkdownRenderer } from "@/shared/rendering";
@@ -9,7 +9,15 @@ import { MermaidBlock } from "@/shared/rendering/components/MermaidBlock";
 import { parseOutput } from "../engine/parseOutput";
 import { ChatEntityPreview } from "./ChatEntityPreview";
 import { MentionChip } from "./MentionChip";
+import { ChatFlashcardSet } from "./ChatFlashcardSet";
+import { ChatQuizPreview } from "./ChatQuizPreview";
+import { BranchNavigator } from "./BranchNavigator";
+import { useBranchNavigation } from "../hooks/useBranches";
+import { useRegenerate } from "../hooks/useRegenerate";
 import { entityKey } from "@/shared/core/entity";
+import { useThreadStore } from "../state/threadStore";
+import { FlashcardsService, QuizzesService, QuizDifficulty, QuestionType } from "@/api/generated";
+import type { FlashcardCardPreview, QuizQuestionPreview } from "@/shared/rendering/schema";
 
 import type { ChatMessageResponse } from "@/api/generated";
 import type { SearchOccurrence } from "../../search/types";
@@ -34,6 +42,14 @@ const ChatMessageComponent = ({
   const isUser = message.role === "user";
   const BotIcon = Logo;
   const [copied, setCopied] = useState(false);
+  const [savingFlashcards, setSavingFlashcards] = useState(false);
+  const [savingQuiz, setSavingQuiz] = useState(false);
+
+  // Branch navigation for assistant messages
+  // INVARIANT: Only show for assistant messages, never for thread messages
+  const branchNav = useBranchNavigation(
+    !isUser && message.id > 0 ? message.id : undefined
+  );
 
   // Copy message to clipboard
   const handleCopy = async () => {
@@ -44,6 +60,94 @@ const ChatMessageComponent = ({
       setTimeout(() => setCopied(false), 2000);
     } catch {
       toast.error("Failed to copy");
+    }
+  };
+
+  // Save flashcards to deck (preview -> owned content)
+  // INVARIANT: This is the only path from chat preview to owned content
+  const handleSaveFlashcards = async (cards: FlashcardCardPreview[], title?: string) => {
+    if (savingFlashcards) return;
+    setSavingFlashcards(true);
+
+    try {
+      const deckName = title || `Chat Flashcards (${new Date().toLocaleDateString()})`;
+      const existingDecks = await FlashcardsService.listDecksApiV1DecksGet();
+      const duplicate = existingDecks.find(d => d.name === deckName);
+      
+      if (duplicate) {
+        toast.error(`Deck "${deckName}" already exists`);
+        return;
+      }
+
+      const deck = await FlashcardsService.createDeckApiV1DecksPost({
+        name: deckName,
+        description: "Created from chat conversation",
+      });
+
+      await FlashcardsService.importFlashcardsApiV1DecksDeckIdImportPost(deck.id, {
+        cards: cards.map(c => ({ front: c.front, back: c.back })),
+      });
+
+      toast.success(`${cards.length} flashcards saved to "${deckName}"!`);
+    } catch (err: any) {
+      console.error("Failed to save flashcards:", err);
+      toast.error(err?.message || "Failed to save flashcards");
+    } finally {
+      setSavingFlashcards(false);
+    }
+  };
+
+  // Save quiz (preview -> owned content)
+  const handleSaveQuiz = async (quiz: { title: string; questions: QuizQuestionPreview[]; difficulty?: string }) => {
+    if (savingQuiz) return;
+    setSavingQuiz(true);
+
+    try {
+      const existingQuizzes = await QuizzesService.listQuizzesApiV1QuizzesGet();
+      const duplicate = existingQuizzes.find(q => q.title === quiz.title);
+      
+      if (duplicate) {
+        toast.error(`Quiz "${quiz.title}" already exists`);
+        return;
+      }
+
+      const questions = quiz.questions.map(q => {
+        let correctAnswer = '';
+        if (q.correctIndex !== undefined && q.options && q.correctIndex < q.options.length) {
+          correctAnswer = q.options[q.correctIndex] ?? '';
+        } else if (q.correctAnswer) {
+          correctAnswer = q.correctAnswer;
+        }
+        
+        return {
+          question_text: q.prompt,
+          question_type: q.type === 'true_false' ? QuestionType.TRUE_FALSE : QuestionType.MULTIPLE_CHOICE,
+          options: q.options ? { choices: q.options } : null,
+          correct_answer: correctAnswer,
+          explanation: q.explanation || null,
+          points: 1,
+        };
+      });
+
+      const difficultyMap: Record<string, QuizDifficulty> = {
+        'easy': QuizDifficulty.EASY,
+        'medium': QuizDifficulty.MEDIUM,
+        'hard': QuizDifficulty.HARD,
+      };
+
+      await QuizzesService.createQuizApiV1QuizzesPost({
+        title: quiz.title,
+        description: "Created from chat conversation",
+        difficulty: difficultyMap[quiz.difficulty || 'medium'] || QuizDifficulty.MEDIUM,
+        questions,
+      });
+
+      toast.success(`Quiz "${quiz.title}" saved!`);
+    } catch (err: any) {
+      console.error("Failed to save quiz:", err);
+      toast.error(err?.message || "Failed to save quiz");
+    } finally {
+      setSavingQuiz(false);
     }
   };
 
@@ -154,6 +258,27 @@ const ChatMessageComponent = ({
             case 'markdown':
               return <MarkdownRenderer key={key} content={block.content} className="break-words" />;
 
+            case 'flashcard_set':
+              return (
+                <ChatFlashcardSet
+                  key={key}
+                  title={block.title}
+                  cards={block.cards}
+                  onSave={handleSaveFlashcards}
+                />
+              );
+
+            case 'quiz':
+              return (
+                <ChatQuizPreview
+                  key={key}
+                  title={block.title}
+                  questions={block.questions}
+                  difficulty={block.difficulty}
+                  onSave={handleSaveQuiz}
+                />
+              );
+
             default:
               // Other block types (Table, Citation, etc.) are not yet produced by parseOutput.
               // Handle them or return null to satisfy TypeScript.
@@ -234,8 +359,8 @@ const ChatMessageComponent = ({
           )}
         </div>
 
-        {/* Message Footer: Time + Actions */}
-        <div className="flex items-center gap-2 px-1">
+        {/* Message Footer: Time + ChatGPT-style Action Bar */}
+        <div className="flex items-center gap-2 px-1 mt-1">
           <span className="text-[10px] text-muted-foreground opacity-50">
             {message.created_at
               ? new Date(message.created_at).toLocaleTimeString([], {
@@ -245,8 +370,45 @@ const ChatMessageComponent = ({
               : "Just now"}
           </span>
 
-          {/* Action buttons - visible on hover or always for assistant */}
-          {!isStreaming && (
+          {/* ChatGPT-style floating action bar - visible for assistant messages */}
+          {!isUser && !isStreaming && (
+            <div className="flex items-center gap-0.5 px-1 py-0.5 rounded-lg bg-white/5 border border-white/10">
+              {/* Copy button */}
+              <button
+                onClick={handleCopy}
+                className="p-1.5 rounded hover:bg-white/10 text-muted-foreground/60 hover:text-muted-foreground transition-colors"
+                title="Copy"
+              >
+                {copied ? (
+                  <Check className="size-3.5 text-green-400" />
+                ) : (
+                  <Copy className="size-3.5" />
+                )}
+              </button>
+
+              {/* Regenerate button */}
+              {message.id > 0 && (
+                <RegenerateButtonInternal messageId={message.id} sessionId={message.session_id} />
+              )}
+
+              {/* Thread button */}
+              <ThreadButtonInternal sessionId={message.session_id} />
+
+              {/* Branch Navigator */}
+              {branchNav.hasBranches && (
+                <BranchNavigator
+                  currentIndex={branchNav.currentIndex}
+                  totalBranches={branchNav.totalBranches}
+                  onPrev={branchNav.goToPrev}
+                  onNext={branchNav.goToNext}
+                  compact
+                />
+              )}
+            </div>
+          )}
+
+          {/* User message - simple copy */}
+          {isUser && !isStreaming && (
             <button
               onClick={handleCopy}
               className="p-1 rounded hover:bg-white/10 text-muted-foreground/50 hover:text-muted-foreground transition-colors"
@@ -264,6 +426,44 @@ const ChatMessageComponent = ({
     </div>
   );
 };
+
+/**
+ * Internal regenerate button with hook integration
+ */
+function RegenerateButtonInternal({ messageId, sessionId }: { messageId: number; sessionId: number }) {
+  const regenerateMutation = useRegenerate({ sessionId });
+
+  return (
+    <button
+      onClick={() => regenerateMutation.mutate(messageId)}
+      disabled={regenerateMutation.isPending}
+      className={cn(
+        "p-1.5 rounded hover:bg-white/10 text-muted-foreground/60 hover:text-muted-foreground transition-colors",
+        regenerateMutation.isPending && "opacity-50 cursor-not-allowed"
+      )}
+      title="Regenerate response"
+    >
+      <RefreshCw className={cn("size-3.5", regenerateMutation.isPending && "animate-spin")} />
+    </button>
+  );
+}
+
+/**
+ * Internal thread button - Opens thread panel
+ */
+function ThreadButtonInternal({ sessionId: _sessionId }: { sessionId: number }) {
+  const { openPanel } = useThreadStore();
+
+  return (
+    <button
+      onClick={openPanel}
+      className="p-1.5 rounded hover:bg-white/10 text-muted-foreground/60 hover:text-muted-foreground transition-colors"
+      title="View thread"
+    >
+      <MessageSquarePlus className="size-3.5" />
+    </button>
+  );
+}
 
 export const ChatMessage = memo(ChatMessageComponent, (prev, next) => {
   // Custom comparator to handle new array references for 'occurrences'

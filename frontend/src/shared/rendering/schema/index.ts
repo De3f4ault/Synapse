@@ -11,6 +11,10 @@ export type {
     ExpandableBlock,
     CitationBlock,
     MermaidBlock,
+    FlashcardSetBlock,
+    FlashcardCardPreview,
+    QuizBlock,
+    QuizQuestionPreview,
     SourceRef,
 } from './outputBlocks';
 
@@ -22,12 +26,17 @@ export {
     isExpandableBlock,
     isCitationBlock,
     isMermaidBlock,
+    isFlashcardSetBlock,
+    isQuizBlock,
     createMarkdownBlock,
     createCodeBlock,
     createLatexBlock,
     createTableBlock,
     createCitationBlock,
     createMermaidBlock,
+    createFlashcardSetBlock,
+    createQuizBlock,
     nextSequenceId,
     resetSequenceId,
 } from './outputBlocks';
+

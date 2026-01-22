@@ -59,6 +59,43 @@ class GeneralAssistantAgent(BaseAgent):
 - `search_flashcards`: Find flashcards for quick reference
 - `create_flashcard`: Create flashcards for key concepts
 
+**Inline Study Materials (For Rich Chat Rendering):**
+When creating flashcards or quizzes inline, use these special code fences:
+
+*For Flashcards:*
+```synapse-flashcards
+{{
+  "title": "Key Concepts",
+  "cards": [
+    {{"front": "Question?", "back": "Answer"}},
+    {{"front": "Term", "back": "Definition"}}
+  ]
+}}
+```
+
+*For Quizzes:*
+```synapse-quiz
+{{
+  "title": "Quick Check",
+  "difficulty": "medium",
+  "questions": [
+    {{
+      "id": "q1",
+      "type": "multiple_choice",
+      "prompt": "What is X?",
+      "options": ["A", "B", "C", "D"],
+      "correctIndex": 1,
+      "explanation": "Because..."
+    }}
+  ]
+}}
+```
+
+Use inline formats when:
+- User wants to review or practice
+- Creating quick study materials
+- Reinforcing key concepts
+
 **Example Interaction:**
 
 User: "What is photosynthesis?"

@@ -6,13 +6,16 @@ Tracks context configuration and resource usage.
 """
 
 from decimal import Decimal
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 
 from sqlalchemy import String, Integer, Numeric, JSON, ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base
 from .mixins import TimestampMixin, SoftDeleteMixin, UserOwnedMixin
+
+if TYPE_CHECKING:
+    from .chat_thread import ChatThread
 
 
 class ChatSession(Base, TimestampMixin, SoftDeleteMixin, UserOwnedMixin):
@@ -26,17 +29,11 @@ class ChatSession(Base, TimestampMixin, SoftDeleteMixin, UserOwnedMixin):
     __tablename__ = "chat_sessions"
 
     # Primary Key
-    id: Mapped[int] = mapped_column(
-        primary_key=True,
-        autoincrement=True,
-        doc="Primary key"
-    )
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True, doc="Primary key")
 
     # Session Information
     title: Mapped[str] = mapped_column(
-        String(500),
-        nullable=False,
-        doc="Session title (auto-generated or user-set)"
+        String(500), nullable=False, doc="Session title (auto-generated or user-set)"
     )
 
     # Context Configuration
@@ -45,29 +42,26 @@ class ChatSession(Base, TimestampMixin, SoftDeleteMixin, UserOwnedMixin):
         nullable=True,
         default=None,
         index=True,
-        doc="Optional document to chat about"
+        doc="Optional document to chat about",
     )
 
     context_modules: Mapped[Optional[dict]] = mapped_column(
         JSON,
         nullable=True,
         default=None,
-        doc="List of modules to include in context (e.g., ['flashcards', 'notes'])"
+        doc="List of modules to include in context (e.g., ['flashcards', 'notes'])",
     )
 
     # Resource Tracking
     total_tokens_used: Mapped[int] = mapped_column(
-        Integer,
-        default=0,
-        nullable=False,
-        doc="Total tokens consumed in this session"
+        Integer, default=0, nullable=False, doc="Total tokens consumed in this session"
     )
 
     total_cost: Mapped[Decimal] = mapped_column(
         Numeric(precision=10, scale=6),
         default=Decimal("0.000000"),
         nullable=False,
-        doc="Estimated total cost (USD)"
+        doc="Estimated total cost (USD)",
     )
 
     # Relationships
@@ -75,9 +69,19 @@ class ChatSession(Base, TimestampMixin, SoftDeleteMixin, UserOwnedMixin):
     # document: Many-to-one with Document (optional)
     # user: Many-to-one with User (provided by UserOwnedMixin)
 
+    threads: Mapped[list["ChatThread"]] = relationship(
+        "ChatThread",
+        back_populates="session",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+        order_by="ChatThread.created_at",
+    )
+
+    @property
+    def thread_count(self) -> int:
+        """Number of threads in this session."""
+        return len(self.threads) if self.threads else 0
+
     def __repr__(self) -> str:
         """String representation of ChatSession."""
-        return (
-            f"<ChatSession(id={self.id}, title='{self.title[:30]}...', "
-            f"user_id={self.user_id})>"
-        )
+        return f"<ChatSession(id={self.id}, title='{self.title[:30]}...', user_id={self.user_id})>"

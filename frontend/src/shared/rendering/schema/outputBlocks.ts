@@ -73,6 +73,56 @@ export interface MermaidBlock {
     sequenceId?: number;
 }
 
+// ==================== STUDY BLOCKS ====================
+// INVARIANT: These are preview-only. No SM-2 state mutation.
+// INVARIANT: Saving to deck/quiz is explicit and user-initiated.
+
+/**
+ * Inline flashcard card (preview-only).
+ */
+export interface FlashcardCardPreview {
+    front: string;
+    back: string;
+    tags?: string[];
+}
+
+/**
+ * Inline flashcard set block for chat preview.
+ * Does NOT mutate learning state.
+ */
+export interface FlashcardSetBlock {
+    type: 'flashcard_set';
+    title: string;
+    cards: FlashcardCardPreview[];
+    sequenceId?: number;
+}
+
+/**
+ * Inline quiz question (preview-only).
+ */
+export interface QuizQuestionPreview {
+    id: string;
+    type: 'multiple_choice' | 'true_false' | 'short_answer';
+    prompt: string;
+    options?: string[];
+    correctIndex?: number;
+    correctAnswer?: string;
+    explanation?: string;
+    points?: number;
+}
+
+/**
+ * Inline quiz block for chat preview.
+ * Does NOT persist attempts.
+ */
+export interface QuizBlock {
+    type: 'quiz';
+    title: string;
+    difficulty?: 'easy' | 'medium' | 'hard';
+    questions: QuizQuestionPreview[];
+    sequenceId?: number;
+}
+
 // ==================== UNION TYPE ====================
 
 export type RenderBlock =
@@ -82,7 +132,9 @@ export type RenderBlock =
     | TableBlock
     | ExpandableBlock
     | CitationBlock
-    | MermaidBlock;
+    | MermaidBlock
+    | FlashcardSetBlock
+    | QuizBlock;
 
 // ==================== TYPE GUARDS ====================
 
@@ -112,6 +164,14 @@ export function isCitationBlock(block: RenderBlock): block is CitationBlock {
 
 export function isMermaidBlock(block: RenderBlock): block is MermaidBlock {
     return block.type === 'mermaid';
+}
+
+export function isFlashcardSetBlock(block: RenderBlock): block is FlashcardSetBlock {
+    return block.type === 'flashcard_set';
+}
+
+export function isQuizBlock(block: RenderBlock): block is QuizBlock {
+    return block.type === 'quiz';
 }
 
 // ==================== FACTORY FUNCTIONS ====================
@@ -148,4 +208,19 @@ export function createCitationBlock(sources: SourceRef[]): CitationBlock {
 
 export function createMermaidBlock(content: string): MermaidBlock {
     return { type: 'mermaid', content, sequenceId: nextSequenceId() };
+}
+
+export function createFlashcardSetBlock(
+    title: string,
+    cards: FlashcardCardPreview[]
+): FlashcardSetBlock {
+    return { type: 'flashcard_set', title, cards, sequenceId: nextSequenceId() };
+}
+
+export function createQuizBlock(
+    title: string,
+    questions: QuizQuestionPreview[],
+    difficulty?: 'easy' | 'medium' | 'hard'
+): QuizBlock {
+    return { type: 'quiz', title, questions, difficulty, sequenceId: nextSequenceId() };
 }

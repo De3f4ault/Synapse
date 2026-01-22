@@ -4,9 +4,17 @@ import { Button } from "@/components/ui/button";
 import { XIcon, Search } from "lucide-react";
 import { ChatMessage } from "./ChatMessage";
 import { ChatInputBox } from "./ChatInputBox";
+import { StopButton } from "./StopButton";
+import { ThreadButton } from "./ThreadButton";
 import { SearchBar } from "../../search/components/SearchBar";
 import { scrollToOccurrence } from "../../search/utils/scrollToOccurrence";
 import { useConversationSearch } from "../../search/hooks";
+import { useSuggestions } from "../hooks/useSuggestions";
+import { SuggestionChipList, type SuggestionSignal } from "../../suggestions";
+import { useCreateThread } from "../hooks/useThreads";
+import { useCreateBranch } from "../hooks/useBranches";
+import { useThreadStore } from "../state/threadStore";
+import { toast } from "sonner";
 
 import type { ChatMessageResponse } from "@/api/generated";
 import type { SearchOccurrence } from "../../search/types";
@@ -15,9 +23,11 @@ import type { SearchOccurrence } from "../../search/types";
 interface ChatConversationViewProps {
   messages: ChatMessageResponse[];
   message: string;
+  sessionId: number;
   onMessageChange: (value: string) => void;
   onSend: () => void;
   onReset: () => void;
+  onStop?: () => void;
   onVoiceClick?: () => void;
   isSending?: boolean;
   isStreaming?: boolean;
@@ -29,9 +39,11 @@ interface ChatConversationViewProps {
 export function ChatConversationView({
   messages,
   message,
+  sessionId,
   onMessageChange,
   onSend,
   onReset,
+  onStop,
   onVoiceClick,
   isSending = false,
   isStreaming = false,
@@ -166,8 +178,11 @@ export function ChatConversationView({
       {/* Hub-Style Header */}
       <div className="fixed top-0 left-0 right-0 z-10 bg-[#050505]/80 backdrop-blur-md border-b border-white/5">
         <div className="max-w-[1600px] mx-auto w-full px-8 py-4 pl-12 lg:pl-8 flex items-center justify-end">
-           {/* Actions (Search / Reset) - Now right-aligned since title is gone */}
+           {/* Actions (Search / Reset / Threads) - Now right-aligned since title is gone */}
            <div className="flex items-center gap-2">
+              {/* Threads Button */}
+              <ThreadButton />
+
              {isSearchOpen ? (
                 <div className="flex items-center gap-2 bg-zinc-900/50 p-1 rounded-lg border border-white/10 animate-in fade-in slide-in-from-right-4 duration-200">
                   <SearchBar
@@ -233,7 +248,21 @@ export function ChatConversationView({
 
       {/* Input Area - Fixed at bottom */}
       <div className="shrink-0 px-4 md:px-8 pb-6 pt-2 bg-gradient-to-t from-[#050505] via-[#050505]/80 to-transparent">
-        <div className="max-w-5xl mx-auto">
+        <div className="max-w-5xl mx-auto space-y-3">
+          {/* AI Suggestions - Above input (hidden during streaming) */}
+          <SuggestionsArea
+            sessionId={sessionId}
+            messages={messages}
+            isStreaming={isStreaming}
+          />
+
+          {/* Stop Button - Shown during streaming */}
+          {isStreaming && onStop && (
+            <div className="flex justify-center">
+              <StopButton isStreaming={isStreaming} onStop={onStop} />
+            </div>
+          )}
+
           <ChatInputBox
             message={message}
             onMessageChange={onMessageChange}
@@ -245,5 +274,76 @@ export function ChatConversationView({
         </div>
       </div>
     </div>
+  );
+}
+
+// ============================================================================
+// Sub-Component: Suggestions Area
+// ============================================================================
+
+interface SuggestionsAreaProps {
+  sessionId: number;
+  messages: ChatMessageResponse[];
+  isStreaming: boolean;
+}
+
+function SuggestionsArea({ sessionId, messages, isStreaming }: SuggestionsAreaProps) {
+  const { suggestions, dismiss } = useSuggestions({
+    sessionId,
+    messages,
+    enabled: !isStreaming && messages.length >= 2,
+  });
+
+  const createThread = useCreateThread();
+  const createBranch = useCreateBranch();
+  const { openPanel, switchToThread } = useThreadStore();
+
+  const handleAccept = useCallback(async (suggestion: SuggestionSignal) => {
+    if (suggestion.type === 'START_THREAD') {
+      // Find the last user message content for thread title
+      const lastUser = [...messages].reverse().find(m => m.role === 'user');
+      const title = lastUser?.content?.slice(0, 50) || 'New Thread';
+
+      try {
+        const thread = await createThread.mutateAsync({
+          sessionId,
+          title,
+          rootMessageId: suggestion.anchorMessageId,
+        });
+        
+        // Switch to thread context
+        switchToThread(thread.id, thread);
+        openPanel();
+        toast.success('Thread created');
+      } catch {
+        toast.error('Failed to create thread');
+      }
+    } else if (suggestion.type === 'CREATE_BRANCH') {
+      try {
+        await createBranch.mutateAsync({
+          messageId: suggestion.anchorMessageId,
+        });
+        toast.success('Branch created - use arrows to navigate');
+      } catch {
+        toast.error('Failed to create branch');
+      }
+    }
+
+    // Dismiss after action
+    dismiss(suggestion);
+  }, [messages, sessionId, createThread, createBranch, switchToThread, openPanel, dismiss]);
+
+  const handleDismiss = useCallback((suggestion: SuggestionSignal) => {
+    dismiss(suggestion);
+  }, [dismiss]);
+
+  if (suggestions.length === 0) return null;
+
+  return (
+    <SuggestionChipList
+      suggestions={suggestions}
+      onAccept={handleAccept}
+      onDismiss={handleDismiss}
+    />
   );
 }

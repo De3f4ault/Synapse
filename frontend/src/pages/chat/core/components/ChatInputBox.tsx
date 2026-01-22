@@ -5,7 +5,7 @@
  * Glassmorphism effect using custom GlassCard
  */
 
-import { PaperclipIcon, SendIcon, Mic, Search, GraduationCap, MessageCircle } from "lucide-react";
+import { PaperclipIcon, SendIcon, Mic, Search, GraduationCap, MessageCircle, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { GlassCard } from "@/shared/ui";
@@ -58,6 +58,8 @@ interface ChatInputBoxProps {
   onMessageChange: (value: string) => void;
   onSend: () => void;
   onVoiceClick?: () => void;
+  onStop?: () => void;
+  isStreaming?: boolean;
   placeholder?: string;
   disabled?: boolean;
   className?: string;
@@ -68,6 +70,8 @@ export function ChatInputBox({
   onMessageChange,
   onSend,
   onVoiceClick,
+  onStop,
+  isStreaming = false,
   placeholder = "Message Synapse...",
   disabled = false,
   className,
@@ -274,20 +278,33 @@ export function ChatInputBox({
               </Button>
             )}
 
-            <Button
-              size="icon"
-              onClick={onSend}
-              disabled={!message.trim() || disabled}
-              className={cn(
-                "size-8 rounded-full transition-all duration-300 ml-1",
-                message.trim() && !disabled
-                  ? "bg-white text-black hover:bg-zinc-200"
-                  : "bg-zinc-800 text-zinc-600 hover:bg-zinc-800"
-              )}
-              type="button"
-            >
-              <SendIcon className="size-4" />
-            </Button>
+            {/* Stop/Send Button */}
+            {isStreaming ? (
+              <Button
+                size="icon"
+                onClick={onStop}
+                className="size-8 rounded-full bg-red-500/20 text-red-400 hover:bg-red-500/30 ml-1 border border-red-500/30"
+                type="button"
+                title="Stop generating"
+              >
+                <Square className="size-3.5" fill="currentColor" />
+              </Button>
+            ) : (
+              <Button
+                size="icon"
+                onClick={onSend}
+                disabled={!message.trim() || disabled}
+                className={cn(
+                  "size-8 rounded-full transition-all duration-300 ml-1",
+                  message.trim() && !disabled
+                    ? "bg-white text-black hover:bg-zinc-200"
+                    : "bg-zinc-800 text-zinc-600 hover:bg-zinc-800"
+                )}
+                type="button"
+              >
+                <SendIcon className="size-4" />
+              </Button>
+            )}
           </div>
         </div>
       </div>

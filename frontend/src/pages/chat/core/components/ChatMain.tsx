@@ -4,15 +4,17 @@
  * Integrated with Synapse backend APIs
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ChatWelcomeScreen } from "./ChatWelcomeScreen";
 import { ChatConversationView } from "./ChatConversationView";
+import { ThreadPanel } from "./ThreadPanel";
 import { LiveVoiceOverlay } from "../../voice/components/LiveVoiceOverlay";
 import { useChatMessages } from "../hooks/useChatMessages";
 import { useChatStreaming } from "../hooks/useChatStreaming";
 import { useImplicitFeedback } from "@/modules/chat/hooks/useImplicitFeedback";
 import { useAuthStore } from "@/stores/authStore";
 import { useTTSAutoRead } from "@/platform/audio";
+import { useThreadStore } from "../state/threadStore";
 
 interface ChatMainProps {
   sessionId: number;
@@ -27,6 +29,12 @@ export function ChatMain({ sessionId, sessionTitle }: ChatMainProps) {
   const user = useAuthStore((state) => state.user);
   const userId = user?.id ?? 0;
 
+  // Thread store - reset on session change
+  const resetThreadStore = useThreadStore((state) => state.reset);
+  useEffect(() => {
+    resetThreadStore();
+  }, [sessionId, resetThreadStore]);
+
   // Fetch messages for this session
   const { data: messages = [], isLoading } = useChatMessages(sessionId);
 
@@ -39,6 +47,7 @@ export function ChatMain({ sessionId, sessionTitle }: ChatMainProps) {
     streamingContent,
     streamingThinking,
     sendMessage: sendStreamingMessage,
+    stopGeneration,
     isConnected,
   } = useChatStreaming({
     sessionId,
@@ -76,6 +85,10 @@ export function ChatMain({ sessionId, sessionTitle }: ChatMainProps) {
     setMessage("");
   };
 
+  const handleStop = () => {
+    stopGeneration();
+  };
+
   const handleVoiceClick = () => {
     setIsVoiceOpen(true);
   };
@@ -94,10 +107,12 @@ export function ChatMain({ sessionId, sessionTitle }: ChatMainProps) {
         <ChatConversationView
           messages={messages}
           message={message}
+          sessionId={sessionId}
           sessionTitle={sessionTitle}
           onMessageChange={setMessage}
           onSend={handleSend}
           onReset={handleReset}
+          onStop={handleStop}
           onVoiceClick={handleVoiceClick}
           isSending={isStreaming}
           isStreaming={isStreaming}
@@ -112,6 +127,9 @@ export function ChatMain({ sessionId, sessionTitle }: ChatMainProps) {
           onVoiceClick={handleVoiceClick}
         />
       )}
+
+      {/* Thread Panel - Grok-style slide-out */}
+      <ThreadPanel sessionId={sessionId} />
 
       {/* Voice Mode Overlay */}
       <LiveVoiceOverlay

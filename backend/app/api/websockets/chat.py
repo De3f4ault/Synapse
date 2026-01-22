@@ -6,6 +6,7 @@ Implemented full AI streaming
 Thinking process streaming
 Sources streaming
 Complete message type support
+Cancellation support for Stop Generation
 
 FIXED: Transaction isolation - context building and chat saving use separate transactions
 """
@@ -14,15 +15,15 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
 import structlog
-import json
 from typing import AsyncIterator, Optional
 
 from app.api.deps import get_db
 from app.api.websockets.manager import manager
-from app.api.websockets.protocol import MessageType
 from app.models.chat_session import ChatSession
 from app.models.chat_message import ChatMessage, MessageRole
 from app.db.session import AsyncSessionLocal
+from app.core.ai.cancellation import CancellationToken
+from app.core.ai.generation_runtime import get_generation_registry
 
 router = APIRouter()
 logger = structlog.get_logger()
@@ -64,6 +65,7 @@ async def stream_ai_response(
     user_id: int,
     session_id: int,
     mode: str = "tutor",  # "tutor" or "general"
+    cancellation_token: Optional[CancellationToken] = None,
 ) -> AsyncIterator[dict]:
     """
     Stream AI response with real-time tokens.
@@ -154,6 +156,17 @@ async def stream_ai_response(
             # In production, this would use actual streaming from Gemini
             words = result.output.split()
             for i, word in enumerate(words):
+                # Check for cancellation at each yield point
+                if cancellation_token and cancellation_token.is_cancelled:
+                    yield {
+                        "type": "cancelled",
+                        "data": {
+                            "reason": cancellation_token.reason or "user_requested",
+                            "partial_tokens": i,
+                        },
+                    }
+                    return
+
                 token_text = word + (" " if i < len(words) - 1 else "")
                 yield {
                     "type": "token",
@@ -329,27 +342,49 @@ async def chat_websocket(
                 if mode not in ("tutor", "general"):
                     mode = "tutor"
 
+                # Create cancellation token and register generation
+                registry = get_generation_registry()
+                generation_channel = f"chat:{session_int_id}:{user_message.id}"
+                cancellation_token = await registry.start(generation_channel)
+
                 # Stream AI response (uses its own session for context)
                 full_response = ""
                 total_tokens = 0
                 model_used = None
                 function_calls = None
                 grounding_sources = None
+                was_cancelled = False
 
-                async for chunk in stream_ai_response(
-                    message=content, user_id=user_id, session_id=session_int_id, mode=mode
-                ):
-                    # Send chunk to client
-                    await manager.send_message(session_id, websocket, chunk)
+                try:
+                    async for chunk in stream_ai_response(
+                        message=content,
+                        user_id=user_id,
+                        session_id=session_int_id,
+                        mode=mode,
+                        cancellation_token=cancellation_token,
+                    ):
+                        # Send chunk to client
+                        await manager.send_message(session_id, websocket, chunk)
 
-                    # Accumulate response
-                    if chunk["type"] == "token":
-                        full_response += chunk["data"]["text"]
-                        model_used = chunk["data"]["model"]
-                    elif chunk["type"] == "complete":
-                        total_tokens = chunk["data"]["total_tokens"]
-                        function_calls = chunk["data"].get("function_calls")
-                        grounding_sources = chunk["data"].get("grounding_sources")
+                        # Accumulate response
+                        if chunk["type"] == "token":
+                            full_response += chunk["data"]["text"]
+                            model_used = chunk["data"]["model"]
+                        elif chunk["type"] == "complete":
+                            total_tokens = chunk["data"]["total_tokens"]
+                            function_calls = chunk["data"].get("function_calls")
+                            grounding_sources = chunk["data"].get("grounding_sources")
+                        elif chunk["type"] == "cancelled":
+                            was_cancelled = True
+                            logger.info(
+                                "generation_cancelled_by_user",
+                                session_id=session_id,
+                                partial_tokens=chunk["data"].get("partial_tokens", 0),
+                            )
+                finally:
+                    # Always complete the generation in registry
+                    status = "cancelled" if was_cancelled else "completed"
+                    await registry.complete(generation_channel, status)
 
                 # Save assistant message in FRESH transaction
                 if full_response:
@@ -391,12 +426,34 @@ async def chat_websocket(
                 # Respond to ping
                 await manager.send_message(session_id, websocket, {"type": "pong", "data": {}})
 
-            elif message_type == "stop":
-                # Stop generation (placeholder for future implementation)
+            elif message_type == "stop" or message_type == "generation.stop":
+                # Stop generation - cancel via registry
+                channel = data.get("channel")
+                if not channel:
+                    # Default to session-level cancellation (cancel any active)
+                    channel = f"chat:{session_int_id}"
+
+                registry = get_generation_registry()
+                # Try to find and cancel any generation for this session
+                cancelled = False
+                for active_channel in registry.active_channels():
+                    if active_channel.startswith(f"chat:{session_int_id}:"):
+                        await registry.cancel(active_channel, "user_requested")
+                        cancelled = True
+                        break
+
                 await manager.send_message(
                     session_id,
                     websocket,
-                    {"type": "stopped", "data": {"message": "Generation stopped"}},
+                    {
+                        "type": "stopped",
+                        "data": {
+                            "message": "Generation stopped"
+                            if cancelled
+                            else "No active generation",
+                            "cancelled": cancelled,
+                        },
+                    },
                 )
 
     except WebSocketDisconnect:
@@ -411,6 +468,6 @@ async def chat_websocket(
                 websocket,
                 {"type": "error", "data": {"code": "internal_error", "message": str(e)}},
             )
-        except:
+        except Exception:
             pass
         await manager.disconnect(session_id, websocket)

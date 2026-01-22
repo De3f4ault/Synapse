@@ -12,6 +12,7 @@ from app.schemas.note import *
 from app.schemas.document import *
 from app.schemas.quiz import *
 from app.schemas.chat import *
+from app.schemas.chat_thread import *
 from app.schemas.context import *
 from app.schemas.webhook import *
 from app.schemas.rag import *
@@ -21,19 +22,16 @@ __all__ = [
     "PaginationParams",
     "APIResponse",
     "MessageResponse",
-
     # Auth
     "UserRegister",
     "UserLogin",
     "TokenResponse",
     "TokenData",
-
     # User
     "UserBase",
     "UserCreate",
     "UserUpdate",
     "UserResponse",
-
     # Flashcard
     "DeckBase",
     "DeckCreate",
@@ -46,7 +44,6 @@ __all__ = [
     "ReviewCreate",
     "ReviewResponse",
     "ReviewResult",
-
     # Note
     "NoteBase",
     "NoteCreate",
@@ -57,12 +54,10 @@ __all__ = [
     "TagBase",
     "TagCreate",
     "TagResponse",
-
     # Document
     "DocumentUpload",
     "DocumentResponse",
     "DocumentChunkResponse",
-
     # Quiz
     "QuizCreate",
     "QuizResponse",
@@ -72,27 +67,29 @@ __all__ = [
     "AnswerSubmit",
     "QuizResultResponse",
     "AnswerResult",
-
     # Chat
     "ChatSessionCreate",
     "ChatSessionResponse",
     "ChatMessageCreate",
     "ChatMessageResponse",
     "ChatHistoryResponse",
-
+    # Chat Threads
+    "ThreadCreate",
+    "ThreadUpdate",
+    "ThreadResponse",
+    "ThreadListResponse",
+    "ThreadMessageCreate",
     # Context
     "ContextRequest",
     "ContextResponse",
     "WeakArea",
     "MasteryScore",
-
     # Webhook
     "WebhookCreate",
     "WebhookUpdate",
     "WebhookResponse",
     "WebhookEventResponse",
     "WebhookTestResponse",
-
     # RAG
     "RAGQueryRequest",
     "RAGQueryResponse",

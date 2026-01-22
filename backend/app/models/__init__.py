@@ -21,6 +21,7 @@ from .quiz_question import QuizQuestion
 from .quiz_attempt import QuizAttempt
 from .question_learning_state import QuestionLearningState
 from .chat_session import ChatSession
+from .chat_thread import ChatThread
 from .chat_message import ChatMessage
 from .study_session import StudySession
 from .activity_log import (
@@ -57,6 +58,7 @@ __all__ = [
     "QuizAttempt",
     "QuestionLearningState",
     "ChatSession",
+    "ChatThread",
     "ChatMessage",
     "StudySession",
     "ActivityLog",
