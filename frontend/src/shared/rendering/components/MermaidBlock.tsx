@@ -11,7 +11,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import mermaid from 'mermaid';
 import { cn } from '@/lib/utils';
-import { nanoid } from 'nanoid';
+// import { nanoid } from 'nanoid';
 
 interface MermaidBlockProps {
     content: string;
@@ -78,7 +78,7 @@ export const MermaidBlock: React.FC<MermaidBlockProps> = ({ content, className }
     const [svg, setSvg] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
-    const elementId = useRef(`mermaid-${nanoid(8)}`).current;
+    const elementId = useRef(`mermaid-${Math.random().toString(36).slice(2, 10)}`).current;
 
     useEffect(() => {
         let mounted = true;

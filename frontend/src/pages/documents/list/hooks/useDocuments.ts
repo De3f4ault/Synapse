@@ -11,18 +11,33 @@ import type { EnhancedDocument } from "../../core";
  * NOTE: @hey-api/client-fetch returns { data, request, response }
  * We need to extract .data from each response
  */
-export function useDocuments() {
+
+interface UseDocumentsOptions {
+    folderId?: number | null;
+    includeAll?: boolean;
+    view?: 'recent' | 'favorites' | 'archived';
+}
+
+export function useDocuments(options: UseDocumentsOptions = {}) {
+    const { folderId = null, includeAll = false, view } = options;
     const queryClient = useQueryClient();
 
-    // Fetch documents
+    // Fetch documents with folder/view filter
     const {
         data: documents,
         isLoading,
         error,
         refetch,
     } = useQuery({
-        queryKey: queryKeys.documents.list(),
-        queryFn: () => DocumentsService.listDocumentsApiV1DocumentsGet(),
+        queryKey: [...queryKeys.documents.list(), { folderId, includeAll, view }],
+        queryFn: () => DocumentsService.listDocumentsApiV1DocumentsGet(
+            folderId ?? undefined,  // folderId
+            includeAll,              // includeAll
+            view,                    // view (Smart Views filter)
+            undefined,               // statusFilter
+            1,                       // page
+            100,                     // pageSize (fetch more for grid)
+        ),
     });
 
     // Delete mutation

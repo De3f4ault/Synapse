@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { XIcon, Search } from "lucide-react";
 import { ChatMessage } from "./ChatMessage";
 import { ChatInputBox } from "./ChatInputBox";
-import { StopButton } from "./StopButton";
 import { ThreadButton } from "./ThreadButton";
 import { SearchBar } from "../../search/components/SearchBar";
 import { scrollToOccurrence } from "../../search/utils/scrollToOccurrence";
@@ -14,6 +13,7 @@ import { SuggestionChipList, type SuggestionSignal } from "../../suggestions";
 import { useCreateThread } from "../hooks/useThreads";
 import { useCreateBranch } from "../hooks/useBranches";
 import { useThreadStore } from "../state/threadStore";
+import { ThinkingIndicator } from "./ThinkingIndicator";
 import { toast } from "sonner";
 
 import type { ChatMessageResponse } from "@/api/generated";
@@ -106,12 +106,12 @@ export function ChatConversationView({
     ? `${activeMatch.messageId}:${activeMatch.blockIndex}:${activeMatch.start}`
     : null;
 
-  // Auto-scroll to bottom when new messages arrive or streaming updates
+  // Auto-scroll to bottom when new messages arrive, streaming updates, or thinking starts
   useEffect(() => {
     if (!isSearchOpen) {
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }
-  }, [messages, streamingContent, isSearchOpen]);
+  }, [messages, streamingContent, streamingThinking, isStreaming, isSearchOpen]);
 
   // Scroll to occurrence when it changes
   useEffect(() => {
@@ -139,7 +139,10 @@ export function ChatConversationView({
     search.clearSearch();
   }, [search]);
 
-  // Create temporary streaming message
+  // Derive "thinking" state: streaming started but no content yet
+  const isWaitingForResponse = isStreaming && !streamingContent && !streamingThinking;
+
+  // Create temporary streaming message (only when we have content)
   const streamingMessage: ChatMessageResponse | null =
     isStreaming && (streamingContent || streamingThinking)
       ? {
@@ -233,6 +236,14 @@ export function ChatConversationView({
             />
           ))}
 
+          {/* Thinking Indicator - shows while waiting for first token */}
+          {isWaitingForResponse && (
+            <div className="animate-in fade-in duration-200">
+              <ThinkingIndicator />
+            </div>
+          )}
+
+          {/* Streaming Message - shows once content starts arriving */}
           {streamingMessage && (
             <ChatMessage
               message={streamingMessage}
@@ -256,18 +267,14 @@ export function ChatConversationView({
             isStreaming={isStreaming}
           />
 
-          {/* Stop Button - Shown during streaming */}
-          {isStreaming && onStop && (
-            <div className="flex justify-center">
-              <StopButton isStreaming={isStreaming} onStop={onStop} />
-            </div>
-          )}
-
+          {/* Chat Input with integrated Stop button */}
           <ChatInputBox
             message={message}
             onMessageChange={onMessageChange}
             onSend={onSend}
+            onStop={onStop}
             onVoiceClick={onVoiceClick}
+            isStreaming={isStreaming}
             placeholder="Continue the conversation..."
             disabled={isSending}
           />

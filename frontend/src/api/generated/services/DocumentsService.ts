@@ -8,6 +8,7 @@ import type { Body_upload_document_api_v1_documents_upload_post } from '../model
 import type { DocumentChunkResponse } from '../models/DocumentChunkResponse';
 import type { DocumentResponse } from '../models/DocumentResponse';
 import type { DocumentUpdateRequest } from '../models/DocumentUpdateRequest';
+import type { MoveDocumentRequest } from '../models/MoveDocumentRequest';
 import type { ProcessingStatus } from '../models/ProcessingStatus';
 import type { ProcessingStatusResponse } from '../models/ProcessingStatusResponse';
 import type { SummaryResponse } from '../models/SummaryResponse';
@@ -43,6 +44,9 @@ export class DocumentsService {
     /**
      * List documents
      * Retrieve user's uploaded documents
+     * @param folderId Filter by folder ID (null = root/unfiled documents)
+     * @param includeAll If true, return all documents ignoring folder filter
+     * @param view Smart view filter: 'recent', 'favorites', or 'archived'
      * @param statusFilter Filter by processing status
      * @param page Page number
      * @param pageSize Items per page
@@ -51,6 +55,9 @@ export class DocumentsService {
      * @throws ApiError
      */
     public static listDocumentsApiV1DocumentsGet(
+        folderId?: (number | null),
+        includeAll: boolean = false,
+        view?: (string | null),
         statusFilter?: (ProcessingStatus | null),
         page: number = 1,
         pageSize: number = 20,
@@ -60,6 +67,9 @@ export class DocumentsService {
             method: 'GET',
             url: '/api/v1/documents',
             query: {
+                'folder_id': folderId,
+                'include_all': includeAll,
+                'view': view,
                 'status_filter': statusFilter,
                 'page': page,
                 'page_size': pageSize,
@@ -340,6 +350,36 @@ export class DocumentsService {
                 'ids': ids,
                 'token': token,
             },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Move document
+     * Move a document to a different folder
+     * @param documentId
+     * @param requestBody
+     * @param token Auth token for image/file requests
+     * @returns DocumentResponse Successful Response
+     * @throws ApiError
+     */
+    public static moveDocumentApiV1DocumentsDocumentIdMovePatch(
+        documentId: number,
+        requestBody: MoveDocumentRequest,
+        token?: (string | null),
+    ): CancelablePromise<DocumentResponse> {
+        return __request(OpenAPI, {
+            method: 'PATCH',
+            url: '/api/v1/documents/{document_id}/move',
+            path: {
+                'document_id': documentId,
+            },
+            query: {
+                'token': token,
+            },
+            body: requestBody,
+            mediaType: 'application/json',
             errors: {
                 422: `Validation Error`,
             },

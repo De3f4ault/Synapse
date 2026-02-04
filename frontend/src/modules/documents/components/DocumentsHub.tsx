@@ -1,19 +1,24 @@
 import { useState, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { FolderOpen, PanelLeftIcon, MenuIcon } from "lucide-react";
-import { AuroraBackground, EmptyState } from "@/shared/ui";
+import { EmptyState } from "@/shared/ui";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import type { EnhancedDocument } from "../core/types";
+import type { FolderTreeNode } from "../core/folders";
 import { DocumentGrid } from "./DocumentGrid";
 import { DocumentsDock } from "./DocumentsDock";
 import { DocumentsList } from "./DocumentsList";
 import { DocumentsSidebar } from "./DocumentsSidebar";
 import { useThumbnails } from "../hooks/useThumbnails";
+import { useFolderStore } from "../core/state/folderStore";
+import { GlobalContextMenu } from "./GlobalContextMenu";
+import { toast } from "sonner";
 
 interface DocumentsHubProps {
     documents: EnhancedDocument[];
+    folders?: FolderTreeNode[];
     isLoading: boolean;
     viewMode: "grid" | "list";
     onViewChange: (mode: "grid" | "list") => void;
@@ -22,11 +27,23 @@ interface DocumentsHubProps {
     activeFilter: string;
     onFilterChange: (filter: string) => void;
     onUpload: () => void;
+    onCreateFolder?: () => void;
     onDocumentClick?: (doc: EnhancedDocument) => void;
+    onFolderClick?: (folder: FolderTreeNode) => void;
+    onFolderDoubleClick?: (folder: FolderTreeNode) => void;
+    onContextMenu?: (doc: EnhancedDocument, event: React.MouseEvent) => void;
+    onRenameFolder?: (folder: FolderTreeNode) => void;
+    onDeleteFolder?: (folder: FolderTreeNode) => void;
+    // Global Actions
+    onRefresh?: () => void;
+    onSelectAll?: () => void;
+    onPaste?: () => void;
+    canPaste?: boolean;
 }
 
 export const DocumentsHub = ({
     documents,
+    folders = [],
     isLoading,
     viewMode,
     onViewChange,
@@ -35,10 +52,29 @@ export const DocumentsHub = ({
     activeFilter,
     onFilterChange,
     onUpload,
-    onDocumentClick
+    onCreateFolder,
+    onDocumentClick,
+    onFolderClick,
+    onFolderDoubleClick,
+    onContextMenu,
+    onRenameFolder,
+    onDeleteFolder,
+    onRefresh = () => {},
+    onSelectAll = () => {},
+    onPaste,
+    canPaste = false
 }: DocumentsHubProps) => {
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
     const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+    const [globalMenuPos, setGlobalMenuPos] = useState<{ x: number; y: number } | null>(null);
+
+    const handleGlobalContextMenu = (e: React.MouseEvent) => {
+        // Only trigger if clicking directly on the background container (or if bubbling is desired/handled)
+        // We want to avoid overriding item context menus. 
+        // Bubbling: Item click stops propagation. So if we get here, it's empty space.
+        e.preventDefault();
+        setGlobalMenuPos({ x: e.clientX, y: e.clientY });
+    };
 
     // Load sidebar state from localStorage
     useEffect(() => {
@@ -54,15 +90,36 @@ export const DocumentsHub = ({
         localStorage.setItem("documentsSidebarCollapsed", JSON.stringify(newState));
     };
 
+    // Selection State
+    const { toggleSelection, selectedItemIds, clearSelection } = useFolderStore();
+    
+    // Batch Handlers (Placeholder for now)
+    const handleBatchDownload = (ids: string[]) => {
+        toast.info(`Downloading ${ids.length} items...`);
+        clearSelection();
+    };
+    const handleBatchDelete = (ids: string[]) => {
+        toast.error(`Deleting ${ids.length} items...`);
+        clearSelection();
+    };
+    const handleBatchFavorite = (ids: string[]) => {
+        toast.success(`Favorited ${ids.length} items`);
+        clearSelection();
+    };
+    const handleBatchArchive = (ids: string[]) => {
+        toast.info(`Archived ${ids.length} items`);
+        clearSelection();
+    };
+
+
+
     // Batch fetch thumbnails for visible documents
     const documentIds = documents.map(d => d.id);
     const { data: thumbnails } = useThumbnails(documentIds);
 
-    // Extract unique sectors from documents for the sidebar
-    const sectors = Array.from(new Set(documents.map(d => d.sector))).filter(Boolean);
 
     return (
-        <AuroraBackground className="fixed inset-0 min-h-screen flex flex-col pt-16" fixed>
+        <div className="fixed inset-0 min-h-screen flex flex-col pt-16 bg-[#050505]">
             <div className="flex flex-1 overflow-hidden">
                 {/* Desktop Sidebar - Standardized Collapsible Pattern */}
                 <div
@@ -75,10 +132,10 @@ export const DocumentsHub = ({
                         activeSector={activeFilter}
                         onSectorChange={onFilterChange}
                         totalDocuments={documents.length}
-                        sectors={sectors}
                         onUpload={onUpload}
                         className="w-full h-full rounded-2xl"
                         isCollapsed={sidebarCollapsed}
+                        onFolderSelect={(folder) => folder && onFolderClick?.(folder)}
                     />
                 </div>
 
@@ -92,15 +149,21 @@ export const DocumentsHub = ({
                             activeSector={activeFilter}
                             onSectorChange={onFilterChange}
                             totalDocuments={documents.length}
-                            sectors={sectors}
                             onUpload={onUpload}
                             className="w-64"
+                            onFolderSelect={(folder) => {
+                                if (folder) onFolderClick?.(folder);
+                                setMobileSidebarOpen(false);
+                            }}
                         />
                     </SheetContent>
                 </Sheet>
 
                 {/* Main Content Area */}
-                <div className="flex-1 flex flex-col overflow-hidden relative z-0">
+                <div 
+                    className="flex-1 flex flex-col overflow-hidden relative z-0"
+                    onContextMenu={handleGlobalContextMenu}
+                >
                     {/* Standardized Floating Sidebar Toggle */}
                     <div className="absolute top-4 left-4 z-50 flex items-center gap-2 pointer-events-none">
                         {/* Desktop Toggle */}
@@ -124,7 +187,7 @@ export const DocumentsHub = ({
                         </Button>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto p-8 pb-32 relative scrollbar-hide">
+                    <div className="flex-1 overflow-y-auto p-8 pb-32 relative">
                         <div className="max-w-[1600px] mx-auto">
                             <div className="mb-8 pt-2 pl-12 lg:pl-0">
                                 {/* Breadcrumb / Title Context */}
@@ -150,11 +213,34 @@ export const DocumentsHub = ({
                                         <DocumentGrid
                                             key="grid"
                                             documents={documents}
+                                            folders={folders}
+                                            selectedIds={selectedItemIds}
+                                            onToggleSelection={(id, multi) => toggleSelection(id, multi)}
                                             onDocumentClick={onDocumentClick}
+                                            onFolderClick={onFolderClick}
+                                            onFolderDoubleClick={onFolderDoubleClick}
+                                            onContextMenu={onContextMenu}
                                             thumbnails={thumbnails || {}}
+                                            onRenameFolder={onRenameFolder}
+                                            onDeleteFolder={onDeleteFolder}
                                         />
                                     ) : (
-                                        <DocumentsList key="list" documents={documents} />
+                                        <DocumentsList 
+                                            key="list" 
+                                            documents={documents} 
+                                            folders={folders}
+                                            selectedIds={selectedItemIds}
+                                            onToggleSelection={(id, multi) => toggleSelection(id, multi)}
+                                            onFolderClick={onFolderClick}
+                                            onFolderDoubleClick={onFolderDoubleClick}
+                                            onFolderContextMenu={onContextMenu ? () => {
+                                                // Placeholder
+                                            } : undefined}
+                                            onDocumentClick={onDocumentClick}
+                                            onContextMenu={onContextMenu}
+                                            onRenameFolder={onRenameFolder}
+                                            onDeleteFolder={onDeleteFolder}
+                                        />
                                     )
                                 ) : (
                                     <motion.div
@@ -184,7 +270,40 @@ export const DocumentsHub = ({
                 activeFilter={activeFilter}
                 onFilterChange={onFilterChange}
                 onUpload={onUpload}
+                onBatchDownload={handleBatchDownload}
+                onBatchDelete={handleBatchDelete}
+                onBatchFavorite={handleBatchFavorite}
+                onBatchArchive={handleBatchArchive}
             />
-        </AuroraBackground>
+            {/* Global Context Menu */}
+            <AnimatePresence>
+                {globalMenuPos && (
+                    <GlobalContextMenu
+                        position={globalMenuPos}
+                        onClose={() => setGlobalMenuPos(null)}
+                        onNewFolder={() => {
+                            onCreateFolder?.();
+                            setGlobalMenuPos(null);
+                        }}
+                        onUpload={() => {
+                            onUpload();
+                            setGlobalMenuPos(null);
+                        }}
+                        onRefresh={() => {
+                            onRefresh();
+                            setGlobalMenuPos(null);
+                        }}
+                        onSelectAll={() => {
+                            onSelectAll();
+                            setGlobalMenuPos(null);
+                        }}
+                        viewMode={viewMode}
+                        onViewChange={onViewChange}
+                        onPaste={onPaste}
+                        canPaste={canPaste}
+                    />
+                )}
+            </AnimatePresence>
+        </div>
     );
 };

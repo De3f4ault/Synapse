@@ -29,8 +29,9 @@ import asyncio
 import base64
 from app.core.config import settings
 from app.db.session import AsyncSessionLocal
-from app.models.chat_session import ChatSession
-from app.models.chat_message import ChatMessage, MessageRole
+
+# Chat models from module interface (temporary migration)
+from app.modules.chat.interface import ChatSession, ChatMessage, MessageRole
 
 logger = structlog.get_logger(__name__)
 

@@ -13,12 +13,13 @@ from sqlalchemy import (
     String,
     Integer,
     DateTime,
-    JSON,
     Enum as SQLEnum,
     Text,
     Boolean,
+    ForeignKey,
 )
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base
 from .mixins import TimestampMixin, SoftDeleteMixin, UserOwnedMixin
@@ -102,7 +103,7 @@ class Document(Base, TimestampMixin, SoftDeleteMixin, UserOwnedMixin):
     )
 
     file_metadata: Mapped[Optional[dict]] = mapped_column(
-        JSON, nullable=True, default=None, doc="Additional metadata (author, creation date, etc.)"
+        JSONB, nullable=True, default=None, doc="Additional metadata (author, creation date, etc.)"
     )
 
     content_text: Mapped[Optional[str]] = mapped_column(
@@ -127,7 +128,50 @@ class Document(Base, TimestampMixin, SoftDeleteMixin, UserOwnedMixin):
     reading_progress: Mapped[Optional[float]] = mapped_column(
         nullable=True, default=0.0, doc="Reading progress (0.0 = start, 1.0 = finished)"
     )
+
+    # -------------------------------------------------------------------------
+    # Folder Organization (Phase 0)
+    # -------------------------------------------------------------------------
+
+    # Folder this document belongs to (null = Inbox)
+    folder_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("document_folders.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+        doc="Folder ID (null = Inbox)",
+    )
+
+    # Provenance tracking for documents created from chat
+    source_metadata: Mapped[Optional[dict]] = mapped_column(
+        JSONB, nullable=True, default=None, doc="Source info: {chat_session_id, message_id}"
+    )
+
+    # Pin document to top of folder
+    is_pinned: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, doc="Pin document to top of list"
+    )
+
+    # Archive state (separate from folder location)
+    is_archived: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, doc="Document is archived"
+    )
+
+    # Favorite flag for quick access
+    is_favorite: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, doc="Favorite flag"
+    )
     # ----------------------------------------------------------------------
+
+    # -------------------------------------------------------------------------
+    # Relationships
+    # -------------------------------------------------------------------------
+
+    # Folder relationship
+    folder = relationship(
+        "DocumentFolder",
+        back_populates="documents",
+        foreign_keys=[folder_id],
+    )
 
     # Relationships
     # chunks: One-to-many with DocumentChunk (defined in document_chunk.py)

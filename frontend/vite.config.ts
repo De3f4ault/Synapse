@@ -3,12 +3,18 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 
 // https://vitejs.dev/config/
+// Forced restart for new deps
 export default defineConfig({
     plugins: [react()],
 
     resolve: {
         alias: {
             '@': path.resolve(__dirname, './src'),
+            // Force deduplication of Prosemirror modules to prevent "Duplicate use of selection JSON ID"
+            'prosemirror-state': path.resolve(__dirname, 'node_modules/prosemirror-state'),
+            'prosemirror-view': path.resolve(__dirname, 'node_modules/prosemirror-view'),
+            'prosemirror-model': path.resolve(__dirname, 'node_modules/prosemirror-model'),
+            'prosemirror-transform': path.resolve(__dirname, 'node_modules/prosemirror-transform'),
         },
     },
 
@@ -45,7 +51,16 @@ export default defineConfig({
                     'react-vendor': ['react', 'react-dom'],
                     'query-vendor': ['@tanstack/react-query'],
                     'ui-vendor': ['framer-motion', 'recharts'],
-                    'editor-vendor': ['@blocknote/react', '@blocknote/core'],
+                    'editor-vendor': [
+                        '@blocknote/react', 
+                        '@blocknote/core', 
+                        '@blocknote/mantine',
+                        '@blocknote/xl-ai',
+                        'prosemirror-state',
+                        'prosemirror-view',
+                        'prosemirror-model',
+                        'prosemirror-transform'
+                    ],
                 },
             },
         },

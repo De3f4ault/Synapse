@@ -98,10 +98,17 @@ interface ChatState {
     resetForSession: (sessionId: number) => void;
 }
 
+// Load persisted chat mode from localStorage
+const getPersistedChatMode = (): 'tutor' | 'general' => {
+    if (typeof window === 'undefined') return 'tutor';
+    const saved = localStorage.getItem('synapse-chat-mode');
+    return saved === 'general' ? 'general' : 'tutor';
+};
+
 export const useChatStore = create<ChatState>((set, get) => ({
     // Initial state
     connectionState: 'disconnected',
-    chatMode: 'tutor',  // Default to Socratic tutor mode
+    chatMode: getPersistedChatMode(),  // Load from localStorage
     streaming: INITIAL_STREAMING_STATE,
     toolCalls: [],
     error: null,
@@ -113,11 +120,20 @@ export const useChatStore = create<ChatState>((set, get) => ({
     // Connection
     setConnectionState: (connectionState) => set({ connectionState }),
 
-    // Chat Mode
-    setChatMode: (chatMode) => set({ chatMode }),
-    toggleChatMode: () => set((state) => ({
-        chatMode: state.chatMode === 'tutor' ? 'general' : 'tutor'
-    })),
+    // Chat Mode (with localStorage persistence)
+    setChatMode: (chatMode) => {
+        if (typeof window !== 'undefined') {
+            localStorage.setItem('synapse-chat-mode', chatMode);
+        }
+        set({ chatMode });
+    },
+    toggleChatMode: () => {
+        const newMode = get().chatMode === 'tutor' ? 'general' : 'tutor';
+        if (typeof window !== 'undefined') {
+            localStorage.setItem('synapse-chat-mode', newMode);
+        }
+        set({ chatMode: newMode });
+    },
 
     // Streaming - append operations (key for token-by-token updates)
     appendContent: (text) => {
@@ -200,8 +216,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
         set({
             streaming: INITIAL_STREAMING_STATE,
             toolCalls: [],
-            tokenBuffer: [],
             streamingPaused: false,
+            tokenBuffer: [],
         }),
 
     // Full reset

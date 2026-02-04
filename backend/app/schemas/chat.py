@@ -73,6 +73,16 @@ class ChatMessageCreate(BaseModel):
         }
 
 
+class NotesMessageCreate(BaseModel):
+    """Simple message creation for notes AI (no session_id needed - managed internally)."""
+
+    content: str = Field(min_length=1, max_length=50000, description="Message content")
+    stream: Optional[bool] = Field(default=False, description="Whether to stream response")
+
+    class Config:
+        json_schema_extra = {"example": {"content": "Please correct the grammar in this text."}}
+
+
 # Added function_calls and grounding_sources
 class ChatMessageResponse(BaseModel):
     """Chat message response schema."""

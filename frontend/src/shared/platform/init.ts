@@ -7,7 +7,7 @@
  * Import and call initPlatform() in main.tsx or App.tsx.
  */
 
-import { initNotesModule } from "@/modules/notes/core/platformRegistration";
+// import { initNotesModule } from "@/modules/notes/core/platformRegistration";
 import { initDocumentsModule } from "@/modules/documents/core/platformRegistration";
 import { initFlashcardsModule } from "@/pages/flashcards/core/platformRegistration";
 import { initQuizzesModule } from "@/modules/quizzes/core/platformRegistration";
@@ -25,7 +25,7 @@ export function initPlatform(): void {
     }
 
     // Register modules
-    initNotesModule();
+    // initNotesModule();
     initDocumentsModule();
     initFlashcardsModule();
     initQuizzesModule();

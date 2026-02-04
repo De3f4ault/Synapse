@@ -130,6 +130,101 @@ class OllamaProvider(AIProvider):
             )
             yield f"[Error: {str(e)}]"
 
+    async def generate_with_tools(
+        self,
+        prompt: str,
+        tools: list = None,
+        model: str = None,
+        temperature: float = None,
+        **kwargs,
+    ) -> dict:
+        """
+        Generate with tool/function calling support.
+
+        Ollama has limited native tool support. If Ollama fails,
+        automatically falls back to Gemini for reliable generation.
+
+        Args:
+            prompt: Input prompt
+            tools: List of tool definitions
+            model: Model name
+            temperature: Sampling temperature
+            **kwargs: Additional options
+
+        Returns:
+            Dict with 'text' and 'tool_calls'
+        """
+        import time
+
+        model_name = model or "deepseek-r1:32b"
+        temp = temperature if temperature is not None else 0.0
+
+        start_time = time.time()
+
+        try:
+            client = self._get_client()
+
+            response = client.chat(
+                model=model_name,
+                messages=[{"role": "user", "content": prompt}],
+                options={"temperature": temp},
+            )
+
+            text = response.get("message", {}).get("content", "")
+            latency_ms = (time.time() - start_time) * 1000
+
+            logger.info(
+                "ollama_generate_with_tools_completed",
+                model=model_name,
+                text_length=len(text),
+                latency_ms=round(latency_ms, 1),
+            )
+
+            return {
+                "text": text,
+                "tool_calls": [],  # Ollama doesn't support native tool calling
+            }
+
+        except Exception as e:
+            logger.warning(
+                "ollama_generate_with_tools_failed_falling_back_to_gemini",
+                model=model_name,
+                error=str(e),
+            )
+
+            # ============================================================
+            # FALLBACK TO GEMINI
+            # ============================================================
+            try:
+                from app.core.ai.providers.gemini import GeminiProvider
+
+                gemini = GeminiProvider()
+                result = await gemini.generate_with_tools(
+                    prompt=prompt,
+                    tools=tools or [],
+                    model="gemini-2.5-flash",  # Fast fallback model
+                    temperature=temp,
+                    **kwargs,
+                )
+
+                logger.info(
+                    "gemini_fallback_completed",
+                    original_model=model_name,
+                    fallback_model="gemini-2.5-flash",
+                    text_length=len(result.get("text", "")),
+                )
+
+                return result
+
+            except Exception as fallback_error:
+                logger.error(
+                    "gemini_fallback_also_failed",
+                    original_error=str(e),
+                    fallback_error=str(fallback_error),
+                )
+                # Re-raise the original error
+                raise e
+
     async def stream_with_tools(
         self,
         prompt: str,

@@ -21,14 +21,18 @@ const DOC_KEYS = {
  * Hook to list documents with optional filtering
  */
 export const useDocuments = (params?: {
+  folderId?: number | null;
+  includeAll?: boolean;
   statusFilter?: ProcessingStatus;
   page?: number;
   pageSize?: number;
 }) => {
   return useQuery<DocumentResponse[]>({
-    queryKey: DOC_KEYS.list(),
+    queryKey: [...DOC_KEYS.list(), { folderId: params?.folderId, includeAll: params?.includeAll }],
     queryFn: () =>
       DocumentsService.listDocumentsApiV1DocumentsGet(
+        params?.folderId ?? undefined,
+        params?.includeAll ?? false,
         params?.statusFilter,
         params?.page,
         params?.pageSize,

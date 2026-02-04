@@ -3,7 +3,6 @@
 /* tslint:disable */
 /* eslint-disable */
 import type { AIModelResponse } from '../models/AIModelResponse';
-import type { Body_upload_chat_file_api_v1_chat_files_upload_post } from '../models/Body_upload_chat_file_api_v1_chat_files_upload_post';
 import type { ChatMessageCreate } from '../models/ChatMessageCreate';
 import type { ChatMessageResponse } from '../models/ChatMessageResponse';
 import type { ChatSessionCreate } from '../models/ChatSessionCreate';
@@ -12,74 +11,14 @@ import type { ChatSessionUpdate } from '../models/ChatSessionUpdate';
 import type { ConversationSearchResult } from '../models/ConversationSearchResult';
 import type { ConversationTreeResponse } from '../models/ConversationTreeResponse';
 import type { EditMessageRequest } from '../models/EditMessageRequest';
-import type { FileUploadResponse } from '../models/FileUploadResponse';
+import type { NotesMessageCreate } from '../models/NotesMessageCreate';
 import type { CancelablePromise } from '../core/CancelablePromise';
 import { OpenAPI } from '../core/OpenAPI';
 import { request as __request } from '../core/request';
 export class ChatService {
     /**
-     * Search conversations
-     * Production-grade full-text search with fuzzy matching
-     * @param q Search query
-     * @param limit Max results
-     * @param includeInactive Include inactive branch messages
-     * @param fuzzy Enable fuzzy/substring matching
-     * @param token Auth token for image/file requests
-     * @returns ConversationSearchResult Successful Response
-     * @throws ApiError
-     */
-    public static searchConversationsApiV1ChatSearchGet(
-        q: string,
-        limit: number = 20,
-        includeInactive: boolean = false,
-        fuzzy: boolean = true,
-        token?: (string | null),
-    ): CancelablePromise<Array<ConversationSearchResult>> {
-        return __request(OpenAPI, {
-            method: 'GET',
-            url: '/api/v1/chat/search',
-            query: {
-                'q': q,
-                'limit': limit,
-                'include_inactive': includeInactive,
-                'fuzzy': fuzzy,
-                'token': token,
-            },
-            errors: {
-                422: `Validation Error`,
-            },
-        });
-    }
-    /**
-     * Search suggestions
-     * Get autocomplete suggestions based on conversation content
-     * @param q Prefix to autocomplete
-     * @param limit Max suggestions
-     * @param token Auth token for image/file requests
-     * @returns string Successful Response
-     * @throws ApiError
-     */
-    public static searchSuggestionsApiV1ChatSearchSuggestGet(
-        q: string,
-        limit: number = 10,
-        token?: (string | null),
-    ): CancelablePromise<Array<string>> {
-        return __request(OpenAPI, {
-            method: 'GET',
-            url: '/api/v1/chat/search/suggest',
-            query: {
-                'q': q,
-                'limit': limit,
-                'token': token,
-            },
-            errors: {
-                422: `Validation Error`,
-            },
-        });
-    }
-    /**
      * List chat sessions
-     * Retrieve user's chat sessions
+     * Retrieve user's chat sessions with pagination
      * @param page Page number
      * @param pageSize Items per page
      * @param token Auth token for image/file requests
@@ -131,7 +70,7 @@ export class ChatService {
     }
     /**
      * Get chat session
-     * Retrieve a specific chat session
+     * Retrieve a specific chat session by ID
      * @param sessionId
      * @param token Auth token for image/file requests
      * @returns ChatSessionResponse Successful Response
@@ -156,8 +95,38 @@ export class ChatService {
         });
     }
     /**
+     * Update chat session
+     * Update session details (e.g., title)
+     * @param sessionId
+     * @param requestBody
+     * @param token Auth token for image/file requests
+     * @returns ChatSessionResponse Successful Response
+     * @throws ApiError
+     */
+    public static updateSessionApiV1ChatSessionsSessionIdPatch(
+        sessionId: number,
+        requestBody: ChatSessionUpdate,
+        token?: (string | null),
+    ): CancelablePromise<ChatSessionResponse> {
+        return __request(OpenAPI, {
+            method: 'PATCH',
+            url: '/api/v1/chat/sessions/{session_id}',
+            path: {
+                'session_id': sessionId,
+            },
+            query: {
+                'token': token,
+            },
+            body: requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
      * Delete chat session
-     * Delete a chat session
+     * Soft-delete a chat session
      * @param sessionId
      * @param token Auth token for image/file requests
      * @returns any Successful Response
@@ -182,30 +151,30 @@ export class ChatService {
         });
     }
     /**
-     * Update chat session
-     * Update session title
-     * @param sessionId
-     * @param requestBody
+     * Search conversations
+     * Search across session titles and message content using full-text search
+     * @param query Search query
+     * @param limit Maximum results to return
+     * @param includeMessages Include message content matches
      * @param token Auth token for image/file requests
-     * @returns ChatSessionResponse Successful Response
+     * @returns ConversationSearchResult Successful Response
      * @throws ApiError
      */
-    public static updateSessionApiV1ChatSessionsSessionIdPatch(
-        sessionId: number,
-        requestBody: ChatSessionUpdate,
+    public static searchConversationsApiV1ChatSearchGet(
+        query: string,
+        limit: number = 20,
+        includeMessages: boolean = true,
         token?: (string | null),
-    ): CancelablePromise<ChatSessionResponse> {
+    ): CancelablePromise<Array<ConversationSearchResult>> {
         return __request(OpenAPI, {
-            method: 'PATCH',
-            url: '/api/v1/chat/sessions/{session_id}',
-            path: {
-                'session_id': sessionId,
-            },
+            method: 'GET',
+            url: '/api/v1/chat/search',
             query: {
+                'query': query,
+                'limit': limit,
+                'include_messages': includeMessages,
                 'token': token,
             },
-            body: requestBody,
-            mediaType: 'application/json',
             errors: {
                 422: `Validation Error`,
             },
@@ -242,7 +211,7 @@ export class ChatService {
     }
     /**
      * Send chat message
-     * Send a message and get AI response (non-streaming)
+     * Send a message and get an AI response (non-streaming)
      * @param sessionId
      * @param requestBody
      * @param token Auth token for image/file requests
@@ -298,7 +267,7 @@ export class ChatService {
     }
     /**
      * Regenerate message
-     * Regenerate AI response for a message
+     * Regenerate the last AI response
      * @param messageId
      * @param token Auth token for image/file requests
      * @returns ChatMessageResponse Successful Response
@@ -324,7 +293,7 @@ export class ChatService {
     }
     /**
      * Edit message (creates branch)
-     * Edit a user message, creating a new branch. Returns new message + AI response.
+     * Edit a user message. This creates a new conversation branch.
      * @param messageId
      * @param requestBody
      * @param token Auth token for image/file requests
@@ -354,7 +323,7 @@ export class ChatService {
     }
     /**
      * Get conversation tree
-     * Get full conversation tree including all branches
+     * Retrieve the full conversation tree including all branches
      * @param sessionId
      * @param includeInactive Include inactive (archived) branches
      * @param token Auth token for image/file requests
@@ -383,7 +352,7 @@ export class ChatService {
     }
     /**
      * Switch active branch
-     * Switch to a different branch at a branch point
+     * Switch the active conversation path to a different branch
      * @param messageId
      * @param token Auth token for image/file requests
      * @returns any Successful Response
@@ -440,34 +409,6 @@ export class ChatService {
         });
     }
     /**
-     * Upload file for chat
-     * Upload a file to use as context in chat
-     * @param formData
-     * @param sessionId
-     * @param token Auth token for image/file requests
-     * @returns FileUploadResponse Successful Response
-     * @throws ApiError
-     */
-    public static uploadChatFileApiV1ChatFilesUploadPost(
-        formData: Body_upload_chat_file_api_v1_chat_files_upload_post,
-        sessionId?: (number | null),
-        token?: (string | null),
-    ): CancelablePromise<FileUploadResponse> {
-        return __request(OpenAPI, {
-            method: 'POST',
-            url: '/api/v1/chat/files/upload',
-            query: {
-                'session_id': sessionId,
-                'token': token,
-            },
-            formData: formData,
-            mediaType: 'multipart/form-data',
-            errors: {
-                422: `Validation Error`,
-            },
-        });
-    }
-    /**
      * List AI models
      * Get list of available AI models
      * @returns AIModelResponse Successful Response
@@ -494,6 +435,56 @@ export class ChatService {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/api/v1/chat/sessions/dashboard/message',
+            query: {
+                'token': token,
+            },
+            body: requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Notes AI Message
+     * Send message to Notes AI for text editing assistance
+     * @param requestBody
+     * @param token Auth token for image/file requests
+     * @returns ChatMessageResponse Successful Response
+     * @throws ApiError
+     */
+    public static sendNotesMessageApiV1ChatSessionsNotesMessagePost(
+        requestBody: NotesMessageCreate,
+        token?: (string | null),
+    ): CancelablePromise<ChatMessageResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/chat/sessions/notes/message',
+            query: {
+                'token': token,
+            },
+            body: requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Notes AI Streaming
+     * Stream AI response for notes text editing with Server-Sent Events
+     * @param requestBody
+     * @param token Auth token for image/file requests
+     * @returns any Successful Response
+     * @throws ApiError
+     */
+    public static streamNotesMessageApiV1ChatSessionsNotesStreamPost(
+        requestBody: NotesMessageCreate,
+        token?: (string | null),
+    ): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/chat/sessions/notes/stream',
             query: {
                 'token': token,
             },

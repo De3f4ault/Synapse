@@ -6,14 +6,15 @@
  * PATTERN: Session resets when active note changes.
  */
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef } from "react";
 import { ChatService } from "@/api/generated";
 import { toast } from "sonner";
-import { onNoteChange, type AIAction } from "../../core";
 
 // ============================================================================
 // Types
 // ============================================================================
+
+export type AIAction = "summarize" | "tags" | "expand" | "correct";
 
 export interface AIInsight {
     type: "summary" | "tags" | "expansion" | "suggestions";
@@ -43,13 +44,7 @@ export function useNoteAI() {
     const sessionIdRef = useRef<number | null>(null);
 
     // Reset session when note changes (session boundary enforcement)
-    useEffect(() => {
-        const unsubscribe = onNoteChange(() => {
-            sessionIdRef.current = null;
-            setInsights([]);
-        });
-        return unsubscribe;
-    }, []);
+
 
     // Ensure we have an AI session
     const ensureSession = useCallback(async (): Promise<number> => {

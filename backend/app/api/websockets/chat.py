@@ -19,8 +19,9 @@ from typing import AsyncIterator, Optional
 
 from app.api.deps import get_db
 from app.api.websockets.manager import manager
-from app.models.chat_session import ChatSession
-from app.models.chat_message import ChatMessage, MessageRole
+
+# Chat models from module interface (temporary migration)
+from app.modules.chat.interface import ChatSession, ChatMessage, MessageRole
 from app.db.session import AsyncSessionLocal
 from app.core.ai.cancellation import CancellationToken
 from app.core.ai.generation_runtime import get_generation_registry

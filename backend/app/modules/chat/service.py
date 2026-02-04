@@ -1,185 +1,954 @@
-"""Chat Service"""
+"""
+Chat Service — Application Layer.
 
-from typing import Dict, List
-from datetime import datetime
+This module implements the business logic for the Chat functionality.
+It orchestrates operations between:
+- Domain Entities (ChatSession, ChatMessage)
+- Data Access (Repositories)
+- External AI Services (Orchestrators)
+
+The service enforces:
+- Resource ownership (User can only access their own sessions)
+- Data consistency (Transactions)
+- Business rules (Branching logic, Message deletion policies)
+"""
+
+from typing import Dict, List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_
+import structlog
 
-from .constants import MessageRole
+from .internal.repository import (
+    ChatSessionRepository,
+    ChatMessageRepository,
+    ChatThreadRepository,
+)
+from .internal.models import MessageRole
+from .interface import ChatSessionResponse, ChatMessageResponse
+
+
+logger = structlog.get_logger(__name__)
 
 
 class ChatService:
-    """Service layer for chat business logic"""
+    """
+    Application service for the Chat domain.
 
-    def __init__(self, session: AsyncSession):
-        self.session = session
+    This service encapsulates all business logic for chat sessions, messages,
+    and AI interactions. It is designed to be used by the API layer and other modules.
+    """
 
-    async def create_session(self, user_id: int, data: Dict) -> Dict:
-        """Create a chat session"""
-        from app.models.chat_session import ChatSession
+    def __init__(self, db: AsyncSession):
+        self.db = db
+        self._session_repo = ChatSessionRepository(db)
+        self._message_repo = ChatMessageRepository(db)
+        self._thread_repo = ChatThreadRepository(db)
 
-        session = ChatSession(
+    # -------------------------------------------------------------------------
+    # Session Operations
+    # -------------------------------------------------------------------------
+
+    async def create_session(
+        self,
+        user_id: int,
+        *,
+        title: Optional[str] = None,
+        document_id: Optional[int] = None,
+        context_modules: Optional[List[str]] = None,
+    ) -> ChatSessionResponse:
+        """
+        Create a new chat session.
+
+        If no title is provided, generates a default timestamp-based title.
+        """
+        from datetime import datetime
+
+        session = await self._session_repo.create(
             user_id=user_id,
-            title=data.get("title", "New Chat"),
-            document_id=data.get("document_id"),
-            context_modules=data.get("context_modules", [])
+            title=title or f"Chat {datetime.utcnow().strftime('%Y-%m-%d %H:%M')}",
+            document_id=document_id,
+            context_modules=context_modules,
+        )
+        await self.db.commit()
+
+        logger.info("chat_session_created", session_id=session.id, user_id=user_id)
+
+        return ChatSessionResponse(
+            id=session.id,
+            user_id=session.user_id,
+            title=session.title,
+            document_id=session.document_id,
+            context_modules=context_modules or ["flashcards", "notes"],
+            message_count=0,
+            total_tokens_used=0,
+            total_cost=0.0,
+            created_at=session.created_at,
+            updated_at=session.updated_at,
         )
 
-        self.session.add(session)
-        await self.session.commit()
-        await self.session.refresh(session)
-
-        return self._session_to_dict(session)
-
-    async def get_session(self, session_id: int, user_id: int) -> Dict:
-        """Get a chat session"""
-        from app.models.chat_session import ChatSession
-
-        query = select(ChatSession).where(
-            and_(
-                ChatSession.id == session_id,
-                ChatSession.user_id == user_id,
-                ChatSession.deleted_at.is_(None)
-            )
-        )
-
-        result = await self.session.execute(query)
-        chat_session = result.scalar_one_or_none()
-
-        if not chat_session:
-            raise Exception("Session not found")
-
-        return self._session_to_dict(chat_session)
-
-    async def list_sessions(self, user_id: int) -> List[Dict]:
-        """List user's chat sessions"""
-        from app.models.chat_session import ChatSession
-
-        query = select(ChatSession).where(
-            and_(
-                ChatSession.user_id == user_id,
-                ChatSession.deleted_at.is_(None)
-            )
-        ).order_by(ChatSession.updated_at.desc())
-
-        result = await self.session.execute(query)
-        sessions = result.scalars().all()
-
-        return [self._session_to_dict(s) for s in sessions]
-
-    async def send_message(
+    async def get_session(
         self,
         session_id: int,
         user_id: int,
-        content: str
-    ) -> str:
+    ) -> Optional[ChatSessionResponse]:
         """
-        Send a message and get AI response.
+        Get a chat session details.
 
-        This is a simplified version - full implementation would:
-        1. Build context from specified modules
-        2. Call AIOrchestrator
-        3. Stream response
-        4. Track tokens and cost
+        Enforces ownership check: User can only retrieve their own sessions.
         """
-        from app.models.chat_message import ChatMessage
+        result = await self._session_repo.get_with_message_count(session_id, user_id=user_id)
+        if not result:
+            return None
 
-        # Save user message
-        user_message = ChatMessage(
+        session, message_count = result
+        return self._to_session_response(session, message_count)
+
+    async def list_sessions(
+        self,
+        user_id: int,
+        *,
+        page: int = 1,
+        page_size: int = 20,
+    ) -> List[ChatSessionResponse]:
+        """List all chat sessions for a user with pagination."""
+        sessions_with_counts = await self._session_repo.list_by_user(
+            user_id, page=page, page_size=page_size
+        )
+        return [
+            self._to_session_response(session, count) for session, count in sessions_with_counts
+        ]
+
+    async def update_session_title(
+        self,
+        session_id: int,
+        user_id: int,
+        title: str,
+    ) -> Optional[ChatSessionResponse]:
+        """Update the title of a chat session."""
+        session = await self._session_repo.get_by_id(session_id, user_id=user_id)
+        if not session:
+            return None
+
+        session = await self._session_repo.update_title(session, title)
+        await self.db.commit()
+
+        # Get updated session with message count
+        result = await self._session_repo.get_with_message_count(session_id)
+        if result:
+            session, message_count = result
+            return self._to_session_response(session, message_count)
+        return None
+
+    async def delete_session(
+        self,
+        session_id: int,
+        user_id: int,
+    ) -> bool:
+        """
+        Soft-delete a chat session.
+
+        Returns True if successful, False if session not found or access denied.
+        """
+        session = await self._session_repo.get_by_id(session_id, user_id=user_id)
+        if not session:
+            return False
+
+        await self._session_repo.soft_delete(session)
+        await self.db.commit()
+
+        logger.info("chat_session_deleted", session_id=session_id)
+        return True
+
+    # -------------------------------------------------------------------------
+    # Message Operations
+    # -------------------------------------------------------------------------
+
+    async def get_messages(
+        self,
+        session_id: int,
+        user_id: int,
+        *,
+        limit: int = 100,
+    ) -> Optional[List[ChatMessageResponse]]:
+        """Retrieve messages for a session."""
+        # Verify session ownership
+        session = await self._session_repo.get_by_id(session_id, user_id=user_id)
+        if not session:
+            return None
+
+        messages = await self._message_repo.list_by_session(session_id, limit=limit)
+        return [self._to_message_response(msg) for msg in messages]
+
+    async def add_user_message(
+        self,
+        session_id: int,
+        content: str,
+    ) -> ChatMessageResponse:
+        """Add a user message to a session (internal use)."""
+        message = await self._message_repo.create(
             session_id=session_id,
             role=MessageRole.USER,
-            content=content
+            content=content,
         )
+        await self.db.flush()
+        return self._to_message_response(message)
 
-        self.session.add(user_message)
-        await self.session.commit()
-
-        # AI response would go here
-        assistant_response = "This is a placeholder response"
-
-        # Save assistant message
-        assistant_message = ChatMessage(
+    async def add_assistant_message(
+        self,
+        session_id: int,
+        content: str,
+        *,
+        tokens: int = 0,
+        model_used: Optional[str] = None,
+        function_calls: Optional[dict] = None,
+        grounding_sources: Optional[dict] = None,
+    ) -> ChatMessageResponse:
+        """Add an assistant message to a session (internal use)."""
+        message = await self._message_repo.create(
             session_id=session_id,
             role=MessageRole.ASSISTANT,
-            content=assistant_response,
-            model_used="flash"
+            content=content,
+            tokens=tokens,
+            model_used=model_used,
+            function_calls=function_calls,
+            grounding_sources=grounding_sources,
+        )
+        await self.db.flush()
+        return self._to_message_response(message)
+
+    async def get_chat_history_for_context(
+        self,
+        session_id: int,
+        *,
+        max_chars: int = 16000,
+    ) -> List[Dict]:
+        """Retrieves recent chat history formatted for AI context window."""
+        return await self._message_repo.list_recent_for_context(session_id, max_chars=max_chars)
+
+    async def send_message_with_ai(
+        self,
+        session_id: int,
+        user_id: int,
+        content: str,
+    ) -> ChatMessageResponse:
+        """
+        Orchestrate the full message flow:
+        1. Validates session access
+        2. Persists user message
+        3. Retrieves chat history context
+        4. Calls AI Orchestrator
+        5. Persists and returns AI response
+        """
+
+        # Helper for basic token estimation
+        def estimate_tokens(text: str) -> int:
+            return max(1, len(text) // 4)
+
+        # Verify session ownership
+        session = await self._session_repo.get_by_id(session_id, user_id=user_id)
+        if not session:
+            return None  # Caller should raise 404
+
+        # Save user message
+        user_message = await self._message_repo.create(
+            session_id=session_id,
+            role=MessageRole.USER,
+            content=content,
+            tokens=estimate_tokens(content),
+        )
+        await self.db.flush()
+
+        logger.info("user_message_saved", message_id=user_message.id, session_id=session_id)
+
+        # Get chat history for AI context
+        messages = await self._message_repo.list_by_session(session_id, limit=50)
+        chat_history = [
+            {
+                "role": msg.role.value if hasattr(msg.role, "value") else msg.role,
+                "content": msg.content,
+            }
+            for msg in messages
+            if msg.id != user_message.id
+        ]
+
+        logger.info("loaded_chat_history", count=len(chat_history))
+
+        # Call AI orchestrator
+        from app.core.ai.orchestrator import get_orchestrator
+
+        orchestrator = get_orchestrator()
+        orchestration_result = await orchestrator.handle_message(
+            message=content,
+            user_id=user_id,
+            session_id=session_id,
+            context={
+                "document_id": session.document_id,
+                "context_modules": session.context_modules,
+            },
+            chat_history=chat_history,
         )
 
-        self.session.add(assistant_message)
-        await self.session.commit()
+        # Process tool_calls from orchestration result
+        tool_calls_data = None
+        if orchestration_result.metadata:
+            tc = orchestration_result.metadata.get("tool_calls")
+            if isinstance(tc, dict):
+                tool_calls_data = tc
+            elif isinstance(tc, int) and tc > 0:
+                tool_calls_data = {"count": tc}
 
-        return assistant_response
+        # Save AI response
+        ai_message = await self._message_repo.create(
+            session_id=session_id,
+            role=MessageRole.ASSISTANT,
+            content=orchestration_result.output,
+            tokens=orchestration_result.tokens_used or estimate_tokens(orchestration_result.output),
+            model_used=f"gemini-2.5-flash ({orchestration_result.agent_used})",
+            function_calls=tool_calls_data,
+        )
 
-    async def get_messages(self, session_id: int, user_id: int) -> List[Dict]:
-        """Get messages for a session"""
-        from app.models.chat_message import ChatMessage
-        from app.models.chat_session import ChatSession
+        # Update session token count
+        await self._session_repo.update_token_count(
+            session, user_message.tokens + ai_message.tokens
+        )
 
-        # Verify ownership
-        session_query = select(ChatSession).where(
-            and_(
-                ChatSession.id == session_id,
-                ChatSession.user_id == user_id
+        await self.db.commit()
+        await self.db.refresh(ai_message)
+
+        logger.info("ai_message_saved", message_id=ai_message.id, session_id=session_id)
+
+        return self._to_message_response(ai_message)
+
+    # -------------------------------------------------------------------------
+    # Message Lifecycle Operations
+    # -------------------------------------------------------------------------
+
+    async def delete_message(
+        self,
+        message_id: int,
+        user_id: int,
+    ) -> bool:
+        """
+        Delete a specific message.
+
+        Enforces ownership check. Returns True if deleted, False if not found.
+        """
+        message = await self._message_repo.get_with_ownership_check(message_id, user_id)
+        if not message:
+            return False
+
+        await self._message_repo.delete(message_id)
+        await self.db.commit()
+
+        logger.info("message_deleted", message_id=message_id)
+        return True
+
+    async def regenerate_message(
+        self,
+        message_id: int,
+        user_id: int,
+    ) -> Optional[ChatMessageResponse]:
+        """
+        Regenerate an AI response.
+
+        Identifies the original user message, re-sends it to the AI (with potentially
+        updated history), and updates the existing assistant message in-place.
+        """
+        from datetime import datetime
+
+        def estimate_tokens(text: str) -> int:
+            return max(1, len(text) // 4)
+
+        # Get original assistant message with ownership check
+        old_message = await self._message_repo.get_assistant_message_with_owner(message_id, user_id)
+        if not old_message:
+            return None  # Not found or not assistant message
+
+        # Get the user message that triggered this response
+        user_message = await self._message_repo.get_preceding_user_message(
+            old_message.session_id, old_message.created_at
+        )
+        if not user_message:
+            raise ValueError("Cannot find original user message")
+
+        # Get session for context
+        session = await self._session_repo.get_by_id(old_message.session_id)
+
+        # Get chat history
+        messages = await self._message_repo.list_by_session(old_message.session_id, limit=50)
+        chat_history = [
+            {
+                "role": msg.role.value if hasattr(msg.role, "value") else msg.role,
+                "content": msg.content,
+            }
+            for msg in messages
+            if msg.id != old_message.id
+        ]
+
+        # Call AI orchestrator
+        from app.core.ai.orchestrator import get_orchestrator
+
+        orchestrator = get_orchestrator()
+        result = await orchestrator.handle_message(
+            message=user_message.content,
+            user_id=user_id,
+            session_id=old_message.session_id,
+            context={
+                "document_id": session.document_id if session else None,
+                "context_modules": session.context_modules if session else {},
+            },
+            chat_history=chat_history,
+        )
+
+        # Update existing message
+        old_message.content = result.output
+        old_message.tokens = result.tokens_used or estimate_tokens(result.output)
+        old_message.model_used = f"gemini-2.5-flash ({result.agent_used})"
+        old_message.created_at = datetime.utcnow()
+
+        # Handle function_calls
+        if result.metadata:
+            tc = result.metadata.get("tool_calls")
+            if isinstance(tc, dict):
+                old_message.function_calls = tc
+            elif isinstance(tc, int) and tc > 0:
+                old_message.function_calls = {"count": tc}
+
+        await self.db.commit()
+        await self.db.refresh(old_message)
+
+        logger.info("message_regenerated", message_id=message_id)
+        return self._to_message_response(old_message)
+
+    async def edit_message_with_branch(
+        self,
+        message_id: int,
+        user_id: int,
+        new_content: str,
+    ) -> Optional[List[ChatMessageResponse]]:
+        """
+        Edit a user message by creating a new conversation branch.
+
+        Steps:
+        1. Deactivate original message path
+        2. Create new user message (branch point)
+        3. Generate new AI response
+        4. Return [new_user_msg, new_ai_msg]
+        """
+        from datetime import datetime
+
+        def estimate_tokens(text: str) -> int:
+            return max(1, len(text) // 4)
+
+        # Get original user message with ownership check
+        original = await self._message_repo.get_user_message_with_owner(message_id, user_id)
+        if not original:
+            return None
+
+        # Mark original and descendants as inactive
+        original.is_active = False
+        await self._message_repo.mark_descendants_inactive(original.session_id, original.created_at)
+
+        # Create new edited message
+        new_user_msg = await self._message_repo.create(
+            session_id=original.session_id,
+            role=MessageRole.USER,
+            content=new_content,
+            tokens=estimate_tokens(new_content),
+            parent_message_id=original.parent_message_id,
+            version=(original.version or 0) + 1,
+        )
+        await self.db.flush()
+
+        logger.info("branch_created", new_message_id=new_user_msg.id, original_id=message_id)
+
+        # Get chat history up to branch point
+        history = await self._message_repo.list_active_before(
+            original.session_id, original.created_at, limit=50
+        )
+        chat_history = [
+            {
+                "role": msg.role.value if hasattr(msg.role, "value") else msg.role,
+                "content": msg.content,
+            }
+            for msg in history
+        ]
+
+        # Generate new AI response
+        from app.core.ai.orchestrator import get_orchestrator
+
+        orchestrator = get_orchestrator()
+        result = await orchestrator.handle_message(
+            message=new_content,
+            user_id=user_id,
+            session_id=original.session_id,
+            context={},
+            chat_history=chat_history,
+        )
+
+        # Create AI response message
+        new_ai_msg = await self._message_repo.create(
+            session_id=original.session_id,
+            role=MessageRole.ASSISTANT,
+            content=result.output,
+            tokens=result.tokens_used or estimate_tokens(result.output),
+            model_used=f"gemini-2.5-flash ({result.agent_used})",
+            parent_message_id=new_user_msg.id,
+        )
+
+        await self.db.commit()
+        await self.db.refresh(new_user_msg)
+        await self.db.refresh(new_ai_msg)
+
+        logger.info(
+            "branch_complete",
+            user_msg_id=new_user_msg.id,
+            ai_msg_id=new_ai_msg.id,
+        )
+
+        return [
+            self._to_message_response(new_user_msg),
+            self._to_message_response(new_ai_msg),
+        ]
+
+    # -------------------------------------------------------------------------
+    # Branching Operations
+    # -------------------------------------------------------------------------
+
+    async def get_conversation_tree(
+        self,
+        session_id: int,
+        user_id: int,
+        include_inactive: bool = False,
+    ) -> Optional[dict]:
+        """
+        Retrieve the full conversation tree structure.
+
+        Returns a dictionary containing:
+        - session_id
+        - messages (list of all messages)
+        - branch_points (list of message IDs that have multiple children)
+        """
+        session = await self._session_repo.get_by_id(session_id, user_id=user_id)
+        if not session:
+            return None
+
+        # Get messages (optionally including inactive)
+        messages = await self._message_repo.list_by_session_with_active_filter(
+            session_id, include_inactive=include_inactive
+        )
+
+        # Find branch points (messages with multiple children)
+        branch_points = await self._message_repo.get_branch_points(session_id)
+
+        # Build message IDs with children for has_children field
+        message_ids_with_children = set()
+        for msg in messages:
+            if msg.parent_message_id:
+                message_ids_with_children.add(msg.parent_message_id)
+
+        return {
+            "session_id": session_id,
+            "messages": [
+                self._to_message_response_with_children(msg, msg.id in message_ids_with_children)
+                for msg in messages
+            ],
+            "branch_points": branch_points,
+        }
+
+    async def switch_branch(
+        self,
+        message_id: int,
+        user_id: int,
+    ) -> Optional[int]:
+        """
+        Switch the active conversation path to the specified message.
+
+        This deactivates sibling branches and recursively activates the target
+        message and its descendants.
+        """
+        # Get target message with ownership check
+        target = await self._message_repo.get_with_ownership_check(message_id, user_id)
+        if not target:
+            return None
+
+        # Deactivate sibling branches and their descendants
+        if target.parent_message_id:
+            await self._message_repo.deactivate_sibling_branches(
+                target.parent_message_id, message_id, target.session_id
             )
-        )
 
-        session_result = await self.session.execute(session_query)
-        chat_session = session_result.scalar_one_or_none()
+        # Activate target and its descendants
+        target.is_active = True
+        await self._message_repo.activate_descendants(message_id)
 
-        if not chat_session:
-            raise Exception("Session not found")
+        await self.db.commit()
+
+        logger.info("branch_switched", message_id=message_id)
+        return message_id
+
+    # -------------------------------------------------------------------------
+    # Extras: Export, Models, Dashboard, Notes
+    # -------------------------------------------------------------------------
+
+    async def export_conversation(
+        self,
+        session_id: int,
+        user_id: int,
+        format: str = "json",
+        include_full_tree: bool = False,
+    ) -> Optional[dict]:
+        """
+        Export conversation data in JSON or Markdown format.
+        """
+        from datetime import datetime
+        import json as json_lib
+
+        session = await self._session_repo.get_by_id(session_id, user_id=user_id)
+        if not session:
+            return None
 
         # Get messages
-        query = select(ChatMessage).where(
-            ChatMessage.session_id == session_id
-        ).order_by(ChatMessage.created_at.asc())
+        if include_full_tree:
+            messages = await self._message_repo.list_by_session(session_id)
+        else:
+            messages = await self._message_repo.list_active_by_session(session_id)
 
-        result = await self.session.execute(query)
-        messages = result.scalars().all()
-
-        return [self._message_to_dict(m) for m in messages]
-
-    async def delete_session(self, session_id: int, user_id: int):
-        """Soft delete a session"""
-        from app.models.chat_session import ChatSession
-
-        query = select(ChatSession).where(
-            and_(
-                ChatSession.id == session_id,
-                ChatSession.user_id == user_id
+        if format == "json":
+            export_data = {
+                "session": {
+                    "id": session.id,
+                    "title": session.title,
+                    "created_at": session.created_at.isoformat(),
+                    "updated_at": session.updated_at.isoformat(),
+                    "total_tokens_used": session.total_tokens_used,
+                },
+                "messages": [
+                    {
+                        "id": msg.id,
+                        "role": msg.role.value if hasattr(msg.role, "value") else msg.role,
+                        "content": msg.content,
+                        "tokens": msg.tokens,
+                        "model_used": msg.model_used,
+                        "created_at": msg.created_at.isoformat(),
+                        "parent_message_id": msg.parent_message_id,
+                        "version": msg.version,
+                        "is_active": msg.is_active,
+                    }
+                    for msg in messages
+                ],
+                "exported_at": datetime.utcnow().isoformat(),
+                "export_options": {"include_full_tree": include_full_tree},
+            }
+            content = json_lib.dumps(export_data, indent=2, ensure_ascii=False)
+            filename = f"conversation_{session_id}_{datetime.utcnow().strftime('%Y%m%d')}.json"
+            media_type = "application/json"
+        else:
+            # Markdown format
+            lines = [
+                f"# {session.title}",
+                "",
+                f"*Exported on {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}*",
+                "",
+                "---",
+                "",
+            ]
+            for msg in messages:
+                role_value = msg.role.value if hasattr(msg.role, "value") else msg.role
+                role_emoji = "👤" if role_value == "user" else "🤖"
+                role_name = "User" if role_value == "user" else "Assistant"
+                timestamp = msg.created_at.strftime("%Y-%m-%d %H:%M")
+                lines.extend(
+                    [
+                        f"### {role_emoji} {role_name}",
+                        f"*{timestamp}*",
+                        "",
+                        msg.content,
+                        "",
+                        "---",
+                        "",
+                    ]
+                )
+            lines.extend(
+                [
+                    "",
+                    "## Metadata",
+                    "",
+                    f"- **Session ID**: {session.id}",
+                    f"- **Messages**: {len(messages)}",
+                    f"- **Total Tokens**: {session.total_tokens_used}",
+                ]
             )
+            content = "\n".join(lines)
+            filename = f"conversation_{session_id}_{datetime.utcnow().strftime('%Y%m%d')}.md"
+            media_type = "text/markdown"
+
+        logger.info("conversation_exported", session_id=session_id, format=format)
+        return {"content": content, "filename": filename, "media_type": media_type}
+
+    def get_ai_models(self) -> list[dict]:
+        """Return list of available AI models configuration."""
+        return [
+            {
+                "id": "gemini-2.5-flash",
+                "name": "Gemini 2.5 Flash",
+                "description": "Fast and efficient model for everyday tasks",
+                "capabilities": ["text", "code", "reasoning"],
+                "max_tokens": 8192,
+                "supports_vision": False,
+                "supports_search": False,
+            },
+            {
+                "id": "gemini-1.5-flash",
+                "name": "Gemini 1.5 Flash",
+                "description": "Balanced speed and capability",
+                "capabilities": ["text", "code", "vision", "reasoning"],
+                "max_tokens": 8192,
+                "supports_vision": True,
+                "supports_search": True,
+            },
+            {
+                "id": "gemini-1.5-pro",
+                "name": "Gemini 1.5 Pro",
+                "description": "Most capable model for complex tasks",
+                "capabilities": ["text", "code", "vision", "reasoning", "long-context"],
+                "max_tokens": 32768,
+                "supports_vision": True,
+                "supports_search": True,
+            },
+            {
+                "id": "gemini-2.0-flash-thinking",
+                "name": "Gemini 2.0 Flash (Thinking)",
+                "description": "Model with visible reasoning process",
+                "capabilities": ["text", "code", "reasoning", "thinking"],
+                "max_tokens": 8192,
+                "supports_vision": False,
+                "supports_search": True,
+            },
+        ]
+
+    async def send_dashboard_message(
+        self,
+        user_id: int,
+        content: str,
+    ) -> ChatMessageResponse:
+        """
+        Send message to the Dashboard Orchestrator.
+
+        Interacts with the system-level Dashboard Agent that allows control
+        over the Synapse platform (navigating modules, creating resources).
+        """
+        from datetime import datetime
+        from app.core.ai.context.dashboard_context_builder import build_dashboard_context
+        from app.core.ai.orchestrator import get_orchestrator
+
+        DASHBOARD_SESSION_KEY = "synapse_dashboard_session"
+
+        def estimate_tokens(text: str) -> int:
+            return max(1, len(text) // 4)
+
+        # Get or create dashboard session
+        session = await self._session_repo.get_by_title(user_id, DASHBOARD_SESSION_KEY)
+        if not session:
+            session = await self._session_repo.create(user_id=user_id, title=DASHBOARD_SESSION_KEY)
+            await self.db.commit()
+
+        # Save user message
+        user_msg = await self._message_repo.create(
+            session_id=session.id,
+            role=MessageRole.USER,
+            content=content,
+            tokens=estimate_tokens(content),
+        )
+        await self.db.commit()
+
+        # Build context and get history
+        context = await build_dashboard_context(user_id=user_id, db=self.db)
+        context["agent_preference"] = "dashboard"
+
+        messages = await self._message_repo.list_by_session(session.id, limit=20)
+        chat_history = [
+            {
+                "role": msg.role.value if hasattr(msg.role, "value") else msg.role,
+                "content": msg.content,
+            }
+            for msg in messages
+            if msg.id != user_msg.id
+        ]
+
+        # Call orchestrator
+        orchestrator = get_orchestrator()
+        result = await orchestrator.handle_message(
+            message=content,
+            user_id=user_id,
+            session_id=session.id,
+            context=context,
+            chat_history=chat_history,
         )
 
-        result = await self.session.execute(query)
-        chat_session = result.scalar_one_or_none()
+        # Extract actions taken
+        actions_taken = []
+        tool_calls = result.metadata.get("tool_calls", [])
+        if isinstance(tool_calls, list):
+            for tc in tool_calls:
+                tr = tc.get("result", {})
+                if isinstance(tr, dict) and tr.get("success"):
+                    actions_taken.append(
+                        {
+                            "type": tc.get("tool", ""),
+                            "data": tr.get("data", {}),
+                            "message": tr.get("message", ""),
+                        }
+                    )
 
-        if not chat_session:
-            raise Exception("Session not found")
+        # Save AI response
+        ai_msg = await self._message_repo.create(
+            session_id=session.id,
+            role=MessageRole.ASSISTANT,
+            content=result.output,
+            tokens=result.tokens_used or estimate_tokens(result.output),
+            model_used=result.agent_used,
+            function_calls={"tool_calls": tool_calls, "actions_taken": actions_taken},
+        )
 
-        chat_session.deleted_at = datetime.utcnow()
-        await self.session.commit()
+        session.updated_at = datetime.utcnow()
+        await self.db.commit()
+        await self.db.refresh(ai_msg)
 
-    def _session_to_dict(self, session) -> Dict:
-        """Convert ChatSession model to dict"""
-        return {
-            "id": session.id,
-            "user_id": session.user_id,
-            "title": session.title,
-            "document_id": session.document_id,
-            "context_modules": session.context_modules,
-            "total_tokens_used": session.total_tokens_used or 0,
-            "created_at": session.created_at,
-            "updated_at": session.updated_at
-        }
+        logger.info("dashboard_message_sent", message_id=ai_msg.id, actions=len(actions_taken))
+        return self._to_message_response(ai_msg)
 
-    def _message_to_dict(self, message) -> Dict:
-        """Convert ChatMessage model to dict"""
-        return {
-            "id": message.id,
-            "session_id": message.session_id,
-            "role": message.role,
-            "content": message.content,
-            "model_used": message.model_used,
-            "tokens": message.tokens,
-            "created_at": message.created_at
-        }
+    async def send_notes_message(
+        self,
+        user_id: int,
+        content: str,
+    ) -> ChatMessageResponse:
+        """
+        Send message to the Notes AI Agent.
+
+        Specialized for text editing, summarizing, and note generation.
+        Maintains a separate persistent session.
+        """
+        from datetime import datetime
+        from app.core.ai.orchestrator import get_orchestrator
+
+        NOTES_SESSION_KEY = "synapse_notes_session"
+
+        def estimate_tokens(text: str) -> int:
+            return max(1, len(text) // 4)
+
+        # Get or create notes session
+        session = await self._session_repo.get_by_title(user_id, NOTES_SESSION_KEY)
+        if not session:
+            session = await self._session_repo.create(user_id=user_id, title=NOTES_SESSION_KEY)
+            await self.db.commit()
+
+        # Save user message
+        user_msg = await self._message_repo.create(
+            session_id=session.id,
+            role=MessageRole.USER,
+            content=content,
+            tokens=estimate_tokens(content),
+        )
+        await self.db.commit()
+
+        # Minimal context
+        context = {"agent_preference": "notes", "task_type": "text_editing"}
+
+        # Get last 5 messages for history
+        messages = await self._message_repo.list_by_session(session.id, limit=5)
+        chat_history = [
+            {
+                "role": msg.role.value if hasattr(msg.role, "value") else msg.role,
+                "content": msg.content,
+            }
+            for msg in messages
+            if msg.id != user_msg.id
+        ]
+
+        # Call orchestrator
+        orchestrator = get_orchestrator()
+        result = await orchestrator.handle_message(
+            message=content,
+            user_id=user_id,
+            session_id=session.id,
+            context=context,
+            chat_history=chat_history,
+        )
+
+        # Save AI response
+        ai_msg = await self._message_repo.create(
+            session_id=session.id,
+            role=MessageRole.ASSISTANT,
+            content=result.output,
+            tokens=result.tokens_used or estimate_tokens(result.output),
+            model_used=result.agent_used,
+        )
+
+        session.updated_at = datetime.utcnow()
+        await self.db.commit()
+        await self.db.refresh(ai_msg)
+
+        logger.info("notes_message_sent", message_id=ai_msg.id)
+        return self._to_message_response(ai_msg)
+
+    def _to_message_response_with_children(self, msg, has_children: bool) -> ChatMessageResponse:
+        """Internal: Convert message to response DTO with has_children field."""
+        return ChatMessageResponse(
+            id=msg.id,
+            session_id=msg.session_id,
+            role=msg.role,
+            content=msg.content,
+            tokens=msg.tokens,
+            model_used=msg.model_used,
+            function_calls=msg.function_calls if isinstance(msg.function_calls, dict) else None,
+            grounding_sources=msg.grounding_sources
+            if isinstance(msg.grounding_sources, dict)
+            else None,
+            created_at=msg.created_at,
+            parent_message_id=msg.parent_message_id,
+            version=msg.version,
+            is_active=msg.is_active,
+            has_children=has_children,
+        )
+
+    # -------------------------------------------------------------------------
+    # Internal Helpers
+    # -------------------------------------------------------------------------
+
+    def _to_session_response(self, session, message_count: int) -> ChatSessionResponse:
+        """Internal: Convert ChatSession model to response DTO."""
+        return ChatSessionResponse(
+            id=session.id,
+            user_id=session.user_id,
+            title=session.title,
+            document_id=session.document_id,
+            context_modules=(
+                session.context_modules.get("modules", []) if session.context_modules else []
+            ),
+            message_count=message_count,
+            total_tokens_used=session.total_tokens_used,
+            total_cost=float(session.total_cost or 0.0),
+            created_at=session.created_at,
+            updated_at=session.updated_at,
+        )
+
+    def _to_message_response(self, msg) -> ChatMessageResponse:
+        """Internal: Convert ChatMessage model to response DTO."""
+        return ChatMessageResponse(
+            id=msg.id,
+            session_id=msg.session_id,
+            role=msg.role,
+            content=msg.content,
+            tokens=msg.tokens,
+            model_used=msg.model_used,
+            function_calls=msg.function_calls if isinstance(msg.function_calls, dict) else None,
+            grounding_sources=msg.grounding_sources
+            if isinstance(msg.grounding_sources, dict)
+            else None,
+            created_at=msg.created_at,
+        )
+
+
+def get_chat_service(db: AsyncSession) -> ChatService:
+    """Factory function to instantiate ChatService with a database session."""
+    return ChatService(db)

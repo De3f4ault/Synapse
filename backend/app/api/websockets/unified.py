@@ -277,8 +277,8 @@ async def handle_chat_message(
         websocket: WebSocket connection
         channel: Channel name (e.g., "chat:123")
     """
-    from app.models.chat_session import ChatSession
-    from app.models.chat_message import ChatMessage, MessageRole
+    # Chat models from module interface (temporary migration)
+    from app.modules.chat.interface import ChatSession, ChatMessage, MessageRole
     from app.core.context.engine import ContextEngine
     from sqlalchemy import select, and_
 
@@ -356,7 +356,7 @@ async def handle_chat_message(
         context_db = AsyncSessionLocal()
 
         # Fetch recent chat history with token-based truncation
-        from app.models.chat_message import ChatMessage
+        # ChatMessage is already imported above at function start
 
         result = await context_db.execute(
             select(ChatMessage)

@@ -16,13 +16,13 @@ from .note import Note
 from .note_version import NoteVersion
 from .document import Document
 from .document_chunk import DocumentChunk
+from .document_folder import DocumentFolder, DEFAULT_SYSTEM_FOLDERS
 from .quiz import Quiz
 from .quiz_question import QuizQuestion
 from .quiz_attempt import QuizAttempt
 from .question_learning_state import QuestionLearningState
-from .chat_session import ChatSession
-from .chat_thread import ChatThread
-from .chat_message import ChatMessage
+
+# Chat models moved to app/modules/chat/internal/models.py
 from .study_session import StudySession
 from .activity_log import (
     ActivityLog,
@@ -57,9 +57,7 @@ __all__ = [
     "QuizQuestion",
     "QuizAttempt",
     "QuestionLearningState",
-    "ChatSession",
-    "ChatThread",
-    "ChatMessage",
+    # ChatSession, ChatThread, ChatMessage removed - now in modules/chat/internal/models.py
     "StudySession",
     "ActivityLog",
     "ActivityType",
@@ -85,4 +83,6 @@ __all__ = [
     "NotificationType",
     "NotificationCategory",
     "NotificationStatus",
+    "DocumentFolder",
+    "DEFAULT_SYSTEM_FOLDERS",
 ]

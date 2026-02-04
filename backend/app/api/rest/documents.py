@@ -91,6 +91,10 @@ class DocumentUpdateRequest(BaseModel):
     sector: Optional[str] = None
     notes: Optional[str] = None
     reading_progress: Optional[float] = None
+    # Phase 2A: Document Actions
+    title: Optional[str] = None
+    is_favorite: Optional[bool] = None
+    is_archived: Optional[bool] = None
 
 
 class DocumentChunkResponse(BaseModel):
@@ -578,6 +582,15 @@ async def upload_document(
     description="Retrieve user's uploaded documents",
 )
 async def list_documents(
+    folder_id: Optional[int] = Query(
+        None, description="Filter by folder ID (null = root/unfiled documents)"
+    ),
+    include_all: bool = Query(
+        False, description="If true, return all documents ignoring folder filter"
+    ),
+    view: Optional[str] = Query(
+        None, description="Smart view filter: 'recent', 'favorites', or 'archived'"
+    ),
     status_filter: Optional[ProcessingStatus] = Query(
         None, description="Filter by processing status"
     ),
@@ -586,19 +599,63 @@ async def list_documents(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """List user's documents with optional status filtering."""
-    # Build query
+    """
+    List user's documents with folder, smart view, and status filtering.
+
+    Smart Views (mutually exclusive with folder_id):
+    - 'recent': All non-archived documents sorted by updated_at DESC
+    - 'favorites': Documents with is_favorite=True
+    - 'archived': Documents with is_archived=True (overrides default exclude)
+
+    A document belongs to exactly one folder or the root (folder_id=null).
+    Archived documents are excluded by default unless view='archived'.
+    """
+    # Build base query
     query = select(Document).where(
-        and_(Document.user_id == current_user.id, Document.deleted_at.is_(None))
+        and_(
+            Document.user_id == current_user.id,
+            Document.deleted_at.is_(None),
+        )
     )
+
+    # Smart Views take precedence over folder filtering
+    if view == "archived":
+        # Show archived documents
+        query = query.where(Document.is_archived.is_(True))
+    elif view == "favorites":
+        # Show favorited documents (non-archived only)
+        query = query.where(
+            and_(
+                Document.is_favorite.is_(True),
+                Document.is_archived.is_(False),
+            )
+        )
+    elif view == "recent":
+        # Show all non-archived documents sorted by update time
+        query = query.where(Document.is_archived.is_(False))
+        # Use updated_at for ordering instead of created_at
+        query = query.order_by(Document.updated_at.desc())
+    else:
+        # Default: exclude archived and apply folder filter
+        query = query.where(Document.is_archived.is_(False))
+
+        # Apply folder filter (unless include_all is true)
+        if not include_all:
+            if folder_id is None:
+                # Root/unfiled documents
+                query = query.where(Document.folder_id.is_(None))
+            else:
+                # Specific folder
+                query = query.where(Document.folder_id == folder_id)
 
     # Apply status filter
     if status_filter:
         query = query.where(Document.processing_status == status_filter)
 
-    # Apply pagination
+    # Apply pagination and ordering (if not already set by 'recent' view)
+    if view != "recent":
+        query = query.order_by(Document.created_at.desc())
     query = query.offset((page - 1) * page_size).limit(page_size)
-    query = query.order_by(Document.created_at.desc())
 
     result = await db.execute(query)
     documents = result.scalars().all()
@@ -1145,11 +1202,57 @@ async def update_document(
         doc.notes = update_data.notes
     if update_data.reading_progress is not None:
         doc.reading_progress = max(0.0, min(1.0, update_data.reading_progress))
+    # Phase 2A: Document Actions
+    if update_data.title is not None:
+        doc.filename = update_data.title  # title maps to filename for display
+    if update_data.is_favorite is not None:
+        doc.is_favorite = update_data.is_favorite
+    if update_data.is_archived is not None:
+        doc.is_archived = update_data.is_archived
 
     await db.commit()
     await db.refresh(doc)
 
     logger.info(f"Document {document_id} updated by user {current_user.id}")
+    return doc
+
+
+class MoveDocumentRequest(BaseModel):
+    """Request to move a document to a different folder."""
+
+    folder_id: Optional[int] = None  # None = move to Inbox
+
+
+@router.patch(
+    "/{document_id}/move",
+    response_model=DocumentResponse,
+    summary="Move document",
+    description="Move a document to a different folder",
+)
+async def move_document(
+    document_id: int,
+    request: MoveDocumentRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Move a document to a different folder."""
+    doc = await _get_doc_or_404(document_id, current_user, db)
+
+    # Validate target folder if specified
+    if request.folder_id is not None:
+        from app.models import DocumentFolder
+
+        folder = await db.get(DocumentFolder, request.folder_id)
+        if not folder or folder.user_id != current_user.id:
+            raise HTTPException(status_code=404, detail="Target folder not found")
+
+    doc.folder_id = request.folder_id
+    await db.commit()
+    await db.refresh(doc)
+
+    logger.info(
+        f"Document {document_id} moved to folder {request.folder_id} by user {current_user.id}"
+    )
     return doc
 
 

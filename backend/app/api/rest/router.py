@@ -16,8 +16,9 @@ from . import (
     flashcards,
     notes,
     documents,
+    folders,  # Document folder management (Phase 0)
     quizzes,
-    chat,
+    # chat - MIGRATED to app.modules.chat.api (imported below)
     threads,
     branches,  # Branch navigation for counterfactual exploration
     study,
@@ -57,11 +58,18 @@ api_router.include_router(flashcards.router, prefix="/cards", tags=["Flashcards"
 
 api_router.include_router(notes.router, prefix="/notes", tags=["Notes"])
 
+# IMPORTANT: folders must be registered BEFORE documents to prevent
+# /{document_id} pattern from catching /folders path
+api_router.include_router(folders.router, prefix="/documents", tags=["Document Folders"])
+
 api_router.include_router(documents.router, prefix="/documents", tags=["Documents"])
 
 api_router.include_router(quizzes.router, prefix="/quizzes", tags=["Quizzes"])
 
-api_router.include_router(chat.router, prefix="/chat", tags=["Chat"])
+# Chat module (modular monolith - fully migrated)
+from app.modules.chat import api as chat_module
+
+api_router.include_router(chat_module.router, prefix="/chat", tags=["Chat"])
 
 api_router.include_router(threads.router, prefix="/chat", tags=["Chat Threads"])
 

@@ -16,7 +16,7 @@ export function useRecentContent() {
     // Notes
     const notesQuery = useQuery({
         queryKey: queryKeys.notes.lists(),
-        queryFn: () => NotesService.listNotesApiV1NotesGet(undefined, undefined, 1, 10),
+        queryFn: () => NotesService.listNotesApiV1NotesGet(undefined, undefined, undefined, undefined, 1, 10),
         staleTime: 1000 * 60 * 5,
     });
 

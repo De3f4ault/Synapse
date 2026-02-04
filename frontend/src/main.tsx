@@ -1,4 +1,4 @@
-import { StrictMode } from "react";
+// StrictMode removed for tldraw compatibility (causes duplicate selection registration)
 import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./styles/globals.css";
@@ -52,8 +52,6 @@ if (!rootElement) {
 }
 
 createRoot(rootElement).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
+  <App />,
 );
 

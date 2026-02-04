@@ -9,7 +9,6 @@
 import { useState } from 'react';
 import { CheckCircle2, XCircle, Save, HelpCircle, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { GlassCard } from '@/shared/ui';
 import { cn } from '@/lib/utils';
 import type { QuizQuestionPreview } from '@/shared/rendering/schema';
 
@@ -53,14 +52,14 @@ export function ChatQuizPreview({ title, questions, difficulty, onSave }: ChatQu
 
     if (!questions || questions.length === 0) {
         return (
-            <GlassCard className="p-4 text-center text-muted-foreground">
+            <div className="p-4 text-center text-muted-foreground">
                 <p>No questions available</p>
-            </GlassCard>
+            </div>
         );
     }
 
     return (
-        <GlassCard className="p-4 space-y-4 border-purple-500/20 bg-zinc-900/60">
+        <div className="space-y-4">
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -190,6 +189,6 @@ export function ChatQuizPreview({ title, questions, difficulty, onSave }: ChatQu
                     </div>
                 </div>
             )}
-        </GlassCard>
+        </div>
     );
 }

@@ -1,13 +1,18 @@
 import { motion } from "framer-motion";
 import { FileText, Book, Image as ImageIcon, MoreVertical, File } from "lucide-react";
+import { useDraggable } from "@dnd-kit/core";
 import { cn } from "@/lib/utils";
 import { GlassCard } from "@/shared/ui";
 import type { EnhancedDocument } from "../core/types";
 
 interface DocumentCardProps {
     document: EnhancedDocument;
-    onClick?: () => void;
+    onClick?: (e?: React.MouseEvent) => void;
+    onContextMenu?: (e: React.MouseEvent) => void;
     thumbnailUrl?: string | null;
+    /** Enable drag-to-folder functionality */
+    draggable?: boolean;
+    isSelected?: boolean;
 }
 
 const getDocumentIcon = (type: string) => {
@@ -45,7 +50,14 @@ const getFormatColor = (type: string) => {
     }
 };
 
-export const DocumentCard = ({ document, onClick, thumbnailUrl }: DocumentCardProps) => {
+export const DocumentCard = ({ document, onClick, onContextMenu, thumbnailUrl, draggable = true, isSelected }: DocumentCardProps) => {
+    // useDraggable for drag-to-folder
+    const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+        id: `doc-${document.id}`,
+        data: { type: 'document', document },
+        disabled: !draggable,
+    });
+
     // using document.type created by the hook
     const Icon = getDocumentIcon(document.type || "unknown");
     const colorClass = getFormatColor(document.type || "unknown");
@@ -55,19 +67,22 @@ export const DocumentCard = ({ document, onClick, thumbnailUrl }: DocumentCardPr
 
     return (
         <motion.div
+            ref={setNodeRef}
             layout
             initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            whileHover={{
+            animate={{ opacity: isDragging ? 0.5 : 1, scale: isDragging ? 1.05 : 1 }}
+            whileHover={!isDragging ? {
                 scale: 1.02,
                 rotateX: 2,
                 rotateY: 2,
                 z: 10,
                 transition: { type: "spring", stiffness: 300 }
-            }}
-            className="group perspective-1000"
+            } : undefined}
+            className={cn("group perspective-1000", isDragging && "z-50")}
+            {...attributes}
+            {...listeners}
         >
-            <div onClick={onClick} className="cursor-pointer h-full relative preserve-3d">
+            <div onClick={onClick} onContextMenu={onContextMenu} className="cursor-pointer h-full relative preserve-3d">
                 <GlassCard
                     className="h-[280px] p-0 overflow-hidden relative border-white/5 hover:border-cyan-500/30 transition-colors"
                     hover
@@ -96,7 +111,12 @@ export const DocumentCard = ({ document, onClick, thumbnailUrl }: DocumentCardPr
                                 </div>
                             ) : (
                                 <motion.div
-                                    className={cn("p-4 rounded-2xl border backdrop-blur-md shadow-2xl", colorClass)}
+                                    className={cn(
+                                        "p-4 rounded-2xl border backdrop-blur-md shadow-2xl transition-all", 
+                                        colorClass,
+                                        // Selected State overrides
+                                        isSelected ? "ring-2 ring-cyan-400 bg-cyan-500/20" : ""
+                                    )}
                                     whileHover={{ scale: 1.1, rotate: -5 }}
                                 >
                                     <Icon size={48} strokeWidth={1.5} />

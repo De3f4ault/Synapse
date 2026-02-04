@@ -27,8 +27,7 @@ import { useIsVoiceActive, LiveVoiceOverlay } from "./voice";
 import { ChatProviders } from "./ChatProviders";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { MenuIcon, PanelLeftIcon } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { MenuIcon } from "lucide-react";
 
 // ==================== ROUTE HOOK ====================
 
@@ -48,7 +47,6 @@ export const ChatPage: React.FC = () => {
 
   // UI state (local only - not domain state)
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [voiceOverlayOpen, setVoiceOverlayOpen] = useState(false);
 
   // Auto-navigation hooks (via module public APIs)
@@ -58,13 +56,7 @@ export const ChatPage: React.FC = () => {
   // Voice mode check (via module public API)
   const isVoiceActive = useIsVoiceActive();
 
-  // Load sidebar state from localStorage
-  useEffect(() => {
-    const saved = localStorage.getItem("chatSidebarCollapsed");
-    if (saved) {
-      setSidebarCollapsed(JSON.parse(saved));
-    }
-  }, []);
+
 
   // Ref to track if session creation is in progress
   const creatingSessionRef = useRef(false);
@@ -104,12 +96,7 @@ export const ChatPage: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId, sessions, isLoading, navigate]);
 
-  // Toggle sidebar
-  const toggleSidebar = () => {
-    const newState = !sidebarCollapsed;
-    setSidebarCollapsed(newState);
-    localStorage.setItem("chatSidebarCollapsed", JSON.stringify(newState));
-  };
+
 
   // Loading state
   if (isLoading || !sessionId) {
@@ -129,54 +116,30 @@ export const ChatPage: React.FC = () => {
     <ChatProviders sessionId={sessionId}>
       <div className="fixed inset-0 min-h-screen flex flex-col pt-16 bg-[#050505]">
         <div className="flex flex-1 overflow-hidden">
-          {/* Desktop Sidebar - Standardized Collapsible Pattern */}
-          <div
-            className={cn(
-              "hidden lg:block transition-all duration-300 ease-in-out relative z-10 h-full py-4 pl-3",
-              sidebarCollapsed ? "w-0 p-0" : "w-[17rem]",
-            )}
-          >
-            <ChatSidebar
-              currentSessionId={sessionId}
-              className="w-full h-full rounded-2xl"
-              isCollapsed={sidebarCollapsed}
-              onToggleCollapse={toggleSidebar}
-            />
+          {/* Desktop Sidebar - Expandable */}
+          <div className="hidden lg:flex h-full">
+            <ChatSidebar currentSessionId={sessionId} />
           </div>
 
           {/* Mobile Sidebar (Drawer) */}
           <Sheet open={mobileSidebarOpen} onOpenChange={setMobileSidebarOpen}>
             <SheetContent
               side="left"
-              className="w-64 p-0 border-none [&>button]:hidden bg-[#050505]/95 backdrop-blur-xl"
+              className="w-72 p-0 border-none [&>button]:hidden bg-[#050505]/95 backdrop-blur-xl"
             >
-              <ChatSidebar
-                currentSessionId={sessionId}
-                className="w-64"
-              />
+              <ChatSidebar currentSessionId={sessionId} />
             </SheetContent>
           </Sheet>
 
           {/* Main Content Area */}
           <div className="flex-1 flex flex-col overflow-hidden relative z-0">
-            {/* Standardized Floating Sidebar Toggle */}
-            <div className="absolute top-4 left-4 z-50 flex items-center gap-2 pointer-events-none">
-              {/* Desktop Toggle */}
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={toggleSidebar}
-                className="hidden lg:flex pointer-events-auto hover:bg-white/10 text-slate-400 hover:text-white rounded-xl transition-colors"
-              >
-                <PanelLeftIcon className="size-5" />
-              </Button>
-
-              {/* Mobile Hamburger */}
+            {/* Mobile Hamburger - Only visible on small screens */}
+            <div className="absolute top-4 left-4 z-50 lg:hidden">
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={() => setMobileSidebarOpen(true)}
-                className="lg:hidden pointer-events-auto hover:bg-white/10 text-slate-400 hover:text-white rounded-xl transition-colors"
+                className="hover:bg-white/10 text-slate-400 hover:text-white rounded-xl transition-colors"
               >
                 <MenuIcon className="size-5" />
               </Button>

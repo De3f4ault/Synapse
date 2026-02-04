@@ -127,7 +127,9 @@ async def maybe_generate_title(
     """
     try:
         from sqlalchemy import select
-        from app.models.chat_session import ChatSession
+
+        # Chat models from module interface (temporary migration)
+        from app.modules.chat.interface import ChatSession
 
         # Check if session needs title generation
         result = await db_session.execute(select(ChatSession).where(ChatSession.id == session_id))

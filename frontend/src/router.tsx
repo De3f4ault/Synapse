@@ -72,17 +72,22 @@ const EditCardPage = React.lazy(() =>
 //   })),
 // );
 const NoteDetailPage = React.lazy(() =>
-  import("@/pages/notes/NoteDetailPage").then((module) => ({
+  import("@/modules/notes/pages/NoteDetailPage").then((module) => ({
     default: module.NoteDetailPage,
+  })),
+);
+const MinimalNotesPage = React.lazy(() =>
+  import("@/modules/notes/pages/MinimalNotesPage").then((module) => ({
+    default: module.MinimalNotesPage,
   })),
 );
 
 // Journals
-const JournalsPage = React.lazy(() =>
-  import("@/pages/journals/JournalsPage").then((module) => ({
-    default: module.JournalsPage,
-  })),
-);
+// const JournalsPage = React.lazy(() =>
+//   import("@/pages/journals/JournalsPage").then((module) => ({
+//     default: module.JournalsPage,
+//   })),
+// );
 
 // Documents
 const DocumentsPage = React.lazy(() =>
@@ -137,17 +142,17 @@ const NotFoundPage = React.lazy(() =>
 );
 
 // Notes Layout
-const NotesLayout = React.lazy(() =>
-  import("@/pages/notes/NotesLayout").then((module) => ({
-    default: module.NotesLayout,
-  })),
-);
+// const NotesLayout = React.lazy(() =>
+//   import("@/pages/notes/NotesLayout").then((module) => ({
+//     default: module.NotesLayout,
+//   })),
+// );
 
-const AllDocsPage = React.lazy(() =>
-  import("@/pages/notes/AllDocsPage").then((module) => ({
-    default: module.AllDocsPage,
-  })),
-);
+// const AllDocsPage = React.lazy(() =>
+//   import("@/pages/notes/AllDocsPage").then((module) => ({
+//     default: module.AllDocsPage,
+//   })),
+// );
 
 /**
  * ProtectedRoute Component
@@ -268,12 +273,10 @@ export function Router() {
               element={<EditCardPage />}
             />
 
-            {/* ========== NOTES ECOSYSTEM (Wrapped in Left Sidebar) ========== */}
-            <Route element={<NotesLayout />}>
+            {/* Minimal Notes - Immersive by default now */}
+            {/* <Route element={<NotesLayout />}>
               <Route path="/notes" element={<AllDocsPage />} />
-              <Route path="/journals" element={<JournalsPage />} />
-            </Route>
-
+            </Route> */}\
             {/* NoteDetailPage remains immersive for now */}
 
             {/* ========== DOCUMENTS (Omni-Kinetic) ========== */}
@@ -304,6 +307,7 @@ export function Router() {
           {/* ==================== IMMERSIVE ROUTES ==================== */}
           {/* Full-screen experiences without AppShell header */}
           <Route element={<ImmersiveRoute />}>
+            <Route path="/notes" element={<MinimalNotesPage />} />
             <Route path="/notes/:noteId" element={<NoteDetailPage />} />
             {/* Journals - Moved to NotesLayout */}
             {/* Flashcard study sessions - full immersive experience */}

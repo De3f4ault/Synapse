@@ -249,14 +249,13 @@ function parseFlashcardTable(content: string): RenderBlock | null {
     return null;
 }
 
-// ==================== JSON STUDY BLOCK DETECTION ====================
-
 /**
  * Normalize quiz questions from various AI output formats to our schema.
  * 
  * AI might output:
  * - "question" instead of "prompt"
- * - "correct_answer" instead of "correctIndex"
+ * - "correct_answer" as letter ("A", "B", etc.) or full text
+ * - "options" as object {"A": "...", "B": "..."} or array ["...", "..."]
  * - Missing "id" fields
  */
 function normalizeQuizQuestions(questions: unknown[]): Array<{
@@ -273,35 +272,89 @@ function normalizeQuizQuestions(questions: unknown[]): Array<{
     return questions.map((q: any, idx: number) => {
         const normalized: any = {
             id: q.id || `q${idx + 1}`,
-            type: q.type || 'multiple_choice',
+            type: normalizeQuestionType(q.type),
             prompt: q.prompt || q.question || q.text || '',
             explanation: q.explanation,
         };
 
-        // Handle options
-        if (q.options && Array.isArray(q.options)) {
-            normalized.options = q.options;
+        // Handle options - could be array or object
+        let optionsArray: string[] = [];
+        if (Array.isArray(q.options)) {
+            optionsArray = q.options;
+        } else if (q.options && typeof q.options === 'object') {
+            // Object format: {"A": "Option 1", "B": "Option 2", ...}
+            // Convert to array, sorted by key
+            const keys = Object.keys(q.options).sort();
+            optionsArray = keys.map(k => q.options[k]);
+        }
+        
+        if (optionsArray.length > 0) {
+            normalized.options = optionsArray;
         }
 
-        // Handle correct answer
+        // Handle correct answer - multiple formats
         if (q.correctIndex !== undefined) {
             normalized.correctIndex = q.correctIndex;
         } else if (q.correct_index !== undefined) {
             normalized.correctIndex = q.correct_index;
-        } else if (q.correct_answer && q.options) {
-            // Find index by matching answer text
-            const idx = q.options.findIndex((opt: string) => 
-                opt.toLowerCase().trim() === q.correct_answer.toLowerCase().trim()
-            );
-            if (idx !== -1) {
-                normalized.correctIndex = idx;
+        } else if (q.correct_answer !== undefined) {
+            // correct_answer could be: "A", "B", "True", "False", or full text
+            const answer = String(q.correct_answer).trim();
+            
+            // Check if it's a letter reference (A, B, C, D)
+            if (/^[A-Da-d]$/.test(answer)) {
+                const letterIndex = answer.toUpperCase().charCodeAt(0) - 'A'.charCodeAt(0);
+                if (letterIndex >= 0 && letterIndex < optionsArray.length) {
+                    normalized.correctIndex = letterIndex;
+                }
+            } else if (optionsArray.length > 0) {
+                // Try to find by matching text
+                const idx = optionsArray.findIndex((opt: string) => 
+                    opt.toLowerCase().trim() === answer.toLowerCase()
+                );
+                if (idx !== -1) {
+                    normalized.correctIndex = idx;
+                } else {
+                    // Store as correctAnswer for short answer types
+                    normalized.correctAnswer = answer;
+                }
+            } else {
+                // No options, use as direct answer (true/false or short answer)
+                normalized.correctAnswer = answer;
             }
-        } else if (q.correctAnswer) {
+        } else if (q.correctAnswer !== undefined) {
             normalized.correctAnswer = q.correctAnswer;
+        }
+
+        // For true/false, ensure we have proper handling
+        if (normalized.type === 'true_false' && !normalized.options) {
+            normalized.options = ['True', 'False'];
+            if (normalized.correctAnswer) {
+                const answer = normalized.correctAnswer.toLowerCase();
+                normalized.correctIndex = answer === 'true' ? 0 : 1;
+                delete normalized.correctAnswer;
+            }
         }
 
         return normalized;
     }).filter(q => q.prompt); // Filter out empty questions
+}
+
+/**
+ * Normalize question type from AI output to our schema.
+ */
+function normalizeQuestionType(type: string | undefined): 'multiple_choice' | 'true_false' | 'short_answer' {
+    if (!type) return 'multiple_choice';
+    
+    const normalized = type.toLowerCase().replace(/[_-]/g, '');
+    
+    if (normalized.includes('truefalse') || normalized === 'tf' || normalized === 'boolean') {
+        return 'true_false';
+    }
+    if (normalized.includes('shortanswer') || normalized.includes('openended') || normalized.includes('freeform')) {
+        return 'short_answer';
+    }
+    return 'multiple_choice';
 }
 
 /**

@@ -62,7 +62,8 @@ export function useChatStreaming({
 }: UseChatStreamingOptions) {
     const queryClient = useQueryClient();
     const manager = getWebSocketManager();
-    const store = useChatStore();
+    // NOTE: We use useChatStore.getState() inside callbacks for stable references
+    // instead of storing it in a variable that would cause callback recreation
 
     // ==================== SUBSCRIPTIONS (fine-grained) ====================
     const connectionState = useConnectionState();
@@ -87,6 +88,9 @@ export function useChatStreaming({
             const eventType = message.type || message.event;
             const eventData = message.data || message;
 
+            // Get store actions via getState() for stable reference
+            const actions = useChatStore.getState();
+
             // Only log non-token events to reduce console noise
             if (eventType !== 'token') {
                 console.log('[Chat] Received:', eventType, message);
@@ -99,19 +103,19 @@ export function useChatStreaming({
                     break;
 
                 case 'thinking':
-                    store.appendThinking(eventData.text || '');
-                    store.setModel(eventData.model || '');
-                    store.setIsStreaming(true);
+                    actions.appendThinking(eventData.text || '');
+                    actions.setModel(eventData.model || '');
+                    actions.setIsStreaming(true);
                     break;
 
                 case 'token':
-                    store.appendContent(eventData.text || '');
-                    store.setModel(eventData.model || '');
-                    store.setIsStreaming(true);
+                    actions.appendContent(eventData.text || '');
+                    actions.setModel(eventData.model || '');
+                    actions.setIsStreaming(true);
                     break;
 
                 case 'sources':
-                    store.setSources(eventData.sources || []);
+                    actions.setSources(eventData.sources || []);
                     break;
 
                 case 'complete':
@@ -119,40 +123,57 @@ export function useChatStreaming({
                         total_tokens: eventData.total_tokens,
                         model: eventData.model_used,
                     });
-                    // Intentional fall-through handled below
-                    break;
-
-                case 'cancelled':
-                    console.log('[Chat] Generation cancelled:', eventData);
-                    store.setIsStreaming(false);
-                    break;
-
-                case 'stopped':
-                    console.log('[Chat] Generation stopped:', eventData);
-                    store.setIsStreaming(false);
-                    break;
-
+                    // Invalidate queries then clear streaming state
                     if (sessionId) {
-                        // Invalidate queries then clear streaming state
                         setTimeout(async () => {
                             await queryClient.invalidateQueries({
                                 queryKey: ['chat-messages', sessionId],
                             });
-                            store.clearStreaming();
+                            useChatStore.getState().clearStreaming();
                         }, 100);
                     } else {
-                        store.clearStreaming();
+                        actions.clearStreaming();
+                    }
+                    break;
+
+                case 'cancelled':
+                    console.log('[Chat] Generation cancelled:', eventData);
+                    actions.setIsStreaming(false);
+                    if (sessionId) {
+                        setTimeout(async () => {
+                            await queryClient.invalidateQueries({
+                                queryKey: ['chat-messages', sessionId],
+                            });
+                            useChatStore.getState().clearStreaming();
+                        }, 100);
+                    } else {
+                        actions.clearStreaming();
+                    }
+                    break;
+
+                case 'stopped':
+                    console.log('[Chat] Generation stopped:', eventData);
+                    actions.setIsStreaming(false);
+                    if (sessionId) {
+                        setTimeout(async () => {
+                            await queryClient.invalidateQueries({
+                                queryKey: ['chat-messages', sessionId],
+                            });
+                            useChatStore.getState().clearStreaming();
+                        }, 100);
+                    } else {
+                        actions.clearStreaming();
                     }
                     break;
 
                 case 'error':
                     console.error('[Chat] Server error:', eventData.message);
-                    store.clearStreaming();
+                    actions.clearStreaming();
                     break;
 
                 case 'tool_call':
                     console.log('[Chat] Tool call:', eventData.name, eventData.args);
-                    store.addToolCall({
+                    actions.addToolCall({
                         name: eventData.name,
                         args: eventData.args,
                         status: 'executing',
@@ -161,7 +182,7 @@ export function useChatStreaming({
 
                 case 'tool_result':
                     console.log('[Chat] Tool result:', eventData.name, eventData.result);
-                    store.updateToolCall(eventData.name, {
+                    actions.updateToolCall(eventData.name, {
                         result: eventData.result,
                         status: 'complete',
                     });
@@ -171,7 +192,7 @@ export function useChatStreaming({
                     console.warn('[Chat] Unknown message type:', eventType);
             }
         },
-        [onMessage, sessionId, queryClient, store]
+        [onMessage, sessionId, queryClient]  // Removed 'store' - now stable!
     );
 
     // ==================== CONNECTION & SUBSCRIPTION ====================
@@ -287,15 +308,18 @@ export function useChatStreaming({
                 console.log('[Chat] Message sent with mode:', chatMode);
 
                 // Clear any previous streaming state
-                store.clearStreaming();
+                const state = useChatStore.getState();
+                state.clearStreaming();
+                state.setIsStreaming(true);
 
                 return true;
             } catch (error) {
                 console.error('[Chat] Failed to send:', error);
+                useChatStore.getState().setIsStreaming(false);
                 throw error;
             }
         },
-        [manager, sessionId, queryClient, store, getChannel]
+        [manager, sessionId, queryClient, getChannel]  // Removed 'store'
     );
 
     // Stop current generation
@@ -318,11 +342,11 @@ export function useChatStreaming({
             console.log('[Chat] Stop signal sent');
 
             // Immediately update local state
-            store.setIsStreaming(false);
+            useChatStore.getState().setIsStreaming(false);
         } catch (error) {
             console.error('[Chat] Failed to send stop:', error);
         }
-    }, [manager, sessionId, store, getChannel]);
+    }, [manager, sessionId, getChannel]);
 
     // ==================== LIFECYCLE ====================
 

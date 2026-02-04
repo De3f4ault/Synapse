@@ -23,9 +23,9 @@ import structlog
 
 from app.api.deps import get_db, get_current_user
 from app.models.user import User
-from app.models.chat_session import ChatSession
-from app.models.chat_thread import ChatThread
-from app.models.chat_message import ChatMessage, MessageRole
+
+# Chat models from module interface (temporary migration)
+from app.modules.chat.interface import ChatSession, ChatThread, ChatMessage, MessageRole
 from app.schemas.chat_thread import (
     ThreadCreate,
     ThreadUpdate,

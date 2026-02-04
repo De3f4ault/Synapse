@@ -1,6 +1,5 @@
 import { memo, useState } from "react";
 import { cn } from "@/lib/utils";
-import { Logo } from "@/components/ui/logo";
 import { Loader2, Copy, Check, RefreshCw, MessageSquarePlus } from "lucide-react";
 import { toast } from "sonner";
 import { HighlightedText } from "../../search/components/HighlightedText";
@@ -40,7 +39,6 @@ const ChatMessageComponent = ({
   currentOccurrenceId = null,
 }: ChatMessageProps) => {
   const isUser = message.role === "user";
-  const BotIcon = Logo;
   const [copied, setCopied] = useState(false);
   const [savingFlashcards, setSavingFlashcards] = useState(false);
   const [savingQuiz, setSavingQuiz] = useState(false);
@@ -294,6 +292,9 @@ const ChatMessageComponent = ({
     );
   };
 
+  // Grok colors
+  const GROK_USER_BUBBLE = "#141414";
+
   return (
     <div
       data-message-id={message.id}
@@ -302,32 +303,16 @@ const ChatMessageComponent = ({
         isUser ? "flex-row-reverse" : "flex-row",
       )}
     >
-      {/* Avatar */}
+      {/* Message Bubble */}
       <div
         className={cn(
-          "h-8 w-8 rounded-full flex items-center justify-center shrink-0 border shadow-sm",
-          isUser ? "bg-primary/10 border-primary/20" : "bg-card border-border",
-        )}
-      >
-        {isUser ? (
-          <div className="h-4 w-4 rounded-full bg-primary/50" />
-        ) : (
-          <div className="size-8 rounded-full flex items-center justify-center p-0.5">
-            <BotIcon className={cn("size-full", isStreaming && "text-cyan-400 animate-pulse")} />
-          </div>
-        )}
-      </div>
-
-      {/* Message Bubble (Card Style) */}
-      <div
-        className={cn(
-          "flex flex-col gap-1 max-w-[80%]",
-          isUser ? "items-end" : "items-start",
+          "flex flex-col gap-1",
+          isUser ? "items-end max-w-[70%]" : "items-start max-w-[90%]",
         )}
       >
         {/* Thinking indicator */}
         {thinking && (
-          <div className="flex items-center gap-2 px-3 py-1.5 text-xs text-muted-foreground bg-muted/30 rounded-full mb-1">
+          <div className="flex items-center gap-2 px-3 py-1.5 text-xs text-zinc-400 bg-zinc-800/50 rounded-full mb-1">
             <Loader2 className="size-3 animate-spin" />
             <span className="opacity-70">Thinking...</span>
           </div>
@@ -335,18 +320,21 @@ const ChatMessageComponent = ({
 
         <div
           className={cn(
-            "rounded-2xl px-4 py-3 shadow-sm border overflow-hidden min-w-0 transition-all duration-200",
+            "overflow-hidden min-w-0 transition-all duration-200",
             isUser
-              ? "bg-primary/10 border-primary/20 text-foreground rounded-tr-sm"
-              : "bg-card border-border/50 text-foreground/90 rounded-tl-sm",
+              // User: Compact pill bubble with Grok glassy gray
+              ? "rounded-2xl rounded-br-sm px-4 py-2.5 text-zinc-100"
+              // AI: Borderless, blends with canvas - no container styling
+              : "px-1 py-2 text-zinc-200",
           )}
+          style={isUser ? { backgroundColor: GROK_USER_BUBBLE } : undefined}
         >
           {renderContent()}
 
           {/* Referenced Entities */}
           {message.entities && message.entities.length > 0 && (
-            <div className="mt-4 pt-3 border-t border-border/30 flex flex-col gap-2 animate-in fade-in slide-in-from-top-1">
-              <span className="text-[10px] uppercase tracking-wider text-muted-foreground/70 font-semibold mb-1">
+            <div className="mt-4 pt-3 border-t border-white/10 flex flex-col gap-2 animate-in fade-in slide-in-from-top-1">
+              <span className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold mb-1">
                 Referenced Context
               </span>
               {message.entities.map((ref) => (
@@ -359,9 +347,9 @@ const ChatMessageComponent = ({
           )}
         </div>
 
-        {/* Message Footer: Time + ChatGPT-style Action Bar */}
-        <div className="flex items-center gap-2 px-1 mt-1">
-          <span className="text-[10px] text-muted-foreground opacity-50">
+        {/* Message Footer: Time + Action Bar */}
+        <div className="flex items-center gap-2 px-1 mt-1.5">
+          <span className="text-[10px] text-zinc-500">
             {message.created_at
               ? new Date(message.created_at).toLocaleTimeString([], {
                 hour: "2-digit",
@@ -370,13 +358,13 @@ const ChatMessageComponent = ({
               : "Just now"}
           </span>
 
-          {/* ChatGPT-style floating action bar - visible for assistant messages */}
+          {/* Grok-style action bar - visible for assistant messages */}
           {!isUser && !isStreaming && (
-            <div className="flex items-center gap-0.5 px-1 py-0.5 rounded-lg bg-white/5 border border-white/10">
+            <div className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-lg bg-[#363636]/50 border border-white/5">
               {/* Copy button */}
               <button
                 onClick={handleCopy}
-                className="p-1.5 rounded hover:bg-white/10 text-muted-foreground/60 hover:text-muted-foreground transition-colors"
+                className="p-1.5 rounded hover:bg-white/10 text-zinc-500 hover:text-zinc-300 transition-colors"
                 title="Copy"
               >
                 {copied ? (
@@ -411,7 +399,7 @@ const ChatMessageComponent = ({
           {isUser && !isStreaming && (
             <button
               onClick={handleCopy}
-              className="p-1 rounded hover:bg-white/10 text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+              className="p-1 rounded hover:bg-white/10 text-zinc-500 hover:text-zinc-300 transition-colors"
               title="Copy message"
             >
               {copied ? (

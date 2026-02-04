@@ -3,7 +3,7 @@
 /* tslint:disable */
 /* eslint-disable */
 /**
- * Chat session update.
+ * Schema for updating a chat session.
  */
 export type ChatSessionUpdate = {
     /**

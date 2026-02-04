@@ -1,0 +1,42 @@
+src/api/generated/services/AnalyticsService.ts(84,9): error TS2322: Type '"day"' is not assignable to type 'TimeBucket'.
+src/api/generated/services/SearchService.ts(62,9): error TS2322: Type '"navigate"' is not assignable to type 'SearchIntent'.
+src/api/generated/services/UnifiedSearchService.ts(58,9): error TS2322: Type '"navigate"' is not assignable to type 'SearchIntent'.
+src/api/hooks/useDocuments.ts(37,9): error TS2345: Argument of type 'number | undefined' is not assignable to parameter of type 'ProcessingStatus | null | undefined'.
+  Type 'number' is not assignable to type 'ProcessingStatus | null | undefined'.
+src/api/hooks/useNotes.ts(64,9): error TS2345: Argument of type 'number | undefined' is not assignable to parameter of type 'boolean | null | undefined'.
+  Type 'number' is not assignable to type 'boolean | null | undefined'.
+src/components/layout/SearchCommand.tsx(78,66): error TS2345: Argument of type '1' is not assignable to parameter of type 'boolean | undefined'.
+src/components/layout/SearchCommand.tsx(86,65): error TS2345: Argument of type '1' is not assignable to parameter of type 'boolean | null | undefined'.
+src/modules/documents/core/hooks/useDocumentActions.ts(90,47): error TS2551: Property 'downloadDocumentApiV1DocumentsDocumentIdDownloadGet' does not exist on type 'typeof DocumentsService'. Did you mean 'getDocumentApiV1DocumentsDocumentIdGet'?
+src/modules/notes/ai/hooks/useNoteAI.ts(12,45): error TS2307: Cannot find module '../../core' or its corresponding type declarations.
+src/modules/notes/features/text/types.ts(2,22): error TS2307: Cannot find module '../../../domain/note.types' or its corresponding type declarations.
+src/modules/notes/features/whiteboard/editor/WhiteboardEditor.tsx(6,1): error TS6133: 'tldrawConfig' is declared but its value is never read.
+src/modules/notes/features/whiteboard/editor/WhiteboardEditor.tsx(8,42): error TS6133: 'readOnly' is declared but its value is never read.
+src/modules/notes/features/whiteboard/editor/WhiteboardEditor.tsx(31,9): error TS2322: Type '{ snapshot: TLStoreSnapshot; onMount: (editor: Editor) => () => void; introAnimation: { duration: number; }; }' is not assignable to type 'IntrinsicAttributes & TldrawProps'.
+  Property 'introAnimation' does not exist on type 'IntrinsicAttributes & TldrawProps'.
+src/modules/notes/features/whiteboard/types.ts(2,22): error TS2307: Cannot find module '../../../domain/note.types' or its corresponding type declarations.
+src/modules/notes/infrastructure/notes.api.ts(2,46): error TS6133: 'NoteType' is declared but its value is never read.
+src/modules/notes/infrastructure/notes.api.ts(53,6): error TS2322: Type '{ updatedAt: string; title?: string | undefined; content?: unknown; id?: string | undefined; type?: NoteType | undefined; createdAt?: string | undefined; }' is not assignable to type 'Note'.
+  Types of property 'id' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+src/modules/notes/infrastructure/notes.api.ts(55,6): error TS2322: Type '{ updatedAt: string; title?: string | undefined; content?: unknown; id?: string | undefined; type?: NoteType | undefined; createdAt?: string | undefined; }' is not assignable to type 'Note'.
+  Types of property 'id' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+src/modules/notes/infrastructure/notes.repository.ts(2,10): error TS6133: 'Note' is declared but its value is never read.
+src/modules/notes/shared/components/NoteStats.tsx(10,35): error TS2307: Cannot find module '../../core' or its corresponding type declarations.
+src/modules/notes/versions/hooks/useNoteVersions.ts(9,45): error TS2307: Cannot find module '../../core' or its corresponding type declarations.
+src/pages/dashboard/charts/hooks/useChartsData.ts(27,88): error TS2345: Argument of type 'TimeBucket' is not assignable to parameter of type 'TimeBucket | undefined'.
+  Type '"day"' is not assignable to type 'TimeBucket | undefined'.
+src/pages/dashboard/insights/hooks/useInsights.ts(72,82): error TS2345: Argument of type '1' is not assignable to parameter of type 'boolean | null | undefined'.
+src/pages/dashboard/insights/hooks/useInsights.ts(109,65): error TS2345: Argument of type '() => { overview: DashboardOverview | null; weakAreas: WeakArea[]; dueCards: FlashcardResponse[]; documents: DocumentResponse[]; notes: NoteResponse[]; quizzes: { ...; }[]; } | undefined' is not assignable to parameter of type '() => DashboardDataInput | undefined'.
+  Type '{ overview: DashboardOverview | null; weakAreas: WeakArea[]; dueCards: FlashcardResponse[]; documents: DocumentResponse[]; notes: NoteResponse[]; quizzes: { ...; }[]; } | undefined' is not assignable to type 'DashboardDataInput | undefined'.
+    Type '{ overview: DashboardOverview | null; weakAreas: WeakArea[]; dueCards: FlashcardResponse[]; documents: DocumentResponse[]; notes: NoteResponse[]; quizzes: { ...; }[]; }' is not assignable to type 'DashboardDataInput'.
+      Types of property 'notes' are incompatible.
+        Type 'NoteResponse[]' is not assignable to type '{ id: number; title?: string | undefined; content?: string | undefined; }[]'.
+          Type 'NoteResponse' is not assignable to type '{ id: number; title?: string | undefined; content?: string | undefined; }'.
+            Types of property 'content' are incompatible.
+              Type 'string | Record<string, any>' is not assignable to type 'string | undefined'.
+                Type 'Record<string, any>' is not assignable to type 'string'.
+src/pages/study/components/session/StudySession.tsx(408,10): error TS6133: 'getItemIcon' is declared but its value is never read.
