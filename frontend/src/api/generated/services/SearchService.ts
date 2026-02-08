@@ -2,11 +2,11 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
+import type { app__api__rest__search__SearchResponse } from '../models/app__api__rest__search__SearchResponse';
 import type { FlashcardHybridResponse } from '../models/FlashcardHybridResponse';
 import type { HybridSearchResponse } from '../models/HybridSearchResponse';
 import type { NoteHybridResponse } from '../models/NoteHybridResponse';
 import type { SearchIntent } from '../models/SearchIntent';
-import type { SearchResponse } from '../models/SearchResponse';
 import type { UnifiedSearchRequest } from '../models/UnifiedSearchRequest';
 import type { UnifiedSearchResponse } from '../models/UnifiedSearchResponse';
 import type { CancelablePromise } from '../core/CancelablePromise';
@@ -97,7 +97,7 @@ export class SearchService {
      * @param searchType Search strategy: fts, semantic, or hybrid
      * @param limit Maximum results
      * @param token Auth token for image/file requests
-     * @returns SearchResponse Successful Response
+     * @returns app__api__rest__search__SearchResponse Successful Response
      * @throws ApiError
      */
     public static searchAllApiV1SearchGet(
@@ -106,7 +106,7 @@ export class SearchService {
         searchType: string = 'hybrid',
         limit: number = 20,
         token?: (string | null),
-    ): CancelablePromise<SearchResponse> {
+    ): CancelablePromise<app__api__rest__search__SearchResponse> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/v1/search',

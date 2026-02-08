@@ -2,16 +2,16 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-import type { app__models__link__EntityType } from './app__models__link__EntityType';
+import type { LinkEntityType } from './LinkEntityType';
 import type { LinkType } from './LinkType';
 /**
  * Link response.
  */
 export type LinkResponse = {
     id: number;
-    source_type: app__models__link__EntityType;
+    source_type: LinkEntityType;
     source_id: number;
-    target_type: app__models__link__EntityType;
+    target_type: LinkEntityType;
     target_id: number;
     link_type: LinkType;
     strength: number;

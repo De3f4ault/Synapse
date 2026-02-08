@@ -3,11 +3,11 @@
 /* tslint:disable */
 /* eslint-disable */
 import type { app__api__rest__uploads__MessageResponse } from '../models/app__api__rest__uploads__MessageResponse';
-import type { app__models__link__EntityType } from '../models/app__models__link__EntityType';
 import type { ConnectedEntityResponse } from '../models/ConnectedEntityResponse';
 import type { EntityLinksResponse } from '../models/EntityLinksResponse';
 import type { KnowledgeGraphResponse } from '../models/KnowledgeGraphResponse';
 import type { LinkCreate } from '../models/LinkCreate';
+import type { LinkEntityType } from '../models/LinkEntityType';
 import type { LinkResponse } from '../models/LinkResponse';
 import type { LinkType } from '../models/LinkType';
 import type { LinkUpdate } from '../models/LinkUpdate';
@@ -29,8 +29,8 @@ export class LinksService {
      */
     public static listLinksApiV1LinksGet(
         linkType?: (LinkType | null),
-        sourceType?: (app__models__link__EntityType | null),
-        targetType?: (app__models__link__EntityType | null),
+        sourceType?: (LinkEntityType | null),
+        targetType?: (LinkEntityType | null),
         page: number = 1,
         pageSize: number = 50,
         token?: (string | null),
@@ -116,7 +116,7 @@ export class LinksService {
      * @throws ApiError
      */
     public static getEntityLinksApiV1LinksEntityEntityTypeEntityIdGet(
-        entityType: app__models__link__EntityType,
+        entityType: LinkEntityType,
         entityId: number,
         token?: (string | null),
     ): CancelablePromise<EntityLinksResponse> {
@@ -146,7 +146,7 @@ export class LinksService {
      * @throws ApiError
      */
     public static getConnectedEntitiesApiV1LinksEntityEntityTypeEntityIdConnectedGet(
-        entityType: app__models__link__EntityType,
+        entityType: LinkEntityType,
         entityId: number,
         depth: number = 1,
         token?: (string | null),
@@ -178,7 +178,7 @@ export class LinksService {
      * @throws ApiError
      */
     public static getSuggestedLinksApiV1LinksSuggestedGet(
-        entityType?: (app__models__link__EntityType | null),
+        entityType?: (LinkEntityType | null),
         entityId?: (number | null),
         limit: number = 20,
         token?: (string | null),
