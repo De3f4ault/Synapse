@@ -7,7 +7,7 @@ Logs violations loudly. Never silently drops.
 import structlog
 from typing import List
 
-from app.schemas.search_identity import EntityIdentity, IdentityAuthority
+from app.schemas.search_identity import SearchEntityIdentity, IdentityAuthority
 from app.schemas.search_result import UnifiedSearchResult, SearchRole, AssertionType
 
 
@@ -96,12 +96,12 @@ def _check_violations(result: UnifiedSearchResult, engine: str) -> List[str]:
     if result.id:
         _check_identity_rules(result.id, violations)
     else:
-        violations.append("EntityIdentity is required")
+        violations.append("SearchEntityIdentity is required")
 
     return violations
 
 
-def _check_identity_rules(identity: EntityIdentity, violations: List[str]) -> None:
+def _check_identity_rules(identity: SearchEntityIdentity, violations: List[str]) -> None:
     """Enforce identity authority rules."""
 
     # Rule: SYSTEM_DERIVED entities MUST have root_id (inherited from parent)

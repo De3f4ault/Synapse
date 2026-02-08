@@ -18,7 +18,7 @@ from typing import List, Optional
 import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.schemas.search_identity import EntityIdentity, IdentityAuthority
+from app.schemas.search_identity import SearchEntityIdentity, IdentityAuthority
 from app.schemas.search_result import UnifiedSearchResult, SearchRole, AssertionType
 from app.schemas.search_context import SearchContext, get_participating_engines
 from app.schemas.search_response import EngineResult, UnifiedSearchResponse
@@ -415,7 +415,7 @@ class UnifiedSearchService:
         for chunk in chunks:
             source_id = chunk.get("metadata", {}).get("source_id")
 
-            identity = EntityIdentity(
+            identity = SearchEntityIdentity(
                 id=str(hash(chunk.get("text", "")[:50])),  # Generate ID from content
                 type="chunk",
                 authority=IdentityAuthority.SYSTEM_DERIVED,

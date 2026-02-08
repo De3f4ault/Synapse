@@ -16,7 +16,7 @@ from typing import List, Any, Dict
 import structlog
 
 from app.schemas.search_identity import (
-    EntityIdentity,
+    SearchEntityIdentity,
     IdentityAuthority,
 )
 from app.schemas.search_result import (
@@ -53,7 +53,7 @@ def adapt_hybrid_note_results(
     now = datetime.utcnow()
 
     for r in results:
-        identity = EntityIdentity(
+        identity = SearchEntityIdentity(
             id=r.id,
             type="note",
             authority=IdentityAuthority.USER_CONTENT,
@@ -105,7 +105,7 @@ def adapt_hybrid_flashcard_results(
     now = datetime.utcnow()
 
     for r in results:
-        identity = EntityIdentity(
+        identity = SearchEntityIdentity(
             id=r.id,
             type="flashcard",
             authority=IdentityAuthority.USER_CONTENT,
@@ -156,7 +156,7 @@ def adapt_chat_message_results(
     now = datetime.utcnow()
 
     for r in results:
-        identity = EntityIdentity(
+        identity = SearchEntityIdentity(
             id=r.id,
             type="conversation",
             authority=IdentityAuthority.SYSTEM_DERIVED,  # AI-generated
@@ -222,7 +222,7 @@ def adapt_rag_chunks(
         source_id = metadata.get("source_id")
         source_type = metadata.get("source_type", "document")
 
-        identity = EntityIdentity(
+        identity = SearchEntityIdentity(
             id=chunk_id,
             type="chunk",
             authority=IdentityAuthority.SYSTEM_DERIVED,
@@ -278,7 +278,7 @@ def adapt_gie_concepts(
     for c in concepts:
         concept_id = c.get("concept_id", c.get("topic", "unknown"))
 
-        identity = EntityIdentity(
+        identity = SearchEntityIdentity(
             id=concept_id,
             type="concept",
             authority=IdentityAuthority.KNOWLEDGE_GRAPH,

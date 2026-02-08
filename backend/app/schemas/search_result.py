@@ -9,7 +9,7 @@ from typing import Literal, Dict, Optional, Any
 from datetime import datetime
 from enum import Enum
 
-from app.schemas.search_identity import EntityIdentity
+from app.schemas.search_identity import SearchEntityIdentity
 
 
 class SearchRole(str, Enum):
@@ -51,7 +51,7 @@ class UnifiedSearchResult(BaseModel):
     CONSUMERS decide meaning. This contract only transports truth.
     """
 
-    id: EntityIdentity
+    id: SearchEntityIdentity
     role: SearchRole
     title: str
     snippet: Optional[str] = None

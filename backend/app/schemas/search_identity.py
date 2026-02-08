@@ -37,7 +37,7 @@ IDENTITY_AUTHORITY_MAP = {
 }
 
 
-class EntityIdentity(BaseModel):
+class SearchEntityIdentity(BaseModel):
     """
     Composite, unambiguous identity for any searchable entity.
 
@@ -58,7 +58,7 @@ class EntityIdentity(BaseModel):
         return hash((self.store, self.type, self.id))
 
     def __eq__(self, other):
-        if not isinstance(other, EntityIdentity):
+        if not isinstance(other, SearchEntityIdentity):
             return False
         return (self.store, self.type, self.id) == (other.store, other.type, other.id)
 

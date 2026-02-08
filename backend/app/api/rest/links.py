@@ -12,7 +12,7 @@ from datetime import datetime
 
 from app.api.deps import get_db, get_current_user
 from app.models.user import User
-from app.models.link import Link, LinkType, EntityType
+from app.models.link import Link, LinkType, LinkEntityType
 from app.services.link_service import LinkService
 
 router = APIRouter()
@@ -26,9 +26,9 @@ router = APIRouter()
 class LinkCreate(BaseModel):
     """Link creation request."""
 
-    source_type: EntityType
+    source_type: LinkEntityType
     source_id: int
-    target_type: EntityType
+    target_type: LinkEntityType
     target_id: int
     link_type: LinkType = LinkType.MANUAL
     strength: float = Field(1.0, ge=0.0, le=1.0)
@@ -48,9 +48,9 @@ class LinkResponse(BaseModel):
     """Link response."""
 
     id: int
-    source_type: EntityType
+    source_type: LinkEntityType
     source_id: int
-    target_type: EntityType
+    target_type: LinkEntityType
     target_id: int
     link_type: LinkType
     strength: float
@@ -134,15 +134,15 @@ class MessageResponse(BaseModel):
 )
 async def list_links(
     link_type: Optional[LinkType] = Query(None, description="Filter by link type"),
-    source_type: Optional[EntityType] = Query(None, description="Filter by source entity type"),
-    target_type: Optional[EntityType] = Query(None, description="Filter by target entity type"),
+    source_type: Optional[LinkEntityType] = Query(None, description="Filter by source entity type"),
+    target_type: Optional[LinkEntityType] = Query(None, description="Filter by target entity type"),
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(50, ge=1, le=100, description="Items per page"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """List user's links with optional filtering."""
-    from sqlalchemy import select, and_
+    from sqlalchemy import select
 
     query = select(Link).where(Link.user_id == current_user.id)
 
@@ -213,7 +213,7 @@ async def get_knowledge_graph(
     # Parse comma-separated filters
     entity_type_list = None
     if entity_types:
-        entity_type_list = [EntityType(t.strip()) for t in entity_types.split(",")]
+        entity_type_list = [LinkEntityType(t.strip()) for t in entity_types.split(",")]
 
     link_type_list = None
     if link_types:
@@ -240,7 +240,7 @@ async def get_knowledge_graph(
     description="Get all links to and from a specific entity",
 )
 async def get_entity_links(
-    entity_type: EntityType,
+    entity_type: LinkEntityType,
     entity_id: int,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -265,7 +265,7 @@ async def get_entity_links(
     description="Get all entities connected to a specific entity (traverses graph)",
 )
 async def get_connected_entities(
-    entity_type: EntityType,
+    entity_type: LinkEntityType,
     entity_id: int,
     depth: int = Query(1, ge=1, le=3, description="How many hops to traverse"),
     current_user: User = Depends(get_current_user),
@@ -288,7 +288,7 @@ async def get_connected_entities(
     description="Get AI-suggested links pending user review",
 )
 async def get_suggested_links(
-    entity_type: Optional[EntityType] = Query(None, description="Filter by entity type"),
+    entity_type: Optional[LinkEntityType] = Query(None, description="Filter by entity type"),
     entity_id: Optional[int] = Query(None, description="Filter by entity ID"),
     limit: int = Query(20, ge=1, le=100, description="Maximum results"),
     current_user: User = Depends(get_current_user),

@@ -12,7 +12,7 @@ from datetime import datetime
 import structlog
 
 from app.schemas.search_feedback import FeedbackEvent
-from app.schemas.search_identity import EntityIdentity, IdentityAuthority
+from app.schemas.search_identity import SearchEntityIdentity, IdentityAuthority
 from app.schemas.intelligence import QualifiedSignal
 
 logger = structlog.get_logger(__name__)
@@ -60,7 +60,7 @@ class SignalPromotionService:
                 for evidence_id in event.used_evidence_ids:
                     qualified_signals.append(
                         QualifiedSignal(
-                            entity_id=EntityIdentity(
+                            entity_id=SearchEntityIdentity(
                                 id=evidence_id,
                                 type="chunk",  # Assumption for RAG
                                 authority=IdentityAuthority.SYSTEM_DERIVED,
@@ -80,7 +80,7 @@ class SignalPromotionService:
                 for evidence_id in event.used_evidence_ids:
                     qualified_signals.append(
                         QualifiedSignal(
-                            entity_id=EntityIdentity(
+                            entity_id=SearchEntityIdentity(
                                 id=evidence_id,
                                 type="chunk",
                                 authority=IdentityAuthority.SYSTEM_DERIVED,
