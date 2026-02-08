@@ -15,7 +15,7 @@ from typing import Dict, Any, Optional, List
 from dataclasses import dataclass
 import structlog
 
-from app.core.ai.routing import IntentRouter, IntentType, classify_intent
+from app.core.ai.routing import IntentRouter, IntentType
 from app.core.ai.agents.base_agent import AgentResult
 
 logger = structlog.get_logger(__name__)
@@ -87,7 +87,7 @@ class AgentOrchestrator:
 
     async def _ensure_agents_registered(self):
         """Ensure all agents are registered in the registry."""
-        from app.core.ai.agents.factory import AgentFactory, get_agent_factory
+        from app.core.ai.agents.factory import get_agent_factory
         from app.core.ai.agents.registry import AgentRegistry
         from app.core.ai.agents.implementations.tutor_agent import TutorAgent
         from app.core.ai.agents.implementations.document_agent import DocumentAgent
@@ -208,6 +208,9 @@ class AgentOrchestrator:
         session_id: int,
         context: Optional[Dict[str, Any]] = None,
         chat_history: Optional[List[Dict[str, Any]]] = None,
+        mode_id: str = "socratic",
+        tier_override: Optional[str] = None,
+        model_override: Optional[str] = None,
     ):
         """
         Handle incoming user message with streaming response.
@@ -220,6 +223,9 @@ class AgentOrchestrator:
             session_id: Chat session ID
             context: Learning context (weak areas, preferences, etc.)
             chat_history: Previous conversation messages
+            mode_id: AI mode (socratic, direct, deep_dive, creative)
+            tier_override: Optional tier override (speed, balanced, reasoning, thinking)
+            model_override: Optional direct model key
 
         Yields:
             {type: "token", text: "..."} - Streamed text tokens
@@ -238,57 +244,137 @@ class AgentOrchestrator:
             session_id=session_id,
             message_length=len(message),
             history_length=len(chat_history),
+            mode_id=mode_id,
+            tier_override=tier_override,
         )
 
         try:
             # 1. Ensure initialized
             await self.initialize()
 
-            # 2. Classify intent
-            classification = await self.router.classify(message, context)
+            # 2. Resolve model using mode system
+            from app.core.ai.resolver import get_resolver
+            from app.core.ai.modes import get_mode
+
+            resolver = get_resolver()
+            model_key = resolver.resolve(mode_id, tier_override, model_override)
+            mode = get_mode(mode_id)
 
             self.logger.info(
-                "intent_classified_streaming",
-                intent=classification.intent,
-                confidence=classification.confidence,
+                "mode_resolved",
+                mode=mode_id,
+                tier_override=tier_override,
+                resolved_model=model_key,
             )
 
-            # 3. Get intent value
-            intent_value = classification.intent
-            if isinstance(intent_value, IntentType):
-                intent_value = intent_value.value
-
-            # 4. Route to agent with streaming
+            # 3. Route to agent - conditionally use intent classification
+            # If mode has explicit agent_name, use it directly (skip classifier)
+            # If mode uses "__classify__", run intent classification
             from app.core.ai.agents.registry import AgentRegistry
 
             registry = AgentRegistry()
 
-            # Get agent (fallback to tutor if not found)
-            agent_name = intent_value if intent_value != "workflow" else "tutor"
+            if mode.agent_name == "__classify__":
+                # Auto mode: use intent classification
+                classification = await self.router.classify(message, context)
+                intent_value = classification.intent
+                if isinstance(intent_value, IntentType):
+                    intent_value = intent_value.value
+
+                self.logger.info(
+                    "intent_classified_streaming",
+                    intent=classification.intent,
+                    confidence=classification.confidence,
+                )
+
+                agent_name = intent_value if intent_value != "workflow" else "tutor"
+                confidence = classification.confidence
+            else:
+                # Explicit mode: use mode's agent directly (skip classifier)
+                agent_name = mode.agent_name
+                confidence = 1.0  # User explicitly chose this mode
+
+                self.logger.info(
+                    "mode_explicit_routing",
+                    mode=mode_id,
+                    agent=agent_name,
+                    message="Skipping intent classification for explicit mode",
+                )
+
+            # 4. Get agent instance (fallback to tutor if not found)
             try:
                 agent = registry.get(agent_name)
             except ValueError:
+                self.logger.warning(
+                    "agent_not_found_fallback",
+                    requested_agent=agent_name,
+                    fallback="tutor",
+                )
                 agent_name = "tutor"
                 agent = registry.get("tutor")
 
             self.logger.info("routing_to_agent_stream", agent=agent_name, user_id=user_id)
 
-            # Yield metadata about routing
+            # 5. Yield metadata about routing and model
             yield {
                 "type": "routing",
                 "agent": agent_name,
-                "intent": intent_value,
-                "confidence": classification.confidence,
+                "mode": mode_id,
+                "confidence": confidence,
+                "model": model_key,
+                "thinking_ui": mode.thinking_ui.value,
             }
 
-            # 5. Stream from agent
-            async for chunk in agent.execute_stream(
-                user_id=user_id, input=message, context=context, chat_history=chat_history
-            ):
-                # Pass through all chunks
+            # 7. Enhance context with mode and model info
+            enhanced_context = {
+                **context,
+                "mode_id": mode_id,
+                "model_key": model_key,
+                "system_prompt": mode.system_prompt_template.format(
+                    weak_areas=", ".join(context.get("weak_areas", [])),
+                    recent_topics=", ".join(context.get("recent_topics", [])),
+                    student_context=str(context),
+                ),
+            }
+
+            # 8. Stream from agent with fallback support
+            async def stream_with_fallback(model: str, retries: int = 1):
+                """Stream from agent, retrying with fallback model on failure."""
+                current_model = model
+                for attempt in range(retries + 1):
+                    try:
+                        async for chunk in agent.execute_stream(
+                            user_id=user_id,
+                            input=message,
+                            context={**enhanced_context, "model_key": current_model},
+                            chat_history=chat_history,
+                        ):
+                            yield chunk
+                        return  # Success, exit
+                    except Exception as stream_error:
+                        # Check if we can fallback
+                        fallback_model = resolver.get_fallback(current_model)
+                        if attempt < retries and fallback_model and fallback_model != current_model:
+                            self.logger.warning(
+                                "model_fallback_triggered",
+                                original_model=current_model,
+                                fallback_model=fallback_model,
+                                error=str(stream_error),
+                            )
+                            yield {
+                                "type": "fallback",
+                                "original_model": current_model,
+                                "fallback_model": fallback_model,
+                                "reason": str(stream_error),
+                            }
+                            current_model = fallback_model
+                        else:
+                            raise  # Re-raise if no fallback available
+
+            async for chunk in stream_with_fallback(model_key):
                 yield chunk
 
-            # 6. Update metrics
+            # 9. Update metrics
             registry.update_metrics(
                 agent_name=agent_name,
                 success=True,
