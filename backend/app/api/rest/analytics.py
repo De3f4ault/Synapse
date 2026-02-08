@@ -327,7 +327,6 @@ async def get_overview(
         # This catches ProgrammingError (view doesn't exist) or any other issue
         import structlog
 
-        logger = structlog.get_logger(__name__)
         logger.warning("materialized_view_query_failed", error=str(e), user_id=current_user.id)
 
     # Fallback: direct queries (original 8-query implementation)

@@ -210,6 +210,144 @@ async def stream_ai_response(
                 logger.error("context_session_cleanup_failed", error=str(cleanup_error))
 
 
+async def stream_comparison(
+    message: str,
+    user_id: int,
+    session_id: int,
+    model_a: str,
+    model_b: str,
+    mode_id: str = "socratic",
+) -> AsyncIterator[dict]:
+    """
+    Stream responses from two models in parallel for comparison.
+
+    Uses asyncio.create_task() to run both streams concurrently,
+    with an async queue to merge and tag chunks.
+
+    Args:
+        message: User's message
+        user_id: User ID
+        session_id: Session ID
+        model_a: First model registry key (e.g., "qwen3_next")
+        model_b: Second model registry key (e.g., "deepseek_v3_1")
+        mode_id: Mode to use for both models
+
+    Yields:
+        dict: Chunks tagged with model_slot ("A" or "B")
+    """
+    import asyncio
+    from asyncio import Queue
+    from app.core.ai.orchestrator import get_orchestrator
+
+    output_queue: Queue[dict] = Queue()
+
+    async def stream_model(slot: str, model_key: str):
+        """Stream from a single model and tag chunks with slot."""
+        orchestrator = get_orchestrator()
+        try:
+            async for chunk in orchestrator.handle_message_stream(
+                message=message,
+                user_id=user_id,
+                session_id=session_id,
+                mode_id=mode_id,
+                model_override=model_key,
+                context={},
+                chat_history=[],
+            ):
+                # Normalize chunk format for WebSocket
+                chunk_type = chunk.get("type")
+
+                if chunk_type == "token":
+                    ws_chunk = {
+                        "type": "token",
+                        "model_slot": slot,
+                        "data": {
+                            "text": chunk.get("text", ""),
+                            "model": chunk.get("model", model_key),
+                            "streaming": True,
+                        },
+                    }
+                elif chunk_type == "thinking":
+                    ws_chunk = {
+                        "type": "thinking",
+                        "model_slot": slot,
+                        "data": {
+                            "text": chunk.get("text", ""),
+                            "model": chunk.get("model", model_key),
+                        },
+                    }
+                elif chunk_type == "complete":
+                    metadata = chunk.get("metadata", {})
+                    ws_chunk = {
+                        "type": "complete",
+                        "model_slot": slot,
+                        "data": {
+                            "total_tokens": metadata.get("total_tokens", 0),
+                            "model_used": model_key,
+                            "success": True,
+                        },
+                    }
+                elif chunk_type == "error":
+                    ws_chunk = {
+                        "type": "error",
+                        "model_slot": slot,
+                        "data": {"message": chunk.get("message", "Unknown error")},
+                    }
+                else:
+                    # Pass through other types (routing, fallback, etc.)
+                    ws_chunk = {**chunk, "model_slot": slot}
+
+                await output_queue.put(ws_chunk)
+
+        except Exception as e:
+            logger.error(
+                "comparison_stream_error",
+                slot=slot,
+                model=model_key,
+                error=str(e),
+            )
+            await output_queue.put(
+                {
+                    "type": "error",
+                    "model_slot": slot,
+                    "data": {"message": f"Model {model_key} failed: {str(e)}"},
+                }
+            )
+        finally:
+            # Signal completion for this slot
+            await output_queue.put({"type": "stream_end", "model_slot": slot})
+
+    # Start both streams concurrently
+    task_a = asyncio.create_task(stream_model("A", model_a))
+    task_b = asyncio.create_task(stream_model("B", model_b))
+
+    logger.info(
+        "comparison_started",
+        user_id=user_id,
+        session_id=session_id,
+        model_a=model_a,
+        model_b=model_b,
+    )
+
+    # Merge chunks from both streams
+    completed = set()
+    while len(completed) < 2:
+        chunk = await output_queue.get()
+        if chunk["type"] == "stream_end":
+            completed.add(chunk["model_slot"])
+            continue
+        yield chunk
+
+    # Ensure tasks are done
+    await asyncio.gather(task_a, task_b, return_exceptions=True)
+
+    logger.info(
+        "comparison_completed",
+        user_id=user_id,
+        session_id=session_id,
+    )
+
+
 @router.websocket("/chat/{session_id}")
 async def chat_websocket(
     websocket: WebSocket,
@@ -338,15 +476,33 @@ async def chat_websocket(
                     )
                     continue
 
-                # Get mode from client message (default to tutor)
-                mode = data.get("mode", "tutor")
-                if mode not in ("tutor", "general"):
-                    mode = "tutor"
+                # Get mode from client message and map to backend mode IDs
+                # Frontend modes → Backend mode IDs
+                FRONTEND_MODE_MAP = {
+                    "tutor": "socratic",  # Legacy: Socratic teaching
+                    "direct": "direct",  # Concise, no questions
+                    "deep_think": "deep_dive",  # Visible reasoning
+                    "creative": "creative",  # Creative writing
+                    "research": "research",  # Research mode
+                    "socratic": "socratic",  # Direct match
+                    "deep_dive": "deep_dive",  # Direct match
+                    "vision": "vision",  # Vision analysis
+                }
+                raw_mode = data.get("mode", "socratic")
+                mode_id = FRONTEND_MODE_MAP.get(raw_mode, "socratic")
+
+                logger.info(
+                    "mode_resolved",
+                    raw_mode=raw_mode,
+                    mode_id=mode_id,
+                    session_id=session_id,
+                )
 
                 # Create cancellation token and register generation
                 registry = get_generation_registry()
                 generation_channel = f"chat:{session_int_id}:{user_message.id}"
-                cancellation_token = await registry.start(generation_channel)
+                # Register generation for cancellation support (orchestrator will check registry)
+                await registry.start(generation_channel)
 
                 # Stream AI response (uses its own session for context)
                 full_response = ""
@@ -357,31 +513,147 @@ async def chat_websocket(
                 was_cancelled = False
 
                 try:
-                    async for chunk in stream_ai_response(
-                        message=content,
-                        user_id=user_id,
-                        session_id=session_int_id,
-                        mode=mode,
-                        cancellation_token=cancellation_token,
-                    ):
-                        # Send chunk to client
-                        await manager.send_message(session_id, websocket, chunk)
+                    # Check for comparison mode
+                    is_comparison = data.get("compare", False)
+                    comparison_models = data.get("models", [])
 
-                        # Accumulate response
-                        if chunk["type"] == "token":
-                            full_response += chunk["data"]["text"]
-                            model_used = chunk["data"]["model"]
-                        elif chunk["type"] == "complete":
-                            total_tokens = chunk["data"]["total_tokens"]
-                            function_calls = chunk["data"].get("function_calls")
-                            grounding_sources = chunk["data"].get("grounding_sources")
-                        elif chunk["type"] == "cancelled":
-                            was_cancelled = True
-                            logger.info(
-                                "generation_cancelled_by_user",
-                                session_id=session_id,
-                                partial_tokens=chunk["data"].get("partial_tokens", 0),
-                            )
+                    if is_comparison and len(comparison_models) >= 2:
+                        # ========== COMPARISON MODE ==========
+                        # Stream from two models in parallel
+                        model_a = comparison_models[0]
+                        model_b = comparison_models[1]
+
+                        logger.info(
+                            "comparison_mode_activated",
+                            model_a=model_a,
+                            model_b=model_b,
+                            session_id=session_id,
+                        )
+
+                        # Track content for both slots
+                        content_a = ""
+                        content_b = ""
+
+                        async for chunk in stream_comparison(
+                            message=content,
+                            user_id=user_id,
+                            session_id=session_int_id,
+                            model_a=model_a,
+                            model_b=model_b,
+                            mode_id=mode_id,
+                        ):
+                            # Send tagged chunk directly to client
+                            await manager.send_message(session_id, websocket, chunk)
+
+                            # Track content for saving
+                            if chunk.get("type") == "token":
+                                if chunk.get("model_slot") == "A":
+                                    content_a += chunk.get("data", {}).get("text", "")
+                                elif chunk.get("model_slot") == "B":
+                                    content_b += chunk.get("data", {}).get("text", "")
+
+                        # Save primary response (Model A) with comparison data
+                        full_response = content_a
+                        model_used = model_a
+                        # Store Model B response in comparison_data
+                        # (will need to add this field to ChatMessage model later)
+
+                    else:
+                        # ========== NORMAL MODE ==========
+                        # Use orchestrator with full mode system
+                        from app.core.ai.orchestrator import get_orchestrator
+
+                        orchestrator = get_orchestrator()
+
+                        async for chunk in orchestrator.handle_message_stream(
+                            message=content,
+                            user_id=user_id,
+                            session_id=session_int_id,
+                            mode_id=mode_id,
+                            context={},  # Context engine runs inside orchestrator
+                            chat_history=[],
+                        ):
+                            # Normalize chunk format for WebSocket transmission
+                            # Agent yields flat: {"type": "token", "text": "..."}
+                            # WebSocket expects: {"type": "token", "data": {"text": "..."}}
+                            chunk_type = chunk.get("type")
+
+                            if chunk_type == "token":
+                                # Wrap flat format for WebSocket
+                                ws_chunk = {
+                                    "type": "token",
+                                    "data": {
+                                        "text": chunk.get("text", ""),
+                                        "model": chunk.get("model", ""),
+                                        "streaming": chunk.get("streaming", True),
+                                    },
+                                }
+                                await manager.send_message(session_id, websocket, ws_chunk)
+                                full_response += chunk.get("text", "")
+                                model_used = chunk.get("model")
+
+                            elif chunk_type == "thinking":
+                                # Wrap thinking for WebSocket
+                                ws_chunk = {
+                                    "type": "thinking",
+                                    "data": {
+                                        "text": chunk.get("text", ""),
+                                        "model": chunk.get("model", ""),
+                                        "streaming": True,
+                                    },
+                                }
+                                await manager.send_message(session_id, websocket, ws_chunk)
+
+                            elif chunk_type == "routing":
+                                # Pass through routing metadata (already correct format)
+                                await manager.send_message(session_id, websocket, chunk)
+
+                            elif chunk_type == "fallback":
+                                # Pass through fallback notification
+                                await manager.send_message(session_id, websocket, chunk)
+
+                            elif chunk_type == "tool_call":
+                                ws_chunk = {"type": "tool_call", "data": chunk}
+                                await manager.send_message(session_id, websocket, ws_chunk)
+
+                            elif chunk_type == "tool_result":
+                                ws_chunk = {"type": "tool_result", "data": chunk}
+                                await manager.send_message(session_id, websocket, ws_chunk)
+
+                            elif chunk_type == "complete":
+                                # Extract completion metadata
+                                metadata = chunk.get("metadata", {})
+                                ws_chunk = {
+                                    "type": "complete",
+                                    "data": {
+                                        "total_tokens": metadata.get("total_tokens", 0),
+                                        "model_used": model_used,
+                                        "success": True,
+                                        "function_calls": metadata.get("function_calls"),
+                                        "grounding_sources": metadata.get("grounding_sources"),
+                                    },
+                                }
+                                await manager.send_message(session_id, websocket, ws_chunk)
+                                total_tokens = metadata.get("total_tokens", 0)
+                                function_calls = metadata.get("function_calls")
+                                grounding_sources = metadata.get("grounding_sources")
+
+                            elif chunk_type == "error":
+                                ws_chunk = {
+                                    "type": "error",
+                                    "data": {"message": chunk.get("message", "Unknown error")},
+                                }
+                                await manager.send_message(session_id, websocket, ws_chunk)
+
+                            elif chunk_type == "cancelled":
+                                was_cancelled = True
+                                ws_chunk = {"type": "cancelled", "data": chunk}
+                                await manager.send_message(session_id, websocket, ws_chunk)
+                                logger.info(
+                                    "generation_cancelled_by_user",
+                                    session_id=session_id,
+                                    partial_tokens=chunk.get("partial_tokens", 0),
+                                )
                 finally:
                     # Always complete the generation in registry
                     status = "cancelled" if was_cancelled else "completed"

@@ -87,6 +87,11 @@ api_router.include_router(rag.router, prefix="/rag", tags=["RAG"])
 
 api_router.include_router(links.router, prefix="/links", tags=["Links"])
 
+# Artifacts module (modular monolith)
+from app.modules.artifacts import artifacts_router
+
+api_router.include_router(artifacts_router, prefix="/artifacts", tags=["Artifacts"])
+
 # ==================== PLATFORM ENDPOINTS ====================
 
 api_router.include_router(entities.router, prefix="/entities", tags=["Platform"])
