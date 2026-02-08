@@ -4,11 +4,12 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { StreamingMessage, TypingIndicator } from "./StreamingMessage";
+import { TypingIndicator } from "./StreamingMessage";
 import { cn, formatRelativeTime, getInitials } from "@/lib/utils";
 import { Bot, User, Copy, Check, Brain, Plus } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import type { ChatMessageResponse } from "@/api/generated";
+import { MarkdownRenderer } from "@/shared/rendering/MarkdownRenderer";
 
 /**
  * Enhanced MessageList Component
@@ -135,11 +136,15 @@ const MessageItem = React.memo(function MessageItem({
           )}
 
           {isStreaming && !isUser ? (
-            <StreamingMessage content={message.content} isStreaming />
+            <div className="text-[15px] leading-7 font-normal text-[var(--synapse-text-primary)]">
+              <MarkdownRenderer content={message.content} className="!my-0" />
+              <span className="inline-block w-[2px] h-4 bg-primary ml-0.5 align-middle animate-pulse" />
+            </div>
           ) : (
-            <p className="whitespace-pre-wrap text-[15px] leading-7 font-normal text-[var(--synapse-text-primary)]">
-              {message.content}
-            </p>
+            <MarkdownRenderer 
+              content={message.content} 
+              className="text-[15px] leading-7 font-normal text-[var(--synapse-text-primary)] !my-0"
+            />
           )}
         </div>
 
@@ -304,7 +309,10 @@ export function MessageList({
                 </AvatarFallback>
               </Avatar>
               <div className="max-w-[85%] rounded-2xl bg-muted px-4 py-2 shadow-sm">
-                <StreamingMessage content={streamingContent} isStreaming />
+                <div className="text-[15px] leading-7">
+                  <MarkdownRenderer content={streamingContent} className="!my-0" />
+                  <span className="inline-block w-[2px] h-4 bg-primary ml-0.5 align-middle animate-pulse" />
+                </div>
               </div>
             </motion.div>
           )}

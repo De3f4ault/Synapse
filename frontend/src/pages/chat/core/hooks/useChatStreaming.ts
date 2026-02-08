@@ -45,6 +45,7 @@ interface ChatWSMessage {
     channel?: string;
     data?: any;
     event?: string;
+    model_slot?: 'A' | 'B';  // For comparison mode
 }
 
 interface UseChatStreamingOptions {
@@ -103,13 +104,23 @@ export function useChatStreaming({
                     break;
 
                 case 'thinking':
-                    actions.appendThinking(eventData.text || '');
+                    // Check if this is a comparison mode chunk
+                    if (message.model_slot && actions.isComparisonMode) {
+                        actions.appendToSlot(message.model_slot, eventData.text || '', 'thinking');
+                    } else {
+                        actions.appendThinking(eventData.text || '');
+                    }
                     actions.setModel(eventData.model || '');
                     actions.setIsStreaming(true);
                     break;
 
                 case 'token':
-                    actions.appendContent(eventData.text || '');
+                    // Check if this is a comparison mode chunk
+                    if (message.model_slot && actions.isComparisonMode) {
+                        actions.appendToSlot(message.model_slot, eventData.text || '', 'content');
+                    } else {
+                        actions.appendContent(eventData.text || '');
+                    }
                     actions.setModel(eventData.model || '');
                     actions.setIsStreaming(true);
                     break;
@@ -259,7 +270,10 @@ export function useChatStreaming({
 
     const sendMessage = useCallback(
         (content: string) => {
-            const chatMode = useChatStore.getState().chatMode;
+            const state = useChatStore.getState();
+            const chatMode = state.chatMode;
+            const isComparisonMode = state.isComparisonMode;
+            const selectedModels = state.selectedModels;
             
             console.log('[Chat] sendMessage:', {
                 contentLength: content.length,
@@ -267,6 +281,8 @@ export function useChatStreaming({
                 sessionId,
                 subscribedTo: subscribedChannelRef.current,
                 mode: chatMode,
+                compare: isComparisonMode,
+                models: isComparisonMode ? selectedModels : undefined,
             });
 
             if (!manager.isConnected()) {
@@ -279,6 +295,11 @@ export function useChatStreaming({
 
             if (!subscribedChannelRef.current) {
                 throw new Error('Not subscribed to channel');
+            }
+
+            // Clear previous comparison streaming state if in comparison mode
+            if (isComparisonMode) {
+                state.clearComparison();
             }
 
             try {
@@ -303,9 +324,23 @@ export function useChatStreaming({
                     (old = []) => [...old, optimisticMessage]
                 );
 
-                // Send via WebSocket with mode
-                manager.send({ type: 'message', channel, content, mode: chatMode });
-                console.log('[Chat] Message sent with mode:', chatMode);
+                // Send via WebSocket with mode and optional comparison flags
+                const message: Record<string, unknown> = { 
+                    type: 'message', 
+                    channel, 
+                    content, 
+                    mode: chatMode 
+                };
+                
+                // Add comparison mode flags
+                if (isComparisonMode) {
+                    message.compare = true;
+                    message.models = selectedModels;
+                }
+                
+                manager.send(message);
+                console.log('[Chat] Message sent with mode:', chatMode, isComparisonMode ? `(comparing: ${selectedModels.join(' vs ')})` : '');
+
 
                 // Clear any previous streaming state
                 const state = useChatStore.getState();

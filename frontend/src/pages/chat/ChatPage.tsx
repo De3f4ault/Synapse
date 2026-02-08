@@ -22,6 +22,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { ChatSidebar } from "./sidebar";
 import { ChatMain, useChatSessions, useCreateSession } from "./core";
 import { useIsVoiceActive, LiveVoiceOverlay } from "./voice";
+import { ArtifactPanel } from "./artifacts";
 
 // Layout and providers
 import { ChatProviders } from "./ChatProviders";
@@ -131,27 +132,30 @@ export const ChatPage: React.FC = () => {
             </SheetContent>
           </Sheet>
 
-          {/* Main Content Area */}
-          <div className="flex-1 flex flex-col overflow-hidden relative z-0">
-            {/* Mobile Hamburger - Only visible on small screens */}
-            <div className="absolute top-4 left-4 z-50 lg:hidden">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setMobileSidebarOpen(true)}
-                className="hover:bg-white/10 text-slate-400 hover:text-white rounded-xl transition-colors"
-              >
-                <MenuIcon className="size-5" />
-              </Button>
-            </div>
-
+          {/* Main Content Area - FLEX with Artifact Panel */}
+          <div className="flex-1 flex overflow-hidden relative z-0">
             {/* Chat Content */}
-            <div className="flex-1 flex flex-col min-h-0 relative">
+            <div className="flex-1 flex flex-col min-h-0 min-w-0 relative">
+              {/* Mobile Hamburger - Only visible on small screens */}
+              <div className="absolute top-4 left-4 z-50 lg:hidden">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setMobileSidebarOpen(true)}
+                  className="hover:bg-white/10 text-slate-400 hover:text-white rounded-xl transition-colors"
+                >
+                  <MenuIcon className="size-5" />
+                </Button>
+              </div>
+
               <ChatMain 
                 sessionId={sessionId} 
                 sessionTitle={sessions.find(s => s.id === sessionId)?.title}
               />
             </div>
+
+            {/* Artifact Panel - Inline side-by-side with chat */}
+            <ArtifactPanel />
           </div>
         </div>
 

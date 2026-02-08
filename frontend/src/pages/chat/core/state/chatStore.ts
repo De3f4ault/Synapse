@@ -43,8 +43,8 @@ interface ChatState {
     // Connection state
     connectionState: ConnectionState;
 
-    // Chat mode: "tutor" (Socratic) or "general" (direct answers)
-    chatMode: 'tutor' | 'general';
+    // Chat mode: supports multiple AI interaction modes
+    chatMode: 'direct' | 'tutor' | 'deep_think' | 'creative' | 'research';
 
     // Streaming state (ephemeral - cleared on complete)
     streaming: StreamingState;
@@ -63,11 +63,19 @@ interface ChatState {
     lastSequenceId: number;
     currentSessionId: number | null;
 
+    // Comparison mode state
+    isComparisonMode: boolean;
+    selectedModels: [string, string];  // [Model A, Model B]
+    comparisonStreaming: {
+        A: { content: string; thinking: string; isComplete: boolean };
+        B: { content: string; thinking: string; isComplete: boolean };
+    };
+
     // Actions - Connection
     setConnectionState: (state: ConnectionState) => void;
 
     // Actions - Chat Mode
-    setChatMode: (mode: 'tutor' | 'general') => void;
+    setChatMode: (mode: 'direct' | 'tutor' | 'deep_think' | 'creative' | 'research') => void;
     toggleChatMode: () => void;
 
     // Actions - Streaming
@@ -96,13 +104,27 @@ interface ChatState {
 
     // Actions - Session boundary (Contract #1)
     resetForSession: (sessionId: number) => void;
+
+    // Actions - Comparison mode
+    setComparisonMode: (enabled: boolean) => void;
+    setSelectedModels: (models: [string, string]) => void;
+    appendToSlot: (slot: 'A' | 'B', text: string, type?: 'content' | 'thinking') => void;
+    markSlotComplete: (slot: 'A' | 'B') => void;
+    clearComparison: () => void;
 }
 
+// Valid chat modes
+const CHAT_MODES = ['direct', 'tutor', 'deep_think', 'creative', 'research'] as const;
+type ChatMode = typeof CHAT_MODES[number];
+
 // Load persisted chat mode from localStorage
-const getPersistedChatMode = (): 'tutor' | 'general' => {
+const getPersistedChatMode = (): ChatMode => {
     if (typeof window === 'undefined') return 'tutor';
     const saved = localStorage.getItem('synapse-chat-mode');
-    return saved === 'general' ? 'general' : 'tutor';
+    if (saved && CHAT_MODES.includes(saved as ChatMode)) {
+        return saved as ChatMode;
+    }
+    return 'tutor';
 };
 
 export const useChatStore = create<ChatState>((set, get) => ({
@@ -117,6 +139,14 @@ export const useChatStore = create<ChatState>((set, get) => ({
     lastSequenceId: 0,
     currentSessionId: null,
 
+    // Comparison mode initial values
+    isComparisonMode: false,
+    selectedModels: ['qwen3_next', 'deepseek_v3_1'],  // Default pair
+    comparisonStreaming: {
+        A: { content: '', thinking: '', isComplete: false },
+        B: { content: '', thinking: '', isComplete: false },
+    },
+
     // Connection
     setConnectionState: (connectionState) => set({ connectionState }),
 
@@ -128,7 +158,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
         set({ chatMode });
     },
     toggleChatMode: () => {
-        const newMode = get().chatMode === 'tutor' ? 'general' : 'tutor';
+        const current = get().chatMode;
+        const currentIndex = CHAT_MODES.indexOf(current);
+        const nextIndex = (currentIndex + 1) % CHAT_MODES.length;
+        const newMode = CHAT_MODES[nextIndex] ?? 'tutor';
         if (typeof window !== 'undefined') {
             localStorage.setItem('synapse-chat-mode', newMode);
         }
@@ -248,6 +281,54 @@ export const useChatStore = create<ChatState>((set, get) => ({
             tokenBuffer: [],
             lastSequenceId: 0,
             currentSessionId: sessionId,
+        });
+    },
+
+    // Comparison mode actions
+    setComparisonMode: (enabled) => {
+        if (typeof window !== 'undefined') {
+            localStorage.setItem('synapse-comparison-mode', String(enabled));
+        }
+        set({ isComparisonMode: enabled });
+    },
+    
+    setSelectedModels: (models) => {
+        if (typeof window !== 'undefined') {
+            localStorage.setItem('synapse-comparison-models', JSON.stringify(models));
+        }
+        set({ selectedModels: models });
+    },
+    
+    appendToSlot: (slot, text, type = 'content') => {
+        set((state) => ({
+            comparisonStreaming: {
+                ...state.comparisonStreaming,
+                [slot]: {
+                    ...state.comparisonStreaming[slot],
+                    [type]: state.comparisonStreaming[slot][type] + text,
+                },
+            },
+        }));
+    },
+    
+    markSlotComplete: (slot) => {
+        set((state) => ({
+            comparisonStreaming: {
+                ...state.comparisonStreaming,
+                [slot]: {
+                    ...state.comparisonStreaming[slot],
+                    isComplete: true,
+                },
+            },
+        }));
+    },
+    
+    clearComparison: () => {
+        set({
+            comparisonStreaming: {
+                A: { content: '', thinking: '', isComplete: false },
+                B: { content: '', thinking: '', isComplete: false },
+            },
         });
     },
 }));

@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ChatService } from "@/api/generated";
 import { MessageList } from "./MessageList";
 import { MessageInput } from "./MessageInput";
+import { ThinkingPanel, type ThinkingLayout } from "./ThinkingPanel";
 import { useChatWebSocket } from "../hooks/useChatWebSocket";
 import { useStreamingMessage } from "../hooks/useStreamingMessage";
 import { toast } from "@/hooks/use-toast";
@@ -15,7 +16,7 @@ import type { ChatMessageResponse } from "@/api/generated";
  * Enhanced ChatInterface
  *
  * A unified chat component that fits into the NotebookLM-style layout.
- * Focuses on message display and input, delegating layout control to the parent pages.
+ * Mode selection is now integrated into the MessageInput component.
  */
 
 interface ChatInterfaceProps {
@@ -46,6 +47,11 @@ export const ChatInterface = forwardRef<
   ) => {
     const queryClient = useQueryClient();
     const [isTyping, setIsTyping] = useState(false);
+    const [currentMode, setCurrentMode] = useState(() => 
+      localStorage.getItem("synapse-chat-mode") || "tutor"
+    );
+    const [thinkingLayout, setThinkingLayout] = useState<ThinkingLayout>('collapsed');
+    const [routingInfo, setRoutingInfo] = useState<{ model: string; agent: string } | null>(null);
 
     // Fetch messages if not provided or to keep fresh
     const { data: messages = initialMessages, isLoading: messagesLoading } =
@@ -68,7 +74,7 @@ export const ChatInterface = forwardRef<
       },
     });
 
-    // WebSocket
+    // WebSocket with mode support
     const ws = useChatWebSocket({
       sessionId,
       onMessage: (message) => {
@@ -79,6 +85,14 @@ export const ChatInterface = forwardRef<
         setIsTyping(false);
       },
       onChunk: streaming.handleChunk,
+      onThinking: () => {
+        // Thinking is handled by streaming.handleChunk with type='thinking'
+      },
+      onRouting: (metadata) => {
+        // Update thinking layout based on mode
+        setThinkingLayout(metadata.thinkingUi as ThinkingLayout);
+        setRoutingInfo({ model: metadata.model, agent: metadata.agent });
+      },
       onError: (error) => {
         // Suppress auth errors as they can happen during reconnects
         if (
@@ -143,7 +157,9 @@ export const ChatInterface = forwardRef<
     });
 
     const handleSendMessage = useCallback(
-      (content: string) => {
+      (content: string, options?: { mode: string; enableSearch?: boolean }) => {
+        const modeToUse = options?.mode || currentMode;
+        
         if (ws.isConnected) {
           // Optimistic UI for WS
           const userMessage: ChatMessageResponse = {
@@ -161,17 +177,32 @@ export const ChatInterface = forwardRef<
             (old = []) => [...old, userMessage],
           );
 
-          ws.sendMessage(content);
+          // Send with mode
+          ws.sendMessage(content, { modeId: modeToUse });
           streaming.startStreaming();
+          
+          // Update thinking layout based on mode
+          if (modeToUse === 'deep_think') {
+            setThinkingLayout('panel');
+          } else if (modeToUse === 'tutor') {
+            setThinkingLayout('collapsed');
+          } else {
+            setThinkingLayout('off');
+          }
         } else {
           sendMutation.mutate(content);
         }
       },
-      [ws, sessionId, queryClient, streaming, sendMutation],
+      [ws, sessionId, queryClient, streaming, sendMutation, currentMode],
     );
 
+    const handleModeChange = useCallback((mode: string) => {
+      setCurrentMode(mode);
+      localStorage.setItem("synapse-chat-mode", mode);
+    }, []);
+
     useImperativeHandle(ref, () => ({
-      sendMessage: handleSendMessage,
+      sendMessage: (content: string) => handleSendMessage(content),
     }));
 
     const isLoading = sendMutation.isPending || isTyping;
@@ -189,6 +220,16 @@ export const ChatInterface = forwardRef<
       >
         {/* Messages Area OR Centered Input Container */}
         <div className="flex-1 overflow-hidden relative flex flex-col">
+          {/* Thinking Panel (when streaming with thinking) */}
+          {streaming.isStreaming && streaming.thinkingContent && thinkingLayout !== 'off' && (
+            <ThinkingPanel
+              content={streaming.thinkingContent}
+              isStreaming={streaming.isStreaming}
+              layout={thinkingLayout}
+              modelName={routingInfo?.model}
+            />
+          )}
+
           <MessageList
             messages={messages}
             streamingContent={streaming.content}
@@ -196,11 +237,11 @@ export const ChatInterface = forwardRef<
             isLoading={messagesLoading}
             isTyping={isTyping && !streaming.isStreaming}
             className="flex-1 px-4 md:px-8 py-6"
-            // Hide empty state if we are doing the centered input trick, as the input ITSELF is the empty state
+            // Hide empty state if we are doing the centered input trick
             emptyState={showCenteredInput ? <div /> : emptyStateComponent}
           />
 
-          {/* CENTERED INPUT MODE (DeepSeek Style) */}
+          {/* CENTERED INPUT MODE (Empty State) */}
           {showCenteredInput && (
             <div className="absolute inset-0 flex flex-col items-center justify-center p-4 z-20 pointer-events-none">
               <div className="w-full max-w-2xl pointer-events-auto space-y-6">
@@ -210,9 +251,9 @@ export const ChatInterface = forwardRef<
                   animate={{ opacity: 1, y: 0 }}
                   className="text-center space-y-4"
                 >
-                  <div className="relative w-12 h-12 mx-auto">
-                    <div className="bg-black/60 border border-white/20 p-2.5 rounded-xl backdrop-blur-sm">
-                      {/* Minimal Brand Icon */}
+                  <div className="relative w-14 h-14 mx-auto">
+                    <div className="absolute inset-0 bg-[var(--synapse-cyan)]/20 blur-xl rounded-full" />
+                    <div className="relative bg-black/60 border border-white/20 p-3 rounded-2xl backdrop-blur-sm">
                       <svg
                         viewBox="0 0 24 24"
                         fill="none"
@@ -228,9 +269,12 @@ export const ChatInterface = forwardRef<
                       </svg>
                     </div>
                   </div>
-                  <h2 className="text-xl font-medium text-white">
+                  <h2 className="text-2xl font-semibold text-white">
                     How can I help you learn?
                   </h2>
+                  <p className="text-sm text-white/50 max-w-md mx-auto">
+                    Ask questions, analyze documents, create quizzes, or explore complex topics
+                  </p>
                 </motion.div>
 
                 {/* The Main Input */}
@@ -243,8 +287,10 @@ export const ChatInterface = forwardRef<
                     onSend={handleSendMessage}
                     disabled={!ws.isConnected && false}
                     isLoading={isLoading || streaming.isStreaming}
-                    className="shadow-xl border-white/10"
-                    placeholder="Ask anything about your learning..."
+                    className="shadow-2xl"
+                    placeholder="Ask anything..."
+                    initialMode={currentMode}
+                    onModeChange={handleModeChange}
                   />
                 </motion.div>
               </div>
@@ -254,13 +300,15 @@ export const ChatInterface = forwardRef<
 
         {/* BOTTOM INPUT AREA */}
         {!showCenteredInput && (
-          <div className="flex-none p-4 border-t border-white/5 bg-black/80 backdrop-blur-md z-50 relative">
+          <div className="flex-none p-4 border-t border-white/5 bg-[#0a0a0a]/90 backdrop-blur-md z-50 relative">
             <div className="max-w-3xl mx-auto w-full">
               <MessageInput
                 onSend={handleSendMessage}
                 disabled={!ws.isConnected && false}
                 isLoading={isLoading || streaming.isStreaming}
                 placeholder="Message Synapse..."
+                initialMode={currentMode}
+                onModeChange={handleModeChange}
               />
             </div>
           </div>

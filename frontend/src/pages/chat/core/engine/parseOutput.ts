@@ -15,6 +15,7 @@ import {
     createMermaidBlock,
     createFlashcardSetBlock,
     createQuizBlock,
+    createArtifactBlock,
     resetSequenceId,
 } from '@/shared/rendering/schema';
 
@@ -23,12 +24,200 @@ import {
 interface ParseOptions {
     /** Reset sequence counter at start */
     resetSequence?: boolean;
+    /** Enable artifact detection (default: true) */
+    detectArtifacts?: boolean;
 }
 
-// ==================== CODE FENCE REGEX ====================
+// ==================== ARTIFACT DETECTION ====================
+
+/**
+ * Artifact detection thresholds.
+ * Based on Claude's approach: >15 lines or React/HTML.
+ */
+const ARTIFACT_CONFIG = {
+    MIN_LINES: 15,
+    REACT_LANGUAGES: ['tsx', 'jsx', 'react'],
+    HTML_PATTERNS: ['<!DOCTYPE', '<html', '<head', '<body'],
+} as const;
+
+/**
+ * Markdown document detection patterns.
+ * Used to identify structured documents that should be artifacts.
+ */
+const MARKDOWN_DOC_CONFIG = {
+    MIN_LINES: 15,
+    // Content must have document structure
+    HEADING_PATTERN: /^#{1,2}\s+.+/m,
+    // Indicators of substantial document
+    STRUCTURE_PATTERNS: [
+        /^---\n[\s\S]*?\n---/m,      // YAML frontmatter
+        />\s*\[!(?:NOTE|TIP|IMPORTANT|WARNING|CAUTION)\]/m, // GH alerts
+        /\|[^|]+\|[^|]+\|/,          // Tables
+    ],
+} as const;
+
+/**
+ * Determine if markdown should be elevated to an artifact.
+ * 
+ * Criteria:
+ * - >15 lines
+ * - Has heading structure (# or ##)
+ * - Has multiple sections (2+ headings)
+ */
+function shouldElevateToMarkdownArtifact(content: string): boolean {
+    const lines = content.split('\n').length;
+    
+    // Must be substantial
+    if (lines < MARKDOWN_DOC_CONFIG.MIN_LINES) {
+        return false;
+    }
+    
+    // Must have heading structure
+    const hasHeading = MARKDOWN_DOC_CONFIG.HEADING_PATTERN.test(content);
+    if (!hasHeading) {
+        return false;
+    }
+    
+    // Must have multiple sections (document structure)
+    const headingCount = (content.match(/^#{1,3}\s+.+/gm) || []).length;
+    if (headingCount < 2) {
+        return false;
+    }
+    
+    return true;
+}
+
+/**
+ * Generate title for markdown document from first heading or content.
+ */
+function generateMarkdownTitle(content: string): string {
+    // Try to extract first H1 or H2
+    const h1Match = content.match(/^#\s+(.+)$/m);
+    if (h1Match?.[1]) {
+        return h1Match[1].trim().substring(0, 60);
+    }
+    
+    const h2Match = content.match(/^##\s+(.+)$/m);
+    if (h2Match?.[1]) {
+        return h2Match[1].trim().substring(0, 60);
+    }
+    
+    return 'Markdown Document';
+}
+
+/**
+ * Determine if a code block should be elevated to an artifact.
+ * 
+ * Criteria:
+ * - Code >15 lines
+ * - React/JSX/TSX (always)
+ * - HTML with document structure
+ */
+function shouldElevateToArtifact(code: string, language: string): boolean {
+    const normalizedLang = language.toLowerCase();
+    const lines = code.split('\n').length;
+    
+    // React components always become artifacts
+    if ((ARTIFACT_CONFIG.REACT_LANGUAGES as readonly string[]).includes(normalizedLang)) {
+        return true;
+    }
+    
+    // HTML with document structure
+    if (normalizedLang === 'html' || normalizedLang === 'htm') {
+        return ARTIFACT_CONFIG.HTML_PATTERNS.some(pattern => 
+            code.includes(pattern)
+        );
+    }
+    
+    // Substantial code (>15 lines)
+    if (lines > ARTIFACT_CONFIG.MIN_LINES) {
+        return true;
+    }
+    
+    return false;
+}
+
+/**
+ * Generate artifact title from code content and language.
+ */
+function generateArtifactTitle(code: string, language: string): string {
+    // Try to extract component/function/class name
+    const patterns = [
+        /export\s+(?:default\s+)?function\s+(\w+)/,
+        /export\s+(?:default\s+)?class\s+(\w+)/,
+        /const\s+(\w+)\s*=\s*(?:\([^)]*\)|)\s*=>/,
+        /function\s+(\w+)\s*\(/,
+        /class\s+(\w+)/,
+        /def\s+(\w+)\s*\(/,
+    ];
+    
+    for (const pattern of patterns) {
+        const match = code.match(pattern);
+        if (match?.[1]) {
+            return match[1];
+        }
+    }
+    
+    // Fallback to language-based title
+    return `${language.toUpperCase()} Code`;
+}
+
+// ==================== CODE FENCE & ARTIFACT TAG REGEX ====================
 
 // Matches code fences: ```language\ncode\n``` (also handles language with hyphens)
 const CODE_FENCE_REGEX = /```([\w-]*)\n([\s\S]*?)```/g;
+
+// Matches explicit artifact tags from AI: <artifact type="..." title="...">content</artifact>
+const ARTIFACT_TAG_REGEX = /<artifact\s+type="([^"]+)"\s+title="([^"]+)">([\s\S]*?)<\/artifact>/g;
+
+/**
+ * Parse content that has explicit <artifact> tags.
+ * Extracts artifacts and parses surrounding content normally.
+ */
+function parseWithExplicitArtifacts(
+    content: string, 
+    matches: RegExpMatchArray[], 
+    options: ParseOptions
+): RenderBlock[] {
+    const blocks: RenderBlock[] = [];
+    let lastIndex = 0;
+    
+    for (const match of matches) {
+        const [fullMatch, type, title, artifactContent] = match;
+        const matchStart = match.index ?? 0;
+        
+        // Parse content before this artifact tag
+        if (matchStart > lastIndex) {
+            const beforeContent = content.slice(lastIndex, matchStart).trim();
+            if (beforeContent) {
+                // Recursively parse, but disable artifact detection to avoid infinite loop
+                const beforeBlocks = parseOutput(beforeContent, { ...options, detectArtifacts: false });
+                blocks.push(...beforeBlocks);
+            }
+        }
+        
+        // Create the artifact block
+        const artifactType = type as import('@/shared/rendering/schema').ArtifactType;
+        const language = type === 'text/markdown' ? 'markdown' : 
+                        type === 'application/vnd.ant.code' ? 'typescript' :
+                        type === 'application/vnd.ant.react' ? 'tsx' : 'text';
+        
+        blocks.push(createArtifactBlock((artifactContent || '').trim(), language, title, artifactType));
+        
+        lastIndex = matchStart + fullMatch.length;
+    }
+    
+    // Parse remaining content after last artifact
+    if (lastIndex < content.length) {
+        const afterContent = content.slice(lastIndex).trim();
+        if (afterContent) {
+            const afterBlocks = parseOutput(afterContent, { ...options, detectArtifacts: false });
+            blocks.push(...afterBlocks);
+        }
+    }
+    
+    return blocks;
+}
 
 // ==================== PARSER ====================
 
@@ -36,15 +225,9 @@ const CODE_FENCE_REGEX = /```([\w-]*)\n([\s\S]*?)```/g;
  * Parse AI output into RenderBlock[]
  *
  * Current implementation:
- * - Splits on code fences
- * - Creates markdown blocks for text
- * - Creates code blocks for fenced code
- * - Creates mermaid blocks for 'mermaid' language fences
- *
- * Future extensions:
- * - LaTeX detection
- * - Table detection
- * - Expandable sections
+ * 1. First checks for explicit <artifact> tags (Claude-style)
+ * 2. Then checks if entire content is a structured markdown document
+ * 3. Finally splits on code fences for remaining content
  */
 export function parseOutput(content: string, options: ParseOptions = {}): RenderBlock[] {
     if (!content || content.trim() === '') {
@@ -55,11 +238,28 @@ export function parseOutput(content: string, options: ParseOptions = {}): Render
         resetSequenceId();
     }
 
+    // ========== PHASE 1: Extract explicit artifact tags ==========
+    // These take priority - AI explicitly marked content as artifact
+    const artifactMatches = [...content.matchAll(ARTIFACT_TAG_REGEX)];
+    if (artifactMatches.length > 0) {
+        return parseWithExplicitArtifacts(content, artifactMatches, options);
+    }
+
+    // ========== PHASE 2: Check if entire content is a structured document ==========
+    // Before splitting on code fences, check if the whole thing is a markdown doc
+    const detectArtifacts = options.detectArtifacts !== false;
+    if (detectArtifacts && shouldElevateToMarkdownArtifact(content)) {
+        const title = generateMarkdownTitle(content);
+        return [createArtifactBlock(content, 'markdown', title, 'text/markdown')];
+    }
+
+    // ========== PHASE 3: Normal parsing with code fence splitting ==========
     const blocks: RenderBlock[] = [];
     let lastIndex = 0;
 
     // Find all code fences
     const matches = [...content.matchAll(CODE_FENCE_REGEX)];
+
 
     for (const match of matches) {
         const [fullMatch, language, code] = match;
@@ -73,6 +273,10 @@ export function parseOutput(content: string, options: ParseOptions = {}): Render
                 const tableResult = parseFlashcardTable(markdownContent);
                 if (tableResult) {
                     blocks.push(tableResult);
+                } else if (options.detectArtifacts !== false && shouldElevateToMarkdownArtifact(markdownContent)) {
+                    // Elevate substantial markdown to artifact
+                    const title = generateMarkdownTitle(markdownContent);
+                    blocks.push(createArtifactBlock(markdownContent, 'markdown', title, 'text/markdown'));
                 } else {
                     blocks.push(createMarkdownBlock(markdownContent));
                 }
@@ -119,7 +323,14 @@ export function parseOutput(content: string, options: ParseOptions = {}): Render
         } else if (normalizedLang === 'mermaid') {
             blocks.push(createMermaidBlock(trimmedCode));
         } else {
-            blocks.push(createCodeBlock(trimmedCode, language || 'text'));
+            // Check if this code should be elevated to an artifact
+            const detectArtifacts = options.detectArtifacts !== false;
+            if (detectArtifacts && shouldElevateToArtifact(trimmedCode, normalizedLang)) {
+                const title = generateArtifactTitle(trimmedCode, language || 'text');
+                blocks.push(createArtifactBlock(trimmedCode, language || 'text', title));
+            } else {
+                blocks.push(createCodeBlock(trimmedCode, language || 'text'));
+            }
         }
 
         lastIndex = matchStart + fullMatch.length;
@@ -133,6 +344,10 @@ export function parseOutput(content: string, options: ParseOptions = {}): Render
             const tableResult = parseFlashcardTable(remainingContent);
             if (tableResult) {
                 blocks.push(tableResult);
+            } else if (options.detectArtifacts !== false && shouldElevateToMarkdownArtifact(remainingContent)) {
+                // Elevate substantial markdown to artifact
+                const title = generateMarkdownTitle(remainingContent);
+                blocks.push(createArtifactBlock(remainingContent, 'markdown', title, 'text/markdown'));
             } else {
                 blocks.push(createMarkdownBlock(remainingContent));
             }
@@ -144,6 +359,10 @@ export function parseOutput(content: string, options: ParseOptions = {}): Render
         const tableResult = parseFlashcardTable(content);
         if (tableResult) {
             blocks.push(tableResult);
+        } else if (options.detectArtifacts !== false && shouldElevateToMarkdownArtifact(content)) {
+            // Elevate substantial markdown to artifact
+            const title = generateMarkdownTitle(content);
+            blocks.push(createArtifactBlock(content, 'markdown', title, 'text/markdown'));
         } else {
             blocks.push(createMarkdownBlock(content));
         }

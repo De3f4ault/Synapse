@@ -1,10 +1,29 @@
 /**
- * ChatInputBox - Gemini-Style Modern Design
+ * ChatInputBox - Modern Design with Mode Dropdown & Tools Panel
  *
- * Spacious, rounded input with integrated toolbar and actions
+ * Features:
+ * - 5 AI modes with dropdown selector (Direct, Tutor, Deep Think, Creative, Research)
+ * - Expandable Tools panel with learning tools
+ * - Search toggle
+ * - Mention system (@entity support)
  */
 
-import { PaperclipIcon, SendIcon, Mic, GraduationCap, MessageCircle, Square, Plus, Settings2 } from "lucide-react";
+import { 
+  PaperclipIcon, 
+  SendIcon, 
+  Mic, 
+  Square, 
+  Plus, 
+  ChevronDown,
+  Check,
+  Zap,
+  GraduationCap,
+  Brain,
+  Sparkles,
+  Search,
+  Wrench,
+  X
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
@@ -12,42 +31,204 @@ import { useState, useRef, useEffect } from "react";
 import { useMentionController, EntityPicker } from "@/shared/platform/mentions";
 import { useEntitySearch } from "@/shared/platform/hooks/useEntitySearch";
 import type { EntitySearchResult } from "@/shared/platform/types";
-import { useChatMode, useToggleChatMode } from "../state/chatSelectors";
+import { useChatMode, useSetChatMode } from "../state/chatSelectors";
+import { motion, AnimatePresence } from "framer-motion";
+
+// Mode definitions
+interface Mode {
+  id: 'direct' | 'tutor' | 'deep_think' | 'creative' | 'research';
+  name: string;
+  icon: React.ReactNode;
+  description: string;
+  color: string;
+  hasThinking?: boolean;
+}
+
+const MODES: Mode[] = [
+  {
+    id: "direct",
+    name: "Direct",
+    icon: <Zap className="size-4" />,
+    description: "Fast, concise responses",
+    color: "text-amber-400",
+  },
+  {
+    id: "tutor",
+    name: "Tutor",
+    icon: <GraduationCap className="size-4" />,
+    description: "Socratic learning guidance",
+    color: "text-blue-400",
+  },
+  {
+    id: "deep_think",
+    name: "Deep Think",
+    icon: <Brain className="size-4" />,
+    description: "Extended reasoning",
+    color: "text-purple-400",
+    hasThinking: true,
+  },
+  {
+    id: "creative",
+    name: "Creative",
+    icon: <Sparkles className="size-4" />,
+    description: "Imaginative exploration",
+    color: "text-pink-400",
+  },
+  {
+    id: "research",
+    name: "Research",
+    icon: <Search className="size-4" />,
+    description: "In-depth analysis",
+    color: "text-emerald-400",
+  },
+];
 
 /**
- * Mode Toggle Button - Switches between Tutor and General mode
+ * Mode Selector Dropdown
  */
-function ModeToggleButton() {
+function ModeSelector() {
   const chatMode = useChatMode();
-  const toggleMode = useToggleChatMode();
+  const setChatMode = useSetChatMode();
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const isTutor = chatMode === 'tutor';
+  const currentMode = MODES.find(m => m.id === chatMode) ?? MODES[1]!;
+
+  // Close on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleSelect = (mode: Mode) => {
+    setChatMode(mode.id);
+    setIsOpen(false);
+  };
 
   return (
-    <Button
-      variant="ghost"
-      size="sm"
-      onClick={toggleMode}
-      className={cn(
-        "h-7 rounded-lg transition-all font-medium text-xs gap-1.5 px-2.5",
-        isTutor
-          ? "text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10"
-          : "text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10"
-      )}
-      title={isTutor ? "Tutor Mode: Guides you with questions" : "Direct Mode: Straightforward answers"}
+    <div className="relative" ref={dropdownRef}>
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => setIsOpen(!isOpen)}
+        className={cn(
+          "h-7 rounded-lg transition-all font-medium text-xs gap-1.5 px-2.5",
+          "hover:bg-white/10",
+          currentMode.color
+        )}
+        title={currentMode.description}
+      >
+        {currentMode.icon}
+        <span className="hidden sm:inline">{currentMode.name}</span>
+        <ChevronDown className={cn(
+          "size-3 opacity-50 transition-transform",
+          isOpen && "rotate-180"
+        )} />
+      </Button>
+
+      {/* Dropdown */}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: 8, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 8, scale: 0.96 }}
+            transition={{ duration: 0.15 }}
+            className="absolute bottom-full right-0 mb-2 w-56 rounded-xl border border-white/10 bg-zinc-900 p-1.5 shadow-2xl z-50"
+          >
+            <div className="text-[10px] uppercase tracking-wider text-white/40 px-2 py-1.5 mb-1">
+              Select Mode
+            </div>
+            {MODES.map((mode) => (
+              <button
+                key={mode.id}
+                onClick={() => handleSelect(mode)}
+                className={cn(
+                  "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all",
+                  mode.id === chatMode
+                    ? "bg-white/10"
+                    : "hover:bg-white/5",
+                )}
+              >
+                <div className={cn("flex-shrink-0", mode.color)}>
+                  {mode.icon}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-white">
+                      {mode.name}
+                    </span>
+                    {mode.hasThinking && (
+                      <span className="text-[9px] px-1 py-0.5 rounded bg-purple-500/20 text-purple-300">
+                        Thinking
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-white/50 truncate">
+                    {mode.description}
+                  </p>
+                </div>
+                {mode.id === chatMode && (
+                  <Check className="size-4 text-cyan-400 flex-shrink-0" />
+                )}
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+/**
+ * Tools Panel Component
+ */
+function ToolsPanel({ onClose }: { onClose: () => void }) {
+  const tools = [
+    { name: "Create Quiz", icon: "📝", desc: "Generate questions" },
+    { name: "Flashcards", icon: "🎴", desc: "Spaced repetition" },
+    { name: "Summarize", icon: "📋", desc: "Condense content" },
+    { name: "Explain", icon: "💡", desc: "Break down concepts" },
+  ];
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, height: 0 }}
+      animate={{ opacity: 1, height: "auto" }}
+      exit={{ opacity: 0, height: 0 }}
+      className="overflow-hidden mb-2"
     >
-      {isTutor ? (
-        <>
-          <GraduationCap className="size-3.5" />
-          <span className="hidden sm:inline">Tutor</span>
-        </>
-      ) : (
-        <>
-          <MessageCircle className="size-3.5" />
-          <span className="hidden sm:inline">Direct</span>
-        </>
-      )}
-    </Button>
+      <div className="rounded-xl border border-white/10 bg-zinc-900/80 p-3">
+        <div className="flex items-center justify-between mb-3">
+          <span className="text-xs font-medium text-white/60">Available Tools</span>
+          <button 
+            onClick={onClose}
+            className="p-1 rounded hover:bg-white/10 text-white/40 transition-colors"
+          >
+            <X className="size-3.5" />
+          </button>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          {tools.map((tool) => (
+            <button
+              key={tool.name}
+              className="flex items-center gap-2 p-2.5 rounded-lg bg-white/5 hover:bg-white/10 text-left transition-all"
+            >
+              <span className="text-lg">{tool.icon}</span>
+              <div>
+                <div className="text-xs font-medium text-white">{tool.name}</div>
+                <div className="text-[10px] text-white/40">{tool.desc}</div>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+    </motion.div>
   );
 }
 
@@ -75,6 +256,8 @@ export function ChatInputBox({
   className,
 }: ChatInputBoxProps) {
   const [isFocused, setIsFocused] = useState(false);
+  const [showToolsPanel, setShowToolsPanel] = useState(false);
+  const [searchEnabled, setSearchEnabled] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Auto-resize textarea when message changes
@@ -165,147 +348,179 @@ export function ChatInputBox({
   };
 
   return (
-    <div
-      className={cn(
-        "relative transition-all duration-300 ease-out",
-        // Gemini-style: rounded rectangle with generous padding
-        "rounded-2xl overflow-hidden",
-        "bg-zinc-900/90 backdrop-blur-sm",
-        "border border-white/[0.08]",
-        isFocused 
-          ? "shadow-lg shadow-black/20 border-white/[0.15] ring-1 ring-white/[0.05]" 
-          : "shadow-sm",
-        className
-      )}
-    >
-      {/* Entity Picker Floating */}
-      {showPicker && (
-        <div className="absolute bottom-full left-4 mb-2 z-50">
-          <EntityPicker
-            results={searchResults}
-            activeIndex={activeIdx}
-            onSelect={handleSelectEntity}
-            isLoading={isSearching}
+    <div className={cn("space-y-2", className)}>
+      {/* Tools Panel */}
+      <AnimatePresence>
+        {showToolsPanel && (
+          <ToolsPanel onClose={() => setShowToolsPanel(false)} />
+        )}
+      </AnimatePresence>
+
+      {/* Main Input Container */}
+      <div
+        className={cn(
+          "relative transition-all duration-300 ease-out",
+          "rounded-2xl",
+          "bg-zinc-900/90 backdrop-blur-sm",
+          "border border-white/[0.08]",
+          isFocused 
+            ? "shadow-lg shadow-black/20 border-white/[0.15] ring-1 ring-white/[0.05]" 
+            : "shadow-sm",
+        )}
+      >
+        {/* Entity Picker Floating */}
+        {showPicker && (
+          <div className="absolute bottom-full left-4 mb-2 z-50">
+            <EntityPicker
+              results={searchResults}
+              activeIndex={activeIdx}
+              onSelect={handleSelectEntity}
+              isLoading={isSearching}
+            />
+          </div>
+        )}
+
+        {/* Main Input Area */}
+        <div className="px-4 pt-3 pb-2">
+          <Textarea
+            ref={textareaRef}
+            placeholder={placeholder}
+            value={message}
+            onChange={handleChange}
+            onKeyDown={handleKeyDown}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setIsFocused(false)}
+            disabled={disabled || isStreaming}
+            className={cn(
+              "min-h-[24px] max-h-[200px] resize-none w-full",
+              "border-0 bg-transparent p-0",
+              "text-[15px] leading-relaxed placeholder:text-zinc-500",
+              "focus-visible:ring-0 focus-visible:ring-offset-0",
+              "custom-scrollbar",
+            )}
+            rows={1}
+            style={{ height: '24px', overflowY: 'hidden' }}
+            onInput={(e) => {
+              const target = e.target as HTMLTextAreaElement;
+              target.style.height = '24px';
+              const newHeight = Math.min(target.scrollHeight, 200);
+              target.style.height = `${newHeight}px`;
+              target.style.overflowY = target.scrollHeight > 200 ? 'auto' : 'hidden';
+            }}
           />
         </div>
-      )}
 
-      {/* Main Input Area */}
-      <div className="px-4 pt-3 pb-2">
-        <Textarea
-          ref={textareaRef}
-          placeholder={placeholder}
-          value={message}
-          onChange={handleChange}
-          onKeyDown={handleKeyDown}
-          onFocus={() => setIsFocused(true)}
-          onBlur={() => setIsFocused(false)}
-          disabled={disabled || isStreaming}
-          className={cn(
-            "min-h-[24px] max-h-[200px] resize-none w-full",
-            "border-0 bg-transparent p-0",
-            "text-[15px] leading-relaxed placeholder:text-zinc-500",
-            "focus-visible:ring-0 focus-visible:ring-offset-0",
-            "custom-scrollbar",
-          )}
-          rows={1}
-          style={{ height: '24px', overflowY: 'hidden' }}
-          onInput={(e) => {
-            const target = e.target as HTMLTextAreaElement;
-            target.style.height = '24px';
-            const newHeight = Math.min(target.scrollHeight, 200);
-            target.style.height = `${newHeight}px`;
-            target.style.overflowY = target.scrollHeight > 200 ? 'auto' : 'hidden';
-          }}
-        />
-      </div>
+        {/* Bottom Toolbar */}
+        <div className="flex items-center justify-between px-2 pb-2">
+          {/* Left: Tools */}
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 rounded-lg text-zinc-400 hover:text-white hover:bg-white/5 gap-1.5 px-2"
+              type="button"
+              disabled={disabled}
+            >
+              <Plus className="size-4" />
+            </Button>
 
-      {/* Bottom Toolbar */}
-      <div className="flex items-center justify-between px-2 pb-2">
-        {/* Left: Tools */}
-        <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 rounded-lg text-zinc-400 hover:text-white hover:bg-white/5 gap-1.5 px-2"
-            type="button"
-            disabled={disabled}
-          >
-            <Plus className="size-4" />
-          </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowToolsPanel(!showToolsPanel)}
+              className={cn(
+                "h-8 rounded-lg gap-1.5 px-2.5 transition-all",
+                showToolsPanel
+                  ? "bg-white/10 text-white"
+                  : "text-zinc-400 hover:text-white hover:bg-white/5"
+              )}
+              type="button"
+              disabled={disabled}
+            >
+              <Wrench className="size-3.5" />
+              <span className="text-xs">Tools</span>
+            </Button>
 
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 rounded-lg text-zinc-400 hover:text-white hover:bg-white/5 gap-1.5 px-2.5"
-            type="button"
-            disabled={disabled}
-          >
-            <Settings2 className="size-3.5" />
-            <span className="text-xs">Tools</span>
-          </Button>
-        </div>
+            {/* Search Toggle */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSearchEnabled(!searchEnabled)}
+              className={cn(
+                "h-8 rounded-lg gap-1.5 px-2.5 transition-all",
+                searchEnabled
+                  ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                  : "text-zinc-400 hover:text-white hover:bg-white/5"
+              )}
+              type="button"
+              disabled={disabled}
+            >
+              <Search className="size-3.5" />
+              <span className="text-xs">Search</span>
+            </Button>
+          </div>
 
-        {/* Right: Mode + Actions */}
-        <div className="flex items-center gap-1">
-          <ModeToggleButton />
+          {/* Right: Mode + Actions */}
+          <div className="flex items-center gap-1">
+            <ModeSelector />
 
-          <div className="w-px h-4 bg-white/10 mx-1" />
+            <div className="w-px h-4 bg-white/10 mx-1" />
 
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-8 rounded-lg text-zinc-400 hover:text-white hover:bg-white/5"
-            type="button"
-            disabled={disabled}
-          >
-            <PaperclipIcon className="size-4" />
-          </Button>
-
-          {onVoiceClick && (
             <Button
               variant="ghost"
               size="icon"
-              onClick={onVoiceClick}
               className="size-8 rounded-lg text-zinc-400 hover:text-white hover:bg-white/5"
               type="button"
-              disabled={disabled || isStreaming}
+              disabled={disabled}
             >
-              <Mic className="size-4" />
+              <PaperclipIcon className="size-4" />
             </Button>
-          )}
 
-          {/* Stop/Send Button */}
-          {isStreaming ? (
-            <Button
-              size="icon"
-              onClick={onStop}
-              className={cn(
-                "size-8 rounded-lg transition-all duration-200",
-                "bg-red-500/20 text-red-400 hover:bg-red-500/30",
-                "border border-red-500/30"
-              )}
-              type="button"
-              title="Stop generating"
-            >
-              <Square className="size-3.5" fill="currentColor" />
-            </Button>
-          ) : (
-            <Button
-              size="icon"
-              onClick={onSend}
-              disabled={!message.trim() || disabled}
-              className={cn(
-                "size-8 rounded-lg transition-all duration-300",
-                message.trim() && !disabled
-                  ? "bg-cyan-500 text-white hover:bg-cyan-400 shadow-lg shadow-cyan-500/20"
-                  : "bg-zinc-800 text-zinc-500 hover:bg-zinc-700/80"
-              )}
-              type="button"
-            >
-              <SendIcon className="size-4" />
-            </Button>
-          )}
+            {onVoiceClick && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onVoiceClick}
+                className="size-8 rounded-lg text-zinc-400 hover:text-white hover:bg-white/5"
+                type="button"
+                disabled={disabled || isStreaming}
+              >
+                <Mic className="size-4" />
+              </Button>
+            )}
+
+            {/* Stop/Send Button */}
+            {isStreaming ? (
+              <Button
+                size="icon"
+                onClick={onStop}
+                className={cn(
+                  "size-8 rounded-lg transition-all duration-200",
+                  "bg-red-500/20 text-red-400 hover:bg-red-500/30",
+                  "border border-red-500/30"
+                )}
+                type="button"
+                title="Stop generating"
+              >
+                <Square className="size-3.5" fill="currentColor" />
+              </Button>
+            ) : (
+              <Button
+                size="icon"
+                onClick={onSend}
+                disabled={!message.trim() || disabled}
+                className={cn(
+                  "size-8 rounded-lg transition-all duration-300",
+                  message.trim() && !disabled
+                    ? "bg-cyan-500 text-white hover:bg-cyan-400 shadow-lg shadow-cyan-500/20"
+                    : "bg-zinc-800 text-zinc-500 hover:bg-zinc-700/80"
+                )}
+                type="button"
+              >
+                <SendIcon className="size-4" />
+              </Button>
+            )}
+          </div>
         </div>
       </div>
     </div>

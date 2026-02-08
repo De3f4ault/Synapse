@@ -5,22 +5,28 @@ interface UseStreamingMessageOptions {
   onStart?: () => void;
   /** Called with each chunk */
   onChunk?: (content: string) => void;
+  /** Called with each thinking chunk */
+  onThinkingChunk?: (thinking: string) => void;
   /** Called when streaming completes */
-  onComplete?: (fullContent: string) => void;
+  onComplete?: (fullContent: string, thinkingContent: string) => void;
 }
 
 /**
- * Hook for managing streaming message state.
- * Accumulates chunks and provides the full streaming content.
+ * Hook for managing streaming message state with thinking transparency.
+ * Accumulates chunks and provides both response and thinking content.
  */
 export function useStreamingMessage(options?: UseStreamingMessageOptions) {
   const [content, setContent] = useState("");
+  const [thinkingContent, setThinkingContent] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
   const contentRef = useRef("");
+  const thinkingRef = useRef("");
 
   const startStreaming = useCallback(() => {
     setContent("");
+    setThinkingContent("");
     contentRef.current = "";
+    thinkingRef.current = "";
     setIsStreaming(true);
     options?.onStart?.();
   }, [options]);
@@ -34,40 +40,60 @@ export function useStreamingMessage(options?: UseStreamingMessageOptions) {
     [options],
   );
 
+  const appendThinking = useCallback(
+    (chunk: string) => {
+      thinkingRef.current += chunk;
+      setThinkingContent(thinkingRef.current);
+      options?.onThinkingChunk?.(chunk);
+    },
+    [options],
+  );
+
   const completeStreaming = useCallback(() => {
     setIsStreaming(false);
-    options?.onComplete?.(contentRef.current);
+    options?.onComplete?.(contentRef.current, thinkingRef.current);
   }, [options]);
 
   const reset = useCallback(() => {
     setContent("");
+    setThinkingContent("");
     contentRef.current = "";
+    thinkingRef.current = "";
     setIsStreaming(false);
   }, []);
 
   const handleChunk = useCallback(
-    (chunk: { content: string; done: boolean }) => {
+    (chunk: { content: string; done: boolean; type?: 'token' | 'thinking' }) => {
       if (chunk.done) {
         completeStreaming();
       } else {
         if (!isStreaming && chunk.content) {
           startStreaming();
         }
-        appendChunk(chunk.content);
+        // Route based on chunk type
+        if (chunk.type === 'thinking') {
+          appendThinking(chunk.content);
+        } else {
+          appendChunk(chunk.content);
+        }
       }
     },
-    [isStreaming, startStreaming, appendChunk, completeStreaming],
+    [isStreaming, startStreaming, appendChunk, appendThinking, completeStreaming],
   );
 
   return {
     /** Current accumulated content */
     content,
+    /** Current accumulated thinking content */
+    thinkingContent,
     /** Whether streaming is in progress */
     isStreaming,
     /** Start a new streaming session */
     startStreaming,
     /** Append a chunk to the content */
     appendChunk,
+    /** Append a thinking chunk */
+    appendThinking,
     /** Mark streaming as complete */
     completeStreaming,
     /** Reset to initial state */

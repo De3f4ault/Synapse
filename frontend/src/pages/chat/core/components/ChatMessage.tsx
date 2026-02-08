@@ -10,6 +10,7 @@ import { ChatEntityPreview } from "./ChatEntityPreview";
 import { MentionChip } from "./MentionChip";
 import { ChatFlashcardSet } from "./ChatFlashcardSet";
 import { ChatQuizPreview } from "./ChatQuizPreview";
+import { ArtifactCard } from "../../artifacts/components/ArtifactCard";
 import { BranchNavigator } from "./BranchNavigator";
 import { useBranchNavigation } from "../hooks/useBranches";
 import { useRegenerate } from "../hooks/useRegenerate";
@@ -274,6 +275,15 @@ const ChatMessageComponent = ({
                   questions={block.questions}
                   difficulty={block.difficulty}
                   onSave={handleSaveQuiz}
+                />
+              );
+
+            case 'artifact':
+              return (
+                <ArtifactCard
+                  key={key}
+                  artifact={block}
+                  onExpand={(id) => console.log('Expand artifact:', id)}
                 />
               );
 

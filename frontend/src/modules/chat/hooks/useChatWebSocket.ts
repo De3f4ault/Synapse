@@ -15,22 +15,32 @@ export type WebSocketStatus =
 export interface StreamingChunk {
   content: string;
   done: boolean;
+  type?: 'token' | 'thinking';  // Added for thinking transparency
 }
 
 export interface ChatWebSocketMessage {
-  type: "connected" | "message" | "chunk" | "error" | "done";
+  type: "connected" | "message" | "chunk" | "thinking" | "routing" | "error" | "done";
   session_id?: number;
   role?: MessageRole;
   content?: string;
+  text?: string;  // For thinking/token chunks from backend
   streaming?: boolean;
   message_id?: number;
   error?: string;
+  // Routing metadata
+  mode?: string;
+  model?: string;
+  thinking_ui?: 'off' | 'collapsed' | 'panel';
+  agent?: string;
+  confidence?: number;
 }
 
 interface UseChatWebSocketOptions {
   sessionId: number;
   onMessage?: (message: ChatMessageResponse) => void;
   onChunk?: (chunk: StreamingChunk) => void;
+  onThinking?: (thinking: string) => void;  // New callback for thinking content
+  onRouting?: (metadata: { mode: string; model: string; thinkingUi: string; agent: string }) => void;
   onError?: (error: string) => void;
   onStatusChange?: (status: WebSocketStatus) => void;
 }
@@ -39,6 +49,8 @@ export function useChatWebSocket({
   sessionId,
   onMessage,
   onChunk,
+  onThinking,
+  onRouting,
   onError,
   onStatusChange,
 }: UseChatWebSocketOptions) {
@@ -90,8 +102,32 @@ export function useChatWebSocket({
 
           case "chunk":
             setIsStreaming(true);
-            if (data.content !== undefined) {
-              onChunk?.({ content: data.content, done: false });
+            if (data.content !== undefined || data.text !== undefined) {
+              onChunk?.({ 
+                content: data.content || data.text || "", 
+                done: false,
+                type: 'token'
+              });
+            }
+            break;
+
+          case "thinking":
+            // Handle thinking/reasoning chunks
+            if (data.text) {
+              onThinking?.(data.text);
+              onChunk?.({ content: data.text, done: false, type: 'thinking' });
+            }
+            break;
+
+          case "routing":
+            // Handle routing metadata (mode, model, thinkingUi)
+            if (data.mode && data.model) {
+              onRouting?.({
+                mode: data.mode,
+                model: data.model,
+                thinkingUi: data.thinking_ui || 'off',
+                agent: data.agent || 'tutor',
+              });
             }
             break;
 
@@ -163,7 +199,7 @@ export function useChatWebSocket({
   }, [updateStatus]);
 
   const sendMessage = useCallback(
-    (content: string) => {
+    (content: string, options?: { modeId?: string; tierOverride?: string }) => {
       if (wsRef.current?.readyState !== WebSocket.OPEN) {
         onError?.("WebSocket not connected");
         return false;
@@ -174,6 +210,8 @@ export function useChatWebSocket({
           JSON.stringify({
             type: "message",
             content,
+            mode_id: options?.modeId || 'socratic',
+            tier_override: options?.tierOverride,
           }),
         );
         return true;
