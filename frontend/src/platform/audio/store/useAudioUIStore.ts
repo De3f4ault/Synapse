@@ -119,7 +119,7 @@ export const useAudioUIStore = create<AudioUIState>()(
       autoDuckEnabled: true,
       ttsEnabled: true,
       ttsRate: 1.0,
-      commandBarVisible: true,
+      commandBarVisible: false,
       
       // Intent Actions - explicitly call engine
       setPlayIntent: (playIntent) => {

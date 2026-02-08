@@ -12,8 +12,9 @@
  */
 
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ChevronLeft, ChevronRight, Save, Layers } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Save, Layers, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { FlashcardCardPreview } from '@/shared/rendering/schema';
 
@@ -26,6 +27,7 @@ interface ChatFlashcardSetProps {
 export function ChatFlashcardSet({ title, cards, onSave }: ChatFlashcardSetProps) {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [isFlipped, setIsFlipped] = useState(false);
+    const navigate = useNavigate();
 
     const currentCard = cards[currentIndex];
     if (!currentCard || cards.length === 0) {
@@ -50,6 +52,12 @@ export function ChatFlashcardSet({ title, cards, onSave }: ChatFlashcardSetProps
         }, 50);
     };
 
+    const handleStudyNow = () => {
+        // Navigate to flashcards study page
+        // In the future, we can create a temp deck and pass the cards
+        navigate('/flashcards');
+    };
+
     return (
         <div className="my-4 space-y-3">
             {/* Header - Minimal, blends with AI message */}
@@ -65,17 +73,28 @@ export function ChatFlashcardSet({ title, cards, onSave }: ChatFlashcardSetProps
                         </span>
                     </div>
                 </div>
-                {onSave && (
+                <div className="flex items-center gap-2">
+                    {onSave && (
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => onSave(cards)}
+                            className="h-7 text-xs gap-1.5 border-cyan-500/30 hover:bg-cyan-500/10 hover:border-cyan-500/50 transition-colors"
+                        >
+                            <Save className="size-3" />
+                            Save to Deck
+                        </Button>
+                    )}
                     <Button
-                        variant="outline"
+                        variant="default"
                         size="sm"
-                        onClick={() => onSave(cards)}
-                        className="h-7 text-xs gap-1.5 border-cyan-500/30 hover:bg-cyan-500/10 hover:border-cyan-500/50 transition-colors"
+                        onClick={handleStudyNow}
+                        className="h-7 text-xs gap-1.5 bg-cyan-600 hover:bg-cyan-500 transition-colors"
                     >
-                        <Save className="size-3" />
-                        Save to Deck
+                        <BookOpen className="size-3" />
+                        Study Now
                     </Button>
-                )}
+                </div>
             </div>
 
             {/* Card with Side Navigation */}

@@ -13,7 +13,11 @@ import { SuggestionChipList, type SuggestionSignal } from "../../suggestions";
 import { useCreateThread } from "../hooks/useThreads";
 import { useCreateBranch } from "../hooks/useBranches";
 import { useThreadStore } from "../state/threadStore";
+import { useChatStore } from "../state/chatStore";
 import { ThinkingIndicator } from "./ThinkingIndicator";
+import { ThinkingDrawer, ThinkingDrawerToggle } from "./ThinkingDrawer";
+import { ComparisonPanel } from "./ComparisonPanel";
+import { ComparisonToggle } from "./ComparisonToggle";
 import { toast } from "sonner";
 
 import type { ChatMessageResponse } from "@/api/generated";
@@ -53,6 +57,16 @@ export function ChatConversationView({
 }: ChatConversationViewProps) {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  // Thinking drawer state (for panel/drawer layout)
+  const [isThinkingDrawerOpen, setIsThinkingDrawerOpen] = useState(false);
+
+  // Comparison mode state from chatStore
+  const { 
+    isComparisonMode, 
+    selectedModels, 
+    comparisonStreaming 
+  } = useChatStore();
 
   const [searchParams, setSearchParams] = useSearchParams();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -225,7 +239,7 @@ export function ChatConversationView({
       </div>
       {/* Messages Area - Scrollable, takes remaining space */}
       <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-hide px-4 md:px-8 pb-4 min-h-0">
-        <div className="max-w-5xl mx-auto space-y-6">
+        <div className="max-w-4xl mx-auto space-y-6">
 
           {messages.map((msg) => (
             <ChatMessage
@@ -259,13 +273,43 @@ export function ChatConversationView({
 
       {/* Input Area - Fixed at bottom */}
       <div className="shrink-0 px-4 md:px-8 pb-6 pt-2 bg-gradient-to-t from-[#050505] via-[#050505]/80 to-transparent">
-        <div className="max-w-5xl mx-auto space-y-3">
+        <div className="max-w-4xl mx-auto space-y-3">
           {/* AI Suggestions - Above input (hidden during streaming) */}
           <SuggestionsArea
             sessionId={sessionId}
             messages={messages}
             isStreaming={isStreaming}
           />
+
+          {/* Thinking Drawer Toggle - Shows when there's thinking content */}
+          {streamingThinking && (
+            <div className="flex justify-end mb-2">
+              <ThinkingDrawerToggle
+                onClick={() => setIsThinkingDrawerOpen(true)}
+                hasContent={!!streamingThinking}
+                isStreaming={isStreaming && !!streamingThinking}
+              />
+            </div>
+          )}
+
+          {/* Comparison Mode Toggle - Always visible */}
+          <div className="flex justify-end mb-2">
+            <ComparisonToggle />
+          </div>
+
+          {/* Comparison Panel - Shows when in comparison mode and streaming */}
+          {isComparisonMode && (comparisonStreaming.A.content || comparisonStreaming.B.content) && (
+            <ComparisonPanel
+              contentA={comparisonStreaming.A.content}
+              contentB={comparisonStreaming.B.content}
+              modelA={selectedModels[0]}
+              modelB={selectedModels[1]}
+              isStreamingA={!comparisonStreaming.A.isComplete && isStreaming}
+              isStreamingB={!comparisonStreaming.B.isComplete && isStreaming}
+              thinkingA={comparisonStreaming.A.thinking}
+              thinkingB={comparisonStreaming.B.thinking}
+            />
+          )}
 
           {/* Chat Input with integrated Stop button */}
           <ChatInputBox
@@ -280,6 +324,14 @@ export function ChatConversationView({
           />
         </div>
       </div>
+      
+      {/* Thinking Drawer - Qwen-style right panel */}
+      <ThinkingDrawer
+        isOpen={isThinkingDrawerOpen}
+        onClose={() => setIsThinkingDrawerOpen(false)}
+        content={streamingThinking}
+        isStreaming={isStreaming && !!streamingThinking}
+      />
     </div>
   );
 }
