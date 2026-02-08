@@ -1,0 +1,89 @@
+/**
+ * CodeView styles - Beautiful syntax highlighting
+ */
+
+.code-view-container {
+  flex: 1;
+  overflow: auto;
+  background: #0d1117;
+}
+
+.code-view-pre {
+  margin: 0;
+  padding: 16px 0;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Monaco', 'Consolas', 'Liberation Mono', monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  tab-size: 2;
+  overflow-x: auto;
+}
+
+.code-view-code {
+  display: block;
+}
+
+.code-line {
+  display: flex;
+  min-height: 21px;
+  padding: 0 16px;
+}
+
+.code-line:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+/* Line numbers */
+.line-number {
+  flex-shrink: 0;
+  width: 40px;
+  padding-right: 16px;
+  text-align: right;
+  color: #484f58;
+  user-select: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.line-content {
+  flex: 1;
+  white-space: pre;
+}
+
+/* Custom scrollbar */
+.code-view-container::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.code-view-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.code-view-container::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 5px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.code-view-container::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.code-view-container::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Light theme override */
+[data-theme="light"] .code-view-container {
+  background: #f6f8fa;
+}
+
+[data-theme="light"] .code-line:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+[data-theme="light"] .line-number {
+  color: #8b949e;
+}
