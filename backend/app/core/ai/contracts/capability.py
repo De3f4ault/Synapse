@@ -21,3 +21,20 @@ class AICapability(Enum):
     ARCHITECTURAL_PLANNING = "architectural_planning"
     MULTIMODAL_VISION = "multimodal_vision"
     HIGH_ACCURACY = "high_accuracy"
+    STREAM_THOUGHTS = "stream_thoughts"  # Supports thinking transparency
+
+
+class Tier(Enum):
+    """
+    Model performance tiers for mode-based selection.
+
+    - SPEED: Fast responses, shallow reasoning (good for Direct mode)
+    - BALANCED: General purpose (good for Creative mode)
+    - REASONING: Chain-of-thought, verification (good for Socratic mode)
+    - THINKING: Extended reasoning with visible thoughts (good for Deep Dive mode)
+    """
+
+    SPEED = "speed"
+    BALANCED = "balanced"
+    REASONING = "reasoning"
+    THINKING = "thinking"

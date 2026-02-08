@@ -6,9 +6,9 @@ Used ONLY by the router for selection decisions.
 """
 
 from dataclasses import dataclass
-from typing import FrozenSet
+from typing import FrozenSet, Optional
 
-from .capability import AICapability
+from .capability import AICapability, Tier
 
 
 @dataclass(frozen=True)
@@ -24,8 +24,15 @@ class ModelDescriptor:
     max_context_tokens: int
     supports_multimodal: bool
     cost_tier: str  # "free" | "low" | "medium" | "high"
-    strengths: tuple[str, ...] = ()  # Human-readable
-    known_limitations: tuple[str, ...] = ()  # For debugging
+
+    # Mode-based selection fields
+    tier: Tier = Tier.BALANCED
+    fallback_id: Optional[str] = None  # Model ID to fallback to on error
+    supports_thinking: bool = False  # Emits <think> tags or thinking stream
+
+    # Human-readable info
+    strengths: tuple[str, ...] = ()
+    known_limitations: tuple[str, ...] = ()
 
     def supports(self, capability: AICapability) -> bool:
         """Check if model supports a capability."""

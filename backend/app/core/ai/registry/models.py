@@ -4,7 +4,7 @@ Model Registry — Single source of truth for all available models.
 Models are chosen for what they are good at, not who made them.
 """
 
-from app.core.ai.contracts.capability import AICapability
+from app.core.ai.contracts.capability import AICapability, Tier
 from app.core.ai.contracts.model_descriptor import ModelDescriptor
 
 
@@ -19,20 +19,22 @@ DEEPSEEK_V31 = ModelDescriptor(
         {
             AICapability.DEEP_ABSTRACTION,
             AICapability.ARCHITECTURAL_PLANNING,
+            AICapability.STREAM_THOUGHTS,
         }
     ),
     max_context_tokens=128_000,
     supports_multimodal=False,
     cost_tier="free",
+    tier=Tier.THINKING,
+    fallback_id="qwen3_next",
+    supports_thinking=True,
     strengths=(
         "Deep abstraction",
         "Philosophical reasoning",
         "System-level synthesis",
+        "Extended reasoning with visible thoughts",
     ),
-    known_limitations=(
-        "Not verification-first",
-        "Slower response times",
-    ),
+    known_limitations=("Slower response times",),
 )
 
 DEEPSEEK_V32 = ModelDescriptor(
@@ -47,6 +49,9 @@ DEEPSEEK_V32 = ModelDescriptor(
     max_context_tokens=128_000,
     supports_multimodal=False,
     cost_tier="free",
+    tier=Tier.BALANCED,
+    fallback_id="gemini_flash",
+    supports_thinking=False,
     strengths=(
         "Improved reasoning",
         "Agent performance",
@@ -61,11 +66,15 @@ QWEN3_CODER = ModelDescriptor(
         {
             AICapability.PRODUCTION_CODE,
             AICapability.ARCHITECTURAL_PLANNING,
+            AICapability.LONG_CONTEXT,
         }
     ),
     max_context_tokens=256_000,
     supports_multimodal=False,
     cost_tier="free",
+    tier=Tier.REASONING,
+    fallback_id="deepseek_v3_2",
+    supports_thinking=False,
     strengths=(
         "Production-quality code",
         "Large context recall",
@@ -82,15 +91,20 @@ QWEN3_NEXT = ModelDescriptor(
             AICapability.SELF_VERIFICATION,
             AICapability.FORMAL_REASONING,
             AICapability.LONG_CONTEXT,
+            AICapability.STREAM_THOUGHTS,
         }
     ),
     max_context_tokens=256_000,
     supports_multimodal=False,
     cost_tier="free",
+    tier=Tier.REASONING,
+    fallback_id="gemini_pro",
+    supports_thinking=True,
     strengths=(
         "Logic and math",
         "Self-correction",
         "Long context processing",
+        "Thinking transparency",
     ),
     known_limitations=("Less creative",),
 )
@@ -107,6 +121,9 @@ GPT_OSS_120B = ModelDescriptor(
     max_context_tokens=128_000,
     supports_multimodal=False,
     cost_tier="free",
+    tier=Tier.BALANCED,
+    fallback_id="gemini_flash",
+    supports_thinking=False,
     strengths=(
         "OpenAI-style reasoning",
         "Natural dialogue",
@@ -126,6 +143,9 @@ GPT_OSS_20B = ModelDescriptor(
     max_context_tokens=128_000,
     supports_multimodal=False,
     cost_tier="free",
+    tier=Tier.SPEED,
+    fallback_id="gemini_flash",
+    supports_thinking=False,
     strengths=(
         "Fast inference",
         "Low latency",
@@ -134,12 +154,37 @@ GPT_OSS_20B = ModelDescriptor(
     known_limitations=("Shallow reasoning",),
 )
 
+QWEN3_VL = ModelDescriptor(
+    model_id="qwen3-vl:235b-cloud",
+    provider="ollama",
+    capabilities=frozenset(
+        {
+            AICapability.MULTIMODAL_VISION,
+            AICapability.HIGH_ACCURACY,
+            AICapability.FORMAL_REASONING,
+        }
+    ),
+    max_context_tokens=128_000,
+    supports_multimodal=True,
+    cost_tier="free",
+    tier=Tier.REASONING,
+    fallback_id="gemini_pro",
+    supports_thinking=False,
+    strengths=(
+        "Vision understanding",
+        "Image analysis",
+        "OCR and document parsing",
+        "Visual reasoning",
+    ),
+    known_limitations=("Requires image input for best results",),
+)
+
 
 # =============================================================================
-# GOOGLE MODELS (Legacy/Fallback)
+# GOOGLE MODELS
 # =============================================================================
 
-GEMINI_PRO = ModelDescriptor(
+GEMINI_FLASH = ModelDescriptor(
     model_id="gemini-2.5-flash",
     provider="google",
     capabilities=frozenset(
@@ -151,26 +196,92 @@ GEMINI_PRO = ModelDescriptor(
     max_context_tokens=1_000_000,
     supports_multimodal=True,
     cost_tier="medium",
+    tier=Tier.SPEED,
+    fallback_id=None,  # Ultimate fallback
+    supports_thinking=False,
     strengths=(
+        "Fast responses",
         "Multimodal vision",
-        "Document understanding",
+        "Huge context window",
     ),
-    known_limitations=("Vendor lock-in",),
+    known_limitations=(),
+)
+
+GEMINI_PRO = ModelDescriptor(
+    model_id="gemini-1.5-pro",
+    provider="google",
+    capabilities=frozenset(
+        {
+            AICapability.MULTIMODAL_VISION,
+            AICapability.HIGH_ACCURACY,
+            AICapability.LONG_CONTEXT,
+        }
+    ),
+    max_context_tokens=2_000_000,
+    supports_multimodal=True,
+    cost_tier="medium",
+    tier=Tier.REASONING,
+    fallback_id="gemini_flash",
+    supports_thinking=False,
+    strengths=(
+        "Document understanding",
+        "Extended context",
+    ),
+    known_limitations=(),
+)
+
+GEMINI_THINKING = ModelDescriptor(
+    model_id="gemini-2.0-flash-thinking",
+    provider="google",
+    capabilities=frozenset(
+        {
+            AICapability.DEEP_ABSTRACTION,
+            AICapability.STREAM_THOUGHTS,
+        }
+    ),
+    max_context_tokens=32_000,
+    supports_multimodal=False,
+    cost_tier="medium",
+    tier=Tier.THINKING,
+    fallback_id="gemini_pro",
+    supports_thinking=True,
+    strengths=(
+        "Extended reasoning",
+        "Visible thinking process",
+    ),
+    known_limitations=("Smaller context window",),
 )
 
 
 # =============================================================================
-# REGISTRY
+# MODEL REGISTRY
 # =============================================================================
 
 MODEL_REGISTRY: dict[str, ModelDescriptor] = {
+    # Ollama (Cloud)
     "deepseek_v3_1": DEEPSEEK_V31,
     "deepseek_v3_2": DEEPSEEK_V32,
     "qwen3_coder": QWEN3_CODER,
     "qwen3_next": QWEN3_NEXT,
+    "qwen3_vl": QWEN3_VL,  # Vision model
     "gpt_oss_120b": GPT_OSS_120B,
     "gpt_oss_20b": GPT_OSS_20B,
+    # Google
+    "gemini_flash": GEMINI_FLASH,
     "gemini_pro": GEMINI_PRO,
+    "gemini_thinking": GEMINI_THINKING,
+}
+
+
+# =============================================================================
+# TIER DEFAULTS — Ordered preference for each tier
+# =============================================================================
+
+TIER_DEFAULTS: dict[Tier, list[str]] = {
+    Tier.SPEED: ["gpt_oss_20b", "gemini_flash"],
+    Tier.BALANCED: ["deepseek_v3_2", "gpt_oss_120b", "gemini_flash"],
+    Tier.REASONING: ["qwen3_next", "qwen3_coder", "qwen3_vl", "gemini_pro"],  # Added vision model
+    Tier.THINKING: ["deepseek_v3_1", "gemini_thinking"],
 }
 
 
@@ -179,3 +290,14 @@ def get_model(model_key: str) -> ModelDescriptor:
     if model_key not in MODEL_REGISTRY:
         raise KeyError(f"Unknown model: {model_key}. Available: {list(MODEL_REGISTRY.keys())}")
     return MODEL_REGISTRY[model_key]
+
+
+def get_models_by_tier(tier: Tier) -> list[ModelDescriptor]:
+    """Get all models for a tier, in preference order."""
+    keys = TIER_DEFAULTS.get(tier, [])
+    return [MODEL_REGISTRY[k] for k in keys if k in MODEL_REGISTRY]
+
+
+def get_thinking_models() -> list[ModelDescriptor]:
+    """Get all models that support thinking transparency."""
+    return [m for m in MODEL_REGISTRY.values() if m.supports_thinking]
