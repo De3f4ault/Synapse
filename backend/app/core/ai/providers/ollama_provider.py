@@ -102,8 +102,19 @@ class OllamaProvider(AIProvider):
                 provider="ollama",
             )
 
-    async def stream(self, request: AIRequest) -> AsyncIterator[str]:
-        """Stream response tokens from Ollama."""
+    async def stream(self, request: AIRequest) -> AsyncIterator[dict]:
+        """
+        Stream response with thinking transparency support.
+
+        Yields:
+            {"type": "thinking", "text": "..."} — For <think> block content
+            {"type": "token", "text": "..."}    — For regular content
+            {"type": "complete", "model": str}  — On completion
+            {"type": "error", "message": str}   — On error
+        """
+        from app.core.ai.parsing import StreamingThinkParser
+
+        parser = StreamingThinkParser()
 
         try:
             client = self._get_client()
@@ -120,7 +131,28 @@ class OllamaProvider(AIProvider):
 
             for chunk in stream:
                 if "message" in chunk and "content" in chunk["message"]:
-                    yield chunk["message"]["content"]
+                    raw_content = chunk["message"]["content"]
+
+                    # Parse for thinking tags
+                    parsed = parser.feed(raw_content)
+
+                    # Yield thinking content separately
+                    if parsed.has_thinking:
+                        yield {"type": "thinking", "text": parsed.thinking}
+
+                    # Yield regular content
+                    if parsed.content:
+                        yield {"type": "token", "text": parsed.content}
+
+            # Flush any remaining content
+            final = parser.flush()
+            if final.has_thinking:
+                yield {"type": "thinking", "text": final.thinking}
+            if final.content:
+                yield {"type": "token", "text": final.content}
+
+            # Signal completion
+            yield {"type": "complete", "model": request.model.model_id}
 
         except Exception as e:
             logger.error(
@@ -128,7 +160,7 @@ class OllamaProvider(AIProvider):
                 model=request.model.model_id,
                 error=str(e),
             )
-            yield f"[Error: {str(e)}]"
+            yield {"type": "error", "message": str(e)}
 
     async def generate_with_tools(
         self,
