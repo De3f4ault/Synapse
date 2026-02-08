@@ -24,6 +24,7 @@ import {
   Moon,
   Sun,
   ChevronRight,
+  ChevronDown,
   Search,
   Grid,
   X,
@@ -31,19 +32,17 @@ import {
   CreditCard,
   ClipboardList,
   Upload,
-  Share2,
+
   StickyNote,
   Files,
   Loader2,
   Brain,
+  GraduationCap,
+  Library,
+  Target,
+  GitBranch,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -59,6 +58,7 @@ import { useWebSocket } from "@/api/websocket/hooks/useWebSocket";
 import { useCmdKSearch } from "@/api/unified-search";
 import { AudioTrigger } from "@/platform/audio";
 import { NotificationCenter } from "@/components/layout/NotificationCenter";
+import { useDueItemsStats } from "@/pages/study";
 
 interface HeaderProps {
   className?: string;
@@ -66,19 +66,34 @@ interface HeaderProps {
 
 interface NavItem {
   label: string;
-  href: string;
+  href?: string;
   icon: React.ElementType;
   badge?: number;
+  children?: { label: string; href: string; icon: React.ElementType }[];
 }
 
+// New grouped navigation structure
 const navItems: NavItem[] = [
   { label: "Dashboard", href: "/dashboard", icon: Home },
-  { label: "Flashcards", href: "/flashcards", icon: BookOpen },
-  { label: "Notes", href: "/notes", icon: FileText },
-  { label: "Docs", href: "/documents", icon: FileStack },
-  { label: "Quizzes", href: "/quizzes", icon: FileQuestion },
+  {
+    label: "Study",
+    icon: GraduationCap,
+    children: [
+      { label: "Study Hub", href: "/study", icon: Target },
+      { label: "Flashcards", href: "/flashcards", icon: BookOpen },
+      { label: "Quizzes", href: "/quizzes", icon: FileQuestion },
+    ],
+  },
+  {
+    label: "Library",
+    icon: Library,
+    children: [
+      { label: "Notes", href: "/notes", icon: FileText },
+      { label: "Documents", href: "/documents", icon: FileStack },
+    ],
+  },
   { label: "Chat", href: "/chat", icon: MessageSquare },
-  { label: "Graph", href: "/knowledge", icon: Share2 },
+  { label: "Graph", href: "/knowledge", icon: GitBranch },
 ];
 
 const quickActions = [
@@ -116,6 +131,9 @@ export function Header({ className }: HeaderProps) {
 
   const [controlPanelOpen, setControlPanelOpen] = useState(false);
   const [launcherOpen, setLauncherOpen] = useState(false);
+
+  // Due items for badge
+  const dueStats = useDueItemsStats();
 
   // Close menus on route change
   useEffect(() => {
@@ -232,45 +250,104 @@ export function Header({ className }: HeaderProps) {
         <nav className="hidden lg:flex items-center absolute left-1/2 -translate-x-1/2 pointer-events-auto">
           <div
             className={cn(
-              "flex items-center gap-1 p-1.5 rounded-full border border-white/10 transition-all duration-500 shadow-2xl",
-              "bg-black/20 backdrop-blur-xl supports-[backdrop-filter]:bg-black/10",
+              "flex items-center gap-1 px-3 py-2 rounded-2xl border border-white/10 transition-all duration-500 shadow-2xl",
+              "bg-black/30 backdrop-blur-xl supports-[backdrop-filter]:bg-black/20",
             )}
           >
             {navItems.map((item) => {
               const Icon = item.icon;
-              const isActive = location.pathname.startsWith(item.href);
+              const isStudy = item.label === "Study";
+              
+              // Check if any child route is active
+              const isActive = item.href 
+                ? location.pathname.startsWith(item.href)
+                : item.children?.some(child => location.pathname.startsWith(child.href));
 
-              return (
-                <TooltipProvider key={item.href} delayDuration={0}>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
+              // For dropdown items (Study, Library)
+              if (item.children) {
+                return (
+                  <DropdownMenu key={item.label}>
+                    <DropdownMenuTrigger asChild>
                       <button
-                        onClick={() => navigate(item.href)}
                         className={cn(
-                          "relative px-5 py-3 rounded-full group transition-all duration-300",
+                          "relative flex flex-col items-center gap-1 px-4 py-2 rounded-xl group transition-all duration-300",
                           isActive
-                            ? "bg-cyan-500/10 text-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.2)]"
+                            ? "bg-gradient-to-b from-cyan-500/20 to-cyan-500/5 text-cyan-400"
                             : "hover:bg-white/5 text-slate-400 hover:text-slate-200",
                         )}
                       >
-                        <Icon className="w-4 h-4" />
-                        {isActive && <span className="sr-only">(Active)</span>}
-                        {item.badge && (
-                          <span className="absolute top-2 right-2 flex h-1.5 w-1.5">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
-                            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-cyan-400"></span>
-                          </span>
-                        )}
+                        <div className="relative">
+                          <Icon className="w-5 h-5" />
+                          {/* Badge for Study dropdown */}
+                          {isStudy && dueStats.total > 0 && (
+                            <span className="absolute -top-1.5 -right-2.5 min-w-[16px] h-4 px-1 text-[9px] font-bold bg-amber-500 text-black rounded-full flex items-center justify-center shadow-lg">
+                              {dueStats.total > 99 ? "99+" : dueStats.total}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-0.5">
+                          <span className="text-[10px] font-medium">{item.label}</span>
+                          <ChevronDown className="w-2.5 h-2.5 opacity-50" />
+                        </div>
                       </button>
-                    </TooltipTrigger>
-                    <TooltipContent
-                      side="bottom"
-                      className="text-xs font-medium bg-black/90 border-white/10 text-white"
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                      align="center"
+                      sideOffset={8}
+                      className="min-w-[200px] p-2 bg-gradient-to-b from-[#0d1117] to-[#0a0a0f] border-white/10 backdrop-blur-3xl rounded-xl shadow-2xl"
                     >
-                      {item.label}
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
+                      <DropdownMenuLabel className="text-[10px] font-medium text-slate-500 px-3 py-1.5 uppercase tracking-wider">
+                        {item.label}
+                      </DropdownMenuLabel>
+                      <DropdownMenuSeparator className="bg-white/5 my-1" />
+                      {item.children.map((child) => {
+                        const ChildIcon = child.icon;
+                        const isChildActive = location.pathname.startsWith(child.href);
+                        return (
+                          <DropdownMenuItem
+                            key={child.href}
+                            onClick={() => navigate(child.href)}
+                            className={cn(
+                              "gap-3 px-3 py-2.5 cursor-pointer rounded-lg transition-all group",
+                              isChildActive 
+                                ? "bg-gradient-to-r from-cyan-500/20 to-transparent text-cyan-400" 
+                                : "hover:bg-white/5 focus:bg-white/5 text-slate-300"
+                            )}
+                          >
+                            <div className={cn(
+                              "w-8 h-8 rounded-lg flex items-center justify-center transition-colors",
+                              isChildActive 
+                                ? "bg-cyan-500/20 text-cyan-400" 
+                                : "bg-white/5 text-slate-400 group-hover:text-cyan-400 group-hover:bg-cyan-500/10"
+                            )}>
+                              <ChildIcon className="h-4 w-4" />
+                            </div>
+                            <span className="text-sm font-medium">
+                              {child.label}
+                            </span>
+                          </DropdownMenuItem>
+                        );
+                      })}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                );
+              }
+
+              // For simple nav items - now with visible labels
+              return (
+                <button
+                  key={item.href}
+                  onClick={() => item.href && navigate(item.href)}
+                  className={cn(
+                    "relative flex flex-col items-center gap-1 px-4 py-2 rounded-xl transition-all duration-300",
+                    isActive
+                      ? "bg-gradient-to-b from-cyan-500/20 to-cyan-500/5 text-cyan-400"
+                      : "hover:bg-white/5 text-slate-400 hover:text-slate-200",
+                  )}
+                >
+                  <Icon className="w-5 h-5" />
+                  <span className="text-[10px] font-medium">{item.label}</span>
+                </button>
               );
             })}
           </div>
@@ -574,14 +651,36 @@ function MobileLauncherWithSearch({ navItems, navigate, onClose }: MobileLaunche
         </div>
       )}
 
-      {/* App Grid */}
+      {/* App Grid - Flattened for mobile */}
       <div className="p-3 grid grid-cols-3 gap-2 flex-shrink-0">
-        {navItems.map((item) => {
+        {navItems.flatMap((item) => {
+          // For items with children, render the children directly
+          if (item.children) {
+            return item.children.map((child) => {
+              const ChildIcon = child.icon;
+              return (
+                <button
+                  key={child.href}
+                  onClick={() => handleResultClick(child.href)}
+                  className="flex flex-col items-center gap-1.5 p-2 rounded-lg hover:bg-white/5 transition-colors group"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-slate-400 group-hover:bg-cyan-500/20 group-hover:text-cyan-400 transition-colors border border-white/5 group-hover:border-cyan-500/30">
+                    <ChildIcon className="w-5 h-5" />
+                  </div>
+                  <span className="text-[10px] font-medium text-slate-500 group-hover:text-slate-300">
+                    {child.label}
+                  </span>
+                </button>
+              );
+            });
+          }
+          
+          // For simple items, render directly
           const Icon = item.icon;
           return (
             <button
               key={item.href}
-              onClick={() => handleResultClick(item.href)}
+              onClick={() => item.href && handleResultClick(item.href)}
               className="flex flex-col items-center gap-1.5 p-2 rounded-lg hover:bg-white/5 transition-colors group"
             >
               <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-slate-400 group-hover:bg-cyan-500/20 group-hover:text-cyan-400 transition-colors border border-white/5 group-hover:border-cyan-500/30">

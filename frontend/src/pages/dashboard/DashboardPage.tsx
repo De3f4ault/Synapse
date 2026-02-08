@@ -6,7 +6,6 @@ import {
   Activity,
   Clock,
   Zap,
-  MessageSquare,
 } from "lucide-react";
 
 // Core
@@ -46,7 +45,7 @@ import {
 import { DashboardAssistant } from "./assistant";
 
 // UI
-import { NeumorphicButton, NeumorphicCard } from "@/components/neumorphic";
+import { NeumorphicCard } from "@/components/neumorphic";
 
 export const DashboardPage: React.FC = () => {
   return (
@@ -122,19 +121,15 @@ function DashboardContent() {
               {today}
             </p>
           </div>
-          <div className="flex gap-3">
-            <NeumorphicButton
-              variant="primary"
+          {/* Integrated Quick Actions - Smaller, more subtle */}
+          <div className="flex items-center gap-2">
+            <button
               onClick={() => navigate("/flashcards/review")}
-              className="text-white"
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-500/20 to-purple-500/10 border border-cyan-500/30 text-cyan-400 hover:from-cyan-500/30 hover:to-purple-500/20 transition-all group"
             >
-              <Zap className="mr-2 h-4 w-4" />
-              Start Review
-            </NeumorphicButton>
-            <NeumorphicButton variant="ghost" onClick={() => navigate("/chat")}>
-              <MessageSquare className="mr-2 h-4 w-4" />
-              AI Chat
-            </NeumorphicButton>
+              <Zap className="h-4 w-4 group-hover:animate-pulse" />
+              <span className="text-sm font-medium">Review</span>
+            </button>
           </div>
         </div>
 
