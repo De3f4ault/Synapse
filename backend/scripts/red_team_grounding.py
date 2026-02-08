@@ -27,7 +27,7 @@ from app.core.ai.agents.base_agent import AgentConfig, AgentCapability
 from app.core.ai.agents.middleware import GroundingMiddleware
 from app.services.grounding import GroundingService
 from app.schemas.search_result import UnifiedSearchResult, SearchRole, AssertionType
-from app.schemas.search_identity import EntityIdentity, IdentityAuthority
+from app.schemas.search_identity import SearchEntityIdentity, IdentityAuthority
 from app.schemas.search_context import SearchContext, SearchIntent
 from app.schemas.search_response import UnifiedSearchResponse, EngineResult
 
@@ -41,7 +41,7 @@ def create_mock_result(
     source: str = "rag",
 ) -> UnifiedSearchResult:
     return UnifiedSearchResult(
-        id=EntityIdentity(
+        id=SearchEntityIdentity(
             id=id_val,
             type="chunk",
             authority=IdentityAuthority.SYSTEM_DERIVED,
