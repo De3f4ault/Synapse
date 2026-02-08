@@ -36,7 +36,7 @@ from .ai_usage import AIUsage
 from .agent_metric import AgentMetric
 from .webhook_event import WebhookEvent, WebhookStatus
 from .webhook import Webhook
-from .link import Link, LinkType, EntityType
+from .link import Link, LinkType, LinkEntityType
 from .synapse_task import SynapseTask, TaskStatus, TaskType, TaskName
 
 from .intelligence import IntelligenceAdaptationLog
@@ -72,7 +72,7 @@ __all__ = [
     "Webhook",
     "Link",
     "LinkType",
-    "EntityType",
+    "LinkEntityType",
     "SynapseTask",
     "TaskStatus",
     "TaskType",

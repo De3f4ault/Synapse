@@ -10,7 +10,7 @@ from sqlalchemy import select, or_, and_, delete
 from sqlalchemy.orm import selectinload
 import structlog
 
-from app.models.link import Link, LinkType, EntityType
+from app.models.link import Link, LinkType, LinkEntityType
 from app.models.note import Note
 from app.models.deck import Deck
 from app.models.document import Document
@@ -41,9 +41,9 @@ class LinkService:
     async def create_link(
         self,
         user_id: int,
-        source_type: EntityType,
+        source_type: LinkEntityType,
         source_id: int,
-        target_type: EntityType,
+        target_type: LinkEntityType,
         target_id: int,
         link_type: LinkType = LinkType.MANUAL,
         strength: float = 1.0,
@@ -116,9 +116,9 @@ class LinkService:
     async def get_link_between(
         self,
         user_id: int,
-        source_type: EntityType,
+        source_type: LinkEntityType,
         source_id: int,
-        target_type: EntityType,
+        target_type: LinkEntityType,
         target_id: int,
     ) -> Optional[Link]:
         """Get a specific link between two entities."""
@@ -178,7 +178,7 @@ class LinkService:
     async def get_links_from(
         self,
         user_id: int,
-        entity_type: EntityType,
+        entity_type: LinkEntityType,
         entity_id: int,
         link_types: Optional[List[LinkType]] = None,
     ) -> List[Link]:
@@ -211,7 +211,7 @@ class LinkService:
     async def get_links_to(
         self,
         user_id: int,
-        entity_type: EntityType,
+        entity_type: LinkEntityType,
         entity_id: int,
         link_types: Optional[List[LinkType]] = None,
     ) -> List[Link]:
@@ -242,7 +242,7 @@ class LinkService:
         return list(result.scalars().all())
 
     async def get_all_links_for(
-        self, user_id: int, entity_type: EntityType, entity_id: int
+        self, user_id: int, entity_type: LinkEntityType, entity_id: int
     ) -> Dict[str, List[Link]]:
         """
         Get both outgoing links and backlinks for an entity.
@@ -258,7 +258,7 @@ class LinkService:
     async def get_suggested_links(
         self,
         user_id: int,
-        entity_type: Optional[EntityType] = None,
+        entity_type: Optional[LinkEntityType] = None,
         entity_id: Optional[int] = None,
         limit: int = 20,
     ) -> List[Link]:
@@ -287,7 +287,7 @@ class LinkService:
     async def get_knowledge_graph(
         self,
         user_id: int,
-        entity_types: Optional[List[EntityType]] = None,
+        entity_types: Optional[List[LinkEntityType]] = None,
         link_types: Optional[List[LinkType]] = None,
         include_suggested: bool = False,
         include_disconnected: bool = True,
@@ -365,7 +365,12 @@ class LinkService:
         types_to_fetch = (
             entity_types
             if entity_types
-            else [EntityType.NOTE, EntityType.DECK, EntityType.DOCUMENT, EntityType.QUIZ]
+            else [
+                LinkEntityType.NOTE,
+                LinkEntityType.DECK,
+                LinkEntityType.DOCUMENT,
+                LinkEntityType.QUIZ,
+            ]
         )
 
         # Fetch all entities for requested types
@@ -404,10 +409,10 @@ class LinkService:
                     }
 
         # Run fetch operations concurrently-ish (sequentially awaited here but efficient enough)
-        await process_entities(Note, EntityType.NOTE, "title")
-        await process_entities(Deck, EntityType.DECK, "name")
-        await process_entities(Document, EntityType.DOCUMENT, "filename")
-        await process_entities(Quiz, EntityType.QUIZ, "title")
+        await process_entities(Note, LinkEntityType.NOTE, "title")
+        await process_entities(Deck, LinkEntityType.DECK, "name")
+        await process_entities(Document, LinkEntityType.DOCUMENT, "filename")
+        await process_entities(Quiz, LinkEntityType.QUIZ, "title")
         # Chat sessions might be separate or added here if needed, keeping to core content for now
 
         nodes = list(nodes_dict.values())
@@ -426,7 +431,7 @@ class LinkService:
         }
 
     async def get_connected_entities(
-        self, user_id: int, entity_type: EntityType, entity_id: int, depth: int = 1
+        self, user_id: int, entity_type: LinkEntityType, entity_id: int, depth: int = 1
     ) -> List[Dict[str, Any]]:
         """
         Get all entities connected to a given entity (up to specified depth).
@@ -443,7 +448,7 @@ class LinkService:
         visited = set()
         connected = []
 
-        async def traverse(etype: EntityType, eid: int, current_depth: int):
+        async def traverse(etype: LinkEntityType, eid: int, current_depth: int):
             if current_depth > depth:
                 return
 
@@ -491,7 +496,7 @@ class LinkService:
     # -------------------------------------------------------------------------
 
     async def delete_links_for_entity(
-        self, user_id: int, entity_type: EntityType, entity_id: int
+        self, user_id: int, entity_type: LinkEntityType, entity_id: int
     ) -> int:
         """
         Delete all links to/from an entity (called when entity is deleted).

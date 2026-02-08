@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from typing import Literal
 from datetime import datetime
-from app.schemas.search_identity import EntityIdentity
+from app.schemas.search_identity import SearchEntityIdentity
 
 
 class QualifiedSignal(BaseModel):
@@ -12,7 +12,7 @@ class QualifiedSignal(BaseModel):
     Unlike raw feedback, this signal asserts UTILITY and TRUST.
     """
 
-    entity_id: EntityIdentity
+    entity_id: SearchEntityIdentity
     signal_type: Literal[
         "evidence_trusted",  # Used in a good answer (Pos)
         "evidence_rejected",  # Explicitly rejected/ignored (Neg)

@@ -17,15 +17,17 @@ from .mixins import TimestampMixin, UserOwnedMixin
 
 class LinkType(str, enum.Enum):
     """Types of links between entities."""
-    MANUAL = "manual"         # User-created explicit link
-    MENTION = "mention"       # [[wiki-style]] reference in content
-    DERIVED = "derived"       # Derived from source (quiz from notes, flashcards from doc)
-    SUGGESTED = "suggested"   # AI suggested, not yet accepted
-    SEMANTIC = "semantic"     # Auto-detected via RAG similarity
+
+    MANUAL = "manual"  # User-created explicit link
+    MENTION = "mention"  # [[wiki-style]] reference in content
+    DERIVED = "derived"  # Derived from source (quiz from notes, flashcards from doc)
+    SUGGESTED = "suggested"  # AI suggested, not yet accepted
+    SEMANTIC = "semantic"  # Auto-detected via RAG similarity
 
 
-class EntityType(str, enum.Enum):
+class LinkEntityType(str, enum.Enum):
     """Entity types that can be linked."""
+
     NOTE = "note"
     DECK = "deck"
     FLASHCARD = "flashcard"
@@ -45,58 +47,36 @@ class Link(Base, TimestampMixin, UserOwnedMixin):
     __tablename__ = "links"
 
     # Primary Key
-    id: Mapped[int] = mapped_column(
-        primary_key=True,
-        autoincrement=True,
-        doc="Primary key"
-    )
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True, doc="Primary key")
 
     # Source Entity
-    source_type: Mapped[EntityType] = mapped_column(
-        SQLEnum(EntityType, native_enum=False),
-        nullable=False,
-        doc="Type of the source entity"
+    source_type: Mapped[LinkEntityType] = mapped_column(
+        SQLEnum(LinkEntityType, native_enum=False), nullable=False, doc="Type of the source entity"
     )
 
-    source_id: Mapped[int] = mapped_column(
-        Integer,
-        nullable=False,
-        doc="ID of the source entity"
-    )
+    source_id: Mapped[int] = mapped_column(Integer, nullable=False, doc="ID of the source entity")
 
     # Target Entity
-    target_type: Mapped[EntityType] = mapped_column(
-        SQLEnum(EntityType, native_enum=False),
-        nullable=False,
-        doc="Type of the target entity"
+    target_type: Mapped[LinkEntityType] = mapped_column(
+        SQLEnum(LinkEntityType, native_enum=False), nullable=False, doc="Type of the target entity"
     )
 
-    target_id: Mapped[int] = mapped_column(
-        Integer,
-        nullable=False,
-        doc="ID of the target entity"
-    )
+    target_id: Mapped[int] = mapped_column(Integer, nullable=False, doc="ID of the target entity")
 
     # Link Properties
     link_type: Mapped[LinkType] = mapped_column(
         SQLEnum(LinkType, native_enum=False),
         default=LinkType.MANUAL,
         nullable=False,
-        doc="Type of link relationship"
+        doc="Type of link relationship",
     )
 
     strength: Mapped[float] = mapped_column(
-        Float,
-        default=1.0,
-        nullable=False,
-        doc="Link strength/confidence (0.0-1.0)"
+        Float, default=1.0, nullable=False, doc="Link strength/confidence (0.0-1.0)"
     )
 
     label: Mapped[Optional[str]] = mapped_column(
-        String(255),
-        nullable=True,
-        default=None,
-        doc="Optional human-readable label for the link"
+        String(255), nullable=True, default=None, doc="Optional human-readable label for the link"
     )
 
     # Metadata
@@ -104,19 +84,19 @@ class Link(Base, TimestampMixin, UserOwnedMixin):
         JSON,
         nullable=True,
         default=None,
-        doc="Additional metadata (context, snippet, AI reasoning, etc.)"
+        doc="Additional metadata (context, snippet, AI reasoning, etc.)",
     )
 
     # Indexes for efficient querying
     __table_args__ = (
         # Find all links FROM an entity
-        Index('ix_links_source', 'source_type', 'source_id'),
+        Index("ix_links_source", "source_type", "source_id"),
         # Find all links TO an entity (backlinks)
-        Index('ix_links_target', 'target_type', 'target_id'),
+        Index("ix_links_target", "target_type", "target_id"),
         # Find links by type
-        Index('ix_links_type', 'link_type'),
+        Index("ix_links_type", "link_type"),
         # User's links
-        Index('ix_links_user', 'user_id'),
+        Index("ix_links_user", "user_id"),
     )
 
     def __repr__(self) -> str:
