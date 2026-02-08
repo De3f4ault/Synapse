@@ -19,6 +19,7 @@ import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
 import { CodeBlock } from './components/CodeBlock';
 import { cn } from '@/lib/utils';
+import { ChatFlashcardSet } from '@/pages/chat/core/components/ChatFlashcardSet';
 
 // ==================== TYPES ====================
 
@@ -102,6 +103,40 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
                         </ReactMarkdown>
                     </div>
                 );
+            }
+
+            // ========== STUDY BLOCKS: FLASHCARDS & QUIZZES ==========
+            // Detect synapse-flashcards, json, or any code block that looks like flashcard JSON
+            const mightBeFlashcardJson = 
+                language === 'synapse-flashcards' || 
+                language === 'json' ||
+                (!language && codeContent.trim().startsWith('{'));
+            
+            if (mightBeFlashcardJson) {
+                try {
+                    const data = JSON.parse(codeContent);
+                    // Check if it's a flashcard set (has cards array with front/back)
+                    if (data.cards && Array.isArray(data.cards) && data.cards.length > 0) {
+                        const firstCard = data.cards[0];
+                        if (firstCard && (firstCard.front || firstCard.question)) {
+                            return (
+                                <ChatFlashcardSet
+                                    title={data.title || 'Flashcards'}
+                                    cards={data.cards.map((c: any) => ({
+                                        front: c.front || c.question || '',
+                                        back: c.back || c.answer || ''
+                                    }))}
+                                    onSave={(cards) => {
+                                        // TODO: Integrate with flashcard API to save to deck
+                                        console.log('Save flashcards:', cards);
+                                    }}
+                                />
+                            );
+                        }
+                    }
+                } catch {
+                    // Not valid JSON, fall through to regular code block
+                }
             }
 
             // Block code - use plugin or default CodeBlock

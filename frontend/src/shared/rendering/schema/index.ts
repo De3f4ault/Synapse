@@ -16,6 +16,8 @@ export type {
     QuizBlock,
     QuizQuestionPreview,
     SourceRef,
+    ArtifactBlock,
+    ArtifactType,
 } from './outputBlocks';
 
 export {
@@ -28,6 +30,7 @@ export {
     isMermaidBlock,
     isFlashcardSetBlock,
     isQuizBlock,
+    isArtifactBlock,
     createMarkdownBlock,
     createCodeBlock,
     createLatexBlock,
@@ -36,6 +39,7 @@ export {
     createMermaidBlock,
     createFlashcardSetBlock,
     createQuizBlock,
+    createArtifactBlock,
     nextSequenceId,
     resetSequenceId,
 } from './outputBlocks';

@@ -73,6 +73,37 @@ export interface MermaidBlock {
     sequenceId?: number;
 }
 
+// ==================== ARTIFACT BLOCKS ====================
+// INVARIANT: Artifacts are elevated code blocks (>15 lines or React/HTML).
+// INVARIANT: Frontend-only MVP - backend persistence in Phase 1B.
+
+/**
+ * Artifact type classification.
+ * Phase 1: code only. Phase 2+: react, html, mermaid, markdown.
+ */
+export type ArtifactType = 
+    | 'application/vnd.ant.code'
+    | 'application/vnd.ant.react'
+    | 'text/html'
+    | 'text/markdown'
+    | 'image/svg+xml'
+    | 'application/vnd.ant.mermaid';
+
+/**
+ * Artifact block for substantial structured outputs.
+ * Renders as an interactive card with preview, download, copy.
+ */
+export interface ArtifactBlock {
+    type: 'artifact';
+    artifactId: string;
+    artifactType: ArtifactType;
+    title: string;
+    content: string;
+    language?: string;
+    filename?: string;
+    sequenceId?: number;
+}
+
 // ==================== STUDY BLOCKS ====================
 // INVARIANT: These are preview-only. No SM-2 state mutation.
 // INVARIANT: Saving to deck/quiz is explicit and user-initiated.
@@ -134,7 +165,8 @@ export type RenderBlock =
     | CitationBlock
     | MermaidBlock
     | FlashcardSetBlock
-    | QuizBlock;
+    | QuizBlock
+    | ArtifactBlock;
 
 // ==================== TYPE GUARDS ====================
 
@@ -172,6 +204,10 @@ export function isFlashcardSetBlock(block: RenderBlock): block is FlashcardSetBl
 
 export function isQuizBlock(block: RenderBlock): block is QuizBlock {
     return block.type === 'quiz';
+}
+
+export function isArtifactBlock(block: RenderBlock): block is ArtifactBlock {
+    return block.type === 'artifact';
 }
 
 // ==================== FACTORY FUNCTIONS ====================
@@ -223,4 +259,38 @@ export function createQuizBlock(
     difficulty?: 'easy' | 'medium' | 'hard'
 ): QuizBlock {
     return { type: 'quiz', title, questions, difficulty, sequenceId: nextSequenceId() };
+}
+
+/**
+ * Generate unique artifact ID from title and type.
+ */
+function generateArtifactSlug(title: string, type: ArtifactType): string {
+    const prefix = type.split('/').pop()?.replace('vnd.ant.', '') || 'artifact';
+    const slug = title
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '')
+        .substring(0, 50);
+    const id = Math.random().toString(36).substring(2, 8);
+    return `${prefix}-${slug || 'untitled'}-${id}`;
+}
+
+export function createArtifactBlock(
+    content: string,
+    language: string,
+    title?: string,
+    artifactType?: ArtifactType
+): ArtifactBlock {
+    const type = artifactType || 'application/vnd.ant.code';
+    const displayTitle = title || `${language.toUpperCase()} Code`;
+    
+    return {
+        type: 'artifact',
+        artifactId: generateArtifactSlug(displayTitle, type),
+        artifactType: type,
+        title: displayTitle,
+        content,
+        language,
+        sequenceId: nextSequenceId(),
+    };
 }
