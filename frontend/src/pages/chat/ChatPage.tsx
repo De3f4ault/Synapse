@@ -23,6 +23,7 @@ import { ChatSidebar } from "./sidebar";
 import { ChatMain, useChatSessions, useCreateSession } from "./core";
 import { useIsVoiceActive, LiveVoiceOverlay } from "./voice";
 import { ArtifactPanel } from "./artifacts";
+import { ThreadNavigator } from "./thread-nav";
 
 // Layout and providers
 import { ChatProviders } from "./ChatProviders";
@@ -134,7 +135,7 @@ export const ChatPage: React.FC = () => {
 
           {/* Main Content Area - FLEX with Artifact Panel */}
           <div className="flex-1 flex overflow-hidden relative z-0">
-            {/* Chat Content */}
+            {/* Chat Content + Thread Navigator */}
             <div className="flex-1 flex flex-col min-h-0 min-w-0 relative">
               {/* Mobile Hamburger - Only visible on small screens */}
               <div className="absolute top-4 left-4 z-50 lg:hidden">
@@ -152,6 +153,9 @@ export const ChatPage: React.FC = () => {
                 sessionId={sessionId} 
                 sessionTitle={sessions.find(s => s.id === sessionId)?.title}
               />
+
+              {/* Thread Navigator — Right edge of chat, before ArtifactPanel */}
+              <ThreadNavigator sessionId={sessionId} />
             </div>
 
             {/* Artifact Panel - Inline side-by-side with chat */}

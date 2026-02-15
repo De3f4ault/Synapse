@@ -57,6 +57,7 @@ export function ChatConversationView({
 }: ChatConversationViewProps) {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   
   // Thinking drawer state (for panel/drawer layout)
   const [isThinkingDrawerOpen, setIsThinkingDrawerOpen] = useState(false);
@@ -238,7 +239,11 @@ export function ChatConversationView({
         </div>
       </div>
       {/* Messages Area - Scrollable, takes remaining space */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-hide px-4 md:px-8 pb-4 min-h-0">
+      <div
+        ref={scrollContainerRef}
+        data-scroll-container="chat-messages"
+        className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-hide px-4 md:px-8 pb-4 min-h-0"
+      >
         <div className="max-w-4xl mx-auto space-y-6">
 
           {messages.map((msg) => (

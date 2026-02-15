@@ -1,14 +1,3 @@
-/**
- * SearchCommandPalette — Grok-style search modal
- *
- * Features:
- * - Cmd/Ctrl+K keyboard shortcut
- * - Time-grouped results (Yesterday, This Week, This Month, Older)
- * - Inline hover actions (Go, Edit, Delete)
- * - Keyboard navigation (↑↓, Enter, Escape)
- * - Side panel preview
- */
-
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -20,15 +9,16 @@ import {
   Loader2,
   X,
   Command,
+  GripVertical,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { ChatService } from "@/api/generated";
-import type { ConversationSearchResult } from "@/api/generated";
+import type { ConversationSearchResult, ChatSessionResponse } from "@/api/generated";
 import { useDebounce } from "@/hooks/useDebounce";
-import { useDeleteSession } from "../../sidebar/hooks/useChatSessions";
+import { useChatSessions, useDeleteSession } from "../../sidebar/hooks/useChatSessions";
 import { ConversationPreview } from "./ConversationPreview";
 
 // ============================================================================
@@ -49,6 +39,22 @@ interface SearchCommandPaletteProps {
 // ============================================================================
 // Utilities
 // ============================================================================
+
+/**
+ * Adapt ChatSessionResponse[] (from useChatSessions) into ConversationSearchResult[]
+ * so the same groupByTime and ResultItem components work for both pre-query and search states.
+ */
+function adaptSessionsToSearchResults(sessions: ChatSessionResponse[]): ConversationSearchResult[] {
+  return sessions.map((s) => ({
+    session_id: s.id,
+    session_title: s.title || "New Chat",
+    match_type: "title",
+    matched_snippet: "",
+    message_id: null,
+    created_at: s.created_at,
+    relevance_score: 0,
+  }));
+}
 
 function groupByTime(results: ConversationSearchResult[]): TimeGroup[] {
   const now = new Date();
@@ -151,59 +157,54 @@ function ResultItem({
   onClick: () => void;
   onDelete: () => void;
 }) {
-  const [showActions, setShowActions] = useState(false);
-
   return (
     <button
       onClick={onClick}
-      onMouseEnter={() => {
-        onMouseEnter();
-        setShowActions(true);
-      }}
-      onMouseLeave={() => setShowActions(false)}
+      onMouseEnter={onMouseEnter}
       className={cn(
-        "flex items-center justify-between w-full px-4 py-2.5 text-left transition-colors rounded-lg group",
+        "flex items-center justify-between w-full px-4 h-10 text-left rounded-lg group",
         isSelected
           ? "bg-cyan-500/10"
           : "hover:bg-white/5"
       )}
     >
-      <div className="flex items-center gap-3 min-w-0 flex-1">
-        <MessageCircle
-          className={cn(
-            "size-4 shrink-0",
-            isSelected ? "text-cyan-400" : "text-zinc-500"
+      <div className="min-w-0 flex-1">
+          <span
+            className={cn(
+              "text-sm truncate block",
+              isSelected ? "text-cyan-100" : "text-zinc-300"
+            )}
+          >
+            {result.session_title}
+          </span>
+          {result.matched_snippet && result.match_type !== "title" && (
+            <p className="text-xs text-zinc-500 truncate mt-0.5">
+              {result.matched_snippet}
+            </p>
           )}
-        />
-        <span
-          className={cn(
-            "text-sm truncate",
-            isSelected ? "text-cyan-100" : "text-zinc-300"
-          )}
-        >
-          {result.session_title}
-        </span>
       </div>
-      <div className="flex items-center gap-2">
-        {(showActions || isSelected) && (
-          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            <span className="text-[10px] text-zinc-500 px-1.5 py-0.5 bg-zinc-800 rounded">
-              Go <kbd className="ml-1">↵</kbd>
-            </span>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6 text-zinc-500 hover:text-red-400 hover:bg-red-500/10"
-              onClick={(e) => {
-                e.stopPropagation();
-                onDelete();
-              }}
-            >
-              <Trash2 className="size-3" />
-            </Button>
-          </div>
-        )}
-        <span className="text-xs text-zinc-500">
+      <div className="flex items-center gap-2 shrink-0 ml-2">
+        {/* Always rendered, visibility controlled — prevents layout reflow */}
+        <div className={cn(
+          "flex items-center gap-1 transition-opacity",
+          isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+        )}>
+          <span className="text-[10px] text-zinc-500 px-1.5 py-0.5 bg-zinc-800 rounded">
+            Go <kbd className="ml-1">↵</kbd>
+          </span>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6 text-zinc-500 hover:text-red-400 hover:bg-red-500/10"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete();
+            }}
+          >
+            <Trash2 className="size-3" />
+          </Button>
+        </div>
+        <span className="text-xs text-zinc-500 w-[70px] text-right">
           {formatDate(result.created_at)}
         </span>
       </div>
@@ -225,11 +226,22 @@ export function SearchCommandPalette({
 
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [previewSessionId, setPreviewSessionId] = useState<number | null>(null);
+  const [leftWidth, setLeftWidth] = useState(38); // percentage
+  const isDragging = useRef(false);
+  const containerRef = useRef<HTMLDivElement>(null);
   const debouncedQuery = useDebounce(query, 200);
 
   const deleteSessionMutation = useDeleteSession();
 
-  // Search API query
+  // Pre-query: load recent sessions (same data source as the left sidebar)
+  const { data: recentSessions = [] } = useChatSessions();
+  const adaptedRecent = useMemo(
+    () => adaptSessionsToSearchResults(recentSessions),
+    [recentSessions]
+  );
+
+  // Search API query (only fires when user types)
   const { data: searchResults = [], isLoading } = useQuery({
     queryKey: ["chat-search", debouncedQuery],
     queryFn: () =>
@@ -238,8 +250,11 @@ export function SearchCommandPalette({
     staleTime: 1000 * 30,
   });
 
+  // Show search results when typing, recent sessions otherwise
+  const displayResults = debouncedQuery.length >= 1 ? searchResults : adaptedRecent;
+
   // Group results by time
-  const timeGroups = useMemo(() => groupByTime(searchResults), [searchResults]);
+  const timeGroups = useMemo(() => groupByTime(displayResults), [displayResults]);
 
   // Flat list of all items for keyboard navigation
   const flatItems = useMemo(() => {
@@ -254,10 +269,33 @@ export function SearchCommandPalette({
     return items;
   }, [timeGroups]);
 
-  // Reset selection when results change
+  // Reset selection when the user's search query changes
   useEffect(() => {
-    setSelectedIndex(0);
-  }, [searchResults]);
+    setSelectedIndex(flatItems.length > 1 ? 1 : 0);
+    // Also set preview to the first result
+    if (flatItems.length > 1 && flatItems[1]?.data) {
+      setPreviewSessionId(flatItems[1].data.session_id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedQuery]);
+
+  // Initialize preview on first open (when query is empty)
+  useEffect(() => {
+    if (isOpen && previewSessionId === null && flatItems.length > 1 && flatItems[1]?.data) {
+      setSelectedIndex(1);
+      setPreviewSessionId(flatItems[1].data.session_id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, flatItems.length]);
+
+  // Wrapper to update both selectedIndex and previewSessionId atomically
+  const selectItem = useCallback((index: number) => {
+    setSelectedIndex(index);
+    const item = flatItems[index];
+    if (item?.type === "result" && item.data) {
+      setPreviewSessionId(item.data.session_id);
+    }
+  }, [flatItems]);
 
   // Focus input when opened
   useEffect(() => {
@@ -275,11 +313,11 @@ export function SearchCommandPalette({
       switch (e.key) {
         case "ArrowDown":
           e.preventDefault();
-          setSelectedIndex((i) => Math.min(i + 1, flatItems.length - 1));
+          selectItem(Math.min(selectedIndex + 1, flatItems.length - 1));
           break;
         case "ArrowUp":
           e.preventDefault();
-          setSelectedIndex((i) => Math.max(i - 1, 0));
+          selectItem(Math.max(selectedIndex - 1, 0));
           break;
         case "Enter":
           e.preventDefault();
@@ -298,7 +336,7 @@ export function SearchCommandPalette({
           break;
       }
     },
-    [flatItems, selectedIndex, navigate, onClose, onCreateNewChat]
+    [flatItems, selectedIndex, selectItem, navigate, onClose, onCreateNewChat]
   );
 
   // Global keyboard shortcut
@@ -324,6 +362,32 @@ export function SearchCommandPalette({
     }
   };
 
+  // Drag-resize handler
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    isDragging.current = true;
+
+    const onMouseMove = (ev: MouseEvent) => {
+      if (!isDragging.current || !containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      const pct = ((ev.clientX - rect.left) / rect.width) * 100;
+      setLeftWidth(Math.min(Math.max(pct, 25), 65)); // clamp 25%-65%
+    };
+
+    const onMouseUp = () => {
+      isDragging.current = false;
+      document.removeEventListener("mousemove", onMouseMove);
+      document.removeEventListener("mouseup", onMouseUp);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+    document.addEventListener("mousemove", onMouseMove);
+    document.addEventListener("mouseup", onMouseUp);
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center pt-[15vh]">
       {/* Backdrop */}
@@ -332,13 +396,17 @@ export function SearchCommandPalette({
         onClick={onClose}
       />
 
-      {/* Modal - Widened for 2-pane layout */}
+      {/* Modal */}
       <div
+        ref={containerRef}
         className="relative w-full max-w-5xl bg-zinc-900/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl overflow-hidden flex h-[70vh]"
         onKeyDown={handleKeyDown}
       >
         {/* LEFT PANE: Search & Results */}
-        <div className="w-[38%] flex flex-col min-w-0 border-r border-white/10">
+        <div
+          className="flex flex-col min-w-0 shrink-0"
+          style={{ width: `${leftWidth}%` }}
+        >
           {/* Search Input */}
           <div className="flex items-center gap-3 px-4 py-3 border-b border-white/10 shrink-0">
             <Search className="size-5 text-zinc-500" />
@@ -377,7 +445,7 @@ export function SearchCommandPalette({
                   onClose();
                 }}
                 isSelected={selectedIndex === 0}
-                onMouseEnter={() => setSelectedIndex(0)}
+                onMouseEnter={() => selectItem(0)}
               />
             </div>
 
@@ -390,8 +458,7 @@ export function SearchCommandPalette({
                   </span>
                 </div>
                 {group.results.map((result, resultIndex) => {
-                  // Calculate flat index
-                  let flatIndex = 1; // Start after "Create New Chat"
+                  let flatIndex = 1;
                   for (let i = 0; i < groupIndex; i++) {
                     flatIndex += timeGroups[i]?.results.length ?? 0;
                   }
@@ -402,7 +469,7 @@ export function SearchCommandPalette({
                       key={result.session_id}
                       result={result}
                       isSelected={selectedIndex === flatIndex}
-                      onMouseEnter={() => setSelectedIndex(flatIndex)}
+                      onMouseEnter={() => selectItem(flatIndex)}
                       onClick={() => {
                         navigate(`/chat/${result.session_id}`);
                         onClose();
@@ -414,7 +481,7 @@ export function SearchCommandPalette({
               </div>
             ))}
 
-            {/* Empty State */}
+            {/* Empty State — only when actively searching with no results */}
             {query && searchResults.length === 0 && !isLoading && (
               <div className="text-center py-12">
                 <MessageCircle className="mx-auto size-8 text-zinc-600 mb-2" />
@@ -424,11 +491,12 @@ export function SearchCommandPalette({
                 </p>
               </div>
             )}
-            
-            {!query && searchResults.length === 0 && (
+
+            {/* No sessions at all */}
+            {!query && adaptedRecent.length === 0 && (
                <div className="text-center py-24 opacity-30">
-                 <Search className="mx-auto size-12 text-zinc-600 mb-4" />
-                 <p className="text-sm text-zinc-400">Type to search history...</p>
+                 <MessageCircle className="mx-auto size-12 text-zinc-600 mb-4" />
+                 <p className="text-sm text-zinc-400">No conversations yet</p>
                </div>
             )}
           </div>
@@ -456,12 +524,20 @@ export function SearchCommandPalette({
           </div>
         </div>
 
+        {/* DRAG HANDLE */}
+        <div
+          className="w-1.5 shrink-0 cursor-col-resize bg-white/5 hover:bg-cyan-500/30 active:bg-cyan-500/50 transition-colors flex items-center justify-center group"
+          onMouseDown={handleMouseDown}
+        >
+          <GripVertical className="size-3 text-zinc-600 group-hover:text-cyan-400 transition-colors" />
+        </div>
+
         {/* RIGHT PANE: Preview */}
-        <div className="flex-1 bg-zinc-950/30 flex flex-col min-w-0">
+        <div className="flex-1 bg-zinc-950/30 flex flex-col min-w-0 overflow-hidden">
           <ConversationPreview
-            sessionId={flatItems[selectedIndex]?.data?.session_id || null}
+            sessionId={previewSessionId}
             highlightedQuery={debouncedQuery}
-            className="flex-1"
+            className="flex-1 overflow-hidden"
           />
         </div>
       </div>

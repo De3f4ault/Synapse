@@ -1,14 +1,17 @@
 /**
  * ConversationPreview — Preview pane for search results
  *
- * Displays a glimpse of the conversation content when a search result is selected.
- * Uses a simplified message rendering to avoid overhead.
+ * Renders messages in the SAME layout as the main chat:
+ * - User messages: right-aligned, dark bubble (#141414)
+ * - AI messages: left-aligned, borderless, full MarkdownRenderer
+ *
+ * Uses the shared rendering pipeline — no re-invented wheel.
  */
 
 import { useQuery } from "@tanstack/react-query";
 import { Loader2, MessageSquare, AlertCircle } from "lucide-react";
-import ReactMarkdown from "react-markdown";
 
+import { MarkdownRenderer } from "@/shared/rendering/MarkdownRenderer";
 import { ChatService, type ChatMessageResponse } from "@/api/generated";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -19,19 +22,21 @@ interface ConversationPreviewProps {
   className?: string;
 }
 
+const GROK_USER_BUBBLE = "#141414";
+
 export function ConversationPreview({
   sessionId,
   highlightedQuery: _highlightedQuery,
   className,
 }: ConversationPreviewProps) {
   const { data: messages = [], isLoading, error } = useQuery<ChatMessageResponse[]>({
-    queryKey: ["chat-messages", sessionId],
+    queryKey: ["chat-preview-messages", sessionId],
     queryFn: async () => {
       if (!sessionId) return [];
-      return await ChatService.getMessagesApiV1ChatSessionsSessionIdMessagesGet(sessionId, 20);
+      return await ChatService.getMessagesApiV1ChatSessionsSessionIdMessagesGet(sessionId, 50);
     },
     enabled: !!sessionId,
-    staleTime: 1000 * 60 * 5, // Cache for 5 minutes
+    staleTime: 1000 * 60 * 5,
   });
 
   if (!sessionId) {
@@ -69,36 +74,63 @@ export function ConversationPreview({
   }
 
   return (
-    <ScrollArea className={cn("h-full pr-4", className)}>
-      <div className="space-y-6 py-4">
-        {messages.map((msg) => (
-          <div key={msg.id} className="space-y-1">
-            <div className="flex items-center gap-2">
-              <span
-                className={cn(
-                  "text-[10px] font-medium uppercase tracking-wider",
-                  msg.role === "user" ? "text-cyan-400" : "text-purple-400"
-                )}
-              >
-                {msg.role === "user" ? "You" : "Assistant"}
-              </span>
-              <span className="text-[10px] text-zinc-600">
-                {new Date(msg.created_at).toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-              </span>
-            </div>
+    <ScrollArea className={cn("h-full overflow-x-hidden", className)}>
+      <div className="flex flex-col gap-5 py-5 px-4 overflow-hidden">
+        {messages.map((msg) => {
+          const isUser = msg.role === "user";
+
+          return (
             <div
+              key={msg.id}
               className={cn(
-                "text-sm prose prose-invert prose-sm max-w-none prose-p:leading-relaxed prose-pre:bg-zinc-900 prose-pre:border prose-pre:border-white/10",
-                "text-zinc-300"
+                "flex w-full gap-2",
+                isUser ? "flex-row-reverse" : "flex-row"
               )}
             >
-              <ReactMarkdown>{msg.content}</ReactMarkdown>
+              {/* Message bubble */}
+              <div
+                className={cn(
+                  "flex flex-col gap-1 min-w-0",
+                  isUser ? "items-end max-w-[75%]" : "items-start max-w-full"
+                )}
+              >
+                <div
+                  className={cn(
+                    "overflow-hidden min-w-0 max-w-full",
+                    isUser
+                      ? "rounded-2xl rounded-br-sm px-4 py-2.5 text-zinc-100"
+                      : "px-1 py-2 text-zinc-200"
+                  )}
+                  style={{
+                    ...(isUser ? { backgroundColor: GROK_USER_BUBBLE } : {}),
+                    wordBreak: "break-word",
+                  }}
+                >
+                  {isUser ? (
+                    <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
+                      {msg.content}
+                    </p>
+                  ) : (
+                    <div className="text-sm w-full min-w-0 overflow-hidden [&_pre]:overflow-x-auto [&_pre]:max-w-full [&_table]:overflow-x-auto [&_table]:max-w-full [&_img]:max-w-full">
+                      <MarkdownRenderer
+                        content={msg.content || ""}
+                        className="break-words"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* Timestamp */}
+                <span className="text-[10px] text-zinc-500 px-1">
+                  {new Date(msg.created_at).toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </span>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </ScrollArea>
   );

@@ -13,5 +13,8 @@ export type AIModelResponse = {
     max_tokens: number;
     supports_vision: boolean;
     supports_search: boolean;
+    provider?: string;
+    tier?: string;
+    supports_thinking?: boolean;
 };
 

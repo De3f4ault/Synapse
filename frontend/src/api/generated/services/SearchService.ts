@@ -6,6 +6,8 @@ import type { app__api__rest__search__SearchResponse } from '../models/app__api_
 import type { FlashcardHybridResponse } from '../models/FlashcardHybridResponse';
 import type { HybridSearchResponse } from '../models/HybridSearchResponse';
 import type { NoteHybridResponse } from '../models/NoteHybridResponse';
+import type { SearchClickRequest } from '../models/SearchClickRequest';
+import type { SearchClickResponse } from '../models/SearchClickResponse';
 import type { SearchIntent } from '../models/SearchIntent';
 import type { UnifiedSearchRequest } from '../models/UnifiedSearchRequest';
 import type { UnifiedSearchResponse } from '../models/UnifiedSearchResponse';
@@ -201,16 +203,11 @@ export class SearchService {
         });
     }
     /**
+     * @deprecated
      * Search Hybrid Notes
+     * ⚠️ Deprecated: Use POST /unified instead.
+     *
      * Hybrid search notes using PostgreSQL-native BM25 + vector search.
-     *
-     * Uses pg_search (ParadeDB) for BM25 keyword matching and pgvector
-     * for semantic similarity, combined with RRF (Reciprocal Rank Fusion).
-     *
-     * This provides better results than either BM25 or vector search alone:
-     * - BM25 catches exact keyword matches
-     * - Vector search catches semantically related content
-     * - RRF combines both for optimal ranking
      * @param q Search query
      * @param limit Maximum results
      * @param bm25Weight BM25 weight
@@ -242,13 +239,11 @@ export class SearchService {
         });
     }
     /**
+     * @deprecated
      * Search Hybrid Flashcards
-     * Hybrid search flashcards using PostgreSQL-native BM25 + vector search.
+     * ⚠️ Deprecated: Use POST /unified instead.
      *
-     * Searches both front_text and back_text of flashcards using:
-     * - pg_search (ParadeDB) for BM25 keyword matching
-     * - pgvector for semantic similarity
-     * - RRF (Reciprocal Rank Fusion) for score combination
+     * Search flashcards using BM25 full-text search.
      * @param q Search query
      * @param limit Maximum results
      * @param bm25Weight BM25 weight
@@ -274,6 +269,40 @@ export class SearchService {
                 'vector_weight': vectorWeight,
                 'token': token,
             },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Record Search Click
+     * Record a click on a search result.
+     *
+     * Called by the frontend when a user clicks on a search result.
+     * Updates the search_queries analytics row with:
+     * - Which entity was clicked
+     * - What type of entity it was
+     * - What rank position it was at
+     *
+     * This data enables future MRR (Mean Reciprocal Rank) calculation
+     * and click-through rate analysis.
+     * @param requestBody
+     * @param token Auth token for image/file requests
+     * @returns SearchClickResponse Successful Response
+     * @throws ApiError
+     */
+    public static recordSearchClickApiV1SearchClickPost(
+        requestBody: SearchClickRequest,
+        token?: (string | null),
+    ): CancelablePromise<SearchClickResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/search/click',
+            query: {
+                'token': token,
+            },
+            body: requestBody,
+            mediaType: 'application/json',
             errors: {
                 422: `Validation Error`,
             },

@@ -43,4 +43,30 @@ export class HealthService {
             url: '/api/v1/health/live',
         });
     }
+    /**
+     * Root
+     * Static metadata endpoint for system identification.
+     * @returns any Successful Response
+     * @throws ApiError
+     */
+    public static rootGet(): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/',
+        });
+    }
+    /**
+     * Ping
+     * Liveness Probe.
+     * Returns 200 OK immediately. Used by load balancers to detect frozen processes.
+     * Does NOT touch the database.
+     * @returns any Successful Response
+     * @throws ApiError
+     */
+    public static pingPingGet(): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/ping',
+        });
+    }
 }

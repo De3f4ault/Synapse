@@ -1,22 +1,25 @@
 /**
  * ComparisonPanel — Side-by-side dual model response view
- * 
+ *
  * Displays streaming responses from two AI models in parallel columns.
  * Inspired by Qwen's model comparison interface.
+ * Uses MarkdownRenderer for formatted output.
  */
 
-import { useEffect, useRef } from 'react';
-import { Loader2 } from 'lucide-react';
-import './ComparisonPanel.css';
+import { useEffect, useRef } from "react";
+import { Loader2 } from "lucide-react";
+import { MarkdownRenderer } from "@/shared/rendering/MarkdownRenderer";
+import { useModels } from "../hooks/useModels";
+import { cn } from "@/lib/utils";
 
 export interface ComparisonPanelProps {
   /** Model A response content */
   contentA: string;
   /** Model B response content */
   contentB: string;
-  /** Model A identifier */
+  /** Model A identifier (registry key) */
   modelA: string;
-  /** Model B identifier */
+  /** Model B identifier (registry key) */
   modelB: string;
   /** Is Model A still streaming? */
   isStreamingA: boolean;
@@ -28,16 +31,88 @@ export interface ComparisonPanelProps {
   thinkingB?: string;
 }
 
-// Model display names
-const MODEL_NAMES: Record<string, string> = {
-  qwen3_next: 'Qwen3-Next',
-  deepseek_v3_1: 'DeepSeek-V3.1',
-  qwen3_vl: 'Qwen3-VL-235B',
-  gemini_flash: 'Gemini Flash',
-  gemini_pro: 'Gemini Pro',
-};
+function ColumnHeader({
+  modelId,
+  isStreaming,
+}: {
+  modelId: string;
+  isStreaming: boolean;
+}) {
+  const { models } = useModels();
+  const info = models.find((m) => m.id === modelId);
 
-const getModelName = (modelId: string) => MODEL_NAMES[modelId] || modelId;
+  return (
+    <header className="flex items-center justify-between px-4 py-3 border-b border-white/5">
+      <div className="flex items-center gap-2.5">
+        <span className="text-[13px] font-semibold text-white">
+          {info?.name || modelId}
+        </span>
+        {info?.provider && (
+          <span
+            className={cn(
+              "text-[9px] px-1.5 py-0.5 rounded-full uppercase tracking-wide font-medium",
+              info.provider === "ollama"
+                ? "bg-emerald-500/15 text-emerald-400"
+                : "bg-blue-500/15 text-blue-400"
+            )}
+          >
+            {info.provider}
+          </span>
+        )}
+        {info?.supportsThinking && (
+          <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-purple-500/15 text-purple-300 font-medium">
+            Thinking
+          </span>
+        )}
+      </div>
+      {isStreaming && (
+        <div className="flex items-center gap-1.5 text-cyan-400">
+          <Loader2 className="size-3 animate-spin" />
+          <span className="text-[11px]">Generating…</span>
+        </div>
+      )}
+    </header>
+  );
+}
+
+function ResponseColumn({
+  modelId,
+  content,
+  isStreaming,
+}: {
+  modelId: string;
+  content: string;
+  isStreaming: boolean;
+}) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll when streaming
+  useEffect(() => {
+    if (isStreaming && scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [content, isStreaming]);
+
+  return (
+    <div className="flex-1 min-w-0 flex flex-col rounded-2xl border border-white/6 bg-[#0a0a0c]/80 backdrop-blur-xl overflow-hidden">
+      <ColumnHeader modelId={modelId} isStreaming={isStreaming} />
+      <div
+        ref={scrollRef}
+        className="flex-1 overflow-y-auto p-4 scrollbar-hide"
+      >
+        {content ? (
+          <div className="prose prose-invert prose-sm max-w-none">
+            <MarkdownRenderer content={content} />
+          </div>
+        ) : (
+          <div className="flex items-center justify-center h-full min-h-[120px] text-zinc-500 text-sm">
+            {isStreaming ? "Waiting for response…" : "No response yet"}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export function ComparisonPanel({
   contentA,
@@ -47,70 +122,18 @@ export function ComparisonPanel({
   isStreamingA,
   isStreamingB,
 }: ComparisonPanelProps) {
-  const scrollRefA = useRef<HTMLDivElement>(null);
-  const scrollRefB = useRef<HTMLDivElement>(null);
-  
-  // Auto-scroll when streaming
-  useEffect(() => {
-    if (isStreamingA && scrollRefA.current) {
-      scrollRefA.current.scrollTop = scrollRefA.current.scrollHeight;
-    }
-  }, [contentA, isStreamingA]);
-  
-  useEffect(() => {
-    if (isStreamingB && scrollRefB.current) {
-      scrollRefB.current.scrollTop = scrollRefB.current.scrollHeight;
-    }
-  }, [contentB, isStreamingB]);
-  
   return (
-    <div className="comparison-panel">
-      {/* Model A Column */}
-      <div className="comparison-panel__column">
-        <header className="comparison-panel__header">
-          <span className="comparison-panel__model-name">{getModelName(modelA)}</span>
-          {isStreamingA && (
-            <span className="comparison-panel__streaming">
-              <Loader2 className="comparison-panel__spinner" size={14} />
-              <span>Generating...</span>
-            </span>
-          )}
-        </header>
-        <div ref={scrollRefA} className="comparison-panel__content">
-          {contentA ? (
-            <div className="comparison-panel__text">{contentA}</div>
-          ) : (
-            <div className="comparison-panel__empty">
-              {isStreamingA ? 'Waiting for response...' : 'No response yet'}
-            </div>
-          )}
-        </div>
-      </div>
-      
-      {/* Divider */}
-      <div className="comparison-panel__divider" />
-      
-      {/* Model B Column */}
-      <div className="comparison-panel__column">
-        <header className="comparison-panel__header">
-          <span className="comparison-panel__model-name">{getModelName(modelB)}</span>
-          {isStreamingB && (
-            <span className="comparison-panel__streaming">
-              <Loader2 className="comparison-panel__spinner" size={14} />
-              <span>Generating...</span>
-            </span>
-          )}
-        </header>
-        <div ref={scrollRefB} className="comparison-panel__content">
-          {contentB ? (
-            <div className="comparison-panel__text">{contentB}</div>
-          ) : (
-            <div className="comparison-panel__empty">
-              {isStreamingB ? 'Waiting for response...' : 'No response yet'}
-            </div>
-          )}
-        </div>
-      </div>
+    <div className="flex gap-3 w-full mb-4 min-h-[200px] max-h-[60vh]">
+      <ResponseColumn
+        modelId={modelA}
+        content={contentA}
+        isStreaming={isStreamingA}
+      />
+      <ResponseColumn
+        modelId={modelB}
+        content={contentB}
+        isStreaming={isStreamingB}
+      />
     </div>
   );
 }
