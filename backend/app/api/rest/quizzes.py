@@ -803,7 +803,7 @@ async def submit_quiz_attempt(
             quality_score=quality,
             accuracy=accuracy,
             is_learning_event=True,
-            metadata={
+            meta_data={
                 "quiz_id": attempt.quiz_id,
                 "attempt_id": attempt.id,
                 "is_correct": is_correct,
@@ -836,19 +836,19 @@ async def submit_quiz_attempt(
         activity_log = ActivityLog(
             user_id=current_user.id,
             activity_type=ActivityType.QUIZ_COMPLETE,
-            target_id=attempt.quiz_id,
-            target_type="quiz",
-            description=f"Completed quiz: {float(attempt.percentage):.0f}% ({correct_count}/{len(db_answers)})",
+            resource_id=attempt.quiz_id,
+            module=ModuleType.QUIZZES,
             duration_seconds=clamped_quiz_duration,
             accuracy=quiz_accuracy,
             is_learning_event=False,  # Summary only, questions are the learning events
-            metadata={
+            meta_data={
                 "attempt_id": attempt.id,
                 "score": float(attempt.score),
                 "max_score": attempt.max_score,
                 "correct_count": correct_count,
                 "total_questions": len(db_answers),
                 "time_taken": attempt.time_taken_seconds,
+                "description": f"Completed quiz: {float(attempt.percentage):.0f}% ({correct_count}/{len(db_answers)})",
             },
         )
         db.add(activity_log)

@@ -154,7 +154,7 @@ def process_document_task(self, document_id: int) -> Dict[str, Any]:
         from app.db.session import AsyncSessionLocal
         from app.models.document import Document, ProcessingStatus
         from app.services.background.document_processor import DocumentProcessor
-        from app.core.ai.rag.embeddings.models.all_minilm import AllMiniLMEmbedder
+        from app.core.ai.embeddings.boundary import get_embedder
         from app.core.ai.rag.vector_store.qdrant.batch_upserter import BatchUpserter
         from app.core.ai.rag.vector_store.qdrant.collection_manager import CollectionManager
         from sqlalchemy import select
@@ -266,7 +266,7 @@ def process_document_task(self, document_id: int) -> Dict[str, Any]:
                     )
 
                     # Step 2: Initialize embedder and Qdrant upserter early
-                    embedder = AllMiniLMEmbedder()
+                    embedder = get_embedder()
                     from app.core.ai.rag.vector_store.qdrant.client import get_qdrant_client
 
                     qdrant_client = get_qdrant_client().get_client()

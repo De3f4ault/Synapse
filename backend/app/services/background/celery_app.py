@@ -7,9 +7,9 @@ that will be used for all background task processing.
 Optimizations applied:
 - Reduced prefetch_multiplier to prevent task hogging
 - Added memory limits to prevent worker bloat
-- Optimized Redis connection pooling
-- Reduced visibility timeout for faster task recovery
 - Dynamic thread calculation based on CPU cores (paperless-ngx pattern)
+
+Broker: PostgreSQL via SQLAlchemy transport (replaces Redis).
 """
 
 import math
@@ -44,12 +44,18 @@ THREADS_PER_WORKER = int(
     os.getenv("SYNAPSE_THREADS_PER_WORKER", default_threads_per_worker(WORKER_CONCURRENCY))
 )
 
+# Build a synchronous PostgreSQL DSN for Celery's SQLAlchemy transport.
+# DATABASE_URL uses asyncpg (postgresql+asyncpg://...) which Celery can't use,
+# so we strip the async driver and prefix with sqla+ for kombu.
+_sync_pg_url = str(settings.DATABASE_URL).replace("+asyncpg", "")
+_broker_url = f"sqla+{_sync_pg_url}"
+_backend_url = f"db+{_sync_pg_url}"
 
 # Create Celery app
 celery_app = Celery(
     "synapse",
-    broker=settings.REDIS_URL,
-    backend=settings.REDIS_URL,
+    broker=_broker_url,
+    backend=_backend_url,
 )
 
 # Configure Celery
@@ -69,10 +75,9 @@ celery_app.conf.update(
     # Results
     result_expires=3600,
     result_persistent=True,
-    # Redis broker optimization
-    broker_pool_limit=10,  # Max connections per worker
+    # Broker settings
+    broker_pool_limit=10,
     broker_connection_retry_on_startup=True,
-    broker_visibility_timeout=900,  # 15 min (was 3600), faster task recovery
     # Worker - OPTIMIZED FOR CPU-BOUND TASKS
     worker_prefetch_multiplier=1,  # Prevent task hogging (was 4)
     worker_max_tasks_per_child=100,  # Increased to allow model caching (was 50)

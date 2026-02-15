@@ -22,6 +22,7 @@ from app.models.user import User
 from app.models.document import Document, ProcessingStatus
 from app.models.document_chunk import DocumentChunk
 from app.core.config import settings
+from app.core.ai.registry.models import DEFAULT_TOKENIZER_MODEL
 import pypdfium2 as pdfium
 from PIL import Image
 
@@ -1306,7 +1307,7 @@ Document Title: {doc.filename}
 Content:
 {content}"""
 
-        response = client.models.generate_content(model="gemini-2.0-flash", contents=prompt)
+        response = client.models.generate_content(model=DEFAULT_TOKENIZER_MODEL, contents=prompt)
         summary = response.text
 
         # Cache the summary

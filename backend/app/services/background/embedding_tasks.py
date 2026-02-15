@@ -19,21 +19,9 @@ from celery import group
 from sqlalchemy import text
 
 from app.services.background.celery_app import celery_app
-from app.core.ai.rag.embeddings.models.all_minilm import AllMiniLMEmbedder
+from app.core.ai.embeddings.boundary import get_embedder
 
 logger = structlog.get_logger(__name__)
-
-# Lazy-loaded embedder (loaded once per worker)
-_embedder: Optional[AllMiniLMEmbedder] = None
-
-
-def get_embedder() -> AllMiniLMEmbedder:
-    """Get or create embedder instance (cached per worker)."""
-    global _embedder
-    if _embedder is None:
-        logger.info("initializing_embedder_for_worker")
-        _embedder = AllMiniLMEmbedder()
-    return _embedder
 
 
 # ==================== NOTE EMBEDDING TASKS ====================

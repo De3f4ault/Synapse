@@ -458,7 +458,7 @@ class FlashcardHybridResponse(BaseModel):
     results: List[FlashcardHybridResult]
 
 
-@router.get("/hybrid/notes", response_model=NoteHybridResponse)
+@router.get("/hybrid/notes", response_model=NoteHybridResponse, deprecated=True)
 async def search_hybrid_notes(
     q: str = Query(..., min_length=1, description="Search query"),
     limit: int = Query(10, ge=1, le=50, description="Maximum results"),
@@ -468,46 +468,38 @@ async def search_hybrid_notes(
     db: AsyncSession = Depends(get_db),
 ):
     """
+    ⚠️ Deprecated: Use POST /unified instead.
+
     Hybrid search notes using PostgreSQL-native BM25 + vector search.
-
-    Uses pg_search (ParadeDB) for BM25 keyword matching and pgvector
-    for semantic similarity, combined with RRF (Reciprocal Rank Fusion).
-
-    This provides better results than either BM25 or vector search alone:
-    - BM25 catches exact keyword matches
-    - Vector search catches semantically related content
-    - RRF combines both for optimal ranking
     """
-    from app.services.search import get_hybrid_search_service
-
-    service = get_hybrid_search_service()
+    from app.services.search.hybrid_v2 import HybridSearchServiceV2
 
     logger.info(
         f"Hybrid notes search: '{q}' user={current_user.id} "
         f"weights=({bm25_weight}, {vector_weight})"
     )
 
-    results = await service.search_notes(
-        db=db,
-        query=q,
+    raw_results = await HybridSearchServiceV2.hybrid_search_notes(
         user_id=current_user.id,
+        query=q,
+        db=db,
         limit=limit,
         bm25_weight=bm25_weight,
-        vector_weight=vector_weight,
+        semantic_weight=vector_weight,
     )
 
     formatted = [
         NoteHybridResult(
-            id=r.id,
-            title=r.title,
-            content_preview=r.content[:200] if r.content else "",
-            bm25_rank=r.bm25_rank,
-            bm25_score=r.bm25_score,
-            vector_rank=r.vector_rank,
-            vector_score=r.vector_score,
-            hybrid_score=r.hybrid_score,
+            id=r["id"],
+            title=r.get("title"),
+            content_preview=r.get("content", "")[:200],
+            bm25_rank=r.get("bm25_rank", 0),
+            bm25_score=0.0,
+            vector_rank=r.get("semantic_rank", 0),
+            vector_score=0.0,
+            hybrid_score=r.get("rrf_score", 0.0),
         )
-        for r in results
+        for r in raw_results
     ]
 
     logger.info(f"Hybrid notes search complete: {len(formatted)} results")
@@ -521,7 +513,7 @@ async def search_hybrid_notes(
     )
 
 
-@router.get("/hybrid/flashcards", response_model=FlashcardHybridResponse)
+@router.get("/hybrid/flashcards", response_model=FlashcardHybridResponse, deprecated=True)
 async def search_hybrid_flashcards(
     q: str = Query(..., min_length=1, description="Search query"),
     limit: int = Query(10, ge=1, le=50, description="Maximum results"),
@@ -531,41 +523,36 @@ async def search_hybrid_flashcards(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Hybrid search flashcards using PostgreSQL-native BM25 + vector search.
+    ⚠️ Deprecated: Use POST /unified instead.
 
-    Searches both front_text and back_text of flashcards using:
-    - pg_search (ParadeDB) for BM25 keyword matching
-    - pgvector for semantic similarity
-    - RRF (Reciprocal Rank Fusion) for score combination
+    Search flashcards using BM25 full-text search.
     """
-    from app.services.search import get_hybrid_search_service
-
-    service = get_hybrid_search_service()
+    from app.services.search.hybrid_v2 import HybridSearchServiceV2
 
     logger.info(f"Hybrid flashcards search: '{q}' user={current_user.id}")
 
-    results = await service.search_flashcards(
-        db=db,
-        query=q,
+    raw_results = await HybridSearchServiceV2.hybrid_search_flashcards(
         user_id=current_user.id,
+        query=q,
+        db=db,
         limit=limit,
         bm25_weight=bm25_weight,
-        vector_weight=vector_weight,
+        semantic_weight=vector_weight,
     )
 
     formatted = [
         FlashcardHybridResult(
-            id=r.id,
-            front_text=r.front_text,
-            back_text=r.back_text,
-            deck_id=r.deck_id,
-            bm25_rank=r.bm25_rank,
-            bm25_score=r.bm25_score,
-            vector_rank=r.vector_rank,
-            vector_score=r.vector_score,
-            hybrid_score=r.hybrid_score,
+            id=r["id"],
+            front_text=r.get("front_text", ""),
+            back_text=r.get("back_text", ""),
+            deck_id=r.get("deck_id", 0),
+            bm25_rank=r.get("bm25_rank", 0),
+            bm25_score=0.0,
+            vector_rank=r.get("semantic_rank", 0),
+            vector_score=0.0,
+            hybrid_score=r.get("rrf_score", 0.0),
         )
-        for r in results
+        for r in raw_results
     ]
 
     logger.info(f"Hybrid flashcards search complete: {len(formatted)} results")
@@ -577,3 +564,54 @@ async def search_hybrid_flashcards(
         vector_weight=vector_weight,
         results=formatted,
     )
+
+
+# =============================================================================
+# Click Tracking
+# =============================================================================
+
+
+class SearchClickRequest(BaseModel):
+    """Request body for recording a search result click."""
+
+    query_id: int
+    clicked_entity_id: int
+    clicked_entity_type: str  # "note" | "flashcard" | "chat_message" | "concept"
+    clicked_rank: int  # 0-indexed position in the result list
+
+
+class SearchClickResponse(BaseModel):
+    """Response for click tracking."""
+
+    recorded: bool
+
+
+@router.post("/click", response_model=SearchClickResponse)
+async def record_search_click(
+    body: SearchClickRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Record a click on a search result.
+
+    Called by the frontend when a user clicks on a search result.
+    Updates the search_queries analytics row with:
+    - Which entity was clicked
+    - What type of entity it was
+    - What rank position it was at
+
+    This data enables future MRR (Mean Reciprocal Rank) calculation
+    and click-through rate analysis.
+    """
+    from app.services.search.analytics import log_search_click
+
+    success = await log_search_click(
+        db,
+        query_id=body.query_id,
+        clicked_entity_id=body.clicked_entity_id,
+        clicked_entity_type=body.clicked_entity_type,
+        clicked_rank=body.clicked_rank,
+    )
+
+    return SearchClickResponse(recorded=success)
