@@ -4,7 +4,17 @@
 // Core (types, lifecycle, events, constants)
 export * from "./core";
 
-// Components
+// Components — New architecture (v2)
+export { Sidebar } from "./components/Sidebar";
+export { Breadcrumbs } from "./components/Breadcrumbs";
+export { Toolbar } from "./components/Toolbar";
+export { FileGrid } from "./components/FileGrid";
+export { FileList } from "./components/FileList";
+export { FileCard } from "./components/FileCard";
+export { FolderCardNew } from "./components/FolderCardNew";
+export { ContextMenu } from "./components/ContextMenu";
+
+// Components — Preserved from v1
 export { ChunkExplorer } from "./components/ChunkExplorer";
 export { DocumentUploader } from "./components/DocumentUploader";
 export {
@@ -15,8 +25,6 @@ export {
   ProcessingStatus,
   ProcessingStatusBadge,
 } from "./components/ProcessingStatus";
-export { DocumentsHub } from "./components/DocumentsHub";
-export { DocumentContextMenu } from "./components/DocumentContextMenu";
 
 // Hooks
 export {

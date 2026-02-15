@@ -1,33 +1,24 @@
-import React, { useState, useEffect, useCallback, lazy, Suspense } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import {
-  X,
-  Download,
-  Trash2,
-  CheckCircle2,
-  Loader2,
-  AlertCircle,
-  Clock,
-  ChevronLeft,
-  ChevronRight,
-  Maximize2,
-  Minimize2,
-  PanelRightClose,
-  PanelRight,
-  Sparkles,
-  FileText,
-  StickyNote,
-} from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { format } from "date-fns";
+/**
+ * DocumentViewer — Immersive full-screen reader, v3.
+ *
+ * Design:
+ * - Content fills the entire screen. Zero obstruction.
+ * - All chrome lives in ONE floating dock at the bottom-center.
+ * - The dock auto-hides after 3s, reappears on mouse movement.
+ * - Reading position persists to localStorage automatically.
+ *
+ * Features (v3):
+ * - Reading timer (time spent this session)
+ * - Reading speed estimate ("~Xhr left")
+ * - Warm reading filter (night mode toggle)
+ */
+
+import React, { useState, useEffect, useRef, useCallback, lazy, Suspense } from "react";
+import { ArrowLeft, Download, Loader2, FileText, Sun, Moon } from "lucide-react";
 import { useAuthStore } from "@/stores/authStore";
-import type { EnhancedDocument } from "../../core";
-
-// Light viewers (small bundle size) - static imports
+import type { EnhancedDocument } from "../../core/engine/types";
 import { TextViewer } from "./TextViewer";
-import { ThemeSelector, type ViewerTheme } from "./ThemeSelector";
 
-// Heavy viewers - lazy loaded for code splitting
 const PDFViewer = lazy(() => import("./PDFViewer").then(m => ({ default: m.PDFViewer })));
 const MarkdownViewer = lazy(() => import("./MarkdownViewer").then(m => ({ default: m.MarkdownViewer })));
 const EPUBViewer = lazy(() => import("./EPUBViewer").then(m => ({ default: m.EPUBViewer })));
@@ -35,604 +26,267 @@ const HTMLViewer = lazy(() => import("./HTMLViewer").then(m => ({ default: m.HTM
 const DOCXViewer = lazy(() => import("./DOCXViewer").then(m => ({ default: m.DOCXViewer })));
 const SpreadsheetViewer = lazy(() => import("./SpreadsheetViewer").then(m => ({ default: m.SpreadsheetViewer })));
 
-// Type import for PDFTheme
-type PDFTheme = "light" | "sepia" | "twilight" | "dark";
+// ─── Reading Position ────────────────────────────────────────────────────────
 
-// Loading fallback component
-const ViewerLoadingFallback = () => (
-  <div className="w-full h-full flex items-center justify-center bg-black/40">
-    <div className="text-center">
-      <Loader2 className="animate-spin text-cyan-500 mx-auto mb-4" size={32} />
-      <p className="text-slate-400 text-sm">Loading viewer...</p>
-    </div>
-  </div>
-);
+const posKey = (id: number) => `synapse:reader:${id}`;
 
-interface DocumentViewerProps {
-  doc: EnhancedDocument;
-  docs?: EnhancedDocument[]; // For navigation
-  onClose: () => void;
-  onDelete: () => void;
-  onNavigate?: (doc: EnhancedDocument) => void;
-  logAction: (msg: string) => void;
+function getSavedPage(id: number): number {
+  try { return JSON.parse(localStorage.getItem(posKey(id)) || "{}").page || 0; }
+  catch { return 0; }
 }
 
-/**
- * FileIcon Component
- */
-const FileIcon: React.FC<{ type: string; className?: string }> = ({
-  type: _type,
-  className,
-}) => (
-  <svg
-    className={className}
-    xmlns="http://www.w3.org/2000/svg"
-    width="24"
-    height="24"
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-  >
-    <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
-    <polyline points="14 2 14 8 20 8" />
-  </svg>
-);
+function savePage(id: number, page: number) {
+  localStorage.setItem(posKey(id), JSON.stringify({ page, ts: Date.now() }));
+}
 
-/**
- * Format file size to human-readable format
- */
-const formatFileSize = (bytes: number): string => {
-  if (bytes === 0) return "0 Bytes";
-  const k = 1024;
-  const sizes = ["Bytes", "KB", "MB", "GB"];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
-};
+// ─── Time Formatting ─────────────────────────────────────────────────────────
 
-/**
- * Enhanced DocumentViewer with keyboard shortcuts, collapsible panel, notes, and AI summary
- */
-export const DocumentViewer: React.FC<DocumentViewerProps> = ({
-  doc,
-  docs = [],
-  onClose,
-  onDelete,
-  onNavigate,
-  logAction,
-}) => {
-  const token = useAuthStore((state) => state.token);
+function formatTime(seconds: number): string {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = seconds % 60;
+  if (h > 0) return `${h}h ${m}m`;
+  if (m > 0) return `${m}m ${s}s`;
+  return `${s}s`;
+}
 
-  // UI State
-  const [showMetadata, setShowMetadata] = useState(true);
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  const readingProgress = doc.reading_progress || 0;
+function estimateRemaining(currentPage: number, totalPages: number): string {
+  const remaining = totalPages - currentPage - 1;
+  if (remaining <= 0) return "done";
+  const mins = remaining * 1.5; // ~1.5 min per page avg
+  if (mins < 60) return `~${Math.ceil(mins)}m left`;
+  const h = Math.floor(mins / 60);
+  const m = Math.round(mins % 60);
+  return m > 0 ? `~${h}h ${m}m left` : `~${h}h left`;
+}
 
-  // Theme State (persisted to localStorage)
-  const [theme, setTheme] = useState<ViewerTheme>(() => {
-    if (typeof window !== 'undefined') {
-      return (localStorage.getItem('viewer-theme') as ViewerTheme) || 'dark';
-    }
-    return 'dark';
-  });
+// ─── Component ───────────────────────────────────────────────────────────────
 
-  const handleThemeChange = (newTheme: ViewerTheme) => {
-    setTheme(newTheme);
-    localStorage.setItem('viewer-theme', newTheme);
+interface Props {
+  doc: EnhancedDocument;
+  onClose: () => void;
+}
+
+export const DocumentViewer: React.FC<Props> = ({ doc, onClose }) => {
+  const token = useAuthStore((s) => s.token);
+  const contentUrl = `/api/v1/documents/${doc.id}/content?token=${token}`;
+
+  // Chrome auto-hide
+  const [visible, setVisible] = useState(true);
+  const hideTimer = useRef<ReturnType<typeof setTimeout>>();
+
+  // Page tracking
+  const [page, setPage] = useState(0);
+  const [total, setTotal] = useState(0);
+  const saved = useRef(getSavedPage(doc.id));
+
+  // Reading timer
+  const [elapsed, setElapsed] = useState(0);
+
+  // Warm filter
+  const [warm, setWarm] = useState(() => localStorage.getItem("synapse:warm-filter") === "1");
+
+  const progress = total > 0 ? (page + 1) / total : 0;
+
+  // ─── Reading timer tick ──────────────────────────────────────────────────
+
+  useEffect(() => {
+    const interval = setInterval(() => setElapsed((s) => s + 1), 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // ─── Warm filter persist ─────────────────────────────────────────────────
+
+  const toggleWarm = () => {
+    setWarm((w) => {
+      localStorage.setItem("synapse:warm-filter", w ? "0" : "1");
+      return !w;
+    });
   };
 
-  // Notes State
-  const [notes, setNotes] = useState(doc.notes || "");
-  const [notesSaving, setNotesSaving] = useState(false);
+  // ─── Auto-hide ───────────────────────────────────────────────────────────
 
-  // AI Summary State
-  const [summary, setSummary] = useState(doc.ai_summary || "");
-  const [summaryLoading, setSummaryLoading] = useState(false);
+  const resetHide = useCallback(() => {
+    setVisible(true);
+    clearTimeout(hideTimer.current);
+    hideTimer.current = setTimeout(() => setVisible(false), 3000);
+  }, []);
 
-  // Get current doc index for navigation
-  const currentIndex = docs.findIndex((d) => d.id === doc.id);
-  const hasPrev = currentIndex > 0;
-  const hasNext = currentIndex < docs.length - 1;
-
-  // Keyboard shortcuts
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Ignore if typing in textarea
-      if (e.target instanceof HTMLTextAreaElement) return;
-
-      switch (e.key) {
-        case "Escape":
-          onClose();
-          break;
-        case "m":
-        case "M":
-          setShowMetadata((prev) => !prev);
-          break;
-        case "f":
-        case "F":
-          setIsFullscreen((prev) => !prev);
-          break;
-        case "ArrowLeft":
-          {
-            const prevDoc = docs[currentIndex - 1];
-            if (hasPrev && onNavigate && prevDoc) {
-              onNavigate(prevDoc);
-            }
-          }
-          break;
-        case "ArrowRight":
-          {
-            const nextDoc = docs[currentIndex + 1];
-            if (hasNext && onNavigate && nextDoc) {
-              onNavigate(nextDoc);
-            }
-          }
-          break;
-      }
+    const wake = () => resetHide();
+    document.addEventListener("mousemove", wake);
+    document.addEventListener("touchstart", wake);
+    hideTimer.current = setTimeout(() => setVisible(false), 3000);
+    return () => {
+      document.removeEventListener("mousemove", wake);
+      document.removeEventListener("touchstart", wake);
+      clearTimeout(hideTimer.current);
     };
+  }, [resetHide]);
 
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [onClose, hasPrev, hasNext, onNavigate, docs, currentIndex]);
+  // ─── Keyboard ────────────────────────────────────────────────────────────
 
-  // Save notes to backend
-  const saveNotes = useCallback(async () => {
-    setNotesSaving(true);
-    try {
-      await fetch(`/api/v1/documents/${doc.id}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ notes }),
-      });
-    } catch (err) {
-      console.error("Failed to save notes:", err);
-    } finally {
-      setNotesSaving(false);
-    }
-  }, [doc.id, notes, token]);
-
-  // Debounced notes save
   useEffect(() => {
-    const timer = setTimeout(() => {
-      if (notes !== doc.notes) saveNotes();
-    }, 1000);
-    return () => clearTimeout(timer);
-  }, [notes, doc.notes, saveNotes]);
+    const h = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, [onClose]);
 
-  // Generate AI Summary
-  const generateSummary = async () => {
-    setSummaryLoading(true);
-    try {
-      const res = await fetch(`/api/v1/documents/${doc.id}/summary`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setSummary(data.summary);
-      }
-    } catch (err) {
-      console.error("Failed to generate summary:", err);
-    } finally {
-      setSummaryLoading(false);
-    }
-  };
+  // ─── Page change → persist ───────────────────────────────────────────────
 
-  // Status helpers
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "completed":
-        return "bg-green-100 text-green-700 dark:bg-green-950/30 dark:text-green-300";
-      case "processing":
-        return "bg-blue-100 text-blue-700 dark:bg-blue-950/30 dark:text-blue-300 animate-pulse";
-      case "failed":
-        return "bg-red-100 text-red-700 dark:bg-red-950/30 dark:text-red-300";
-      default:
-        return "bg-gray-100 text-gray-700 dark:bg-gray-950/30 dark:text-gray-300";
-    }
-  };
+  const onPageChange = useCallback((p: number, t: number) => {
+    setPage(p);
+    setTotal(t);
+    savePage(doc.id, p);
+  }, [doc.id]);
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "completed":
-        return <CheckCircle2 className="h-4 w-4" />;
-      case "processing":
-        return <Loader2 className="h-4 w-4 animate-spin" />;
-      case "failed":
-        return <AlertCircle className="h-4 w-4" />;
-      default:
-        return <Clock className="h-4 w-4" />;
-    }
-  };
+  // ─── Render viewer ──────────────────────────────────────────────────────
+
+  const type = doc.type?.toLowerCase() || "";
+
+  const content = (() => {
+    if (type === "pdf")
+      return <PDFViewer url={contentUrl} docId={doc.id} initialPage={saved.current} onPageChange={onPageChange} />;
+    if (type === "md" || type === "markdown")
+      return <MarkdownViewer content={doc.content_text || ""} theme="dark" />;
+    if (type === "txt" || type === "text")
+      return <TextViewer content={doc.content_text || ""} theme="dark" />;
+    if (type === "epub")
+      return <EPUBViewer url={contentUrl} theme="dark" />;
+    if (type === "html" || type === "htm")
+      return <HTMLViewer content={doc.content_text || ""} theme="dark" />;
+    if (type === "docx" || type === "doc")
+      return <DOCXViewer url={contentUrl} theme="dark" />;
+    if (["csv", "xlsx", "xls"].includes(type))
+      return <SpreadsheetViewer url={contentUrl} theme="dark" />;
+    if (["jpg", "jpeg", "png", "gif", "webp", "svg"].includes(type))
+      return (
+        <div className="w-full h-full flex items-center justify-center bg-black p-8">
+          <img src={contentUrl} alt={doc.filename} className="max-w-full max-h-full object-contain rounded-lg" />
+        </div>
+      );
+    if (doc.content_text)
+      return <TextViewer content={doc.content_text} theme="dark" />;
+
+    return (
+      <div className="w-full h-full flex items-center justify-center bg-zinc-950">
+        <div className="text-center">
+          <FileText className="w-14 h-14 text-zinc-700 mx-auto mb-3" strokeWidth={1} />
+          <p className="text-zinc-500 text-sm">No preview for <span className="font-mono">.{type}</span></p>
+        </div>
+      </div>
+    );
+  })();
+
+  const shortName = doc.filename.length > 32
+    ? doc.filename.slice(0, 29) + "…"
+    : doc.filename;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 md:p-8">
-      {/* Backdrop */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="absolute inset-0 bg-black/80 backdrop-blur-md"
-        onClick={onClose}
-      />
-
-      {/* Reading Progress Bar */}
-      <div className="absolute top-0 left-0 right-0 h-1 bg-white/5 z-[60]">
-        <motion.div
-          className="h-full bg-gradient-to-r from-cyan-500 to-purple-500"
-          initial={{ width: 0 }}
-          animate={{ width: `${readingProgress * 100}%` }}
+    <div className="fixed inset-0 z-50 bg-black flex flex-col">
+      {/* ─── Warm reading filter overlay ─── */}
+      {warm && (
+        <div
+          className="fixed inset-0 z-[55] pointer-events-none"
+          style={{ background: "rgba(255, 170, 50, 0.07)", mixBlendMode: "multiply" }}
         />
+      )}
+
+      {/* ─── Progress bar ─── */}
+      {total > 0 && (
+        <div className="absolute top-0 left-0 right-0 h-[2px] z-[60]">
+          <div
+            className="h-full bg-gradient-to-r from-cyan-500 via-blue-500 to-violet-500 transition-[width] duration-500 ease-out"
+            style={{ width: `${progress * 100}%` }}
+          />
+        </div>
+      )}
+
+      {/* ─── Viewer ─── */}
+      <div className="w-full h-full">
+        <Suspense fallback={
+          <div className="w-full h-full flex items-center justify-center bg-zinc-950">
+            <Loader2 className="w-6 h-6 animate-spin text-zinc-600" />
+          </div>
+        }>
+          {content}
+        </Suspense>
       </div>
 
-      {/* Modal */}
-      <motion.div
-        className={`relative bg-[#050505] border border-white/10 rounded-2xl overflow-hidden shadow-2xl flex pointer-events-auto transition-all duration-300 ${isFullscreen
-          ? "w-full h-full rounded-none"
-          : "w-full max-w-6xl h-[85vh]"
-          }`}
+      {/* ─── Bottom dock ─── */}
+      <div
+        className={`fixed bottom-5 left-1/2 -translate-x-1/2 z-[60]
+                     flex items-center gap-1 px-1.5 py-1.5
+                     rounded-2xl bg-zinc-900/90 backdrop-blur-2xl
+                     border border-white/[0.06]
+                     shadow-[0_8px_40px_rgba(0,0,0,0.6),0_0_0_1px_rgba(255,255,255,0.03)]
+                     transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]
+                     ${visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6 pointer-events-none"}`}
       >
-        {/* Header */}
-        <div className="absolute top-0 left-0 right-0 h-14 border-b border-white/5 flex items-center justify-between px-4 bg-black/60 backdrop-blur-sm z-20">
-          <div className="flex items-center gap-3">
-            <FileText size={16} className="text-cyan-400" />
-            <span
-              className="text-sm font-medium text-white truncate max-w-[200px]"
-              title={doc.filename}
-            >
-              {doc.filename}
-            </span>
-            {notes && (
-              <span title="Has notes">
-                <StickyNote size={14} className="text-yellow-400" />
-              </span>
-            )}
-            <div className="w-px h-4 bg-white/20 mx-1" />
-            <ThemeSelector theme={theme} onThemeChange={handleThemeChange} />
-          </div>
+        {/* Back */}
+        <button onClick={onClose}
+          className="flex items-center justify-center w-8 h-8 rounded-xl text-zinc-400 hover:text-white hover:bg-white/[0.08] transition-all"
+          title="Back (Esc)">
+          <ArrowLeft size={16} />
+        </button>
 
-          {/* Controls */}
-          <div className="flex items-center gap-1">
-            {/* Navigation */}
-            {docs.length > 1 && (
-              <>
-                <button
-                  onClick={() => {
-                    const prevDoc = docs[currentIndex - 1];
-                    if (hasPrev && onNavigate && prevDoc) onNavigate(prevDoc);
-                  }}
-                  disabled={!hasPrev}
-                  className="p-2 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition-colors disabled:opacity-30"
-                  title="Previous (←)"
-                >
-                  <ChevronLeft size={18} />
-                </button>
-                <span className="text-xs text-slate-500 px-2">
-                  {currentIndex + 1}/{docs.length}
-                </span>
-                <button
-                  onClick={() => {
-                    const nextDoc = docs[currentIndex + 1];
-                    if (hasNext && onNavigate && nextDoc) onNavigate(nextDoc);
-                  }}
-                  disabled={!hasNext}
-                  className="p-2 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition-colors disabled:opacity-30"
-                  title="Next (→)"
-                >
-                  <ChevronRight size={18} />
-                </button>
-                <div className="w-px h-6 bg-white/10 mx-2" />
-              </>
-            )}
+        <div className="w-px h-5 bg-white/[0.06]" />
 
-            <button
-              onClick={() => setShowMetadata((prev) => !prev)}
-              className="p-2 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition-colors"
-              title="Toggle panel (M)"
-            >
-              {showMetadata ? (
-                <PanelRightClose size={18} />
-              ) : (
-                <PanelRight size={18} />
-              )}
-            </button>
-            <button
-              onClick={() => setIsFullscreen((prev) => !prev)}
-              className="p-2 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition-colors"
-              title="Fullscreen (F)"
-            >
-              {isFullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
-            </button>
-            <button
-              onClick={onClose}
-              className="p-2 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition-colors"
-              title="Close (Esc)"
-            >
-              <X size={18} />
-            </button>
-          </div>
-        </div>
+        {/* Filename */}
+        <span className="px-2 text-[12px] text-zinc-400 select-none truncate max-w-[220px]" title={doc.filename}>
+          {shortName}
+        </span>
 
-        {/* Content Area */}
-        <div className="flex w-full h-full pt-14">
-          {/* Left: Preview */}
-          <div
-            className={`h-full relative bg-black/40 transition-all duration-300 ${showMetadata ? "w-full md:w-2/3" : "w-full"
-              }`}
-          >
-            {/* Grid Pattern */}
-            <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.015)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.015)_1px,transparent_1px)] bg-[size:40px_40px] pointer-events-none" />
-
-            {/* Loading */}
-            <div className="absolute inset-0 flex items-center justify-center -z-10">
-              <Loader2 className="animate-spin text-cyan-500" />
+        {/* Page + progress (PDF only) */}
+        {total > 0 && (
+          <>
+            <div className="w-px h-5 bg-white/[0.06]" />
+            <div className="px-2 flex items-center gap-1.5 text-[12px] tabular-nums select-none">
+              <span className="text-zinc-200 font-medium">{page + 1}</span>
+              <span className="text-zinc-600">/</span>
+              <span className="text-zinc-500">{total}</span>
+              <span className="text-zinc-700">·</span>
+              <span className="text-zinc-500">{Math.round(progress * 100)}%</span>
             </div>
+          </>
+        )}
 
-            {/* Render the appropriate viewer based on document type */}
-            <Suspense fallback={<ViewerLoadingFallback />}>
-              {(() => {
-                const type = doc.type.toLowerCase();
-                const contentUrl = `/api/v1/documents/${doc.id}/content?token=${token}`;
+        {/* Reading estimate (PDF only) */}
+        {total > 0 && (
+          <>
+            <div className="w-px h-5 bg-white/[0.06]" />
+            <span className="px-2 text-[11px] text-zinc-500 select-none">
+              {estimateRemaining(page, total)}
+            </span>
+          </>
+        )}
 
-                // PDF files
-                if (type === 'pdf') {
-                  return <PDFViewer url={contentUrl} theme={theme as PDFTheme} />;
-                }
+        {/* Divider before actions */}
+        <div className="w-px h-5 bg-white/[0.06]" />
 
-                // Markdown files
-                if (type === 'md' || type === 'markdown') {
-                  return (
-                    <MarkdownViewer
-                      content={doc.content_text || 'No content extracted yet'}
-                      theme={theme}
-                    />
-                  );
-                }
+        {/* Reading timer */}
+        <span className="px-2 text-[11px] text-zinc-600 tabular-nums select-none" title="Time reading">
+          {formatTime(elapsed)}
+        </span>
 
-                // Text files
-                if (type === 'txt' || type === 'text') {
-                  return (
-                    <TextViewer
-                      content={doc.content_text || 'No content extracted yet'}
-                      theme={theme}
-                    />
-                  );
-                }
+        <div className="w-px h-5 bg-white/[0.06]" />
 
-                // EPUB files
-                if (type === 'epub') {
-                  return <EPUBViewer url={contentUrl} theme={theme} />;
-                }
+        {/* Warm filter toggle */}
+        <button onClick={toggleWarm}
+          className={`flex items-center justify-center w-8 h-8 rounded-xl transition-all ${
+            warm ? "text-amber-400 bg-amber-500/10" : "text-zinc-400 hover:text-white hover:bg-white/[0.08]"
+          }`}
+          title={warm ? "Disable warm filter" : "Warm reading mode"}>
+          {warm ? <Sun size={15} /> : <Moon size={15} />}
+        </button>
 
-                // HTML files
-                if (type === 'html' || type === 'htm') {
-                  return (
-                    <HTMLViewer
-                      content={doc.content_text || '<p>No content extracted yet</p>'}
-                      theme={theme}
-                    />
-                  );
-                }
-
-                // DOCX/DOC files
-                if (type === 'docx' || type === 'doc') {
-                  return <DOCXViewer url={contentUrl} theme={theme} />;
-                }
-
-                // Spreadsheet files (CSV, XLSX, XLS)
-                if (['csv', 'xlsx', 'xls'].includes(type)) {
-                  return <SpreadsheetViewer url={contentUrl} theme={theme} />;
-                }
-
-                // Image files
-                if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(type)) {
-                  return (
-                    <img
-                      src={contentUrl}
-                      alt={doc.filename}
-                      className="w-full h-full object-contain"
-                    />
-                  );
-                }
-
-                // Fallback for unsupported types - show extracted text if available
-                if (doc.content_text) {
-                  return (
-                    <TextViewer
-                      content={doc.content_text}
-                      theme={theme}
-                    />
-                  );
-                }
-
-                // No content available
-                return (
-                  <div className="relative w-full h-full flex items-center justify-center">
-                    <div className="absolute inset-0 flex items-center justify-center opacity-20 pointer-events-none">
-                      <div className="w-[400px] h-[400px] bg-cyan-500/20 blur-[100px] rounded-full" />
-                    </div>
-                    <div className="text-center z-10">
-                      <FileIcon
-                        type={doc.type}
-                        className="w-20 h-20 text-cyan-500 mx-auto mb-4"
-                      />
-                      <p className="text-slate-400 font-mono text-xs uppercase tracking-widest">
-                        Preview Not Available
-                      </p>
-                    </div>
-                  </div>
-                );
-              })()}
-            </Suspense>
-          </div>
-
-          {/* Right: Metadata Panel */}
-          <AnimatePresence>
-            {showMetadata && (
-              <motion.div
-                initial={{ width: 0, opacity: 0 }}
-                animate={{ width: "33.33%", opacity: 1 }}
-                exit={{ width: 0, opacity: 0 }}
-                className="h-full border-l border-white/10 bg-[#080808] flex flex-col overflow-hidden"
-              >
-                <div className="flex-1 overflow-y-auto p-6 space-y-6">
-                  {/* Title */}
-                  <div>
-                    <h2
-                      className="text-lg font-semibold text-white line-clamp-2"
-                      title={doc.filename}
-                    >
-                      {doc.filename}
-                    </h2>
-                    <div className="flex gap-2 mt-2 text-xs text-slate-500">
-                      <span className="bg-white/5 px-2 py-0.5 rounded">
-                        {doc.size}
-                      </span>
-                      <span className="bg-cyan-500/10 text-cyan-400 px-2 py-0.5 rounded">
-                        {doc.sector || "Uncategorized"}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Status */}
-                  <div className="space-y-2">
-                    <div className="text-[10px] text-slate-500 uppercase tracking-widest">
-                      Status
-                    </div>
-                    <Badge
-                      variant="outline"
-                      className={getStatusColor(doc.processing_status)}
-                    >
-                      {getStatusIcon(doc.processing_status)}
-                      <span className="ml-1">{doc.processing_status}</span>
-                    </Badge>
-                  </div>
-
-                  {/* AI Summary */}
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="text-[10px] text-purple-400 uppercase tracking-widest">
-                        AI Summary
-                      </div>
-                      {!summary && (
-                        <button
-                          onClick={generateSummary}
-                          disabled={
-                            summaryLoading ||
-                            doc.processing_status !== "completed"
-                          }
-                          className="text-xs text-purple-400 hover:text-purple-300 disabled:opacity-50 flex items-center gap-1"
-                        >
-                          {summaryLoading ? (
-                            <Loader2 size={12} className="animate-spin" />
-                          ) : (
-                            <Sparkles size={12} />
-                          )}
-                          Generate
-                        </button>
-                      )}
-                    </div>
-                    {summary ? (
-                      <div className="text-xs text-slate-300 bg-purple-500/5 p-3 rounded-lg border border-purple-500/10 max-h-40 overflow-y-auto">
-                        {summary}
-                      </div>
-                    ) : (
-                      <p className="text-xs text-slate-500 italic">
-                        {doc.processing_status === "completed"
-                          ? "Click Generate to create summary"
-                          : "Complete processing first"}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Notes */}
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="text-[10px] text-yellow-500 uppercase tracking-widest">
-                        Notes
-                      </div>
-                      {notesSaving && (
-                        <Loader2
-                          size={12}
-                          className="animate-spin text-yellow-500"
-                        />
-                      )}
-                    </div>
-                    <textarea
-                      value={notes}
-                      onChange={(e) => setNotes(e.target.value)}
-                      placeholder="Add your notes here..."
-                      className="w-full h-24 bg-yellow-500/5 border border-yellow-500/10 rounded-lg p-3 text-xs text-slate-300 placeholder:text-slate-600 resize-none focus:outline-none focus:border-yellow-500/30"
-                    />
-                  </div>
-
-                  {/* Metadata */}
-                  <div className="space-y-2">
-                    <div className="text-[10px] text-slate-500 uppercase tracking-widest">
-                      Details
-                    </div>
-                    <div className="text-xs text-slate-400 space-y-1">
-                      <div>
-                        <span className="text-slate-600">Uploaded:</span>{" "}
-                        {format(new Date(doc.created_at), "MMM d, yyyy HH:mm")}
-                      </div>
-                      <div>
-                        <span className="text-slate-600">Size:</span>{" "}
-                        {formatFileSize(doc.file_size)}
-                      </div>
-                      {doc.page_count && (
-                        <div>
-                          <span className="text-slate-600">Pages:</span>{" "}
-                          {doc.page_count}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Actions */}
-                <div className="p-4 border-t border-white/5 space-y-2">
-                  <button
-                    onClick={() => {
-                      window.open(
-                        `/api/v1/documents/${doc.id}/content?token=${token}`,
-                        "_blank",
-                      );
-                      logAction("DOWNLOAD");
-                    }}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-sm text-white transition-colors"
-                  >
-                    <Download size={14} /> Download
-                  </button>
-                  <button
-                    onClick={() => {
-                      onDelete();
-                      onClose();
-                    }}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 rounded-lg text-sm text-red-400 transition-colors"
-                  >
-                    <Trash2 size={14} /> Delete
-                  </button>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-
-        {/* Keyboard Shortcuts Hint */}
-        <div className="absolute bottom-4 left-4 text-[10px] text-slate-600 font-mono">
-          <span className="bg-white/5 px-1.5 py-0.5 rounded">M</span> panel
-          <span className="mx-2">•</span>
-          <span className="bg-white/5 px-1.5 py-0.5 rounded">F</span> fullscreen
-          <span className="mx-2">•</span>
-          <span className="bg-white/5 px-1.5 py-0.5 rounded">Esc</span> close
-        </div>
-      </motion.div>
+        {/* Download */}
+        <button onClick={() => window.open(contentUrl, "_blank")}
+          className="flex items-center justify-center w-8 h-8 rounded-xl text-zinc-400 hover:text-white hover:bg-white/[0.08] transition-all"
+          title="Download">
+          <Download size={15} />
+        </button>
+      </div>
     </div>
   );
 };

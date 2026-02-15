@@ -1,412 +1,389 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
-import { Document, Page, pdfjs } from "react-pdf";
-import { motion, AnimatePresence } from "framer-motion";
+/**
+ * PDFViewer — @react-pdf-viewer with full session persistence + highlighting.
+ *
+ * Persists to localStorage per-document:
+ * - Current page
+ * - Zoom scale
+ * - Sidebar open state & active tab
+ * - Highlights (text selections with notes)
+ *
+ * Uses the official highlight plugin for text selection highlighting.
+ * Sidebar flicker fixed by using setInitialTab + stable CSS overrides.
+ */
+
+import React, { useState, useCallback, useEffect, useRef, useMemo } from "react";
+import { Viewer, Worker, SpecialZoomLevel } from "@react-pdf-viewer/core";
+import { defaultLayoutPlugin } from "@react-pdf-viewer/default-layout";
 import {
-  ChevronLeft,
-  ChevronRight,
-  ZoomIn,
-  ZoomOut,
-  Loader2,
-  BookOpen,
-  FileText,
-  Maximize,
-  Minimize,
-  ChevronsLeft,
-  ChevronsRight,
-} from "lucide-react";
+  highlightPlugin,
+  Trigger,
+  type HighlightArea,
+  type RenderHighlightTargetProps,
+  type RenderHighlightContentProps,
+  type RenderHighlightsProps,
+} from "@react-pdf-viewer/highlight";
+import type { PageChangeEvent, ZoomEvent } from "@react-pdf-viewer/core";
 
-// Import CSS for annotations and text layer
-import "react-pdf/dist/Page/AnnotationLayer.css";
-import "react-pdf/dist/Page/TextLayer.css";
+import "@react-pdf-viewer/core/lib/styles/index.css";
+import "@react-pdf-viewer/default-layout/lib/styles/index.css";
+import "@react-pdf-viewer/highlight/lib/styles/index.css";
 
-// Configure PDF.js worker
-pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+// ─── Types ────────────────────────────────────────────────────────────────────
 
-export type PDFTheme = "light" | "sepia" | "twilight" | "dark";
+interface Note {
+  id: number;
+  content: string;
+  highlightAreas: HighlightArea[];
+  quote: string;
+  color: string;
+  createdAt: number;
+}
+
+interface ViewerState {
+  page: number;
+  scale: number | string;
+  sidebarTab: number;
+  sidebarOpen: boolean;
+  highlights: Note[];
+  ts: number;
+}
 
 interface PDFViewerProps {
   url: string;
-  theme?: PDFTheme;
+  docId?: number;
+  initialPage?: number;
+  onPageChange?: (page: number, totalPages: number) => void;
   className?: string;
 }
 
-type ViewMode = "single" | "double";
+// ─── Persistence ──────────────────────────────────────────────────────────────
 
-const themeStyles: Record<PDFTheme, string> = {
-  light: "",
-  sepia: "sepia brightness-[0.95]",
-  twilight: "brightness-[0.85] contrast-[1.1] saturate-[0.8]",
-  dark: "invert hue-rotate-180",
-};
+const stateKey = (docId: number) => `synapse:pdf:${docId}`;
 
-const themeBackgrounds: Record<PDFTheme, string> = {
-  light: "bg-slate-100",
-  sepia: "bg-amber-50",
-  twilight: "bg-slate-900",
-  dark: "bg-zinc-900",
-};
+function loadState(docId: number): ViewerState | null {
+  try {
+    const raw = localStorage.getItem(stateKey(docId));
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
 
-/**
- * Enhanced PDF Viewer with double-page mode, arrow key navigation,
- * smooth animations, and premium visual design
- */
+function saveState(docId: number, state: Partial<ViewerState>) {
+  try {
+    const existing = loadState(docId) || {};
+    localStorage.setItem(stateKey(docId), JSON.stringify({ ...existing, ...state, ts: Date.now() }));
+  } catch { /* quota exceeded — ignore */ }
+}
+
+// ─── Highlight Colors ─────────────────────────────────────────────────────────
+
+const HIGHLIGHT_COLORS = [
+  { name: "Yellow", value: "rgba(255, 235, 59, 0.35)" },
+  { name: "Green", value: "rgba(76, 175, 80, 0.30)" },
+  { name: "Blue", value: "rgba(33, 150, 243, 0.30)" },
+  { name: "Pink", value: "rgba(233, 30, 99, 0.25)" },
+  { name: "Orange", value: "rgba(255, 152, 0, 0.30)" },
+];
+
+const WORKER_URL = `https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js`;
+
+// ─── Component ────────────────────────────────────────────────────────────────
+
 export const PDFViewer: React.FC<PDFViewerProps> = ({
   url,
-  theme = "light",
+  docId,
+  initialPage = 0,
+  onPageChange,
   className = "",
 }) => {
-  const [numPages, setNumPages] = useState<number>(0);
-  const [currentPage, setCurrentPage] = useState<number>(1);
-  const [scale, setScale] = useState<number>(1.25);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<ViewMode>("single");
-  const [fitMode, setFitMode] = useState<"width" | "page">("page");
-  const [pageInputValue, setPageInputValue] = useState<string>("1");
-  const containerRef = useRef<HTMLDivElement>(null);
+  const resolvedDocId = docId ?? 0;
+  const saved = useRef(loadState(resolvedDocId));
+  const startPage = saved.current?.page ?? initialPage;
+  const startScale = saved.current?.scale ?? 1;
+  const startTab = saved.current?.sidebarTab ?? -1; // -1 = closed
 
-  // Calculate pages to show based on view mode
-  const getVisiblePages = useCallback((): number[] => {
-    if (viewMode === "single") {
-      return [currentPage];
-    }
-    // Double page mode - show pairs (1), (2-3), (4-5), etc.
-    if (currentPage === 1) {
-      return numPages > 1 ? [1, 2] : [1];
-    }
-    const leftPage = currentPage % 2 === 0 ? currentPage : currentPage - 1;
-    const rightPage = leftPage + 1;
-    return rightPage <= numPages ? [leftPage, rightPage] : [leftPage];
-  }, [currentPage, numPages, viewMode]);
+  // ─── Highlights state ───────────────────────────────────────────────────
 
-  const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
-    setNumPages(numPages);
-    setLoading(false);
-  };
+  const [notes, setNotes] = useState<Note[]>(saved.current?.highlights ?? []);
+  const [message, setMessage] = useState("");
+  const [selectedColor, setSelectedColor] = useState(HIGHLIGHT_COLORS[0]?.value ?? "rgba(255, 235, 59, 0.35)");
+  const noteIdRef = useRef(notes.length);
 
-  const onDocumentLoadError = (err: Error) => {
-    setError(err.message);
-    setLoading(false);
-  };
-
-  // Navigation functions
-  const goToPrevPage = useCallback(() => {
-    if (viewMode === "double") {
-      setCurrentPage((p) => Math.max(1, p - 2));
-    } else {
-      setCurrentPage((p) => Math.max(1, p - 1));
-    }
-  }, [viewMode]);
-
-  const goToNextPage = useCallback(() => {
-    if (viewMode === "double") {
-      setCurrentPage((p) => Math.min(numPages, p + 2));
-    } else {
-      setCurrentPage((p) => Math.min(numPages, p + 1));
-    }
-  }, [numPages, viewMode]);
-
-  const goToFirstPage = () => setCurrentPage(1);
-  const goToLastPage = () => setCurrentPage(numPages);
-
-  const zoomIn = () => setScale((s) => Math.min(3, s + 0.25));
-  const zoomOut = () => setScale((s) => Math.max(0.5, s - 0.25));
-
-  // Toggle fit mode
-  const toggleFitMode = () => {
-    setFitMode((prev) => (prev === "width" ? "page" : "width"));
-    setScale(prev => prev === 1.25 ? 1.0 : 1.25);
-  };
-
-  // Handle page input
-  const handlePageInput = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-      const pageNum = parseInt(pageInputValue, 10);
-      if (!isNaN(pageNum) && pageNum >= 1 && pageNum <= numPages) {
-        setCurrentPage(pageNum);
-      } else {
-        setPageInputValue(currentPage.toString());
-      }
-    }
-  };
-
-  // Update page input when current page changes
+  // Persist highlights on change
   useEffect(() => {
-    setPageInputValue(currentPage.toString());
-  }, [currentPage]);
+    if (resolvedDocId) saveState(resolvedDocId, { highlights: notes });
+  }, [notes, resolvedDocId]);
 
-  // Keyboard navigation
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement) return;
+  // ─── Highlight plugin callbacks ─────────────────────────────────────────
 
-      switch (e.key) {
-        case "ArrowLeft":
-          if (e.ctrlKey || e.metaKey) {
-            goToFirstPage();
-          } else {
-            goToPrevPage();
-          }
-          e.preventDefault();
-          break;
-        case "ArrowRight":
-          if (e.ctrlKey || e.metaKey) {
-            goToLastPage();
-          } else {
-            goToNextPage();
-          }
-          e.preventDefault();
-          break;
-        case "ArrowUp":
-          zoomIn();
-          e.preventDefault();
-          break;
-        case "ArrowDown":
-          zoomOut();
-          e.preventDefault();
-          break;
-        case "Home":
-          goToFirstPage();
-          e.preventDefault();
-          break;
-        case "End":
-          goToLastPage();
-          e.preventDefault();
-          break;
-      }
+  const renderHighlightTarget = useCallback((props: RenderHighlightTargetProps) => (
+    <div
+      style={{
+        position: "absolute",
+        left: `${props.selectionRegion.left}%`,
+        top: `${props.selectionRegion.top + props.selectionRegion.height}%`,
+        transform: "translate(0, 8px)",
+        zIndex: 10,
+      }}
+    >
+      <button
+        onClick={props.toggle}
+        className="px-3 py-1.5 rounded-lg bg-zinc-800/95 backdrop-blur-sm border border-white/10 text-[12px] text-zinc-200 hover:bg-zinc-700 transition-all shadow-xl flex items-center gap-1.5"
+      >
+        <span className="w-2.5 h-2.5 rounded-full bg-yellow-400/70" />
+        Highlight
+      </button>
+    </div>
+  ), []);
+
+  const renderHighlightContent = useCallback((props: RenderHighlightContentProps) => {
+    const addNote = () => {
+      const note: Note = {
+        id: ++noteIdRef.current,
+        content: message,
+        highlightAreas: props.highlightAreas,
+        quote: props.selectedText,
+        color: selectedColor,
+        createdAt: Date.now(),
+      };
+      setNotes((prev) => [...prev, note]);
+      setMessage("");
+      props.cancel();
     };
 
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [goToPrevPage, goToNextPage, numPages]);
+    return (
+      <div
+        style={{
+          position: "absolute",
+          left: `${props.selectionRegion.left}%`,
+          top: `${props.selectionRegion.top + props.selectionRegion.height}%`,
+          transform: "translate(0, 8px)",
+          zIndex: 20,
+        }}
+        className="w-72 rounded-xl bg-zinc-900/95 backdrop-blur-xl border border-white/10 shadow-2xl p-3"
+      >
+        {/* Color picker */}
+        <div className="flex items-center gap-1.5 mb-2.5">
+          {HIGHLIGHT_COLORS.map((c) => (
+            <button
+              key={c.value}
+              onClick={() => setSelectedColor(c.value)}
+              className="w-5 h-5 rounded-full border-2 transition-all"
+              style={{
+                background: c.value,
+                borderColor: selectedColor === c.value ? "white" : "transparent",
+              }}
+              title={c.name}
+            />
+          ))}
+        </div>
 
-  const progressPercent = numPages > 0 ? (currentPage / numPages) * 100 : 0;
-  const visiblePages = getVisiblePages();
+        {/* Note input */}
+        <textarea
+          rows={2}
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          placeholder="Add a note (optional)…"
+          className="w-full bg-zinc-800/80 border border-white/10 rounded-lg px-2.5 py-2 text-[12px] text-zinc-200 placeholder:text-zinc-600 outline-none resize-none"
+          onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); addNote(); } }}
+        />
+
+        <div className="flex items-center gap-2 mt-2">
+          <button
+            onClick={addNote}
+            className="px-3 py-1 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-[12px] font-medium transition-colors"
+          >
+            Save
+          </button>
+          <button
+            onClick={props.cancel}
+            className="px-3 py-1 rounded-lg text-zinc-400 hover:text-zinc-200 text-[12px] transition-colors"
+          >
+            Cancel
+          </button>
+          <span className="text-[10px] text-zinc-600 ml-auto">Enter to save</span>
+        </div>
+      </div>
+    );
+  }, [message, selectedColor]);
+
+  const renderHighlights = useCallback((props: RenderHighlightsProps) => (
+    <div>
+      {notes.map((note) => (
+        <React.Fragment key={note.id}>
+          {note.highlightAreas
+            .filter((area) => area.pageIndex === props.pageIndex)
+            .map((area, idx) => (
+              <div
+                key={idx}
+                title={note.content || note.quote}
+                style={{
+                  ...props.getCssProperties(area, props.rotation),
+                  background: note.color,
+                  position: "absolute",
+                  cursor: "pointer",
+                  mixBlendMode: "multiply",
+                  borderRadius: "2px",
+                  transition: "opacity 150ms",
+                }}
+                className="hover:opacity-70"
+              />
+            ))}
+        </React.Fragment>
+      ))}
+    </div>
+  ), [notes]);
+
+  // ─── Highlight plugin ───────────────────────────────────────────────────
+
+  const highlightPluginInstance = highlightPlugin({
+    trigger: Trigger.TextSelection,
+    renderHighlightTarget,
+    renderHighlightContent,
+    renderHighlights,
+  });
+
+  // ─── Notes sidebar tab content ──────────────────────────────────────────
+
+  const sidebarNotes = useMemo(() => (
+    <div className="p-3 text-[12px]" style={{ fontFamily: "system-ui, -apple-system, sans-serif" }}>
+      {notes.length === 0 ? (
+        <p className="text-zinc-500 text-center py-6">
+          Select text to highlight
+        </p>
+      ) : (
+        <div className="space-y-2.5">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-zinc-400 font-medium">{notes.length} highlight{notes.length !== 1 ? "s" : ""}</span>
+            <button
+              onClick={() => { if (confirm("Clear all highlights?")) setNotes([]); }}
+              className="text-[11px] text-red-400/70 hover:text-red-400 transition-colors"
+            >
+              Clear all
+            </button>
+          </div>
+          {notes.map((note) => (
+            <div
+              key={note.id}
+              className="rounded-lg border border-white/[0.06] p-2.5 hover:bg-white/[0.02] transition-colors cursor-pointer"
+              onClick={() => { const area = note.highlightAreas[0]; if (area) highlightPluginInstance.jumpToHighlightArea(area); }}
+            >
+              <div className="flex items-start gap-2">
+                <span className="w-2 h-2 rounded-full shrink-0 mt-1" style={{ background: note.color }} />
+                <div className="min-w-0">
+                  <p className="text-zinc-300 text-[11px] leading-relaxed line-clamp-3 italic">
+                    "{note.quote}"
+                  </p>
+                  {note.content && (
+                    <p className="text-zinc-400 text-[11px] mt-1.5">{note.content}</p>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center justify-end mt-1.5">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setNotes((prev) => prev.filter((n) => n.id !== note.id));
+                  }}
+                  className="text-[10px] text-zinc-600 hover:text-red-400 transition-colors"
+                >
+                  Remove
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  ), [notes, highlightPluginInstance]);
+
+  // ─── Default layout plugin ──────────────────────────────────────────────
+
+  const defaultLayout = defaultLayoutPlugin({
+    setInitialTab: startTab >= 0 ? () => Promise.resolve(startTab) : undefined,
+    sidebarTabs: (defaultTabs) => [
+      ...defaultTabs,
+      {
+        content: sidebarNotes,
+        icon: (
+          <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" strokeWidth="2" fill="none">
+            <path d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z" />
+          </svg>
+        ),
+        title: "Highlights",
+      },
+    ],
+  });
+
+  // ─── Event handlers ─────────────────────────────────────────────────────
+
+  const handlePageChange = useCallback((e: PageChangeEvent) => {
+    onPageChange?.(e.currentPage, e.doc.numPages);
+    if (resolvedDocId) saveState(resolvedDocId, { page: e.currentPage });
+  }, [onPageChange, resolvedDocId]);
+
+  const handleZoom = useCallback((e: ZoomEvent) => {
+    if (resolvedDocId) saveState(resolvedDocId, { scale: e.scale });
+  }, [resolvedDocId]);
 
   return (
     <div
-      ref={containerRef}
-      className={`relative w-full h-full flex flex-col ${themeBackgrounds[theme]} ${className}`}
-      tabIndex={0}
+      className={`w-full h-full bg-zinc-950 ${className}`}
+      style={{ fontFamily: "'Roboto', sans-serif" }}
     >
-      {/* Premium Control Bar */}
-      <div className="relative z-20">
-        <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent" />
-
-        <div className="flex items-center justify-between px-4 py-2.5 bg-black/60 backdrop-blur-xl">
-          {/* Left: Page Navigation */}
-          <div className="flex items-center gap-1">
-            <button
-              onClick={goToFirstPage}
-              disabled={currentPage <= 1}
-              className="p-2 rounded-lg hover:bg-white/10 disabled:opacity-30 transition-all duration-200 group"
-              title="First page (Ctrl+←)"
-            >
-              <ChevronsLeft size={16} className="text-slate-300 group-hover:text-cyan-400 transition-colors" />
-            </button>
-
-            <button
-              onClick={goToPrevPage}
-              disabled={currentPage <= 1}
-              className="p-2 rounded-lg hover:bg-white/10 disabled:opacity-30 transition-all duration-200 group"
-              title="Previous page (←)"
-            >
-              <ChevronLeft size={18} className="text-slate-300 group-hover:text-cyan-400 transition-colors" />
-            </button>
-
-            <div className="flex items-center gap-1.5 px-2">
-              <input
-                type="text"
-                value={pageInputValue}
-                onChange={(e) => setPageInputValue(e.target.value)}
-                onKeyDown={handlePageInput}
-                onBlur={() => setPageInputValue(currentPage.toString())}
-                className="w-12 text-center text-sm font-mono bg-white/5 border border-white/10 rounded-md px-2 py-1 text-white focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/30 transition-all"
-                title="Enter page number"
-              />
-              <span className="text-slate-500 font-mono text-sm">/</span>
-              <span className="text-slate-300 font-mono text-sm">{numPages || "..."}</span>
-            </div>
-
-            <button
-              onClick={goToNextPage}
-              disabled={currentPage >= numPages}
-              className="p-2 rounded-lg hover:bg-white/10 disabled:opacity-30 transition-all duration-200 group"
-              title="Next page (→)"
-            >
-              <ChevronRight size={18} className="text-slate-300 group-hover:text-cyan-400 transition-colors" />
-            </button>
-
-            <button
-              onClick={goToLastPage}
-              disabled={currentPage >= numPages}
-              className="p-2 rounded-lg hover:bg-white/10 disabled:opacity-30 transition-all duration-200 group"
-              title="Last page (Ctrl+→)"
-            >
-              <ChevronsRight size={16} className="text-slate-300 group-hover:text-cyan-400 transition-colors" />
-            </button>
-          </div>
-
-          {/* Center: View Mode Toggle */}
-          <div className="flex items-center gap-2">
-            <div className="flex items-center bg-white/5 rounded-lg p-0.5 border border-white/10">
-              <button
-                onClick={() => setViewMode("single")}
-                className={`p-2 rounded-md transition-all duration-200 ${viewMode === "single"
-                    ? "bg-gradient-to-r from-cyan-500/20 to-purple-500/20 text-cyan-400 shadow-lg shadow-cyan-500/10"
-                    : "text-slate-400 hover:text-slate-200"
-                  }`}
-                title="Single page view"
-              >
-                <FileText size={16} />
-              </button>
-              <button
-                onClick={() => setViewMode("double")}
-                className={`p-2 rounded-md transition-all duration-200 ${viewMode === "double"
-                    ? "bg-gradient-to-r from-cyan-500/20 to-purple-500/20 text-cyan-400 shadow-lg shadow-cyan-500/10"
-                    : "text-slate-400 hover:text-slate-200"
-                  }`}
-                title="Double page view (book mode)"
-              >
-                <BookOpen size={16} />
-              </button>
-            </div>
-
-            <button
-              onClick={toggleFitMode}
-              className="p-2 rounded-lg hover:bg-white/10 transition-all duration-200 group"
-              title={fitMode === "width" ? "Fit to page" : "Fit to width"}
-            >
-              {fitMode === "width" ? (
-                <Minimize size={16} className="text-slate-300 group-hover:text-cyan-400 transition-colors" />
-              ) : (
-                <Maximize size={16} className="text-slate-300 group-hover:text-cyan-400 transition-colors" />
-              )}
-            </button>
-          </div>
-
-          {/* Right: Zoom Controls */}
-          <div className="flex items-center gap-1">
-            <button
-              onClick={zoomOut}
-              disabled={scale <= 0.5}
-              className="p-2 rounded-lg hover:bg-white/10 disabled:opacity-30 transition-all duration-200 group"
-              title="Zoom out (↓)"
-            >
-              <ZoomOut size={16} className="text-slate-300 group-hover:text-cyan-400 transition-colors" />
-            </button>
-
-            <div className="flex items-center gap-2 px-2">
-              <input
-                type="range"
-                min="50"
-                max="300"
-                value={scale * 100}
-                onChange={(e) => setScale(parseInt(e.target.value) / 100)}
-                className="w-20 h-1 bg-white/10 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:bg-cyan-400 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:shadow-lg [&::-webkit-slider-thumb]:shadow-cyan-500/30"
-              />
-              <span className="text-xs text-slate-400 font-mono w-10 text-right">
-                {Math.round(scale * 100)}%
-              </span>
-            </div>
-
-            <button
-              onClick={zoomIn}
-              disabled={scale >= 3}
-              className="p-2 rounded-lg hover:bg-white/10 disabled:opacity-30 transition-all duration-200 group"
-              title="Zoom in (↑)"
-            >
-              <ZoomIn size={16} className="text-slate-300 group-hover:text-cyan-400 transition-colors" />
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* PDF Content Area */}
-      <div className="flex-1 overflow-auto relative">
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:40px_40px] pointer-events-none" />
-
-        {loading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-10">
-            <div className="flex flex-col items-center gap-3">
-              <div className="relative">
-                <div className="absolute inset-0 bg-cyan-500/20 blur-xl rounded-full" />
-                <Loader2 className="relative animate-spin text-cyan-400" size={40} />
-              </div>
-              <span className="text-slate-400 text-sm font-medium">Loading PDF...</span>
-            </div>
-          </div>
-        )}
-
-        {error && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-            <div className="text-center">
-              <div className="text-red-400 mb-2">Error loading PDF</div>
-              <p className="text-slate-500 text-sm max-w-md">{error}</p>
-            </div>
-          </div>
-        )}
-
-        <div className={`flex justify-center items-start p-6 min-h-full ${viewMode === "double" ? "gap-4" : ""}`}>
-          <Document
-            file={url}
-            onLoadSuccess={onDocumentLoadSuccess}
-            onLoadError={onDocumentLoadError}
-            loading={null}
-            className={`flex ${viewMode === "double" ? "gap-4" : ""}`}
-          >
-            <AnimatePresence mode="wait">
-              {visiblePages.map((pageNum, index) => (
-                <motion.div
-                  key={`page-${pageNum}`}
-                  initial={{ opacity: 0, x: index === 0 ? -20 : 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: index === 0 ? 20 : -20 }}
-                  transition={{ duration: 0.3, ease: "easeOut" }}
-                  className="relative group"
-                >
-                  <div className="absolute -inset-2 bg-gradient-to-b from-cyan-500/5 to-purple-500/5 rounded-xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity" />
-
-                  <div className={`relative ${themeStyles[theme]} transition-all duration-300`}>
-                    <Page
-                      pageNumber={pageNum}
-                      scale={scale}
-                      renderTextLayer={true}
-                      renderAnnotationLayer={true}
-                      className="shadow-2xl shadow-black/50 rounded-sm"
-                    />
-
-                    <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur-sm px-2 py-0.5 rounded text-[10px] text-slate-400 font-mono">
-                      {pageNum}
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
-            </AnimatePresence>
-          </Document>
-        </div>
-      </div>
-
-      {/* Bottom Progress Bar */}
-      <div className="relative h-1 bg-black/40">
-        <motion.div
-          className="h-full bg-gradient-to-r from-cyan-500 to-purple-500"
-          initial={{ width: 0 }}
-          animate={{ width: `${progressPercent}%` }}
-          transition={{ duration: 0.3 }}
+      <style>{`
+        /* System font for PDF viewer chrome */
+        .rpv-core__viewer,
+        .rpv-default-layout__container,
+        .rpv-default-layout__sidebar,
+        .rpv-default-layout__toolbar,
+        .rpv-bookmark__title,
+        .rpv-bookmark__container {
+          font-family: 'Roboto', sans-serif !important;
+        }
+        /* Stabilize sidebar — prevent flicker on hover/interaction */
+        .rpv-default-layout__sidebar {
+          transition: none !important;
+          animation: none !important;
+        }
+        .rpv-default-layout__sidebar--opened {
+          opacity: 1 !important;
+          visibility: visible !important;
+        }
+        /* Bookmark tree stability */
+        .rpv-bookmark__container {
+          overflow-y: auto !important;
+          overflow-x: hidden !important;
+        }
+        .rpv-bookmark__title {
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        /* Smoother page transitions */
+        .rpv-core__page-layer {
+          transition: none !important;
+        }
+        /* Brighter sidebar text */
+        .rpv-default-layout__sidebar .rpv-bookmark__title {
+          color: rgba(255,255,255,0.85) !important;
+        }
+        .rpv-default-layout__sidebar .rpv-bookmark__title:hover {
+          color: rgba(255,255,255,1) !important;
+        }
+      `}</style>
+      <Worker workerUrl={WORKER_URL}>
+        <Viewer
+          fileUrl={url}
+          plugins={[defaultLayout, highlightPluginInstance]}
+          theme="dark"
+          defaultScale={typeof startScale === "number" ? startScale : SpecialZoomLevel.PageWidth}
+          initialPage={startPage}
+          onPageChange={handlePageChange}
+          onZoom={handleZoom}
         />
-        <motion.div
-          className="absolute top-0 h-full w-8 bg-gradient-to-r from-transparent via-white/30 to-transparent blur-sm"
-          style={{ left: `${progressPercent}%`, transform: "translateX(-50%)" }}
-        />
-      </div>
-
-      {/* Keyboard shortcuts hint */}
-      <div className="absolute bottom-3 right-3 text-[10px] text-slate-600 font-mono bg-black/40 backdrop-blur-sm px-2 py-1 rounded-lg border border-white/5">
-        <span className="bg-white/10 px-1 rounded">←</span>
-        <span className="bg-white/10 px-1 rounded ml-1">→</span>
-        <span className="text-slate-500 ml-1.5">navigate</span>
-      </div>
+      </Worker>
     </div>
   );
 };
