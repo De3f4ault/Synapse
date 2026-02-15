@@ -8,7 +8,7 @@ import structlog
 from app.core.ai.rag.vector_store.qdrant.client import QdrantClientWrapper
 from app.core.ai.rag.vector_store.qdrant.collection_manager import CollectionManager
 from app.core.ai.rag.vector_store.operations.search import VectorSearch
-from app.core.ai.rag.config.llamaindex_config import configure_llamaindex
+from app.core.ai.embeddings.boundary import get_embedder, get_llama_embedder
 
 logger = structlog.get_logger(__name__)
 
@@ -42,8 +42,10 @@ class QdrantVectorRetriever(BaseRetriever):
         """
         super().__init__(**kwargs)
 
-        # Ensure LlamaIndex is configured to use local embeddings
-        configure_llamaindex()
+        # Configure LlamaIndex to use boundary's shared embedding adapter
+        from llama_index.core import Settings
+
+        Settings.embed_model = get_llama_embedder()
 
         self.qdrant_client = qdrant_client.get_client()
         self.collection_manager = collection_manager
@@ -55,20 +57,19 @@ class QdrantVectorRetriever(BaseRetriever):
         Synchronous retrieve implementation.
         Required by BaseRetriever abstract base class.
 
-        Uses nest_asyncio to handle cases where we're called from an async context.
+        Uses a thread-pool fallback when called from an async context
+        (e.g., FastAPI handler) to avoid uvloop incompatibility with nest_asyncio.
         """
         import asyncio
+        from concurrent.futures import ThreadPoolExecutor
 
         try:
-            # Try to get the running loop
-            _ = asyncio.get_running_loop()  # Just to check if loop exists
-            # We're in an async context - use run_coroutine_threadsafe or similar
-            import nest_asyncio
-
-            nest_asyncio.apply()
-            return asyncio.run(self._aretrieve(query_bundle))
+            asyncio.get_running_loop()
+            # Running inside an async context — offload to a worker thread
+            with ThreadPoolExecutor(max_workers=1) as pool:
+                return pool.submit(asyncio.run, self._aretrieve(query_bundle)).result()
         except RuntimeError:
-            # No running loop - safe to use asyncio.run
+            # No running loop — safe to use asyncio.run directly
             return asyncio.run(self._aretrieve(query_bundle))
 
     async def _aretrieve(self, query_bundle: QueryBundle) -> List[NodeWithScore]:
@@ -86,10 +87,8 @@ class QdrantVectorRetriever(BaseRetriever):
         query = query_bundle.query_str
         logger.info("qdrant_retrieval_start", query=query[:50])
 
-        # 1. Get query embedding using our own embedder (bypasses LlamaIndex's HuggingFace issues)
-        from app.core.ai.rag.embeddings.models.all_minilm import AllMiniLMEmbedder
-
-        embedder = AllMiniLMEmbedder()
+        # 1. Get query embedding using boundary's singleton (no per-query model construction)
+        embedder = get_embedder()
         embedding = embedder.encode(query)
         query_embedding = embedding[0].tolist() if embedding.ndim > 1 else embedding.tolist()
 

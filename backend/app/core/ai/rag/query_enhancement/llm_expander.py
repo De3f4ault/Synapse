@@ -4,6 +4,7 @@ from typing import List, Dict, Optional, Union
 from enum import Enum
 import asyncio
 import structlog
+from app.core.ai.registry.models import DEFAULT_CHAT_MODEL
 
 logger = structlog.get_logger(__name__)
 
@@ -59,11 +60,11 @@ class LLMQueryExpander:
         # Set default model based on provider
         if model is None:
             model_defaults = {
-                "gemini": "gemini-1.5-flash",
+                "gemini": DEFAULT_CHAT_MODEL,
                 "openai": "gpt-4-turbo-preview",
                 "anthropic": "claude-3-sonnet-20240229",
             }
-            model = model_defaults.get(llm_provider, "gemini-1.5-flash")
+            model = model_defaults.get(llm_provider, DEFAULT_CHAT_MODEL)
         self.model = model
 
         # Initialize LLM client

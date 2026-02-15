@@ -146,6 +146,77 @@ def get_embedder():
 
 
 # =============================================================================
+# LLAMAINDEX EMBEDDING ADAPTER
+# =============================================================================
+# Thin adapter that wraps the boundary singleton for LlamaIndex consumers.
+# This avoids loading a second SentenceTransformer via HuggingFaceEmbedding.
+
+_llama_embedder = None
+_llama_lock = Lock()
+
+
+def get_llama_embedder():
+    """Get or create the LlamaIndex-compatible embedding adapter (cached singleton).
+
+    Returns a BaseEmbedding subclass that delegates to the boundary's
+    AllMiniLMEmbedder. This means one SentenceTransformer serves both
+    raw .encode() callers and LlamaIndex's pipeline.
+    """
+    global _llama_embedder
+    if _llama_embedder is None:
+        with _llama_lock:
+            if _llama_embedder is None:
+                logger.info("initializing_llama_embedder_adapter")
+                _llama_embedder = _LlamaIndexEmbeddingAdapter()
+    return _llama_embedder
+
+
+class _LlamaIndexEmbeddingAdapter:
+    """LlamaIndex BaseEmbedding adapter wrapping boundary's AllMiniLMEmbedder.
+
+    Implements the three abstract methods required by llama_index BaseEmbedding:
+    - _get_text_embedding (sync, single text)
+    - _get_query_embedding (sync, single query)
+    - _aget_query_embedding (async, single query)
+
+    The non-abstract _get_text_embeddings (plural) is also overridden for
+    batch efficiency.
+    """
+
+    def __new__(cls):
+        # Lazy import to avoid circular deps and heavy import at module load
+        from llama_index.core.embeddings import BaseEmbedding as _Base
+
+        # Dynamically create the real class with proper inheritance
+        if not hasattr(cls, "_real_cls"):
+
+            class _Adapter(_Base):
+                model_name: str = EMBEDDING_MODEL_NAME
+                embed_batch_size: int = 32
+
+                def _get_text_embedding(self, text: str) -> list[float]:
+                    embedder = get_embedder()
+                    result = embedder.encode([text], normalize=True)
+                    if result.ndim > 1:
+                        result = result[0]
+                    return result.tolist()
+
+                def _get_text_embeddings(self, texts: list[str]) -> list[list[float]]:
+                    embedder = get_embedder()
+                    return embedder.encode(texts, normalize=True).tolist()
+
+                def _get_query_embedding(self, query: str) -> list[float]:
+                    return self._get_text_embedding(query)
+
+                async def _aget_query_embedding(self, query: str) -> list[float]:
+                    return self._get_query_embedding(query)
+
+            cls._real_cls = _Adapter
+
+        return cls._real_cls()
+
+
+# =============================================================================
 # CORE EMBEDDING FUNCTIONS
 # =============================================================================
 

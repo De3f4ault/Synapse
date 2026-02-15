@@ -3,7 +3,7 @@
 import structlog
 from typing import Optional
 from llama_index.core import Settings
-from llama_index.embeddings.huggingface import HuggingFaceEmbedding
+from app.core.ai.embeddings.boundary import get_llama_embedder
 from app.core.ai.rag.config.model_config import get_model_config
 
 logger = structlog.get_logger(__name__)
@@ -33,14 +33,8 @@ def configure_llamaindex(model_config: Optional[any] = None):
     if model_config is None:
         model_config = get_model_config()
 
-    # Configure embedding model
-    Settings.embed_model = HuggingFaceEmbedding(
-        model_name=model_config.embedding_model_name,
-        cache_folder=model_config.model_cache_dir,
-        device=model_config.embedding_device,
-        max_length=512,
-        normalize=model_config.embedding_normalize,
-    )
+    # Configure embedding model via boundary adapter (shares singleton)
+    Settings.embed_model = get_llama_embedder()
 
     # Chunk settings (used by default node parsers)
     Settings.chunk_size = 512

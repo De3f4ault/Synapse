@@ -5,7 +5,7 @@ import structlog
 from qdrant_client.http import models
 
 from app.core.ai.rag.config.rag_config import RAGConfig
-from app.core.ai.rag.embeddings.models.all_minilm import AllMiniLMEmbedder
+from app.core.ai.embeddings.boundary import get_embedder
 from app.core.ai.rag.chunking.strategies.semantic_chunker import SemanticChunker
 from app.core.ai.rag.chunking.strategies.advanced_semantic_chunker import get_semantic_chunker
 from app.core.ai.rag.vector_store.qdrant.client import QdrantClientWrapper
@@ -39,7 +39,7 @@ class RAGPipeline:
     def __init__(
         self,
         config: Optional[RAGConfig] = None,
-        embedding_manager: Optional[AllMiniLMEmbedder] = None,
+        embedding_manager=None,
         qdrant_client: Optional[QdrantClientWrapper] = None,
         collection_manager: Optional[CollectionManager] = None,
         enable_reranking: Optional[bool] = None,
@@ -70,7 +70,7 @@ class RAGPipeline:
         # Initialize components
         # Initialize embedding manager
         if embedding_manager is None:
-            self.embedder = AllMiniLMEmbedder()
+            self.embedder = get_embedder()
         else:
             self.embedder = embedding_manager
 
