@@ -79,6 +79,9 @@ class AIModelResponse(BaseModel):
     max_tokens: int
     supports_vision: bool
     supports_search: bool
+    provider: str = ""  # "ollama" | "google"
+    tier: str = ""  # "speed" | "balanced" | "reasoning" | "thinking"
+    supports_thinking: bool = False
 
 
 class NotesMessageCreate(BaseModel):

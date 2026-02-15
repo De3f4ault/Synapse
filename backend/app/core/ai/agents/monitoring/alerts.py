@@ -23,6 +23,7 @@ logger = structlog.get_logger(__name__)
 
 class AlertSeverity(str, Enum):
     """Alert severity levels"""
+
     INFO = "info"
     WARNING = "warning"
     ERROR = "error"
@@ -32,6 +33,7 @@ class AlertSeverity(str, Enum):
 @dataclass
 class Alert:
     """Alert data structure"""
+
     alert_id: str
     alert_type: str
     severity: AlertSeverity
@@ -82,9 +84,7 @@ class AlertManager:
     }
 
     def __init__(
-        self,
-        thresholds: Optional[Dict[str, float]] = None,
-        enable_notifications: bool = True
+        self, thresholds: Optional[Dict[str, float]] = None, enable_notifications: bool = True
     ):
         """
         Initialize alert manager
@@ -98,11 +98,7 @@ class AlertManager:
         self.logger = logger.bind(component="alert_manager")
         self._recent_alerts: List[Alert] = []
 
-    async def check_agent_thresholds(
-        self,
-        agent_name: str,
-        period: str = "hour"
-    ) -> List[Alert]:
+    async def check_agent_thresholds(self, agent_name: str, period: str = "hour") -> List[Alert]:
         """
         Check agent against all thresholds
 
@@ -113,7 +109,7 @@ class AlertManager:
         Returns:
             List of alerts triggered
         """
-        from app.core.ai.agents.monitoring.redis_counters import get_agent_metrics
+        from app.core.ai.agents.monitoring.counters import get_agent_metrics
 
         alerts = []
 
@@ -134,8 +130,8 @@ class AlertManager:
                 {
                     "failure_rate": failure_rate,
                     "total_calls": metrics.total_calls,
-                    "failed_calls": metrics.failed_calls
-                }
+                    "failed_calls": metrics.failed_calls,
+                },
             )
             alerts.append(alert)
 
@@ -145,7 +141,7 @@ class AlertManager:
                 AlertSeverity.ERROR,
                 agent_name,
                 f"ERROR: Failure rate at {failure_rate:.1%}",
-                {"failure_rate": failure_rate}
+                {"failure_rate": failure_rate},
             )
             alerts.append(alert)
 
@@ -155,7 +151,7 @@ class AlertManager:
                 AlertSeverity.WARNING,
                 agent_name,
                 f"WARNING: Failure rate at {failure_rate:.1%}",
-                {"failure_rate": failure_rate}
+                {"failure_rate": failure_rate},
             )
             alerts.append(alert)
 
@@ -170,7 +166,7 @@ class AlertManager:
                 AlertSeverity.ERROR,
                 agent_name,
                 f"ERROR: Avg response time {avg_time:.0f}ms",
-                {"avg_execution_time_ms": avg_time}
+                {"avg_execution_time_ms": avg_time},
             )
             alerts.append(alert)
 
@@ -180,7 +176,7 @@ class AlertManager:
                 AlertSeverity.WARNING,
                 agent_name,
                 f"WARNING: Avg response time {avg_time:.0f}ms",
-                {"avg_execution_time_ms": avg_time}
+                {"avg_execution_time_ms": avg_time},
             )
             alerts.append(alert)
 
@@ -192,7 +188,7 @@ class AlertManager:
         severity: AlertSeverity,
         agent_name: str,
         message: str,
-        data: Dict[str, Any]
+        data: Dict[str, Any],
     ) -> Alert:
         """
         Send alert to notification channels
@@ -217,7 +213,7 @@ class AlertManager:
             agent_name=agent_name,
             message=message,
             data=data,
-            timestamp=datetime.utcnow()
+            timestamp=datetime.utcnow(),
         )
 
         # Log alert
@@ -229,7 +225,7 @@ class AlertManager:
             agent=agent_name,
             severity=severity.value,
             message=message,
-            **data
+            **data,
         )
 
         # Store in recent alerts
@@ -261,7 +257,7 @@ class AlertManager:
             AlertSeverity.INFO: "info",
             AlertSeverity.WARNING: "warning",
             AlertSeverity.ERROR: "error",
-            AlertSeverity.CRITICAL: "critical"
+            AlertSeverity.CRITICAL: "critical",
         }
         return mapping.get(severity, "info")
 
@@ -269,7 +265,7 @@ class AlertManager:
         self,
         agent_name: Optional[str] = None,
         severity: Optional[AlertSeverity] = None,
-        limit: int = 20
+        limit: int = 20,
     ) -> List[Alert]:
         """
         Get recent alerts with optional filtering
@@ -313,7 +309,7 @@ async def send_agent_alert(
     severity: AlertSeverity,
     agent_name: str,
     message: str,
-    data: Dict[str, Any] = None
+    data: Dict[str, Any] = None,
 ) -> Alert:
     """
     Convenience function to send alert
@@ -329,13 +325,7 @@ async def send_agent_alert(
         Alert object
     """
     manager = get_alert_manager()
-    return await manager.send_alert(
-        alert_type,
-        severity,
-        agent_name,
-        message,
-        data or {}
-    )
+    return await manager.send_alert(alert_type, severity, agent_name, message, data or {})
 
 
 def get_recent_alerts(**kwargs) -> List[Alert]:

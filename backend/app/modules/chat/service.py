@@ -302,7 +302,7 @@ class ChatService:
             role=MessageRole.ASSISTANT,
             content=orchestration_result.output,
             tokens=orchestration_result.tokens_used or estimate_tokens(orchestration_result.output),
-            model_used=f"gemini-2.5-flash ({orchestration_result.agent_used})",
+            model_used=orchestration_result.metadata.get("model", orchestration_result.agent_used),
             function_calls=tool_calls_data,
         )
 
@@ -402,7 +402,7 @@ class ChatService:
         # Update existing message
         old_message.content = result.output
         old_message.tokens = result.tokens_used or estimate_tokens(result.output)
-        old_message.model_used = f"gemini-2.5-flash ({result.agent_used})"
+        old_message.model_used = result.metadata.get("model", result.agent_used)
         old_message.created_at = datetime.utcnow()
 
         # Handle function_calls
@@ -491,7 +491,7 @@ class ChatService:
             role=MessageRole.ASSISTANT,
             content=result.output,
             tokens=result.tokens_used or estimate_tokens(result.output),
-            model_used=f"gemini-2.5-flash ({result.agent_used})",
+            model_used=result.metadata.get("model", result.agent_used),
             parent_message_id=new_user_msg.id,
         )
 
@@ -686,45 +686,46 @@ class ChatService:
         return {"content": content, "filename": filename, "media_type": media_type}
 
     def get_ai_models(self) -> list[dict]:
-        """Return list of available AI models configuration."""
-        return [
-            {
-                "id": "gemini-2.5-flash",
-                "name": "Gemini 2.5 Flash",
-                "description": "Fast and efficient model for everyday tasks",
-                "capabilities": ["text", "code", "reasoning"],
-                "max_tokens": 8192,
-                "supports_vision": False,
-                "supports_search": False,
-            },
-            {
-                "id": "gemini-1.5-flash",
-                "name": "Gemini 1.5 Flash",
-                "description": "Balanced speed and capability",
-                "capabilities": ["text", "code", "vision", "reasoning"],
-                "max_tokens": 8192,
-                "supports_vision": True,
-                "supports_search": True,
-            },
-            {
-                "id": "gemini-1.5-pro",
-                "name": "Gemini 1.5 Pro",
-                "description": "Most capable model for complex tasks",
-                "capabilities": ["text", "code", "vision", "reasoning", "long-context"],
-                "max_tokens": 32768,
-                "supports_vision": True,
-                "supports_search": True,
-            },
-            {
-                "id": "gemini-2.0-flash-thinking",
-                "name": "Gemini 2.0 Flash (Thinking)",
-                "description": "Model with visible reasoning process",
-                "capabilities": ["text", "code", "reasoning", "thinking"],
-                "max_tokens": 8192,
-                "supports_vision": False,
-                "supports_search": True,
-            },
-        ]
+        """Return list of available AI models, pulled dynamically from MODEL_REGISTRY."""
+        from app.core.ai.registry.models import MODEL_REGISTRY
+
+        # Human-readable names for registry keys
+        _DISPLAY_NAMES: dict[str, str] = {
+            "deepseek_v3_1": "DeepSeek V3.1",
+            "deepseek_v3_2": "DeepSeek V3.2",
+            "qwen3_coder": "Qwen3 Coder 480B",
+            "qwen3_next": "Qwen3 Next 80B",
+            "qwen3_vl": "Qwen3 VL 235B",
+            "gpt_oss_120b": "GPT-OSS 120B",
+            "gpt_oss_20b": "GPT-OSS 20B",
+            "gemini_flash": "Gemini 2.5 Flash",
+            "gemini_pro": "Gemini 1.5 Pro",
+            "gemini_thinking": "Gemini 2.0 Flash (Thinking)",
+        }
+
+        models = []
+        for key, descriptor in MODEL_REGISTRY.items():
+            capabilities = [cap.value for cap in descriptor.capabilities]
+            models.append(
+                {
+                    "id": key,
+                    "name": _DISPLAY_NAMES.get(key, key),
+                    "description": ", ".join(descriptor.strengths) if descriptor.strengths else "",
+                    "capabilities": capabilities,
+                    "max_tokens": descriptor.max_context_tokens,
+                    "supports_vision": descriptor.supports_multimodal,
+                    "supports_search": False,
+                    "provider": descriptor.provider,
+                    "tier": descriptor.tier.value
+                    if hasattr(descriptor.tier, "value")
+                    else str(descriptor.tier),
+                    "supports_thinking": descriptor.supports_thinking,
+                }
+            )
+
+        # Ollama models first (higher priority), then Google
+        models.sort(key=lambda m: (0 if m["provider"] == "ollama" else 1, m["name"]))
+        return models
 
     async def send_dashboard_message(
         self,

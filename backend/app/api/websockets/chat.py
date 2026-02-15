@@ -133,10 +133,12 @@ async def stream_ai_response(
         result = await agent.execute(user_id=user_id, input=message, context=context or {})
 
         # Get model info
+        from app.core.ai.registry.models import DEFAULT_CHAT_MODEL
+
         model = (
-            result.metadata.get("model", "gemini-2.5-flash")
+            result.metadata.get("model", DEFAULT_CHAT_MODEL)
             if result.metadata
-            else "gemini-2.5-flash"
+            else DEFAULT_CHAT_MODEL
         )
 
         # Stream thinking process if available

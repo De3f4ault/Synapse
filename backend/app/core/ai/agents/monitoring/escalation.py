@@ -9,28 +9,31 @@ from enum import Enum
 from typing import Dict, Any, List, Optional
 from datetime import datetime, timedelta
 import structlog
+from app.core.ai.registry.models import DEFAULT_CHAT_MODEL, DEFAULT_GENERATION_MODEL
 
 logger = structlog.get_logger(__name__)
 
 
 class EscalationLevel(Enum):
     """Escalation severity levels"""
-    NONE = 0           # No action needed
-    LOG_WARNING = 1    # Just log
-    SWITCH_MODEL = 2   # Upgrade to better model
-    HUMAN_REVIEW = 3   # Flag for human review
+
+    NONE = 0  # No action needed
+    LOG_WARNING = 1  # Just log
+    SWITCH_MODEL = 2  # Upgrade to better model
+    HUMAN_REVIEW = 3  # Flag for human review
     DISABLE_AGENT = 4  # Disable agent completely
 
 
 class EscalationEvent:
     """Record of an escalation event"""
+
     def __init__(
         self,
         agent_name: str,
         level: EscalationLevel,
         reason: str,
         metrics: Dict[str, Any],
-        timestamp: datetime = None
+        timestamp: datetime = None,
     ):
         self.agent_name = agent_name
         self.level = level
@@ -59,7 +62,7 @@ async def check_escalation(agent_name: str) -> EscalationLevel:
     Returns:
         Escalation level needed
     """
-    from app.core.ai.agents.monitoring.redis_counters import get_agent_metrics
+    from app.core.ai.agents.monitoring.counters import get_agent_metrics
 
     try:
         metrics = await get_agent_metrics(agent_name, period="hour")
@@ -70,60 +73,38 @@ async def check_escalation(agent_name: str) -> EscalationLevel:
         # Check failure rate thresholds
         if failure_rate > 0.50:
             logger.critical(
-                "agent_failure_rate_critical",
-                agent=agent_name,
-                failure_rate=failure_rate
+                "agent_failure_rate_critical", agent=agent_name, failure_rate=failure_rate
             )
             return EscalationLevel.DISABLE_AGENT
 
         elif failure_rate > 0.30:
-            logger.error(
-                "agent_failure_rate_high",
-                agent=agent_name,
-                failure_rate=failure_rate
-            )
+            logger.error("agent_failure_rate_high", agent=agent_name, failure_rate=failure_rate)
             return EscalationLevel.HUMAN_REVIEW
 
         elif failure_rate > 0.15:
             logger.warning(
-                "agent_failure_rate_elevated",
-                agent=agent_name,
-                failure_rate=failure_rate
+                "agent_failure_rate_elevated", agent=agent_name, failure_rate=failure_rate
             )
             return EscalationLevel.SWITCH_MODEL
 
         elif failure_rate > 0.10:
-            logger.info(
-                "agent_failure_rate_increased",
-                agent=agent_name,
-                failure_rate=failure_rate
-            )
+            logger.info("agent_failure_rate_increased", agent=agent_name, failure_rate=failure_rate)
             return EscalationLevel.LOG_WARNING
 
         # Check response time (10 second threshold)
         if avg_time > 10000:
-            logger.warning(
-                "agent_response_time_slow",
-                agent=agent_name,
-                avg_time_ms=avg_time
-            )
+            logger.warning("agent_response_time_slow", agent=agent_name, avg_time_ms=avg_time)
             return EscalationLevel.SWITCH_MODEL
 
         return EscalationLevel.NONE
 
     except Exception as e:
-        logger.error(
-            "escalation_check_failed",
-            agent=agent_name,
-            error=str(e)
-        )
+        logger.error("escalation_check_failed", agent=agent_name, error=str(e))
         return EscalationLevel.NONE
 
 
 async def execute_escalation(
-    agent_name: str,
-    level: EscalationLevel,
-    metrics: Optional[Dict] = None
+    agent_name: str, level: EscalationLevel, metrics: Optional[Dict] = None
 ) -> None:
     """
     Execute escalation action
@@ -134,10 +115,7 @@ async def execute_escalation(
         metrics: Optional metrics snapshot
     """
     from app.core.ai.agents.registry import get_agent_registry
-    from app.core.ai.agents.monitoring.alerts import (
-        send_agent_alert,
-        AlertSeverity
-    )
+    from app.core.ai.agents.monitoring.alerts import send_agent_alert, AlertSeverity
 
     if level == EscalationLevel.NONE:
         return
@@ -147,15 +125,11 @@ async def execute_escalation(
         agent_name=agent_name,
         level=level,
         reason=f"Escalation triggered at level {level.name}",
-        metrics=metrics or {}
+        metrics=metrics or {},
     )
 
     if level == EscalationLevel.LOG_WARNING:
-        logger.warning(
-            "agent_performance_degraded",
-            agent=agent_name,
-            level=level.name
-        )
+        logger.warning("agent_performance_degraded", agent=agent_name, level=level.name)
 
     elif level == EscalationLevel.SWITCH_MODEL:
         # Upgrade agent to better model (Gemini upgrade path)
@@ -166,8 +140,8 @@ async def execute_escalation(
 
         # Gemini upgrade path: flash-8b → flash → pro
         upgrade_map = {
-            "gemini-2.5-flash-8b": "gemini-2.5-flash",
-            "gemini-2.5-flash": "gemini-2.5-pro"
+            "gemini-2.5-flash-8b": DEFAULT_CHAT_MODEL,
+            DEFAULT_CHAT_MODEL: DEFAULT_GENERATION_MODEL,
         }
 
         new_model = upgrade_map.get(current_model)
@@ -177,7 +151,7 @@ async def execute_escalation(
                 "agent_model_upgraded",
                 agent=agent_name,
                 from_model=current_model,
-                to_model=new_model
+                to_model=new_model,
             )
 
             await send_agent_alert(
@@ -188,14 +162,12 @@ async def execute_escalation(
                 {
                     "from_model": current_model,
                     "to_model": new_model,
-                    "reason": "performance_degradation"
-                }
+                    "reason": "performance_degradation",
+                },
             )
         else:
             logger.warning(
-                "agent_model_upgrade_unavailable",
-                agent=agent_name,
-                current_model=current_model
+                "agent_model_upgrade_unavailable", agent=agent_name, current_model=current_model
             )
 
     elif level == EscalationLevel.HUMAN_REVIEW:
@@ -208,15 +180,11 @@ async def execute_escalation(
             {
                 "escalation_level": level.name,
                 "metrics": metrics or {},
-                "action_required": "review_and_acknowledge"
-            }
+                "action_required": "review_and_acknowledge",
+            },
         )
 
-        logger.error(
-            "agent_needs_review",
-            agent=agent_name,
-            metrics=metrics
-        )
+        logger.error("agent_needs_review", agent=agent_name, metrics=metrics)
 
         # Flag agent for review (but don't disable)
         registry = get_agent_registry()
@@ -237,20 +205,15 @@ async def execute_escalation(
             {
                 "escalation_level": level.name,
                 "metrics": metrics or {},
-                "action_required": "manual_intervention_required"
-            }
+                "action_required": "manual_intervention_required",
+            },
         )
 
-        logger.critical(
-            "agent_disabled",
-            agent=agent_name,
-            metrics=metrics
-        )
+        logger.critical("agent_disabled", agent=agent_name, metrics=metrics)
 
 
 async def get_escalation_history(
-    agent_name: Optional[str] = None,
-    hours: int = 24
+    agent_name: Optional[str] = None, hours: int = 24
 ) -> List[EscalationEvent]:
     """
     Get escalation history
@@ -267,11 +230,7 @@ async def get_escalation_history(
     return []
 
 
-async def acknowledge_escalation(
-    event_id: str,
-    user_id: int,
-    notes: Optional[str] = None
-) -> bool:
+async def acknowledge_escalation(event_id: str, user_id: int, notes: Optional[str] = None) -> bool:
     """
     Acknowledge an escalation event
 
@@ -284,12 +243,7 @@ async def acknowledge_escalation(
         Success status
     """
     # TODO: Update database
-    logger.info(
-        "escalation_acknowledged",
-        event_id=event_id,
-        user_id=user_id,
-        notes=notes
-    )
+    logger.info("escalation_acknowledged", event_id=event_id, user_id=user_id, notes=notes)
     return True
 
 
@@ -312,9 +266,6 @@ async def reset_agent_after_review(agent_name: str) -> bool:
     agent.config.enabled = True
     agent.config.requires_review = False
 
-    logger.info(
-        "agent_reset_after_review",
-        agent=agent_name
-    )
+    logger.info("agent_reset_after_review", agent=agent_name)
 
     return True

@@ -22,6 +22,7 @@ from app.api.websockets.channels import channel_manager
 from app.db.session import AsyncSessionLocal
 from app.models.user import User
 from sqlalchemy import select
+from app.core.ai.registry.models import DEFAULT_CHAT_MODEL
 
 logger = structlog.get_logger()
 
@@ -422,7 +423,7 @@ async def handle_chat_message(
         # Accumulate full response for saving
         full_response = ""
         total_tokens = 0
-        model_used = "gemini-2.5-flash"
+        model_used = DEFAULT_CHAT_MODEL
         tool_calls_made = []
         grounding_sources = None
         agent_used = "tutor"

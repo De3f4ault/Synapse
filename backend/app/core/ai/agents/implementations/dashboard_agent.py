@@ -15,12 +15,9 @@ Different from TutorAgent:
 """
 
 from typing import Dict, Any, List
-from app.core.ai.agents.base_agent import (
-    BaseAgent,
-    AgentConfig,
-    AgentCapability
-)
+from app.core.ai.agents.base_agent import BaseAgent, AgentConfig, AgentCapability
 import structlog
+from app.core.ai.registry.models import DEFAULT_CHAT_MODEL
 
 logger = structlog.get_logger(__name__)
 
@@ -28,45 +25,45 @@ logger = structlog.get_logger(__name__)
 class DashboardAgent(BaseAgent):
     """
     Intelligent dashboard orchestrator with full system access
-    
+
     Capabilities:
     - Complete knowledge of user's learning state
     - Can create flashcards, notes, quizzes
     - Provides analytics and insights
     - Builds custom study plans
     - Proactive recommendations
-    
+
     System Prompt Philosophy:
     - "I see everything, I can do anything (that helps you learn)"
     - Proactive: suggests actions before being asked
     - Action-oriented: doesn't just answer, takes steps
     - Data-driven: uses analytics to guide decisions
-    
+
     Example interactions:
-    
+
     User: "What should I study today?"
     Dashboard: "I see you have 12 flashcards due on quantum mechanics (your
     weak area from last week's quiz). Let's review those first. I can also
     create a quick 5-question quiz if you'd like to test yourself after."
-    
+
     User: "I just read a great article on neural networks"
     Dashboard: "Would you like me to create flashcards from that article?
     I can extract key concepts and generate cards automatically."
     """
-    
+
     async def _get_system_prompt(self, context: Dict[str, Any]) -> str:
         """
         Build dashboard orchestrator system prompt
-        
+
         Emphasizes:
         - Complete system knowledge
         - Proactive assistance
         - Action-taking capabilities
         - Analytics and insights
-        
+
         Args:
             context: Rich context with all user data
-            
+
         Returns:
             System prompt for dashboard orchestrator
         """
@@ -76,28 +73,28 @@ class DashboardAgent(BaseAgent):
         study_recommendations = context.get("study_recommendations", [])
         knowledge_topics = context.get("knowledge_graph", {}).get("topics", [])
         recent_activity = context.get("recent_activity", [])
-        
+
         # Format statistics
         total_flashcards = user_stats.get("total_flashcards", 0)
         due_cards = user_stats.get("due_cards_count", 0)
         total_notes = user_stats.get("total_notes", 0)
         total_documents = user_stats.get("total_documents", 0)
         study_streak = user_stats.get("study_streak_days", 0)
-        
+
         # Format weak areas
         weak_areas_text = ""
         if weak_areas:
             weak_areas_text = "\n**Areas Needing Attention:**\n"
             for area in weak_areas[:3]:
-                topic = area.get('topic', 'Unknown')
-                accuracy = area.get('accuracy', 0)
+                topic = area.get("topic", "Unknown")
+                accuracy = area.get("accuracy", 0)
                 weak_areas_text += f"- {topic}: {accuracy:.1%} accuracy (needs practice)\n"
-        
+
         # Format knowledge topics
         topics_text = ""
         if knowledge_topics:
             topics_text = f"\n**Current Learning Topics:** {', '.join(knowledge_topics[:10])}\n"
-        
+
         prompt = f"""You are the SYNAPSE Dashboard Orchestrator - the most powerful AI in the system.
 
 **YOUR UNIQUE CAPABILITIES:**
@@ -259,7 +256,7 @@ learning journey. Be their intelligent co-pilot, not a passive assistant.
 
 Let's help them learn smarter! 🚀
 """
-        
+
         return prompt
 
 
@@ -267,7 +264,7 @@ Let's help them learn smarter! 🚀
 def create_dashboard_agent_config() -> AgentConfig:
     """
     Factory method for dashboard agent configuration
-    
+
     Returns:
         AgentConfig with dashboard-specific settings
     """
@@ -280,15 +277,15 @@ def create_dashboard_agent_config() -> AgentConfig:
             AgentCapability.TOOL_USE,
             AgentCapability.MEMORY,
             AgentCapability.PLANNING,
-            AgentCapability.FILE_ACCESS
+            AgentCapability.FILE_ACCESS,
         ],
         system_prompt="",  # Built dynamically with context
-        model="gemini-2.5-flash",  # Use most capable model
+        model=DEFAULT_CHAT_MODEL,  # Fast model for orchestration
         thinking_budget=2048,  # Enable reasoning with 2k token budget
         temperature=0.4,  # Balanced between creative and consistent
         max_iterations=12,  # Allow complex multi-tool operations
         tools=[],  # ALL tools registered by factory
         middleware=[],  # Set by factory
         enabled=True,
-        requires_review=False
+        requires_review=False,
     )

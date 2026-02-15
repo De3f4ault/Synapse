@@ -14,13 +14,14 @@ The agent then accesses context["grounding"].formatted_prompt_block
 in its _get_system_prompt() method.
 """
 
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 import structlog
 
 from app.services.grounding import (
     get_grounding_service,
     GroundingResult,
 )
+from app.db.session import AsyncSessionLocal
 
 
 logger = structlog.get_logger(__name__)
@@ -32,6 +33,9 @@ class GroundingMiddleware:
 
     This runs in the pre-execution stage, retrieving evidence from
     the Search Intelligence Bus and making it available to the agent.
+
+    Creates its own database session for search queries, following
+    the same isolation pattern as stream_ai_response's context building.
 
     Usage:
         from app.core.ai.agents.middleware.grounding import GroundingMiddleware
@@ -77,6 +81,9 @@ class GroundingMiddleware:
         Retrieves evidence from the Search Intelligence Bus and
         adds it to the context for the agent to use.
 
+        Creates an isolated db session for search queries to avoid
+        contaminating the caller's transaction.
+
         Args:
             agent: The agent instance
             state: Agent execution state
@@ -98,9 +105,13 @@ class GroundingMiddleware:
             context["grounding"] = GroundingResult(evidence=[])
             return
 
+        # Create isolated db session for search (same pattern as stream_ai_response)
+        grounding_db: Optional["AsyncSessionLocal"] = None
         try:
-            # Get grounding service
-            grounding_service = get_grounding_service()
+            grounding_db = AsyncSessionLocal()
+
+            # Get grounding service with its own db session
+            grounding_service = get_grounding_service(grounding_db)
 
             # Retrieve and format evidence
             result = await grounding_service.ground(
@@ -111,6 +122,8 @@ class GroundingMiddleware:
                 min_confidence=self.min_confidence,
                 max_latency_ms=self.max_latency_ms,
             )
+
+            await grounding_db.commit()
 
             # Inject into context
             context["grounding"] = result
@@ -129,8 +142,19 @@ class GroundingMiddleware:
                 user_id=user_id,
                 error=str(e),
             )
+            if grounding_db:
+                try:
+                    await grounding_db.rollback()
+                except Exception:
+                    pass
             # Graceful degradation: empty grounding
             context["grounding"] = GroundingResult(evidence=[])
+        finally:
+            if grounding_db:
+                try:
+                    await grounding_db.close()
+                except Exception:
+                    pass
 
     async def after_execution(
         self,

@@ -12,12 +12,9 @@ Uses principles from educational testing best practices.
 """
 
 from typing import Dict, Any, List, Optional
-from app.core.ai.agents.base_agent import (
-    BaseAgent,
-    AgentConfig,
-    AgentCapability
-)
+from app.core.ai.agents.base_agent import BaseAgent, AgentConfig, AgentCapability
 import structlog
+from app.core.ai.registry.models import DEFAULT_CHAT_MODEL
 
 logger = structlog.get_logger(__name__)
 
@@ -71,8 +68,8 @@ class QuizAgent(BaseAgent):
         if weak_areas:
             weak_areas_text = "\n**Priority Topics (Student's Weak Areas):**\n"
             for area in weak_areas:
-                topic = area.get('topic', 'Unknown')
-                accuracy = area.get('accuracy', 0)
+                topic = area.get("topic", "Unknown")
+                accuracy = area.get("accuracy", 0)
                 weak_areas_text += f"- {topic} ({accuracy:.1%} accuracy) - needs more questions\n"
 
         prompt = f"""You are a quiz generation specialist for SYNAPSE, a personalized learning platform.
@@ -352,11 +349,7 @@ Let's create an assessment that truly measures and enhances learning! 📝
         return prompt
 
     async def _generate_question(
-        self,
-        topic: str,
-        difficulty: str,
-        question_type: str,
-        weak_area: bool = False
+        self, topic: str, difficulty: str, question_type: str, weak_area: bool = False
     ) -> Dict[str, Any]:
         """
         Generate single quiz question
@@ -375,7 +368,7 @@ Let's create an assessment that truly measures and enhances learning! 📝
             topic=topic,
             difficulty=difficulty,
             type=question_type,
-            weak_area=weak_area
+            weak_area=weak_area,
         )
 
         # Implementation will use agent's tool calling
@@ -385,7 +378,7 @@ Let's create an assessment that truly measures and enhances learning! 📝
             "difficulty": difficulty,
             "question": "",
             "answer": "",
-            "explanation": ""
+            "explanation": "",
         }
 
 
@@ -400,17 +393,13 @@ def create_quiz_agent_config() -> AgentConfig:
         name="quiz",
         display_name="Quiz Generator",
         description="Generates high-quality, pedagogically sound quiz questions",
-        capabilities=[
-            AgentCapability.CHAT,
-            AgentCapability.TOOL_USE,
-            AgentCapability.PLANNING
-        ],
+        capabilities=[AgentCapability.CHAT, AgentCapability.TOOL_USE, AgentCapability.PLANNING],
         system_prompt="",  # Built dynamically
-        model="gemini-2.5-flash",  # Fast for generation
+        model=DEFAULT_CHAT_MODEL,  # Fast for generation
         temperature=0.5,  # Creative for varied questions
         max_iterations=5,  # Focused generation
         tools=[],  # Set by factory
         middleware=[],  # Set by factory
         enabled=True,
-        requires_review=False
+        requires_review=False,
     )

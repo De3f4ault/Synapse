@@ -12,6 +12,7 @@ Based on Factory pattern for clean agent creation.
 
 from typing import Dict, Any, List, Optional, Type
 import structlog
+from app.core.ai.registry.models import DEFAULT_CHAT_MODEL, DEFAULT_GENERATION_MODEL
 from pathlib import Path
 
 from app.core.ai.agents.base_agent import BaseAgent, AgentConfig, AgentCapability
@@ -165,7 +166,7 @@ class AgentFactory:
             description=base_config.get("description", ""),
             capabilities=base_config.get("capabilities", []),
             system_prompt=base_config.get("system_prompt", ""),
-            model=base_config.get("model", "gemini-2.5-flash"),
+            model=base_config.get("model", DEFAULT_CHAT_MODEL),
             temperature=base_config.get("temperature", 0.0),
             max_iterations=base_config.get("max_iterations", 10),
             max_tokens=base_config.get("max_tokens", 8000),
@@ -197,7 +198,7 @@ class AgentFactory:
                     AgentCapability.TOOL_USE,
                     AgentCapability.MEMORY,
                 ],
-                "model": "gemini-2.5-flash",
+                "model": DEFAULT_CHAT_MODEL,
                 "temperature": 0.3,  # Slightly creative for teaching
                 "max_iterations": 8,
                 "default_tools": [
@@ -217,7 +218,7 @@ class AgentFactory:
                     AgentCapability.TOOL_USE,
                     AgentCapability.FILE_ACCESS,
                 ],
-                "model": "gemini-2.5-pro",  # Use Pro for complex analysis
+                "model": DEFAULT_GENERATION_MODEL,  # Use Pro for complex analysis
                 "temperature": 0.0,
                 "max_iterations": 5,
             },
@@ -225,7 +226,7 @@ class AgentFactory:
                 "display_name": "Quiz Generator",
                 "description": "Generates high-quality quiz questions",
                 "capabilities": [AgentCapability.CHAT, AgentCapability.TOOL_USE],
-                "model": "gemini-2.5-flash",
+                "model": DEFAULT_CHAT_MODEL,
                 "temperature": 0.5,  # Creative for varied questions
                 "max_iterations": 5,
             },
@@ -239,7 +240,7 @@ class AgentFactory:
                     AgentCapability.PLANNING,
                     AgentCapability.FILE_ACCESS,
                 ],
-                "model": "gemini-2.5-flash",  # Latest model for best performance
+                "model": DEFAULT_CHAT_MODEL,  # Fast model for orchestration
                 "temperature": 0.4,  # Balanced creativity
                 "max_iterations": 12,  # Allow complex operations
             },

@@ -14,6 +14,7 @@ Based on 2025 best practices:
 from typing import Dict, Any, List, Optional
 from app.core.ai.agents.base_agent import BaseAgent, AgentConfig, AgentCapability
 import structlog
+from app.core.ai.registry.models import DEFAULT_CHAT_MODEL
 
 logger = structlog.get_logger(__name__)
 
@@ -294,7 +295,7 @@ def create_tutor_agent_config() -> AgentConfig:
             AgentCapability.PLANNING,
         ],
         system_prompt="",  # Built dynamically with context
-        model="gemini-2.5-flash",  # Fast for interactive teaching,
+        model=DEFAULT_CHAT_MODEL,  # Fast for interactive teaching,
         temperature=0.3,  # Slightly creative for varied teaching approaches
         max_iterations=8,  # Allow multi-turn Socratic dialogues
         tools=[],  # Set by factory

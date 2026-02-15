@@ -32,7 +32,7 @@ from app.core.ai.agents.middleware.webhook_trigger import (
 )
 
 # Monitoring exports
-from app.core.ai.agents.monitoring.redis_counters import (
+from app.core.ai.agents.monitoring.counters import (
     AgentMetrics,
     track_agent_call,
     get_agent_metrics,

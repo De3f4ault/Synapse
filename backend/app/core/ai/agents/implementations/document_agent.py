@@ -13,6 +13,7 @@ Uses Gemini 2.5 Pro for complex document analysis.
 from typing import Dict, Any, List, Optional
 from app.core.ai.agents.base_agent import BaseAgent, AgentConfig, AgentCapability
 import structlog
+from app.core.ai.registry.models import DEFAULT_GENERATION_MODEL
 
 logger = structlog.get_logger(__name__)
 
@@ -398,7 +399,7 @@ def create_document_agent_config() -> AgentConfig:
             AgentCapability.PLANNING,
         ],
         system_prompt="",  # Built dynamically
-        model="gemini-2.5-pro",  # Pro for complex analysis
+        model=DEFAULT_GENERATION_MODEL,  # Pro for complex analysis
         temperature=0.0,  # Deterministic for accuracy
         max_iterations=5,  # Focused analysis
         tools=[],  # Set by factory
