@@ -164,6 +164,9 @@ class SQLFunctionLoader:
         """
         Load all SQL functions from specified directory.
 
+        Batches all SQL files in the directory into a single transaction for speed.
+        Falls back to individual execution on failure to identify the specific file.
+
         Args:
             directory: Directory to scan (default: functions)
             fail_fast: If True, stop on first error (default: False)
@@ -185,37 +188,62 @@ class SQLFunctionLoader:
 
         results: Dict[str, bool] = {}
 
-        # Create database session
+        # Read all SQL files first
+        file_contents: list[tuple[Path, str, str]] = []  # (path, relative_path, content)
+        for sql_file in sql_files:
+            relative_path = str(sql_file.relative_to(self.sql_root))
+            sql_content = self._read_sql_file(sql_file)
+
+            if sql_content is None:
+                results[relative_path] = False
+                if fail_fast:
+                    return results
+                continue
+
+            file_contents.append((sql_file, relative_path, sql_content))
+
+        if not file_contents:
+            return results
+
+        # Try batch execution: concatenate all files with delimiter comments
+        batch_sql = "\n".join(
+            f"-- FILE: {rel_path}\n{content}" for _, rel_path, content in file_contents
+        )
+
         async with AsyncSession(engine) as session:
-            for sql_file in sql_files:
-                file_name = sql_file.name
-                relative_path = sql_file.relative_to(self.sql_root)
+            batch_success = await self._execute_sql(
+                batch_sql,
+                f"batch:{directory} ({len(file_contents)} files)",
+                session,
+            )
 
-                # Read SQL content
-                sql_content = self._read_sql_file(sql_file)
-
-                if sql_content is None:
-                    results[str(relative_path)] = False
-                    if fail_fast:
-                        break
-                    continue
-
-                # Execute SQL
-                success = await self._execute_sql(
-                    sql_content,
-                    str(relative_path),
-                    session,
+            if batch_success:
+                # All files succeeded as a batch
+                for _, rel_path, _ in file_contents:
+                    results[rel_path] = True
+                    self.loaded_functions[rel_path] = True
+            else:
+                # Batch failed — fall back to individual execution for diagnostics
+                logger.warning(
+                    "sql_batch_failed_falling_back",
+                    directory=directory,
+                    file_count=len(file_contents),
                 )
-
-                results[str(relative_path)] = success
-                self.loaded_functions[str(relative_path)] = success
-
-                if not success and fail_fast:
-                    logger.error(
-                        "stopping_due_to_error",
-                        file=str(relative_path),
+                for _, rel_path, sql_content in file_contents:
+                    success = await self._execute_sql(
+                        sql_content,
+                        rel_path,
+                        session,
                     )
-                    break
+                    results[rel_path] = success
+                    self.loaded_functions[rel_path] = success
+
+                    if not success and fail_fast:
+                        logger.error(
+                            "stopping_due_to_error",
+                            file=rel_path,
+                        )
+                        break
 
         # Log summary
         success_count = sum(1 for v in results.values() if v)
@@ -226,6 +254,7 @@ class SQLFunctionLoader:
             total=len(results),
             success=success_count,
             failed=failure_count,
+            batched=batch_success if "batch_success" in dir() else False,
         )
 
         return results
@@ -239,6 +268,18 @@ class SQLFunctionLoader:
         """
         return await self.load_functions(directory="views")
 
+    async def load_tables(self) -> Dict[str, bool]:
+        """
+        Load table definitions from sql/tables directory.
+
+        Creates UNLOGGED cache tables, event bus tables, etc.
+        Uses IF NOT EXISTS, so safe to run on every startup.
+
+        Returns:
+            Dict mapping file names to success status
+        """
+        return await self.load_functions(directory="tables")
+
 
 # Module-level function for easy import
 async def load_sql_functions(
@@ -246,17 +287,17 @@ async def load_sql_functions(
     load_views: bool = True,
 ) -> bool:
     """
-    Load all SQL functions and optionally views.
+    Load all SQL tables, functions, and optionally views.
 
-    This is the main entry point for loading SQL functions during
-    application startup.
+    This is the main entry point for loading SQL during
+    application startup. Order: tables -> functions -> views.
 
     Args:
         fail_fast: Stop on first error (default: False)
         load_views: Also load materialized views (default: True)
 
     Returns:
-        True if all functions loaded successfully, False otherwise
+        True if all loaded successfully, False otherwise
 
     Usage:
         @app.on_event("startup")
@@ -264,6 +305,12 @@ async def load_sql_functions(
             await load_sql_functions()
     """
     loader = SQLFunctionLoader()
+
+    all_success = True
+
+    # Load tables first (cache infrastructure, event bus, etc.)
+    table_results = await loader.load_tables()
+    all_success = all_success and (all(table_results.values()) if table_results else True)
 
     # Load functions
     function_results = await loader.load_functions(fail_fast=fail_fast)
@@ -273,9 +320,7 @@ async def load_sql_functions(
     # Load views if requested
     if load_views:
         view_results = await loader.load_views()
-        all_success = all_success and (
-            all(view_results.values()) if view_results else True
-        )
+        all_success = all_success and (all(view_results.values()) if view_results else True)
 
     if not all_success:
         logger.warning(
@@ -314,12 +359,8 @@ async def reload_sql_functions() -> bool:
     async with AsyncSession(engine) as session:
         try:
             # Note: This is destructive and should only be used in development
-            await session.execute(
-                text(f"DROP SCHEMA IF EXISTS {settings.DATABASE_SCHEMA} CASCADE")
-            )
-            await session.execute(
-                text(f"CREATE SCHEMA {settings.DATABASE_SCHEMA}")
-            )
+            await session.execute(text(f"DROP SCHEMA IF EXISTS {settings.DATABASE_SCHEMA} CASCADE"))
+            await session.execute(text(f"CREATE SCHEMA {settings.DATABASE_SCHEMA}"))
             await session.commit()
 
             logger.info("schema_recreated", schema=settings.DATABASE_SCHEMA)
