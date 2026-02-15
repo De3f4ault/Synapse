@@ -55,18 +55,8 @@ class UnifiedSearchService:
             db: Database session for engine access
         """
         self.db = db
-        self._hybrid_service = None
         self._rag_pipeline = None
         logger.info("unified_search_service_initialized")
-
-    @property
-    def hybrid_service(self):
-        """Lazy-load hybrid search service."""
-        if self._hybrid_service is None:
-            from app.services.search.hybrid_search_service import get_hybrid_search_service
-
-            self._hybrid_service = get_hybrid_search_service()
-        return self._hybrid_service
 
     @property
     def rag_pipeline(self):
@@ -199,12 +189,120 @@ class UnifiedSearchService:
             response_time_ms=response_time_ms,
         )
 
+        # =====================================================================
+        # ANALYTICS: Fire-and-forget — never blocks the search response
+        # =====================================================================
+        try:
+            from app.services.search.analytics import log_search_query, detect_reformulation
+
+            # Extract per-engine metrics from envelopes
+            engine_latencies = {e.engine: e.latency_ms for e in envelopes}
+            engine_candidates = {e.engine: len(e.results) for e in envelopes}
+            engines_used = [e.engine for e in envelopes if e.is_healthy]
+
+            query_id = await log_search_query(
+                self.db,
+                user_id=context.user_id,
+                query=query,
+                intent=context.intent if isinstance(context.intent, str) else str(context.intent),
+                surface=context.surface,
+                result_count=total_results,
+                engines_used=engines_used,
+                candidate_count_hybrid=engine_candidates.get("hybrid"),
+                candidate_count_rag=engine_candidates.get("rag"),
+                candidate_count_graph=engine_candidates.get("graph"),
+                total_latency_ms=response_time_ms,
+                hybrid_latency_ms=engine_latencies.get("hybrid"),
+                rag_latency_ms=engine_latencies.get("rag"),
+                graph_latency_ms=engine_latencies.get("graph"),
+            )
+
+            # Detect reformulations in the background (doesn't block response)
+            if query_id:
+                asyncio.create_task(
+                    detect_reformulation(
+                        self.db,
+                        user_id=context.user_id,
+                        current_query_id=query_id,
+                    )
+                )
+        except Exception as e:
+            # Analytics NEVER blocks search
+            logger.warning("analytics_logging_failed", error=str(e)[:100])
+
+        # =====================================================================
+        # ZERO-RESULT RECOVERY: Auto-retry + Suggestions
+        # Guardrails: max 1 retry, only if stopword stripping changes query
+        # =====================================================================
+        suggestions = None
+        auto_retry_query = None
+
+        if total_results == 0:
+            try:
+                from app.services.search.zero_result_handler import (
+                    should_retry,
+                    fetch_suggestions,
+                )
+
+                # Always fetch suggestions for zero-result queries
+                suggestions = await fetch_suggestions(self.db, context.user_id, query, limit=5)
+
+                # Try auto-retry with stopword stripping
+                do_retry, retry_query = should_retry(query)
+                if do_retry:
+                    logger.info(
+                        "zero_result_auto_retry",
+                        original=query[:50],
+                        retry=retry_query[:50],
+                    )
+                    auto_retry_query = retry_query
+
+                    # Re-run with stripped query (same engines, same context)
+                    retry_envelopes: List[EngineResult] = []
+                    for engine in participating:
+                        try:
+                            result = await self._run_engine(engine, retry_query, context)
+                            retry_envelopes.append(result)
+                        except Exception:
+                            pass
+
+                    retry_total = sum(len(e.results) for e in retry_envelopes)
+                    if retry_total > 0:
+                        envelopes = retry_envelopes
+                        total_results = retry_total
+                        response_time_ms = int((time.perf_counter() - start) * 1000)
+
+                    # Log retry in analytics
+                    try:
+                        from app.services.search.analytics import log_search_query
+
+                        await log_search_query(
+                            self.db,
+                            user_id=context.user_id,
+                            query=retry_query,
+                            intent=context.intent
+                            if isinstance(context.intent, str)
+                            else str(context.intent),
+                            surface=context.surface,
+                            result_count=retry_total,
+                            engines_used=[e.engine for e in retry_envelopes if e.is_healthy],
+                            total_latency_ms=response_time_ms,
+                            auto_retry=True,
+                        )
+                    except Exception:
+                        pass  # Analytics never blocks
+
+            except Exception as e:
+                logger.warning("zero_result_recovery_failed", error=str(e)[:100])
+
         return UnifiedSearchResponse(
             query=query,
             context=context,
             engines=envelopes,
             total_results=total_results,
             response_time_ms=response_time_ms,
+            suggestions=suggestions,
+            auto_retry_query=auto_retry_query,
         )
 
     async def _run_engine(
@@ -354,39 +452,54 @@ class UnifiedSearchService:
         query: str,
         context: SearchContext,
     ) -> List[UnifiedSearchResult]:
-        """Execute hybrid search (BM25 + Vector with RRF)."""
+        """Execute hybrid search via V2 (SQL-level BM25 + Vector with RRF).
+
+        Uses HybridSearchServiceV2 static methods instead of the old V1 singleton.
+        All three entity types are searched: notes, flashcards, chat messages.
+        """
+        from app.services.search.hybrid_v2 import HybridSearchServiceV2
+
         results: List[UnifiedSearchResult] = []
 
-        # Search notes
-        note_results = await self.hybrid_service.search_notes(
-            db=self.db,
-            query=query,
+        # Search notes via V2 (SQL-level RRF)
+        note_results = await HybridSearchServiceV2.search_notes_typed(
             user_id=context.user_id,
+            query=query,
+            db=self.db,
             limit=context.max_results_per_engine,
         )
         results.extend(adapt_hybrid_note_results(note_results, context.user_id))
 
-        # Search flashcards
-        flashcard_results = await self.hybrid_service.search_flashcards(
-            db=self.db,
-            query=query,
+        # Search flashcards via V2 (SQL-level RRF)
+        flashcard_results = await HybridSearchServiceV2.search_flashcards_typed(
             user_id=context.user_id,
+            query=query,
+            db=self.db,
             limit=context.max_results_per_engine,
         )
         results.extend(adapt_hybrid_flashcard_results(flashcard_results, context.user_id))
 
-        # Search chat messages (previous conversations)
+        # Search chat messages via V2 (search_conversations_v3)
         try:
-            chat_results = await self.hybrid_service.search_chat_messages(
-                db=self.db,
-                query=query,
+            chat_results = await HybridSearchServiceV2.search_chat_messages(
                 user_id=context.user_id,
+                query=query,
+                db=self.db,
                 limit=context.max_results_per_engine,
             )
             results.extend(adapt_chat_message_results(chat_results, context.user_id))
         except Exception as e:
             # Chat search is optional - don't fail the whole search if it errors
             logger.warning("chat_search_failed", error=str(e)[:100])
+
+        # Deterministic ranking guarantee: stable sort prevents ordering drift
+        # Safe None handling: -(None or 0.0) is valid, -None would crash
+        results.sort(
+            key=lambda r: (
+                -(r.confidence or 0.0),
+                r.id.id,
+            )
+        )
 
         return results
 

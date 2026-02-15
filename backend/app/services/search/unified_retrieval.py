@@ -284,10 +284,10 @@ class UnifiedRetrievalService:
 
         Returns chunks suitable for LLM prompts with source attribution.
         """
-        from app.core.ai.rag.embeddings.models.all_minilm import AllMiniLMEmbedder
+        from app.core.ai.embeddings.boundary import get_embedder
 
-        # Generate embedding for query
-        embedder = AllMiniLMEmbedder()
+        # Generate embedding for query (uses boundary singleton)
+        embedder = get_embedder()
         query_embedding = embedder.encode(query).tolist()
 
         # Retrieve from all sources
