@@ -23,8 +23,12 @@ class Settings(BaseSettings):
 
     DATABASE_SCHEMA: str = Field(default="developer_schema", description="PostgreSQL schema name")
 
-    # Redis
-    REDIS_URL: str = Field(default="redis://localhost:6379/0", description="Redis connection URL")
+    # Event Bus — Direct PostgreSQL connection for LISTEN/NOTIFY
+    # Auto-derived from DATABASE_URL if not set. Must bypass PgBouncer.
+    PG_LISTEN_DSN: str = Field(
+        default="",
+        description="Direct PostgreSQL DSN for LISTEN/NOTIFY (bypasses PgBouncer)",
+    )
 
     # Vector Store - LanceDB
     LANCEDB_PATH: str = Field(default="data/lancedb", description="Path to LanceDB vector store")
@@ -190,6 +194,23 @@ class Settings(BaseSettings):
         if v_upper not in allowed:
             raise ValueError(f"LOG_LEVEL must be one of: {', '.join(allowed)}")
         return v_upper
+
+    @field_validator("PG_LISTEN_DSN", mode="before")
+    @classmethod
+    def derive_listen_dsn(cls, v: str, info) -> str:
+        """
+        Auto-derive PG_LISTEN_DSN from DATABASE_URL if not explicitly set.
+
+        Strips the +asyncpg driver suffix so the DSN works with
+        raw asyncpg connections (for the LISTEN/NOTIFY event bus).
+        """
+        if v:
+            return v
+        db_url = info.data.get("DATABASE_URL", "")
+        if not db_url:
+            return ""
+        # Convert postgresql+asyncpg:// -> postgresql://
+        return db_url.replace("+asyncpg", "")
 
 
 # Singleton instance - import this throughout the application

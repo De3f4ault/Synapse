@@ -20,9 +20,8 @@ argon2-cffi==23.1.0
 python-multipart==0.0.20
 cryptography==46.0.3
 
-# Caching & Queueing
-redis==5.0.1
-hiredis==2.3.2
+# Caching: PostgreSQL kv_store (via PgCacheClient)
+# redis and hiredis removed — consolidated to PostgreSQL
 
 # Vector Store
 lancedb==0.25.2

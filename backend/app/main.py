@@ -93,25 +93,45 @@ async def _init_database() -> None:
     logger.info("postgresql_initialized")
 
 
-async def _init_redis() -> None:
+async def _init_cache() -> None:
     """
-    Redis Connection Pool Initialization.
+    PostgreSQL Cache Initialization.
 
-    **Target**: `app.services.cache.client.init_redis`
-    **Config Check**: Verifies `settings.REDIS_URL`. If unset, creates a 'Null Object'
-    or no-op state where cache operations strictly pass-through.
-    **Side Effect**: Establishes a connection pool to the Redis instance.
-    **Dependency**: Required for Rate Limiting and Pub/Sub functionality.
+    **Target**: `app.services.cache.client.init_cache`
+    **Side Effect**: Creates a PgCacheClient singleton backed by the
+    `kv_store` UNLOGGED table (created in _init_sql_functions).
+    **Dependency**: Required for Rate Limiting, Auth Blacklist, and KV caching.
     """
-    if not settings.REDIS_URL:
-        logger.info("redis_skipped", reason="REDIS_URL not configured")
+    from app.services.cache.client import init_cache
+
+    await init_cache()
+    logger.info("pg_cache_initialized")
+
+
+async def _init_event_bus() -> None:
+    """
+    Durable Event Bus Initialization.
+
+    **Target**: `app.services.cache.event_bus.init_event_bus`
+    **Action**: Opens a dedicated asyncpg connection directly to PostgreSQL
+    (bypassing PgBouncer) for LISTEN/NOTIFY. Starts the consumer loop.
+    **Side Effect**: Creates the global PgEventBus singleton.
+    **Dependency**: Required for real-time WebSocket broadcasts.
+    """
+    from app.services.cache.event_bus import init_event_bus
+    from app.db.session import AsyncSessionLocal
+
+    listen_dsn = settings.PG_LISTEN_DSN
+    if not listen_dsn:
+        logger.warning("event_bus_skipped", reason="PG_LISTEN_DSN not configured")
         return
 
-    # LOCAL IMPORT: avoids hard dependency on redis at module level
-    from app.services.cache.client import init_redis
-
-    await init_redis()
-    logger.info("redis_initialized")
+    await init_event_bus(
+        listen_dsn=listen_dsn,
+        session_factory=AsyncSessionLocal,
+        schema=settings.DATABASE_SCHEMA,
+    )
+    logger.info("pg_event_bus_initialized")
 
 
 async def _init_vector_store() -> None:
@@ -298,12 +318,21 @@ async def _shutdown_application() -> None:
     except Exception as e:
         logger.error("postgresql_close_failed", error=str(e))
 
-    # 3. Close Redis
+    # 3. Close cache
     try:
-        from app.services.cache.client import close_redis
+        from app.services.cache.client import close_cache
 
-        await close_redis()
-        logger.info("redis_closed")
+        await close_cache()
+        logger.info("pg_cache_closed")
+    except Exception:
+        pass
+
+    # 4. Close event bus
+    try:
+        from app.services.cache.event_bus import close_event_bus
+
+        await close_event_bus()
+        logger.info("pg_event_bus_closed")
     except Exception:
         pass
 
@@ -343,10 +372,17 @@ async def lifespan(app: FastAPI):
     await _run_startup_step("postgresql", _init_database(), critical=True)
 
     # BLOCK 2: SOFT INFRASTRUCTURE (Degradable)
-    # Optimization layers and analytical views.
-    await _run_startup_step("redis", _init_redis(), critical=False)
-    await _run_startup_step("qdrant", _init_vector_store(), critical=False)
+    # SQL tables/functions must load before cache (tables need to exist).
     await _run_startup_step("sql_functions", _init_sql_functions(), critical=False)
+
+    # Cache, event bus, and vector store are independent — run concurrently
+    import asyncio
+
+    await asyncio.gather(
+        _run_startup_step("cache", _init_cache(), critical=False),
+        _run_startup_step("event_bus", _init_event_bus(), critical=False),
+        _run_startup_step("qdrant", _init_vector_store(), critical=False),
+    )
 
     # BLOCK 3: DOMAIN LOGIC
     # Registering the business rules and entities.
