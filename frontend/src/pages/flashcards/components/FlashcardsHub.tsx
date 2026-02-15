@@ -2,7 +2,6 @@
  * FlashcardsHub.tsx
  * 
  * Central layout for the Flashcards module.
- * Incorporates the Neural/Aurora design.
  */
 
 import { useState, useEffect, useMemo } from 'react';
@@ -20,9 +19,9 @@ import {
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
-import { AuroraBackground, EmptyState } from '@/shared/ui';
+import { EmptyState } from '@/shared/ui';
 import { FlashcardsSidebar } from './FlashcardsSidebar';
-import { FlashcardsDock } from './FlashcardsDock';
+
 import { DeckCard } from '../list/components/DeckCard';
 
 import type { Deck } from '../core';
@@ -146,7 +145,7 @@ export function FlashcardsHub({
     }, [decks]);
 
     return (
-        <AuroraBackground className="fixed inset-0 min-h-screen flex flex-col pt-16" fixed>
+        <div className="fixed inset-0 min-h-screen flex flex-col nm-bg nm-constellation-bg pt-16">
 
             <div className="flex flex-1 overflow-hidden">
                 {/* Desktop Sidebar - Standardized Collapsible Pattern */}
@@ -320,15 +319,6 @@ export function FlashcardsHub({
             </div>
             </div>
 
-            {/* Floating Dock */}
-            <FlashcardsDock
-                viewMode={viewMode}
-                onViewChange={onViewChange}
-                searchQuery={searchQuery}
-                onSearchChange={onSearchChange}
-                onImport={onImport}
-            />
-
-        </AuroraBackground>
+        </div>
     );
 }

@@ -99,6 +99,9 @@ class NotificationClient {
       const { audioEngine } = await import('../core/AudioEngine');
       await audioEngine.playOneShot(url, { volume });
 
+    } catch {
+      // Sound files may not exist yet, or AudioContext errors — fail silently
+      console.debug(`[NotificationClient] Sound unavailable: ${sound}`);
     } finally {
       // Always deactivate policy → releases ducking
       soundPolicy.setActive(NOTIFICATION_SOURCE.id, false);
@@ -130,6 +133,8 @@ class NotificationClient {
       const { audioEngine } = await import('../core/AudioEngine');
       await audioEngine.playOneShot(url, { volume });
       
+    } catch {
+      console.debug(`[NotificationClient] Custom sound unavailable: ${url}`);
     } finally {
       soundPolicy.setActive(NOTIFICATION_SOURCE.id, false);
     }

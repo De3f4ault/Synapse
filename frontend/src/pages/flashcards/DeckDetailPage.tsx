@@ -2,9 +2,9 @@
  * DeckDetailPage - "Learning Cockpit" (V4)
  * 
  * A 3-panel intelligent study interface:
- * - Left: Card List with Mastery Spark Charts
+ * - Left: Card List with Learning State indicators
  * - Center: Knowledge Focus Zone with Stats Bar
- * - Right: Context Dock (Related Cards, AI Insight)
+ * - Right: Context Dock (Related Cards, Card Stats)
  */
 
 import { useState, useMemo } from 'react';
@@ -20,11 +20,12 @@ import {
     BrainCircuit,
     Calendar,
     TrendingUp,
-    Sparkles,
     Link2,
     ChevronRight,
     Settings,
-    MessageSquare
+    BarChart3,
+    Zap,
+    Repeat,
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/queryKeys';
@@ -50,29 +51,36 @@ const STATE_CONFIG: Record<LearningState, { color: string; label: string; dotCol
     mastered: { color: 'text-emerald-400', label: 'Mastered', dotColor: 'bg-emerald-400' },
 };
 
-// Generate mock spark chart data (7 days)
-function generateSparkData(state: LearningState): number[] {
-    if (state === 'new') return [0, 0, 0, 0, 0, 0, 0];
-    if (state === 'mastered') return [1, 1, 1, 1, 1, 1, 1];
-    // Random for learning/review
-    return Array.from({ length: 7 }, () => Math.random() > 0.4 ? 1 : 0);
-}
+/**
+ * Smart Next Review display:
+ * - Past date → "Overdue" (red)
+ * - Today → "Due today" (amber)
+ * - Future → formatted date (cyan)
+ * - null → "Now" (cyan)
+ */
+function formatNextReview(nextReview: string | null | undefined): { text: string; color: string } {
+    if (!nextReview) return { text: 'Now', color: 'text-cyan-400' };
 
-// Mini Spark Chart Component
-function SparkChart({ data }: { data: number[] }) {
-    return (
-        <div className="flex items-center gap-0.5">
-            {data.map((val, i) => (
-                <div
-                    key={i}
-                    className={cn(
-                        "w-1.5 h-1.5 rounded-full transition-colors",
-                        val === 1 ? "bg-emerald-400" : "bg-slate-700"
-                    )}
-                />
-            ))}
-        </div>
-    );
+    const reviewDate = new Date(nextReview);
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const reviewDay = new Date(reviewDate.getFullYear(), reviewDate.getMonth(), reviewDate.getDate());
+
+    const diffDays = Math.floor((reviewDay.getTime() - today.getTime()) / 86400000);
+
+    if (diffDays < 0) {
+        return { text: `Overdue (${Math.abs(diffDays)}d)`, color: 'text-red-400' };
+    }
+    if (diffDays === 0) {
+        return { text: 'Due today', color: 'text-amber-400' };
+    }
+    if (diffDays === 1) {
+        return { text: 'Tomorrow', color: 'text-cyan-400' };
+    }
+    return {
+        text: reviewDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+        color: 'text-cyan-400',
+    };
 }
 
 // ----------------------------------------------------------------------
@@ -89,7 +97,6 @@ function CardListItem({
     onClick: () => void
 }) {
     const config = STATE_CONFIG[card.learning_state];
-    const sparkData = useMemo(() => generateSparkData(card.learning_state), [card.learning_state]);
 
     return (
         <motion.div
@@ -120,10 +127,13 @@ function CardListItem({
                         {card.front_text}
                     </p>
 
-                    {/* Spark Chart */}
-                    <div className="mt-2">
-                        <SparkChart data={sparkData} />
-                    </div>
+                    {/* Review count instead of mock spark chart */}
+                    {(card.times_reviewed ?? 0) > 0 && (
+                        <div className="mt-2 flex items-center gap-1 text-[10px] text-slate-600">
+                            <Repeat size={10} />
+                            <span>{card.times_reviewed}× reviewed</span>
+                        </div>
+                    )}
                 </div>
 
                 {active && <ChevronRight className="w-4 h-4 text-cyan-400 mt-1 flex-shrink-0" />}
@@ -137,13 +147,21 @@ function CardListItem({
 // ----------------------------------------------------------------------
 
 function ContextDock({ card, allCards }: { card: Flashcard | undefined; allCards: Flashcard[] }) {
-    // Find related cards (simple: same learning state or random for demo)
+    // Related cards: same learning state (more meaningful than random first 3)
     const relatedCards = useMemo(() => {
         if (!card) return [];
         return allCards
-            .filter(c => c.id !== card.id)
+            .filter(c => c.id !== card.id && c.learning_state === card.learning_state)
             .slice(0, 3);
     }, [card, allCards]);
+
+    // Real card stats
+    const easeFactor = card?.ease_factor ?? 2.5;
+    const interval = card?.interval ?? 0;
+    const repetitions = card?.repetitions ?? 0;
+    const accuracy = card?.accuracy ?? 0;
+    const timesReviewed = card?.times_reviewed ?? 0;
+    const nextReview = card ? formatNextReview(card.next_review) : null;
 
     return (
         <div className="w-72 flex-shrink-0 border-l border-white/5 bg-black/20 flex flex-col overflow-hidden">
@@ -153,7 +171,7 @@ function ContextDock({ card, allCards }: { card: Flashcard | undefined; allCards
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 space-y-6 scrollbar-hide">
-                {/* Related Cards */}
+                {/* Related Cards (same learning state) */}
                 <div className="space-y-3">
                     <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
                         <Link2 size={12} />
@@ -166,42 +184,77 @@ function ContextDock({ card, allCards }: { card: Flashcard | undefined; allCards
                                     <p className="text-xs text-slate-300 line-clamp-2">{rc.front_text}</p>
                                 </div>
                             ))}
-                            <button className="w-full py-2 text-xs text-slate-500 hover:text-white transition-colors">
-                                Show More
-                            </button>
+                            {allCards.filter(c => c.id !== card?.id && c.learning_state === card?.learning_state).length > 3 && (
+                                <button className="w-full py-2 text-xs text-slate-500 hover:text-white transition-colors">
+                                    Show More
+                                </button>
+                            )}
                         </div>
                     ) : (
-                        <p className="text-xs text-slate-600">No related cards found.</p>
+                        <p className="text-xs text-slate-600">No related cards in same state.</p>
                     )}
                 </div>
 
-                {/* AI Insight */}
+                {/* Card Stats (Real SM-2 Data) */}
                 <div className="space-y-3">
                     <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
-                        <Sparkles size={12} className="text-purple-400" />
-                        AI Insight
+                        <BarChart3 size={12} className="text-purple-400" />
+                        Card Stats
                     </h4>
-                    <GlassCard className="p-4 bg-purple-500/5 border-purple-500/10">
-                        <div className="flex items-start gap-3">
-                            <div className="p-2 rounded-lg bg-purple-500/10">
-                                <BrainCircuit size={16} className="text-purple-400" />
+                    {card ? (
+                        <GlassCard className="p-4 space-y-3">
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <p className="text-[10px] text-slate-600 uppercase tracking-wider">Ease</p>
+                                    <p className="text-sm font-bold text-white">{easeFactor.toFixed(2)}</p>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] text-slate-600 uppercase tracking-wider">Interval</p>
+                                    <p className="text-sm font-bold text-white">{interval}d</p>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] text-slate-600 uppercase tracking-wider">Reviews</p>
+                                    <p className="text-sm font-bold text-white">{timesReviewed}</p>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] text-slate-600 uppercase tracking-wider">Accuracy</p>
+                                    <p className="text-sm font-bold text-white">{(accuracy * 100).toFixed(0)}%</p>
+                                </div>
                             </div>
-                            <div>
-                                <p className="text-xs font-bold text-purple-300 mb-1">Intelligent Note</p>
-                                <p className="text-xs text-slate-400 leading-relaxed">
-                                    {card ? (
-                                        <>This concept connects to <span className="text-cyan-400">'Memory Management'</span> and <span className="text-cyan-400">'Cognitive Load Theory'</span>. Understanding this is crucial for optimizing long-term retention.</>
-                                    ) : (
-                                        "Select a card to see AI insights."
-                                    )}
-                                </p>
+
+                            {/* Repetitions */}
+                            <div className="pt-2 border-t border-white/5">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-[10px] text-slate-600 uppercase tracking-wider">Repetitions</span>
+                                    <span className="text-xs font-bold text-white">{repetitions}</span>
+                                </div>
                             </div>
-                        </div>
-                    </GlassCard>
-                    <button className="w-full py-2.5 rounded-lg bg-purple-500/10 border border-purple-500/20 text-purple-300 text-xs font-medium hover:bg-purple-500/20 transition-colors flex items-center justify-center gap-2">
-                        <MessageSquare size={14} />
-                        Ask AI
-                    </button>
+
+                            {/* Next Review */}
+                            {nextReview && (
+                                <div className="pt-2 border-t border-white/5">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-[10px] text-slate-600 uppercase tracking-wider">Next Review</span>
+                                        <span className={cn("text-xs font-bold", nextReview.color)}>{nextReview.text}</span>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Mastery indicator */}
+                            {timesReviewed > 0 && (
+                                <div className="pt-2 border-t border-white/5">
+                                    <div className="flex items-center gap-2">
+                                        <Zap size={12} className={accuracy >= 0.8 ? "text-emerald-400" : accuracy >= 0.5 ? "text-amber-400" : "text-red-400"} />
+                                        <span className="text-xs text-slate-400">
+                                            {accuracy >= 0.8 ? "Strong recall" : accuracy >= 0.5 ? "Building up" : "Needs more practice"}
+                                        </span>
+                                    </div>
+                                </div>
+                            )}
+                        </GlassCard>
+                    ) : (
+                        <p className="text-xs text-slate-600">Select a card to see stats.</p>
+                    )}
                 </div>
             </div>
         </div>
@@ -254,6 +307,9 @@ export function DeckDetailPage() {
     const masteredCount = cards?.filter(c => c.learning_state === 'mastered').length || 0;
     const masteryPercent = cards?.length ? Math.round((masteredCount / cards.length) * 100) : 0;
 
+    // Next review display for active card
+    const nextReview = activeCard ? formatNextReview(activeCard.next_review) : null;
+
     // Loading / Error States
     if (deckLoading || cardsLoading) {
         return (
@@ -291,7 +347,7 @@ export function DeckDetailPage() {
                         <div className="flex items-center gap-2">
                             <TrendingUp size={14} className="text-emerald-400" />
                             <span className="text-xs text-slate-400">Recall Rate:</span>
-                            <span className="text-xs font-bold text-emerald-400">{((activeCard.accuracy || 0.85) * 100).toFixed(0)}% ↑</span>
+                            <span className="text-xs font-bold text-emerald-400">{((activeCard.accuracy || 0) * 100).toFixed(0)}%</span>
                         </div>
                         <div className="flex items-center gap-2">
                             <Clock size={14} className="text-slate-500" />
@@ -301,10 +357,10 @@ export function DeckDetailPage() {
                             </span>
                         </div>
                         <div className="flex items-center gap-2">
-                            <Calendar size={14} className="text-cyan-400" />
+                            <Calendar size={14} className={nextReview?.color || 'text-cyan-400'} />
                             <span className="text-xs text-slate-400">Next Review:</span>
-                            <span className="text-xs font-bold text-cyan-400">
-                                {activeCard.next_review ? new Date(activeCard.next_review).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : 'Now'}
+                            <span className={cn("text-xs font-bold", nextReview?.color || 'text-cyan-400')}>
+                                {nextReview?.text || 'Now'}
                             </span>
                         </div>
                     </div>
@@ -384,27 +440,22 @@ export function DeckDetailPage() {
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.3 }}
                         >
-                            {/* Question Card - Premium Flashcard Style */}
+                            {/* Question Card */}
                             <div className="relative group">
-                                {/* Outer Glow */}
                                 <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500/20 via-purple-500/20 to-cyan-500/20 rounded-2xl blur-xl opacity-50 group-hover:opacity-75 transition-opacity duration-500" />
 
                                 <div className="relative bg-gradient-to-br from-[#1a1a2e] to-[#16162a] rounded-2xl p-10 border border-white/10 shadow-2xl">
-                                    {/* Top Gradient Line */}
                                     <div className="absolute top-0 left-4 right-4 h-0.5 bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent" />
-
-                                    {/* Label */}
                                     <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-[#1a1a2e] border border-white/10 rounded-full">
                                         <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Question (Front)</span>
                                     </div>
-
                                     <h2 className="text-2xl md:text-3xl font-bold text-white leading-relaxed text-center pt-4">
                                         {activeCard.front_text}
                                     </h2>
                                 </div>
                             </div>
 
-                            {/* Decorative Separator */}
+                            {/* Separator */}
                             <div className="flex items-center justify-center gap-3 py-4">
                                 <div className="w-12 h-px bg-gradient-to-r from-transparent to-slate-600" />
                                 <div className="flex gap-1">
@@ -415,14 +466,12 @@ export function DeckDetailPage() {
                                 <div className="w-12 h-px bg-gradient-to-l from-transparent to-slate-600" />
                             </div>
 
-                            {/* Answer Card - Revealed Style */}
+                            {/* Answer Card */}
                             <div className="relative">
                                 <div className="bg-gradient-to-br from-[#0f0f1a] to-[#111118] rounded-2xl p-10 border border-white/5">
-                                    {/* Label */}
                                     <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-[#0f0f1a] border border-white/10 rounded-full">
                                         <span className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">Answer (Back)</span>
                                     </div>
-
                                     <p className="text-lg text-slate-300 leading-relaxed text-center pt-4">
                                         {activeCard.back_text}
                                     </p>

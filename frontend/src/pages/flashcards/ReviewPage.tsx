@@ -1,15 +1,21 @@
-// ... ReviewPage ...
+/**
+ * ReviewPage — Flashcard Study Session
+ * 
+ * Auto-starts on mount. No interstitial gate.
+ * Plain dark background (no Aurora).
+ */
+
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import Confetti from 'react-confetti';
 import { Trophy, Loader2, X } from 'lucide-react';
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   useStudySession,
   useStudyShortcuts,
   FlashcardView,
   RatingControls,
-  AuroraBackground,
+  type StudySessionStats,
 } from './study';
 import { useActiveDeck } from './core';
 import { EmptyState } from './shared';
@@ -19,18 +25,21 @@ import {
   notificationClient,
 } from '@/platform/audio';
 
-// Minimalist time formatter
 function formatTime(ms: number): string {
   const seconds = Math.floor(ms / 1000);
   const minutes = Math.floor(seconds / 60);
-  const remainingSeconds = seconds % 60;
-  return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+  return `${minutes}:${(seconds % 60).toString().padStart(2, '0')}`;
 }
 
 export function ReviewPage() {
   const { deckId } = useParams<{ deckId: string }>();
   const navigate = useNavigate();
   const parsedDeckId = deckId ? parseInt(deckId, 10) : 0;
+  const autoStarted = useRef(false);
+
+  // Local "done" state — survives store reset
+  const [sessionDone, setSessionDone] = useState(false);
+  const [finalStats, setFinalStats] = useState<StudySessionStats | null>(null);
 
   useActiveDeck({ deckId: parsedDeckId });
 
@@ -45,25 +54,37 @@ export function ReviewPage() {
     startSession,
     flipCard,
     submitReview,
+    getSessionStats,
     endSession,
   } = useStudySession({ deckId: parsedDeckId });
 
-  // Audio Integration: TTS for flashcard answers
+  // Auto-start session as soon as cards are loaded
+  useEffect(() => {
+    if (!isLoading && !isSessionActive && !isSessionComplete && !error && !autoStarted.current && !sessionDone) {
+      autoStarted.current = true;
+      startSession();
+    }
+  }, [isLoading, isSessionActive, isSessionComplete, error, startSession, sessionDone]);
+
+  // Audio: TTS for flashcard answers
   useTTSFlashcard({
     cardId: currentCard?.id ?? null,
     answerText: currentCard?.back_text ?? '',
     isFlipped,
   });
 
-  // Audio Integration: Autonomous music behavior
   useAutonomousAudio();
 
-  // Audio Integration: Notification on session complete
+  // When store says session is complete, capture stats into local state
+  // (before endSession resets the store)
   useEffect(() => {
-    if (isSessionComplete) {
+    if (isSessionComplete && !sessionDone) {
+      const stats = getSessionStats();
+      setFinalStats(stats);
+      setSessionDone(true);
       notificationClient.play('success');
     }
-  }, [isSessionComplete]);
+  }, [isSessionComplete, sessionDone, getSessionStats]);
 
   useStudyShortcuts({
     enabled: isSessionActive && !!currentCard,
@@ -76,9 +97,7 @@ export function ReviewPage() {
     },
   });
 
-  const sessionStats = isSessionComplete ? endSession() : null;
-
-  // Loading State
+  // Loading
   if (isLoading) {
     return (
       <div className="min-h-screen bg-[#050505] flex items-center justify-center">
@@ -87,8 +106,8 @@ export function ReviewPage() {
     );
   }
 
-  // Error State
-  if (error) {
+  // Error / No cards
+  if (error && !sessionDone) {
     return (
       <div className="min-h-screen bg-[#050505] flex items-center justify-center">
         <EmptyState
@@ -105,39 +124,10 @@ export function ReviewPage() {
     );
   }
 
-  // Not Started
-  if (!isSessionActive && !isSessionComplete) {
-    return (
-      <AuroraBackground>
-        <div className="flex-1 flex flex-col items-center justify-center p-6 text-center z-10">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="space-y-8"
-          >
-            <h1 className="text-5xl md:text-7xl font-bold text-white tracking-tight">
-              Ready to Focus?
-            </h1>
-            <p className="text-xl text-slate-400 max-w-md mx-auto">
-              {progress.total} cards queued for review.
-              Find your flow state.
-            </p>
-            <button
-              onClick={startSession}
-              className="px-8 py-4 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 font-medium hover:bg-cyan-500/20 hover:scale-105 transition-all duration-300"
-            >
-              Start Session
-            </button>
-          </motion.div>
-        </div>
-      </AuroraBackground>
-    );
-  }
-
-  // Session Complete
-  if (isSessionComplete && sessionStats) {
-    const accuracy = sessionStats.totalReviewed > 0
-      ? (sessionStats.correct / sessionStats.totalReviewed) * 100
+  // Session Complete — uses local state, NOT the store's isSessionComplete
+  if (sessionDone && finalStats) {
+    const accuracy = finalStats.totalReviewed > 0
+      ? (finalStats.correct / finalStats.totalReviewed) * 100
       : 0;
 
     return (
@@ -159,20 +149,23 @@ export function ReviewPage() {
           <div className="grid grid-cols-3 gap-4">
             <div className="p-4 rounded-2xl bg-white/5 border border-white/10">
               <div className="text-xs text-slate-500 uppercase tracking-widest mb-1">Reviewed</div>
-              <div className="text-2xl font-bold text-white">{sessionStats.totalReviewed}</div>
+              <div className="text-2xl font-bold text-white">{finalStats.totalReviewed}</div>
             </div>
             <div className="p-4 rounded-2xl bg-white/5 border border-white/10">
               <div className="text-xs text-slate-500 uppercase tracking-widest mb-1">Correct</div>
-              <div className="text-2xl font-bold text-emerald-400">{sessionStats.correct}</div>
+              <div className="text-2xl font-bold text-emerald-400">{finalStats.correct}</div>
             </div>
             <div className="p-4 rounded-2xl bg-white/5 border border-white/10">
               <div className="text-xs text-slate-500 uppercase tracking-widest mb-1">Duration</div>
-              <div className="text-2xl font-bold text-cyan-400">{formatTime(sessionStats.durationMs)}</div>
+              <div className="text-2xl font-bold text-cyan-400">{formatTime(finalStats.durationMs)}</div>
             </div>
           </div>
 
           <button
-            onClick={() => navigate('/flashcards')}
+            onClick={() => {
+              endSession(); // Now safe to reset the store
+              navigate('/flashcards');
+            }}
             className="px-8 py-4 rounded-full bg-white text-black font-bold hover:scale-105 transition-transform"
           >
             Finish
@@ -182,10 +175,10 @@ export function ReviewPage() {
     );
   }
 
-  // Active Session
+  // Active Session — plain dark background, no Aurora
   return (
-    <AuroraBackground>
-      {/* Floating Close Button - Top Left */}
+    <div className="min-h-screen bg-[#050505] flex flex-col">
+      {/* Close Button */}
       <button
         onClick={() => {
           if (confirm('End session?')) {
@@ -198,7 +191,7 @@ export function ReviewPage() {
         <X size={20} className="text-slate-400" />
       </button>
 
-      {/* Floating Progress - Top Right */}
+      {/* Progress */}
       <div className="fixed top-6 right-6 flex flex-col items-end gap-1 z-20 opacity-50 hover:opacity-100 transition-opacity">
         <div className="text-xs font-mono text-slate-500 tracking-widest">
           {progress.current} / {progress.total}
@@ -206,13 +199,13 @@ export function ReviewPage() {
         <div className="w-32 h-1 bg-white/10 rounded-full overflow-hidden">
           <div
             className="h-full bg-slate-500 transition-all duration-500"
-            style={{ width: `${(progress.completed / progress.total) * 100}%` }}
+            style={{ width: `${progress.total > 0 ? (progress.completed / progress.total) * 100 : 0}%` }}
           />
         </div>
       </div>
 
-      {/* Main Stage - Centered Flashcard */}
-      <div className="flex-1 w-full flex items-center justify-center pt-24 p-4 z-10">
+      {/* Flashcard */}
+      <div className="flex-1 w-full flex items-center justify-center pt-24 p-4">
         <AnimatePresence mode="wait">
           {currentCard && (
             <motion.div
@@ -233,8 +226,8 @@ export function ReviewPage() {
         </AnimatePresence>
       </div>
 
-      {/* Bottom Controls */}
-      <div className="h-32 flex items-center justify-center p-6 z-20">
+      {/* Rating Controls */}
+      <div className="h-32 flex items-center justify-center p-6">
         <AnimatePresence mode="wait">
           {isFlipped ? (
             <motion.div
@@ -244,7 +237,7 @@ export function ReviewPage() {
             >
               <RatingControls onRate={submitReview} disabled={false} />
             </motion.div>
-          ) : (
+          ) : currentCard ? (
             <motion.button
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -254,10 +247,9 @@ export function ReviewPage() {
             >
               Reveal Answer
             </motion.button>
-          )}
+          ) : null}
         </AnimatePresence>
       </div>
-    </AuroraBackground>
+    </div>
   );
 }
-

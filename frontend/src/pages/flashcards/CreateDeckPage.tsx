@@ -19,7 +19,6 @@ import { z } from 'zod';
 
 // Module imports
 import { useCreateDeck, type DeckCreateInput } from './list';
-import { AuroraBackground } from '@/shared/ui';
 import { GlassCard } from "@/shared/ui";
 
 // Schema
@@ -87,7 +86,7 @@ export function CreateDeckPage() {
     };
 
     return (
-        <AuroraBackground className="fixed inset-0 min-h-screen flex flex-col" fixed>
+        <div className="fixed inset-0 min-h-screen flex flex-col nm-bg nm-constellation-bg pt-16">
             {/* Top Bar */}
             <div className="flex-none h-16 border-b border-white/5 bg-black/20 backdrop-blur-xl z-20 px-8 flex items-center gap-4">
                 <button
@@ -246,6 +245,6 @@ export function CreateDeckPage() {
                     </motion.div>
                 </div>
             </div>
-        </AuroraBackground>
+        </div>
     );
 }

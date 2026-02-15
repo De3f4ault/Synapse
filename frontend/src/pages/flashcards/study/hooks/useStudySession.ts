@@ -40,6 +40,7 @@ interface UseStudySessionResult {
     startSession: () => void;
     flipCard: () => void;
     submitReview: (rating: ReviewRating) => Promise<void>;
+    getSessionStats: () => StudySessionStats;
     endSession: () => StudySessionStats | null;
 }
 
@@ -151,7 +152,12 @@ export function useStudySession({ deckId, limit = 20 }: UseStudySessionOptions):
         }
     }, [store, reviewMutation]);
 
-    // End session handler
+    // Get stats without resetting the store
+    const getSessionStats = useCallback(() => {
+        return store.getSessionStats();
+    }, [store]);
+
+    // End session handler (resets the store — only use when navigating away)
     const endSession = useCallback(() => {
         return store.endSession();
     }, [store]);
@@ -175,6 +181,7 @@ export function useStudySession({ deckId, limit = 20 }: UseStudySessionOptions):
         startSession,
         flipCard,
         submitReview,
+        getSessionStats,
         endSession,
     };
 }

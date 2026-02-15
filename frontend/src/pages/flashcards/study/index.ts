@@ -4,7 +4,7 @@
  * Handles the review/study session experience.
  *
  * @exports
- * - Components: FlashcardView, RatingControls, AnswerReveal, AuroraBackground
+ * - Components: FlashcardView, RatingControls, AnswerReveal
  * - Hooks: useStudySession, useStudyShortcuts
  * - State: useStudyStore, selectors
  */
@@ -16,9 +16,6 @@ export type { Flashcard, ReviewRating, StudySessionStats } from "../core";
 export * from "./components/FlashcardView";
 export * from "./components/RatingControls";
 export * from "./components/AnswerReveal";
-
-// Re-export AuroraBackground from shared (canonical source)
-export { AuroraBackground } from "@/shared/ui";
 
 // Hooks
 export * from "./hooks/useStudySession";

@@ -196,10 +196,10 @@ export const useStudyStore = create<StudyStore>()(
             };
         },
 
-        // Check if session is complete
+        // Check if session is complete (all cards reviewed)
         isSessionComplete: () => {
             const state = get();
-            return state.currentIndex >= state.queue.length - 1 && state.completed.length > 0;
+            return state.queue.length > 0 && state.completed.length >= state.queue.length;
         },
     }))
 );

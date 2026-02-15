@@ -36,7 +36,8 @@ export const QuizResults: React.FC<QuizResultsProps> = ({
     const [view, setView] = useState<"summary" | "review">("summary");
 
     return (
-        <AuroraBackground className="h-full flex flex-col relative overflow-hidden" fixed={false}>
+        <AuroraBackground className="h-full flex flex-col relative overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" fixed={false}>
+            <style>{`.quiz-review-scroll { scrollbar-width: none; } .quiz-review-scroll::-webkit-scrollbar { display: none; }`}</style>
             {/* Back to Summary Button (when in review) */}
             {view === "review" && (
                 <div className="absolute top-0 left-0 right-0 z-20 p-6 bg-gradient-to-b from-[#08080c] to-transparent pointer-events-none">
@@ -72,7 +73,7 @@ export const QuizResults: React.FC<QuizResultsProps> = ({
                     </div>
                 </ResultsSummary>
             ) : (
-                <div className="h-full overflow-y-auto">
+                <div className="quiz-review-scroll h-full overflow-y-auto">
                     <div className="max-w-4xl mx-auto p-6 pt-24 pb-20">
                         {/* Header */}
                         <div className="flex items-center justify-between mb-8">
