@@ -19,14 +19,21 @@ from typing import Optional
 import enum
 
 from sqlalchemy import String, Text, Integer, Boolean, DateTime, Numeric, ForeignKey, JSON, func
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy import Enum as SQLEnum
 
 from .base import Base
+from app.core.ai.registry.models import DEFAULT_CHAT_MODEL
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.core.ai.agents.base_agent import AgentResult
 
 
 class AgentType(str, enum.Enum):
     """Types of agents in the system."""
+
     TUTOR = "tutor"
     DOCUMENT = "document"
     QUIZ = "quiz"
@@ -36,6 +43,7 @@ class AgentType(str, enum.Enum):
 
 class AgentOperationType(str, enum.Enum):
     """Types of operations agents perform."""
+
     CHAT = "chat"
     GENERATION = "generation"
     ANALYSIS = "analysis"
@@ -64,20 +72,17 @@ class AgentMetric(Base):
     """
 
     __tablename__ = "agent_metrics"
+    __table_args__ = {"prefixes": ["UNLOGGED"]}
 
     # Primary Key
-    id: Mapped[int] = mapped_column(
-        primary_key=True,
-        autoincrement=True,
-        doc="Primary key"
-    )
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True, doc="Primary key")
 
     # Foreign Keys
     user_id: Mapped[int] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
-        doc="ID of the user who initiated the agent request"
+        doc="ID of the user who initiated the agent request",
     )
 
     # Agent Identification
@@ -85,121 +90,87 @@ class AgentMetric(Base):
         SQLEnum(AgentType, native_enum=False),
         nullable=False,
         index=True,
-        doc="Type of agent (tutor, document, quiz, etc.)"
+        doc="Type of agent (tutor, document, quiz, etc.)",
     )
 
     agent_name: Mapped[str] = mapped_column(
-        String(100),
-        nullable=False,
-        index=True,
-        doc="Specific agent instance name"
+        String(100), nullable=False, index=True, doc="Specific agent instance name"
     )
 
     operation_type: Mapped[AgentOperationType] = mapped_column(
         SQLEnum(AgentOperationType, native_enum=False),
         nullable=False,
         index=True,
-        doc="Type of operation performed"
+        doc="Type of operation performed",
     )
 
     # Performance Metrics
     execution_time_ms: Mapped[int] = mapped_column(
-        Integer,
-        nullable=False,
-        doc="Total execution time in milliseconds"
+        Integer, nullable=False, doc="Total execution time in milliseconds"
     )
 
     iterations: Mapped[int] = mapped_column(
-        Integer,
-        default=1,
-        nullable=False,
-        doc="Number of ReAct loop iterations"
+        Integer, default=1, nullable=False, doc="Number of ReAct loop iterations"
     )
 
     # Resource Usage
     total_tokens: Mapped[int] = mapped_column(
-        Integer,
-        default=0,
-        nullable=False,
-        doc="Total tokens used across all LLM calls"
+        Integer, default=0, nullable=False, doc="Total tokens used across all LLM calls"
     )
 
     estimated_cost: Mapped[Decimal] = mapped_column(
         Numeric(precision=10, scale=6),
         default=Decimal("0"),
         nullable=False,
-        doc="Estimated total cost in USD"
+        doc="Estimated total cost in USD",
     )
 
     # Model Information
     model_used: Mapped[str] = mapped_column(
-        String(100),
-        nullable=False,
-        index=True,
-        doc="Primary model used (e.g., 'gemini-2.5-flash')"
+        String(100), nullable=False, index=True, doc="Primary model used (e.g., 'gemini-2.5-flash')"
     )
 
     # Success/Failure Tracking
     success: Mapped[bool] = mapped_column(
-        Boolean,
-        nullable=False,
-        index=True,
-        doc="Whether the agent execution succeeded"
+        Boolean, nullable=False, index=True, doc="Whether the agent execution succeeded"
     )
 
     error_type: Mapped[Optional[str]] = mapped_column(
         String(100),
         nullable=True,
         index=True,
-        doc="Type of error if failed (e.g., 'TimeoutError', 'ValidationError')"
+        doc="Type of error if failed (e.g., 'TimeoutError', 'ValidationError')",
     )
 
     error_message: Mapped[Optional[str]] = mapped_column(
-        Text,
-        nullable=True,
-        doc="Detailed error message if failed"
+        Text, nullable=True, doc="Detailed error message if failed"
     )
 
     # Tool Usage
     tool_calls_count: Mapped[int] = mapped_column(
-        Integer,
-        default=0,
-        nullable=False,
-        doc="Number of tool calls made during execution"
+        Integer, default=0, nullable=False, doc="Number of tool calls made during execution"
     )
 
     tools_used: Mapped[Optional[dict]] = mapped_column(
-        JSON,
-        nullable=True,
-        doc="List of tools used with call counts: {'tool_name': count}"
+        JSON, nullable=True, doc="List of tools used with call counts: {'tool_name': count}"
     )
 
     # Context Information
     context_used: Mapped[bool] = mapped_column(
-        Boolean,
-        default=False,
-        nullable=False,
-        doc="Whether user context was injected"
+        Boolean, default=False, nullable=False, doc="Whether user context was injected"
     )
 
     grounding_used: Mapped[bool] = mapped_column(
-        Boolean,
-        default=False,
-        nullable=False,
-        doc="Whether web search grounding was used"
+        Boolean, default=False, nullable=False, doc="Whether web search grounding was used"
     )
 
     # User Feedback (optional)
     user_rating: Mapped[Optional[int]] = mapped_column(
-        Integer,
-        nullable=True,
-        doc="User satisfaction rating (1-5)"
+        Integer, nullable=True, doc="User satisfaction rating (1-5)"
     )
 
     user_feedback: Mapped[Optional[str]] = mapped_column(
-        Text,
-        nullable=True,
-        doc="User feedback text"
+        Text, nullable=True, doc="User feedback text"
     )
 
     # Additional Metadata
@@ -207,7 +178,7 @@ class AgentMetric(Base):
         "metadata",  # Database column name
         JSON,
         nullable=True,
-        doc="Additional execution metadata (input length, output length, etc.)"
+        doc="Additional execution metadata (input length, output length, etc.)",
     )
 
     # Timestamps
@@ -216,13 +187,11 @@ class AgentMetric(Base):
         server_default=func.now(),
         nullable=False,
         index=True,
-        doc="Timestamp when execution started"
+        doc="Timestamp when execution started",
     )
 
     completed_at: Mapped[Optional[datetime]] = mapped_column(
-        DateTime(timezone=True),
-        nullable=True,
-        doc="Timestamp when execution completed"
+        DateTime(timezone=True), nullable=True, doc="Timestamp when execution completed"
     )
 
     # Relationships
@@ -292,8 +261,8 @@ class AgentMetric(Base):
         agent_type: AgentType,
         operation_type: AgentOperationType,
         result: "AgentResult",
-        model_used: str = "gemini-2.5-flash",
-        estimated_cost: Decimal = Decimal("0")
+        model_used: str = DEFAULT_CHAT_MODEL,
+        estimated_cost: Decimal = Decimal("0"),
     ) -> "AgentMetric":
         """
         Create AgentMetric from AgentResult.
@@ -335,5 +304,5 @@ class AgentMetric(Base):
             tools_used=tools_used if tools_used else None,
             request_metadata=result.metadata,
             created_at=datetime.utcnow(),
-            completed_at=datetime.utcnow()
+            completed_at=datetime.utcnow(),
         )

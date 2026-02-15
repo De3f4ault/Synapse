@@ -5,7 +5,7 @@ Results are ALWAYS returned per-engine, never flattened.
 """
 
 from pydantic import BaseModel
-from typing import Literal, List, Optional
+from typing import Any, Dict, List, Literal, Optional
 
 from app.schemas.search_result import UnifiedSearchResult
 from app.schemas.search_context import SearchContext
@@ -58,6 +58,10 @@ class UnifiedSearchResponse(BaseModel):
     engines: List[EngineResult]
     total_results: int
     response_time_ms: int
+
+    # Zero-result recovery (populated only when total_results == 0)
+    suggestions: Optional[List[Dict[str, Any]]] = None
+    auto_retry_query: Optional[str] = None
 
     @property
     def healthy_engines(self) -> List[EngineResult]:

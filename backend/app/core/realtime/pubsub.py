@@ -1,255 +1,175 @@
 """
-Redis pub/sub for real-time broadcasting.
-Used to broadcast events to WebSocket connections and other subscribers.
-"""
-import asyncio
-import json
-from typing import Any, Callable, Dict
+Real-time event publishing via PostgreSQL Event Bus.
 
-from app.services.cache.client import get_redis
+Replaces Redis PUBLISH/SUBSCRIBE with the durable PgEventBus.
+All messages are persisted in the `events` UNLOGGED table and
+delivered via LISTEN/NOTIFY to WebSocket consumers.
+"""
+
+from typing import Optional
+
 from app.utils.logging import get_logger
 
 logger = get_logger(__name__)
 
 
-async def publish(channel: str, message: Dict[str, Any]) -> int:
+# ============================================================================
+# Channel Constants
+# ============================================================================
+
+# Channel naming conventions (used as prefixes for the events table)
+CHANNEL_USER = "user"  # Per-user events
+CHANNEL_SESSION = "session"  # Per-session events
+CHANNEL_GLOBAL = "global"  # System-wide broadcasts
+CHANNEL_AGENT = "agent"  # Agent status updates
+
+
+# ============================================================================
+# Publish Functions
+# ============================================================================
+
+
+async def publish_event(channel: str, data: dict) -> None:
     """
-    Publish a message to a Redis channel.
+    Publish an event to a channel via the PostgreSQL event bus.
 
     Args:
-        channel: Channel name
-        message: Message dictionary (will be JSON-encoded)
-
-    Returns:
-        int: Number of subscribers that received the message
+        channel: Target channel name
+        data: Event payload
     """
     try:
-        redis = await get_redis()
+        from app.services.cache.event_bus import get_event_bus
 
-        # Serialize message to JSON
-        message_json = json.dumps(message)
-
-        # Publish to channel
-        subscriber_count = await redis.publish(channel, message_json)
+        bus = get_event_bus()
+        await bus.publish(channel, data)
 
         logger.debug(
-            "message_published",
+            "event_published",
             channel=channel,
-            subscriber_count=subscriber_count,
+            event_type=data.get("type", "unknown"),
         )
-
-        return subscriber_count
-
+    except RuntimeError:
+        # Event bus not initialized (e.g., during testing or startup)
+        logger.debug("event_bus_not_available", channel=channel)
     except Exception as e:
         logger.error(
-            "publish_failed",
+            "event_publish_failed",
             channel=channel,
             error=str(e),
         )
-        return 0
 
 
-async def subscribe(channel: str, callback: Callable[[Dict[str, Any]], None]) -> None:
+async def broadcast_to_user(user_id: int, event_type: str, data: dict) -> None:
     """
-    Subscribe to a Redis channel and call callback for each message.
-
-    This is a blocking operation that runs until cancelled.
+    Broadcast event to a specific user.
 
     Args:
-        channel: Channel name to subscribe to
-        callback: Async function to call for each message
+        user_id: Target user ID
+        event_type: Event type identifier
+        data: Event payload
+    """
+    channel = f"{CHANNEL_USER}:{user_id}"
+    payload = {
+        "type": event_type,
+        "user_id": user_id,
+        **data,
+    }
+    await publish_event(channel, payload)
+
+
+async def broadcast_to_session(session_id: str, event_type: str, data: dict) -> None:
+    """
+    Broadcast event to a specific session.
+
+    Args:
+        session_id: Target session ID
+        event_type: Event type identifier
+        data: Event payload
+    """
+    channel = f"{CHANNEL_SESSION}:{session_id}"
+    payload = {
+        "type": event_type,
+        "session_id": session_id,
+        **data,
+    }
+    await publish_event(channel, payload)
+
+
+async def broadcast_global(event_type: str, data: dict) -> None:
+    """
+    Broadcast event to all connected users.
+
+    Args:
+        event_type: Event type identifier
+        data: Event payload
+    """
+    channel = CHANNEL_GLOBAL
+    payload = {
+        "type": event_type,
+        **data,
+    }
+    await publish_event(channel, payload)
+
+
+async def broadcast_agent_status(
+    agent_name: str,
+    status: str,
+    metadata: Optional[dict] = None,
+) -> None:
+    """
+    Broadcast agent status update.
+
+    Args:
+        agent_name: Name of the agent
+        status: Agent status (e.g., "thinking", "responding", "idle")
+        metadata: Optional additional metadata
+    """
+    channel = f"{CHANNEL_AGENT}:{agent_name}"
+    payload = {
+        "type": "agent_status",
+        "agent_name": agent_name,
+        "status": status,
+        **(metadata or {}),
+    }
+    await publish_event(channel, payload)
+
+
+# ============================================================================
+# Subscribe Functions (for WebSocket manager integration)
+# ============================================================================
+
+
+async def subscribe_to_user(user_id: int, callback) -> None:
+    """
+    Subscribe to events for a specific user.
+
+    Args:
+        user_id: User ID to subscribe to
+        callback: Async callback function(data: dict)
     """
     try:
-        redis = await get_redis()
-        pubsub = redis.pubsub()
+        from app.services.cache.event_bus import get_event_bus
 
-        await pubsub.subscribe(channel)
-
-        logger.info(
-            "subscribed_to_channel",
-            channel=channel,
-        )
-
-        try:
-            while True:
-                message = await pubsub.get_message(
-                    ignore_subscribe_messages=True,
-                    timeout=1.0
-                )
-
-                if message and message['type'] == 'message':
-                    try:
-                        # Decode JSON message
-                        data = json.loads(message['data'])
-
-                        # Call callback
-                        await callback(data)
-
-                    except json.JSONDecodeError as e:
-                        logger.error(
-                            "message_decode_failed",
-                            channel=channel,
-                            error=str(e),
-                        )
-                    except Exception as e:
-                        logger.error(
-                            "callback_failed",
-                            channel=channel,
-                            error=str(e),
-                        )
-
-                # Allow other tasks to run
-                await asyncio.sleep(0.01)
-
-        finally:
-            await pubsub.unsubscribe(channel)
-            logger.info(
-                "unsubscribed_from_channel",
-                channel=channel,
-            )
-
-    except Exception as e:
-        logger.error(
-            "subscribe_failed",
-            channel=channel,
-            error=str(e),
-        )
+        bus = get_event_bus()
+        channel = f"{CHANNEL_USER}:{user_id}"
+        await bus.subscribe(channel, callback)
+    except RuntimeError:
+        logger.debug("event_bus_not_available_for_subscribe")
 
 
-async def broadcast_to_user(user_id: int, message: Dict[str, Any]) -> int:
+async def unsubscribe_from_user(user_id: int, callback=None) -> None:
     """
-    Broadcast a message to all connections for a specific user.
+    Unsubscribe from user events.
 
     Args:
-        user_id: ID of the user
-        message: Message dictionary
-
-    Returns:
-        int: Number of subscribers that received the message
+        user_id: User ID to unsubscribe from
+        callback: Specific callback to remove (None removes all)
     """
-    channel = f"user:{user_id}"
-    return await publish(channel, message)
+    try:
+        from app.services.cache.event_bus import get_event_bus
 
-
-async def broadcast_to_session(session_id: str, message: Dict[str, Any]) -> int:
-    """
-    Broadcast a message to a specific session.
-
-    Args:
-        session_id: Session ID
-        message: Message dictionary
-
-    Returns:
-        int: Number of subscribers that received the message
-    """
-    channel = f"session:{session_id}"
-    return await publish(channel, message)
-
-
-async def broadcast_global(event_type: str, data: Dict[str, Any]) -> int:
-    """
-    Broadcast a global event to all subscribers.
-
-    Args:
-        event_type: Type of event
-        data: Event data
-
-    Returns:
-        int: Number of subscribers that received the message
-    """
-    message = {
-        "type": event_type,
-        "data": data,
-    }
-
-    return await publish("global", message)
-
-
-class PubSubManager:
-    """
-    Manager for pub/sub subscriptions.
-    Handles multiple subscriptions and automatic reconnection.
-    """
-
-    def __init__(self):
-        self.subscriptions: Dict[str, asyncio.Task] = {}
-        self.running = False
-
-    async def start(self):
-        """Start the pub/sub manager."""
-        self.running = True
-        logger.info("pubsub_manager_started")
-
-    async def stop(self):
-        """Stop the pub/sub manager and cancel all subscriptions."""
-        self.running = False
-
-        # Cancel all subscription tasks
-        for channel, task in self.subscriptions.items():
-            task.cancel()
-            try:
-                await task
-            except asyncio.CancelledError:
-                pass
-
-        self.subscriptions.clear()
-        logger.info("pubsub_manager_stopped")
-
-    async def subscribe_channel(
-        self,
-        channel: str,
-        callback: Callable[[Dict[str, Any]], None]
-    ):
-        """
-        Subscribe to a channel with automatic task management.
-
-        Args:
-            channel: Channel name
-            callback: Callback function
-        """
-        if channel in self.subscriptions:
-            logger.warning(
-                "already_subscribed",
-                channel=channel,
-            )
-            return
-
-        # Create subscription task
-        task = asyncio.create_task(
-            subscribe(channel, callback)
-        )
-
-        self.subscriptions[channel] = task
-
-        logger.info(
-            "subscription_created",
-            channel=channel,
-        )
-
-    async def unsubscribe_channel(self, channel: str):
-        """
-        Unsubscribe from a channel.
-
-        Args:
-            channel: Channel name
-        """
-        if channel not in self.subscriptions:
-            logger.warning(
-                "not_subscribed",
-                channel=channel,
-            )
-            return
-
-        # Cancel subscription task
-        task = self.subscriptions.pop(channel)
-        task.cancel()
-
-        try:
-            await task
-        except asyncio.CancelledError:
-            pass
-
-        logger.info(
-            "subscription_cancelled",
-            channel=channel,
-        )
+        bus = get_event_bus()
+        channel = f"{CHANNEL_USER}:{user_id}"
+        await bus.unsubscribe(channel, callback)
+    except RuntimeError:
+        pass

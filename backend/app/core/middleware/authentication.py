@@ -1,42 +1,32 @@
 """
 JWT authentication middleware with token blacklist support.
 
-Validates JWT tokens and checks Redis blacklist to prevent use of logged-out tokens.
+Validates JWT tokens and checks the token_blacklist PostgreSQL table
+to prevent use of logged-out tokens. Uses a LOGGED table (survives crashes)
+for security-critical blacklist operations.
+
 Uses dependency injection (get_current_user) for most cases, but can be used globally.
 """
-from typing import Callable, List, Optional
+
+from typing import Callable, List
 import logging
 
 from fastapi import Request, Response, HTTPException, status
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
-from jose import JWTError, jwt
+from jose import JWTError
+from sqlalchemy import text
 
 from app.core.security import decode_token
-from app.core.config import settings
-from app.services.cache.client import CacheClient
 
 logger = logging.getLogger(__name__)
-
-# Initialize Redis client for blacklist checks
-_cache_client: Optional[CacheClient] = None
-
-
-def get_cache_client() -> CacheClient:
-    """Get or create Redis cache client for blacklist checks."""
-    global _cache_client
-    if _cache_client is None:
-        _cache_client = CacheClient(
-            host=settings.REDIS_URL.split("://")[1].split(":")[0] if "://" in settings.REDIS_URL else "localhost",
-            port=int(settings.REDIS_URL.split(":")[-1].split("/")[0]) if ":" in settings.REDIS_URL else 6379,
-            db=int(settings.REDIS_URL.split("/")[-1]) if "/" in settings.REDIS_URL else 0
-        )
-    return _cache_client
 
 
 async def is_token_blacklisted(token: str, user_id: int) -> bool:
     """
     Check if token has been blacklisted (user logged out).
+
+    Uses the token_blacklist LOGGED table for durable security checks.
 
     Args:
         token: JWT token to check
@@ -46,25 +36,42 @@ async def is_token_blacklisted(token: str, user_id: int) -> bool:
         bool: True if token is blacklisted, False if still valid
     """
     try:
-        cache_client = get_cache_client()
+        from app.db.session import AsyncSessionLocal
 
-        # Check user-level logout (all tokens invalidated)
-        user_logout_key = f"user_logout:{user_id}"
-        if cache_client.exists(user_logout_key):
-            logger.info(f"Token rejected - user {user_id} has logged out globally")
-            return True
+        async with AsyncSessionLocal() as session:
+            # Check user-level logout (all tokens invalidated)
+            result = await session.execute(
+                text("""
+                    SELECT 1 FROM token_blacklist
+                    WHERE token_jti = :jti
+                    AND expires_at > now()
+                    LIMIT 1
+                """),
+                {"jti": f"user_logout:{user_id}"},
+            )
+            if result.scalar_one_or_none() is not None:
+                logger.info(f"Token rejected - user {user_id} has logged out globally")
+                return True
 
-        # Check individual token blacklist
-        token_blacklist_key = f"blacklisted_tokens:{user_id}:{token[:20]}"
-        if cache_client.exists(token_blacklist_key):
-            logger.info(f"Token rejected - token for user {user_id} is blacklisted")
-            return True
+            # Check individual token blacklist
+            result = await session.execute(
+                text("""
+                    SELECT 1 FROM token_blacklist
+                    WHERE token_jti = :jti
+                    AND expires_at > now()
+                    LIMIT 1
+                """),
+                {"jti": f"blacklisted_tokens:{user_id}:{token[:20]}"},
+            )
+            if result.scalar_one_or_none() is not None:
+                logger.info(f"Token rejected - token for user {user_id} is blacklisted")
+                return True
 
-        return False
+            return False
 
     except Exception as e:
         logger.error(f"Error checking token blacklist: {str(e)}")
-        # Fail open on cache errors - allow request through
+        # Fail open on database errors - allow request through
         return False
 
 
@@ -72,7 +79,8 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
     """
     JWT authentication middleware with token blacklist support.
 
-    Validates JWT tokens and checks Redis blacklist to prevent use of logged-out tokens.
+    Validates JWT tokens and checks PostgreSQL token_blacklist table
+    to prevent use of logged-out tokens.
     Note: Prefer using dependency injection (get_current_user) for most cases.
     This middleware is useful for global authentication requirements.
     """
@@ -100,11 +108,7 @@ class AuthenticationMiddleware(BaseHTTPMiddleware):
             "/api/v1/auth/refresh",
         ]
 
-    async def dispatch(
-        self,
-        request: Request,
-        call_next: Callable
-    ) -> Response:
+    async def dispatch(self, request: Request, call_next: Callable) -> Response:
         """
         Validate JWT token and check blacklist if present.
 

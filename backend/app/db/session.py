@@ -3,14 +3,17 @@ Database session factory and connection management for SYNAPSE.
 
 Uses asyncpg driver for async operations (FastAPI endpoints).
 Uses psycopg2 driver for sync operations (Celery signals).
-Sets search_path to developer_schema for all connections.
+Sets search_path to developer_schema for all connections via pool events
+(PgBouncer-compatible — no server_settings startup parameters).
 """
 
 from typing import AsyncGenerator
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, event, text
 from sqlalchemy.orm import sessionmaker
 from app.core.config import settings
+
+_SEARCH_PATH = f"{settings.DATABASE_SCHEMA}, public"
 
 # ============================================================
 # ASYNC ENGINE (for FastAPI endpoints)
@@ -24,9 +27,26 @@ engine = create_async_engine(
     pool_size=10,  # Base pool size
     max_overflow=20,  # Additional connections when needed
     pool_timeout=30,  # Wait up to 30s for a connection
-    # Set search_path at connection level
-    connect_args={"server_settings": {"search_path": f"{settings.DATABASE_SCHEMA}, public"}},
+    # NOTE: No connect_args/server_settings — PgBouncer rejects them.
+    # search_path is set via pool event listener below.
 )
+
+
+@event.listens_for(engine.sync_engine, "connect")
+def _set_search_path_async(dbapi_connection, connection_record):
+    """
+    Set search_path on every new asyncpg connection.
+
+    Uses the raw asyncpg driver connection to run SET search_path
+    immediately after connect. This is PgBouncer-compatible because
+    it's a normal SQL command, not a startup parameter.
+    """
+    # asyncpg connections have a synchronous-looking API inside
+    # SQLAlchemy's greenlet context — but we need the cursor approach
+    cursor = dbapi_connection.cursor()
+    cursor.execute(f"SET search_path TO {_SEARCH_PATH}")
+    cursor.close()
+
 
 # Async session factory
 AsyncSessionLocal = async_sessionmaker(
@@ -55,9 +75,19 @@ sync_engine = create_engine(
     echo=False,  # Less verbose for background tasks
     pool_pre_ping=True,
     pool_recycle=300,
-    # Set search_path at connection level
-    connect_args={"options": f"-c search_path={settings.DATABASE_SCHEMA},public"},
+    # NOTE: No connect_args/options — PgBouncer-compatible.
+    # search_path is set via pool event listener below.
 )
+
+
+@event.listens_for(sync_engine, "connect")
+def _set_search_path_sync(dbapi_connection, connection_record):
+    """Set search_path on every new psycopg2 connection (PgBouncer-compatible)."""
+    cursor = dbapi_connection.cursor()
+    cursor.execute(f"SET search_path TO {_SEARCH_PATH}")
+    cursor.close()
+    dbapi_connection.commit()
+
 
 # Sync session factory (for Celery signals)
 SessionLocal = sessionmaker(

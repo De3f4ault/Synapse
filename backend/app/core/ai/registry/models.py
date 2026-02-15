@@ -285,6 +285,17 @@ TIER_DEFAULTS: dict[Tier, list[str]] = {
 }
 
 
+# =============================================================================
+# DEFAULT MODEL CONSTANTS — Import these instead of hardcoding model strings
+# =============================================================================
+
+DEFAULT_CHAT_MODEL = GEMINI_FLASH.model_id  # "gemini-2.5-flash"
+DEFAULT_GENERATION_MODEL = GEMINI_PRO.model_id  # "gemini-1.5-pro"
+DEFAULT_SPEED_MODEL = GPT_OSS_20B.model_id  # fast, cheap
+DEFAULT_CACHE_MODEL = "gemini-2.0-flash-001"  # caching requires versioned model
+DEFAULT_TOKENIZER_MODEL = "gemini-2.0-flash"  # for token counting only
+
+
 def get_model(model_key: str) -> ModelDescriptor:
     """Get a model by registry key."""
     if model_key not in MODEL_REGISTRY:

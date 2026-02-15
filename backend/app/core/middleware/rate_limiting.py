@@ -1,7 +1,8 @@
 """
-Rate limiting middleware using Redis.
+Rate limiting middleware using PostgreSQL-backed cache.
 Implements token bucket algorithm with endpoint-specific limits and admin bypass.
 """
+
 import time
 from typing import Callable, Dict, Optional
 
@@ -11,7 +12,6 @@ from starlette.types import ASGIApp
 
 from app.core.config import settings
 from app.core.exceptions import RateLimitError
-from app.services.cache.client import get_redis
 from app.utils.logging import get_logger
 
 logger = get_logger(__name__)
@@ -31,16 +31,12 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         # Authentication endpoints - strict limits
         "/api/v1/auth/login": {"requests": 5, "window": 60},  # 5 per minute
         "/api/v1/auth/register": {"requests": 3, "window": 3600},  # 3 per hour
-
         # Upload endpoints - file size limits
         "/api/v1/documents": {"requests": 10, "window": 3600},  # 10 per hour
-
         # AI endpoints - API usage limits
         "/api/v1/chat": {"requests": 100, "window": 3600},  # 100 per hour
-
         # Search endpoints - expensive queries
         "/api/v1/search": {"requests": 50, "window": 60},  # 50 per minute
-
         # Analytics - computation heavy
         "/api/v1/analytics": {"requests": 20, "window": 60},  # 20 per minute
     }
@@ -80,32 +76,12 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             endpoint_limits=len(self.ENDPOINT_LIMITS),
         )
 
-    async def dispatch(
-        self,
-        request: Request,
-        call_next: Callable
-    ) -> Response:
+    async def dispatch(self, request: Request, call_next: Callable) -> Response:
         """
         Check rate limit before processing request.
 
-        Flow:
-        1. Check if rate limiting enabled
-        2. Check if path should bypass
-        3. Check if user is admin
-        4. Get appropriate rate limit
-        5. Increment Redis counter
-        6. Enforce limit or allow request
-        7. Add rate limit headers
-
-        Args:
-            request: Incoming HTTP request
-            call_next: Next middleware/route handler
-
-        Returns:
-            Response: HTTP response with rate limit headers
-
-        Raises:
-            RateLimitError: If rate limit exceeded
+        Uses PgCacheClient (kv_store) for atomic increment/expire.
+        Fails open if cache is unavailable.
         """
         # Skip if rate limiting disabled
         if not settings.RATE_LIMIT_ENABLED:
@@ -133,19 +109,20 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         requests_limit = limit_config["requests"]
         window = limit_config["window"]
 
-        # Build Redis key with window bucket
-        redis_key = f"rate_limit:{client_id}:{int(time.time()) // window}"
+        # Build cache key with window bucket
+        cache_key = f"rate_limit:{client_id}:{int(time.time()) // window}"
 
         try:
-            # Get Redis client
-            redis = await get_redis()
+            from app.services.cache.client import get_cache
+
+            cache = get_cache()
 
             # Increment counter atomically
-            current_count = await redis.incr(redis_key)
+            current_count = await cache.increment(cache_key)
 
             # Set expiration on first request
             if current_count == 1:
-                await redis.expire(redis_key, window)
+                await cache.expire(cache_key, window)
 
             # Calculate remaining requests
             remaining = max(0, requests_limit - current_count)
@@ -156,7 +133,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             # Check if limit exceeded
             if current_count > requests_limit:
                 # Get TTL for retry-after header
-                ttl = await redis.ttl(redis_key)
+                ttl = await cache.ttl(cache_key)
 
                 logger.warning(
                     "rate_limit_exceeded",
@@ -176,7 +153,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
                         "X-RateLimit-Remaining": "0",
                         "X-RateLimit-Reset": str(reset_time),
                         "Retry-After": str(ttl if ttl > 0 else window),
-                    }
+                    },
                 )
 
             # Process request
@@ -202,7 +179,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
             # Re-raise rate limit errors
             raise
         except Exception as e:
-            # Log error but don't block request if Redis fails
+            # Log error but don't block request if cache fails
             logger.error(
                 "rate_limit_error",
                 client_id=client_id,
@@ -298,7 +275,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         forwarded = request.headers.get("X-Forwarded-For")
         if forwarded:
             # Get first IP (client IP)
-            client_ip = forwarded.split(',')[0].strip()
+            client_ip = forwarded.split(",")[0].strip()
             return f"ip:{client_ip}"
 
         # Fall back to direct client IP

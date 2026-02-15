@@ -8,12 +8,14 @@ Supports text generation, tool calling, and streaming.
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional
 from dataclasses import dataclass, field
+from app.core.ai.registry.models import DEFAULT_CHAT_MODEL
 
 
 @dataclass
 class GenerationConfig:
     """Configuration for text generation"""
-    model: str = "gemini-2.5-flash"
+
+    model: str = DEFAULT_CHAT_MODEL
     temperature: float = 0.0
     max_tokens: int = 8192
     top_p: float = 0.95
@@ -25,6 +27,7 @@ class GenerationConfig:
 @dataclass
 class ProviderResponse:
     """Standardized response from AI providers"""
+
     text: str
     tool_calls: List[Dict[str, Any]] = field(default_factory=list)
     finish_reason: str = "stop"
@@ -42,10 +45,7 @@ class BaseProvider(ABC):
 
     @abstractmethod
     async def generate(
-        self,
-        prompt: str,
-        config: Optional[GenerationConfig] = None,
-        **kwargs
+        self, prompt: str, config: Optional[GenerationConfig] = None, **kwargs
     ) -> ProviderResponse:
         """
         Generate text from a prompt
@@ -67,7 +67,7 @@ class BaseProvider(ABC):
         tools: List[Dict[str, Any]],
         model: Optional[str] = None,
         temperature: Optional[float] = None,
-        **kwargs
+        **kwargs,
     ) -> Dict[str, Any]:
         """
         Generate text with tool/function calling support
@@ -85,12 +85,7 @@ class BaseProvider(ABC):
         pass
 
     @abstractmethod
-    async def stream(
-        self,
-        prompt: str,
-        config: Optional[GenerationConfig] = None,
-        **kwargs
-    ):
+    async def stream(self, prompt: str, config: Optional[GenerationConfig] = None, **kwargs):
         """
         Stream generated text chunks
 

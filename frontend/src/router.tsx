@@ -95,6 +95,11 @@ const DocumentsPage = React.lazy(() =>
     default: module.DocumentsPage,
   })),
 );
+const DocumentViewerPage = React.lazy(() =>
+  import("@/pages/documents/DocumentViewerPage").then((module) => ({
+    default: module.DocumentViewerPage,
+  })),
+);
 
 // Quizzes
 const QuizzesPage = React.lazy(() =>
@@ -281,6 +286,7 @@ export function Router() {
 
             {/* ========== DOCUMENTS (Omni-Kinetic) ========== */}
             <Route path="/documents" element={<DocumentsPage />} />
+            <Route path="/documents/:documentId" element={<DocumentViewerPage />} />
 
             {/* ========== QUIZZES (Protocol: Crucible) ========== */}
             <Route path="/quizzes" element={<QuizzesPage />} />

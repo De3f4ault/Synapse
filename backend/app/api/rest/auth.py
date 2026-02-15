@@ -22,8 +22,9 @@ from app.api.deps import get_db, get_current_user
 from app.core.config import settings
 from app.core.security import decode_token
 from app.models.user import User
-from app.services.cache.client import CacheClient
 
+
+# ============================================================================
 # Import schemas from the shared schemas module
 from app.schemas.auth import UserLogin, UserRegister, TokenResponse
 
@@ -32,22 +33,6 @@ router = APIRouter()
 
 # Password hashing context - Argon2 primary, bcrypt fallback for legacy hashes
 pwd_context = CryptContext(schemes=["argon2", "bcrypt"], deprecated="auto")
-
-# Redis client for token blacklisting
-cache_client = CacheClient(
-    host=settings.REDIS_URL.split("://")[1].split(":")[0]
-    if "://" in settings.REDIS_URL
-    else "localhost",
-    port=int(settings.REDIS_URL.split(":")[-1].split("/")[0])
-    if ":" in settings.REDIS_URL
-    else 6379,
-    db=int(settings.REDIS_URL.split("/")[-1]) if "/" in settings.REDIS_URL else 0,
-)
-
-
-# ============================================================================
-# Request/Response Schemas (Keep only non-imported schemas)
-# ============================================================================
 
 from pydantic import BaseModel, Field
 
@@ -147,6 +132,8 @@ async def is_token_blacklisted(token: str, user_id: int) -> bool:
     """
     Check if a token has been blacklisted (logged out).
 
+    Uses the token_blacklist LOGGED table for durable checks.
+
     Args:
         token: JWT token to check
         user_id: User ID from token
@@ -155,9 +142,19 @@ async def is_token_blacklisted(token: str, user_id: int) -> bool:
         bool: True if token is blacklisted, False otherwise
     """
     try:
-        blacklist_key = f"blacklisted_tokens:{user_id}:{token[:20]}"
-        exists = cache_client.exists(blacklist_key)
-        return exists > 0
+        from app.db.session import AsyncSessionLocal
+        from sqlalchemy import text
+
+        async with AsyncSessionLocal() as session:
+            result = await session.execute(
+                text("""
+                    SELECT 1 FROM token_blacklist
+                    WHERE token_jti = :jti AND expires_at > now()
+                    LIMIT 1
+                """),
+                {"jti": f"blacklisted_tokens:{user_id}:{token[:20]}"},
+            )
+            return result.scalar_one_or_none() is not None
     except Exception as e:
         logger.error(f"Error checking token blacklist: {str(e)}")
         return False
@@ -166,6 +163,8 @@ async def is_token_blacklisted(token: str, user_id: int) -> bool:
 async def add_token_to_blacklist(token: str, user_id: int, expiry_seconds: int) -> bool:
     """
     Add a token to the blacklist (used on logout).
+
+    Inserts into the token_blacklist LOGGED table.
 
     Args:
         token: JWT token to blacklist
@@ -176,18 +175,29 @@ async def add_token_to_blacklist(token: str, user_id: int, expiry_seconds: int) 
         bool: True if token was successfully blacklisted
     """
     try:
-        blacklist_key = f"blacklisted_tokens:{user_id}:{token[:20]}"
-        success = cache_client.set(blacklist_key, "1", ex=expiry_seconds)
+        from app.db.session import AsyncSessionLocal
+        from sqlalchemy import text
+        from datetime import timedelta, timezone
 
-        if success:
-            logger.info(f"Token blacklisted for user {user_id}")
-        else:
-            logger.warning(f"Failed to blacklist token for user {user_id}")
+        expires_at = datetime.now(timezone.utc) + timedelta(seconds=expiry_seconds)
+        jti = f"blacklisted_tokens:{user_id}:{token[:20]}"
 
-        return success
+        async with AsyncSessionLocal() as session:
+            await session.execute(
+                text("""
+                    INSERT INTO token_blacklist (token_jti, user_id, expires_at)
+                    VALUES (:jti, :user_id, :expires_at)
+                    ON CONFLICT (token_jti) DO UPDATE SET expires_at = :expires_at
+                """),
+                {"jti": jti, "user_id": user_id, "expires_at": expires_at},
+            )
+            await session.commit()
+
+        logger.info(f"Token blacklisted for user {user_id}")
+        return True
     except Exception as e:
         logger.error(f"Error adding token to blacklist: {str(e)}")
-        return True
+        return True  # Fail secure: treat as blacklisted if DB write fails
 
 
 # ============================================================================
@@ -322,26 +332,35 @@ async def logout(current_user: User = Depends(get_current_user)):
     """
     Logout current user.
 
-    Blacklists the JWT token in Redis so it cannot be used for future requests.
-    The token will remain blacklisted for its remaining TTL.
+    Inserts a user-level logout marker into the token_blacklist table.
+    The marker expires when the JWT would have expired.
     """
     try:
+        from app.db.session import AsyncSessionLocal
+        from sqlalchemy import text
+        from datetime import timedelta, timezone
+
         expiry_seconds = settings.JWT_EXPIRATION_MINUTES * 60
+        expires_at = datetime.now(timezone.utc) + timedelta(seconds=expiry_seconds)
+        jti = f"user_logout:{current_user.id}"
 
-        # Create a marker that this user's active sessions are invalidated
-        blacklist_key = f"user_logout:{current_user.id}"
-        success = cache_client.set(blacklist_key, datetime.utcnow().isoformat(), ex=expiry_seconds)
+        async with AsyncSessionLocal() as session:
+            await session.execute(
+                text("""
+                    INSERT INTO token_blacklist (token_jti, user_id, expires_at)
+                    VALUES (:jti, :user_id, :expires_at)
+                    ON CONFLICT (token_jti) DO UPDATE SET expires_at = :expires_at
+                """),
+                {"jti": jti, "user_id": current_user.id, "expires_at": expires_at},
+            )
+            await session.commit()
 
-        if success:
-            logger.info(f"User logged out: {current_user.id}")
-        else:
-            logger.warning(f"Failed to record logout for user: {current_user.id}")
-
+        logger.info(f"User logged out: {current_user.id}")
         return MessageResponse(message="Successfully logged out")
 
     except Exception as e:
         logger.error(f"Error during logout: {str(e)}")
-        # Still return success even if cache operation fails
+        # Still return success even if DB operation fails
         return MessageResponse(message="Logout processed")
 
 

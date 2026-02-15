@@ -28,7 +28,7 @@ class SearchIntent(str, Enum):
 ENGINE_PARTICIPATION = {
     SearchIntent.NAVIGATE: ["hybrid", "graph"],
     SearchIntent.EXPLORE: ["hybrid", "graph"],
-    SearchIntent.RETRIEVE_CONTEXT: ["rag"],
+    SearchIntent.RETRIEVE_CONTEXT: ["rag", "hybrid"],  # Hybrid supplements RAG for grounding
     SearchIntent.DIAGNOSE: ["graph"],
 }
 

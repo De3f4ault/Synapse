@@ -13,6 +13,7 @@ from app.core.ai.providers.base_provider import AIProvider
 from app.core.ai.runtime.request import AIRequest
 from app.core.ai.runtime.response import AIResponse
 from app.core.config import settings
+from app.core.ai.registry.models import DEFAULT_CHAT_MODEL
 
 
 logger = structlog.get_logger(__name__)
@@ -234,7 +235,7 @@ class OllamaProvider(AIProvider):
                 result = await gemini.generate_with_tools(
                     prompt=prompt,
                     tools=tools or [],
-                    model="gemini-2.5-flash",  # Fast fallback model
+                    model=DEFAULT_CHAT_MODEL,  # Fast fallback model
                     temperature=temp,
                     **kwargs,
                 )
@@ -242,7 +243,7 @@ class OllamaProvider(AIProvider):
                 logger.info(
                     "gemini_fallback_completed",
                     original_model=model_name,
-                    fallback_model="gemini-2.5-flash",
+                    fallback_model=DEFAULT_CHAT_MODEL,
                     text_length=len(result.get("text", "")),
                 )
 

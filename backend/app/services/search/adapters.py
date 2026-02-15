@@ -24,7 +24,7 @@ from app.schemas.search_result import (
     SearchRole,
     AssertionType,
 )
-from app.services.search.hybrid_search_service import (
+from app.services.search.result_types import (
     HybridSearchResult,
     FlashcardSearchResult,
     ChatMessageSearchResult,

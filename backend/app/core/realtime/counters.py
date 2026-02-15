@@ -1,210 +1,138 @@
 """
-Redis counter operations for real-time metrics.
-Provides atomic increment/decrement operations with sub-millisecond latency.
+Atomic counter operations using PostgreSQL-backed cache.
+
+Replaces Redis INCRBY/DECRBY/GET with PgCacheClient increment/get.
+Uses the kv_store UNLOGGED table for fast counter operations.
 """
+
 from typing import Dict, Optional
 
-from app.services.cache.client import get_redis
 from app.utils.logging import get_logger
 
 logger = get_logger(__name__)
 
 
-async def increment(key: str, amount: int = 1) -> int:
+async def increment_counter(
+    key: str,
+    amount: int = 1,
+    ttl: Optional[int] = None,
+) -> int:
     """
     Atomically increment a counter.
 
+    Creates the counter with value=amount if it doesn't exist.
+
     Args:
-        key: Redis key for the counter
-        amount: Amount to increment (default: 1)
+        key: Counter key
+        amount: Amount to increment
+        ttl: Optional TTL in seconds
 
     Returns:
         int: New counter value
     """
-    try:
-        redis = await get_redis()
-        new_value = await redis.incrby(key, amount)
-        return new_value
-    except Exception as e:
-        logger.error(
-            "counter_increment_failed",
-            key=key,
-            amount=amount,
-            error=str(e),
-        )
-        raise
+    from app.services.cache.client import get_cache
+
+    cache = get_cache()
+    new_value = await cache.increment(key, amount)
+
+    if ttl and new_value == amount:
+        # First increment (counter just created) — set TTL
+        await cache.expire(key, ttl)
+
+    return new_value
 
 
-async def decrement(key: str, amount: int = 1) -> int:
+async def decrement_counter(
+    key: str,
+    amount: int = 1,
+) -> int:
     """
     Atomically decrement a counter.
 
     Args:
-        key: Redis key for the counter
-        amount: Amount to decrement (default: 1)
+        key: Counter key
+        amount: Amount to decrement
 
     Returns:
         int: New counter value
     """
-    try:
-        redis = await get_redis()
-        new_value = await redis.decrby(key, amount)
-        return new_value
-    except Exception as e:
-        logger.error(
-            "counter_decrement_failed",
-            key=key,
-            amount=amount,
-            error=str(e),
-        )
-        raise
+    from app.services.cache.client import get_cache
+
+    cache = get_cache()
+    return await cache.decrement(key, amount)
 
 
 async def get_counter(key: str) -> int:
     """
-    Get the current value of a counter.
+    Get current counter value.
 
     Args:
-        key: Redis key for the counter
+        key: Counter key
 
     Returns:
-        int: Counter value (0 if not exists)
+        int: Counter value (0 if doesn't exist)
     """
-    try:
-        redis = await get_redis()
-        value = await redis.get(key)
-        return int(value) if value else 0
-    except Exception as e:
-        logger.error(
-            "counter_get_failed",
-            key=key,
-            error=str(e),
-        )
-        return 0
+    from app.services.cache.client import get_cache
+
+    cache = get_cache()
+    value = await cache.get(key, default=0)
+    return int(value) if value else 0
 
 
-async def reset_counter(key: str) -> None:
-    """
-    Reset a counter to zero by deleting the key.
-
-    Args:
-        key: Redis key for the counter
-    """
-    try:
-        redis = await get_redis()
-        await redis.delete(key)
-    except Exception as e:
-        logger.error(
-            "counter_reset_failed",
-            key=key,
-            error=str(e),
-        )
-
-
-async def get_multiple(pattern: str) -> Dict[str, int]:
-    """
-    Get multiple counters matching a pattern.
-
-    Args:
-        pattern: Redis key pattern (e.g., "agent:*:calls")
-
-    Returns:
-        Dict[str, int]: Dictionary of key -> value pairs
-    """
-    try:
-        redis = await get_redis()
-
-        # Scan for matching keys
-        keys = []
-        cursor = 0
-        while True:
-            cursor, partial_keys = await redis.scan(
-                cursor=cursor,
-                match=pattern,
-                count=100
-            )
-            keys.extend(partial_keys)
-            if cursor == 0:
-                break
-
-        # Get values for all keys
-        result = {}
-        if keys:
-            values = await redis.mget(keys)
-            for key, value in zip(keys, values):
-                result[key] = int(value) if value else 0
-
-        return result
-
-    except Exception as e:
-        logger.error(
-            "counter_get_multiple_failed",
-            pattern=pattern,
-            error=str(e),
-        )
-        return {}
-
-
-async def set_counter(key: str, value: int, ttl: Optional[int] = None) -> None:
+async def set_counter(
+    key: str,
+    value: int,
+    ttl: Optional[int] = None,
+) -> None:
     """
     Set a counter to a specific value.
 
     Args:
-        key: Redis key for the counter
+        key: Counter key
         value: Value to set
-        ttl: Optional time-to-live in seconds
+        ttl: Optional TTL in seconds
     """
-    try:
-        redis = await get_redis()
-        await redis.set(key, value)
+    from app.services.cache.client import get_cache
 
-        if ttl:
-            await redis.expire(key, ttl)
-
-    except Exception as e:
-        logger.error(
-            "counter_set_failed",
-            key=key,
-            value=value,
-            error=str(e),
-        )
+    cache = get_cache()
+    await cache.set(key, value, ex=ttl)
 
 
-async def increment_with_ttl(
-    key: str,
-    amount: int = 1,
-    ttl: int = 3600
-) -> int:
+async def delete_counter(key: str) -> None:
     """
-    Increment a counter and set TTL if it's the first increment.
-    Useful for time-windowed counters (e.g., requests per hour).
+    Delete a counter.
 
     Args:
-        key: Redis key for the counter
-        amount: Amount to increment
-        ttl: Time-to-live in seconds (default: 1 hour)
+        key: Counter key
+    """
+    from app.services.cache.client import get_cache
+
+    cache = get_cache()
+    await cache.delete(key)
+
+
+async def get_multiple_counters(pattern: str) -> Dict[str, int]:
+    """
+    Get multiple counters matching a pattern.
+
+    Args:
+        pattern: Key pattern (e.g., "agent:*:requests")
 
     Returns:
-        int: New counter value
+        Dict mapping key to counter value
     """
-    try:
-        redis = await get_redis()
+    from app.services.cache.client import get_cache
 
-        # Increment counter
-        new_value = await redis.incrby(key, amount)
+    cache = get_cache()
+    keys = await cache.keys(pattern)
 
-        # Set TTL only on first increment
-        if new_value == amount:
-            await redis.expire(key, ttl)
+    if not keys:
+        return {}
 
-        return new_value
+    values = await cache.mget(*keys)
 
-    except Exception as e:
-        logger.error(
-            "counter_increment_ttl_failed",
-            key=key,
-            amount=amount,
-            ttl=ttl,
-            error=str(e),
-        )
-        raise
+    result = {}
+    for key, value in zip(keys, values):
+        result[key] = int(value) if value else 0
+
+    return result

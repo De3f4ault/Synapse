@@ -1,281 +1,238 @@
 """
-Real-time metric tracking for agents and user activity.
-Uses Redis for sub-millisecond performance.
-"""
-import time
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional
+Real-time agent and user activity metrics using PostgreSQL.
 
-from app.core.realtime.counters import increment, increment_with_ttl, get_counter, get_multiple
-from app.services.cache.client import get_redis
+Replaces Redis sorted sets (ZADD/ZRANGE) and sets (SADD/SCARD)
+with the agent_metrics and user_activity UNLOGGED tables.
+Counter-based metrics use the kv_store table via PgCacheClient.
+"""
+
+from datetime import date
+from typing import Dict, Optional
+
+from sqlalchemy import text
+
 from app.utils.logging import get_logger
 
 logger = get_logger(__name__)
 
 
-async def track_agent_call(
+# ============================================================================
+# Agent Metrics (replaces Redis sorted sets + counters)
+# ============================================================================
+
+
+async def record_agent_invocation(
     agent_name: str,
     success: bool,
-    duration_ms: int
+    duration_ms: int,
+    tokens_used: Optional[int] = None,
+    model: Optional[str] = None,
 ) -> None:
     """
-    Track an agent execution.
+    Record an agent invocation in the agent_metrics table.
+
+    Replaces Redis ZADD for response time tracking and INCR for counters.
 
     Args:
         agent_name: Name of the agent
-        success: Whether execution was successful
-        duration_ms: Execution duration in milliseconds
+        success: Whether the invocation succeeded
+        duration_ms: Duration in milliseconds
+        tokens_used: Optional token count
+        model: Optional model identifier
     """
     try:
-        # Get current hour for time-windowed metrics
-        current_hour = datetime.utcnow().strftime("%Y-%m-%d-%H")
+        from app.db.session import AsyncSessionLocal
 
-        # Increment call counters (1 hour TTL)
-        await increment_with_ttl(f"agent:{agent_name}:calls:{current_hour}", 1, 3600)
-        await increment_with_ttl(f"agent:{agent_name}:calls:total", 1, 86400)  # 24h TTL
-
-        # Track success/failure
-        if success:
-            await increment_with_ttl(f"agent:{agent_name}:success:{current_hour}", 1, 3600)
-        else:
-            await increment_with_ttl(f"agent:{agent_name}:failures:{current_hour}", 1, 3600)
-
-        # Track response time using sorted set (for percentile calculations)
-        redis = await get_redis()
-        timestamp = time.time()
-        await redis.zadd(
-            f"agent:{agent_name}:response_times:{current_hour}",
-            {f"{timestamp}:{duration_ms}": duration_ms}
-        )
-        # Set TTL on sorted set
-        await redis.expire(f"agent:{agent_name}:response_times:{current_hour}", 3600)
-
+        async with AsyncSessionLocal() as session:
+            await session.execute(
+                text("""
+                    INSERT INTO agent_metrics
+                    (agent_name, success, duration_ms, tokens_used, model)
+                    VALUES (:agent_name, :success, :duration_ms, :tokens_used, :model)
+                """),
+                {
+                    "agent_name": agent_name,
+                    "success": success,
+                    "duration_ms": duration_ms,
+                    "tokens_used": tokens_used,
+                    "model": model,
+                },
+            )
+            await session.commit()
     except Exception as e:
-        logger.error(
-            "track_agent_call_failed",
-            agent_name=agent_name,
-            error=str(e),
-        )
+        logger.error("record_agent_invocation_failed", agent=agent_name, error=str(e))
 
 
-async def get_agent_metrics(
+async def get_agent_stats(
     agent_name: str,
-    period: str = "hour"
-) -> Dict[str, any]:
+    window_hours: int = 24,
+) -> Dict:
     """
-    Get metrics for an agent.
+    Get aggregated agent statistics.
+
+    Replaces Redis ZRANGE + counter reads with a single SQL query.
 
     Args:
-        agent_name: Name of the agent
-        period: Time period ("hour" or "day")
+        agent_name: Agent name
+        window_hours: Time window in hours
 
     Returns:
-        Dict with agent metrics
+        Dict with total, success_count, failure_count, avg_duration_ms,
+        p50_duration_ms, p95_duration_ms, total_tokens
     """
     try:
-        if period == "hour":
-            time_key = datetime.utcnow().strftime("%Y-%m-%d-%H")
-        else:  # day
-            time_key = "total"
+        from app.db.session import AsyncSessionLocal
 
-        # Get counters
-        calls = await get_counter(f"agent:{agent_name}:calls:{time_key}")
-        successes = await get_counter(f"agent:{agent_name}:success:{time_key}")
-        failures = await get_counter(f"agent:{agent_name}:failures:{time_key}")
-
-        # Calculate metrics
-        failure_rate = failures / calls if calls > 0 else 0.0
-        success_rate = successes / calls if calls > 0 else 0.0
-
-        # Get response time stats
-        redis = await get_redis()
-        response_times_key = f"agent:{agent_name}:response_times:{time_key}"
-
-        # Get all response times from sorted set
-        response_times = await redis.zrange(
-            response_times_key,
-            0,
-            -1,
-            withscores=True
-        )
-
-        avg_response_time = 0
-        p95_response_time = 0
-
-        if response_times:
-            # Extract scores (durations)
-            durations = [score for _, score in response_times]
-            avg_response_time = sum(durations) / len(durations)
-
-            # Calculate p95
-            sorted_durations = sorted(durations)
-            p95_index = int(len(sorted_durations) * 0.95)
-            p95_response_time = sorted_durations[p95_index] if p95_index < len(sorted_durations) else sorted_durations[-1]
-
-        return {
-            "agent_name": agent_name,
-            "period": period,
-            "calls": calls,
-            "successes": successes,
-            "failures": failures,
-            "success_rate": success_rate,
-            "failure_rate": failure_rate,
-            "avg_response_time": avg_response_time,
-            "p95_response_time": p95_response_time,
-        }
-
+        async with AsyncSessionLocal() as session:
+            result = await session.execute(
+                text("""
+                    SELECT
+                        COUNT(*) as total,
+                        COUNT(*) FILTER (WHERE success = TRUE) as success_count,
+                        COUNT(*) FILTER (WHERE success = FALSE) as failure_count,
+                        COALESCE(AVG(duration_ms), 0)::int as avg_duration_ms,
+                        COALESCE(percentile_cont(0.5) WITHIN GROUP (ORDER BY duration_ms), 0)::int as p50_duration_ms,
+                        COALESCE(percentile_cont(0.95) WITHIN GROUP (ORDER BY duration_ms), 0)::int as p95_duration_ms,
+                        COALESCE(SUM(tokens_used), 0)::int as total_tokens
+                    FROM agent_metrics
+                    WHERE agent_name = :agent_name
+                    AND created_at > now() - make_interval(hours => :window_hours)
+                """),
+                {"agent_name": agent_name, "window_hours": window_hours},
+            )
+            row = result.fetchone()
+            if row is None:
+                return {
+                    "total": 0,
+                    "success_count": 0,
+                    "failure_count": 0,
+                    "avg_duration_ms": 0,
+                    "p50_duration_ms": 0,
+                    "p95_duration_ms": 0,
+                    "total_tokens": 0,
+                }
+            return {
+                "total": row[0],
+                "success_count": row[1],
+                "failure_count": row[2],
+                "avg_duration_ms": row[3],
+                "p50_duration_ms": row[4],
+                "p95_duration_ms": row[5],
+                "total_tokens": row[6],
+            }
     except Exception as e:
-        logger.error(
-            "get_agent_metrics_failed",
-            agent_name=agent_name,
-            error=str(e),
-        )
+        logger.error("get_agent_stats_failed", agent=agent_name, error=str(e))
         return {
-            "agent_name": agent_name,
-            "period": period,
-            "calls": 0,
-            "successes": 0,
-            "failures": 0,
-            "success_rate": 0.0,
-            "failure_rate": 0.0,
-            "avg_response_time": 0,
-            "p95_response_time": 0,
+            "total": 0,
+            "success_count": 0,
+            "failure_count": 0,
+            "avg_duration_ms": 0,
+            "p50_duration_ms": 0,
+            "p95_duration_ms": 0,
+            "total_tokens": 0,
         }
 
 
-async def track_user_activity(user_id: int, activity: str) -> None:
+# ============================================================================
+# User Activity (replaces Redis SADD/SCARD/SUNIONSTORE)
+# ============================================================================
+
+
+async def record_user_activity(user_id: int) -> None:
     """
-    Track user activity.
+    Record user activity for the current day.
+
+    Uses INSERT ON CONFLICT DO NOTHING for deduplication (same user+day).
 
     Args:
-        user_id: ID of the user
-        activity: Activity type (e.g., "card_reviewed", "note_created")
+        user_id: User ID
     """
     try:
-        today = datetime.utcnow().strftime("%Y-%m-%d")
+        from app.db.session import AsyncSessionLocal
 
-        # Increment activity counter
-        await increment_with_ttl(
-            f"user:{user_id}:activity:{activity}:{today}",
-            1,
-            86400  # 24h TTL
-        )
-
-        # Track last active
-        redis = await get_redis()
-        await redis.set(
-            f"user:{user_id}:last_active",
-            datetime.utcnow().isoformat(),
-            ex=2592000  # 30 days TTL
-        )
-
-        # Add to active users set for today
-        await redis.sadd(f"active_users:{today}", user_id)
-        await redis.expire(f"active_users:{today}", 86400)
-
+        async with AsyncSessionLocal() as session:
+            await session.execute(
+                text("""
+                    INSERT INTO user_activity (user_id, activity_date)
+                    VALUES (:user_id, CURRENT_DATE)
+                    ON CONFLICT (user_id, activity_date) DO NOTHING
+                """),
+                {"user_id": user_id},
+            )
+            await session.commit()
     except Exception as e:
-        logger.error(
-            "track_user_activity_failed",
-            user_id=user_id,
-            activity=activity,
-            error=str(e),
-        )
+        logger.error("record_user_activity_failed", user_id=user_id, error=str(e))
 
 
-async def get_active_users(period: str = "day") -> int:
+async def get_daily_active_users(target_date: Optional[date] = None) -> int:
     """
-    Get count of active users.
+    Get count of daily active users.
 
     Args:
-        period: Time period ("day", "week", "month")
+        target_date: Date to check (default: today)
 
     Returns:
-        int: Number of active users
+        int: Number of unique active users
     """
     try:
-        redis = await get_redis()
+        from app.db.session import AsyncSessionLocal
 
-        if period == "day":
-            today = datetime.utcnow().strftime("%Y-%m-%d")
-            count = await redis.scard(f"active_users:{today}")
-            return count
-
-        elif period == "week":
-            # Union of last 7 days
-            days = [
-                (datetime.utcnow() - timedelta(days=i)).strftime("%Y-%m-%d")
-                for i in range(7)
-            ]
-            keys = [f"active_users:{day}" for day in days]
-
-            # Use temporary key for union
-            temp_key = f"active_users:week:{int(time.time())}"
-            if keys:
-                await redis.sunionstore(temp_key, *keys)
-                count = await redis.scard(temp_key)
-                await redis.delete(temp_key)
-                return count
-            return 0
-
-        elif period == "month":
-            # Union of last 30 days
-            days = [
-                (datetime.utcnow() - timedelta(days=i)).strftime("%Y-%m-%d")
-                for i in range(30)
-            ]
-            keys = [f"active_users:{day}" for day in days]
-
-            temp_key = f"active_users:month:{int(time.time())}"
-            if keys:
-                await redis.sunionstore(temp_key, *keys)
-                count = await redis.scard(temp_key)
-                await redis.delete(temp_key)
-                return count
-            return 0
-
-        return 0
-
+        d = target_date or date.today()
+        async with AsyncSessionLocal() as session:
+            result = await session.execute(
+                text("""
+                    SELECT COUNT(DISTINCT user_id) FROM user_activity
+                    WHERE activity_date = :d
+                """),
+                {"d": d},
+            )
+            return result.scalar_one_or_none() or 0
     except Exception as e:
-        logger.error(
-            "get_active_users_failed",
-            period=period,
-            error=str(e),
-        )
+        logger.error("get_dau_failed", error=str(e))
         return 0
 
 
-async def get_user_activity_summary(user_id: int, days: int = 7) -> Dict[str, int]:
+async def get_weekly_active_users() -> int:
     """
-    Get summary of user activity over a period.
-
-    Args:
-        user_id: ID of the user
-        days: Number of days to look back
+    Get count of weekly active users (last 7 days).
 
     Returns:
-        Dict with activity counts by type
+        int: Number of unique active users in the last 7 days
     """
     try:
-        # Get all activity keys for user
-        pattern = f"user:{user_id}:activity:*"
-        activity_counters = await get_multiple(pattern)
+        from app.db.session import AsyncSessionLocal
 
-        # Aggregate by activity type
-        summary = {}
-        for key, count in activity_counters.items():
-            # Extract activity type from key
-            # Format: user:{user_id}:activity:{activity_type}:{date}
-            parts = key.split(":")
-            if len(parts) >= 4:
-                activity_type = parts[3]
-                summary[activity_type] = summary.get(activity_type, 0) + count
-
-        return summary
-
+        async with AsyncSessionLocal() as session:
+            result = await session.execute(
+                text("""
+                    SELECT COUNT(DISTINCT user_id) FROM user_activity
+                    WHERE activity_date >= CURRENT_DATE - 7
+                """)
+            )
+            return result.scalar_one_or_none() or 0
     except Exception as e:
-        logger.error(
-            "get_user_activity_summary_failed",
-            user_id=user_id,
-            error=str(e),
-        )
-        return {}
+        logger.error("get_wau_failed", error=str(e))
+        return 0
+
+
+async def get_monthly_active_users() -> int:
+    """
+    Get count of monthly active users (last 30 days).
+
+    Returns:
+        int: Number of unique active users in the last 30 days
+    """
+    try:
+        from app.db.session import AsyncSessionLocal
+
+        async with AsyncSessionLocal() as session:
+            result = await session.execute(
+                text("""
+                    SELECT COUNT(DISTINCT user_id) FROM user_activity
+                    WHERE activity_date >= CURRENT_DATE - 30
+                """)
+            )
+            return result.scalar_one_or_none() or 0
+    except Exception as e:
+        logger.error("get_mau_failed", error=str(e))
+        return 0

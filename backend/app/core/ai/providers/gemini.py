@@ -12,6 +12,12 @@ import structlog
 from google import genai
 
 from app.core.config import settings
+from app.core.ai.registry.models import (
+    DEFAULT_CACHE_MODEL,
+    DEFAULT_CHAT_MODEL,
+    DEFAULT_GENERATION_MODEL,
+    DEFAULT_TOKENIZER_MODEL,
+)
 from app.core.ai.providers.base import BaseProvider, GenerationConfig, ProviderResponse
 
 logger = structlog.get_logger(__name__)
@@ -54,8 +60,8 @@ class GeminiProvider(BaseProvider):
     MODEL_ALIASES = {}  # Removed old aliases to enforce explicit naming
 
     # Default models for different use cases
-    CHAT_MODEL = "gemini-2.5-flash"
-    GENERATION_MODEL = "gemini-2.5-pro"
+    CHAT_MODEL = DEFAULT_CHAT_MODEL
+    GENERATION_MODEL = DEFAULT_GENERATION_MODEL
     EMBEDDING_MODEL = "text-embedding-005"
 
     def __init__(self, api_key: Optional[str] = None):
@@ -78,7 +84,7 @@ class GeminiProvider(BaseProvider):
         self,
         display_name: str,
         contents: Any,
-        model: str = "gemini-2.0-flash-001",
+        model: str = DEFAULT_CACHE_MODEL,
         system_instruction: Optional[str] = None,
         ttl_seconds: int = 3600,
     ) -> str:
@@ -382,7 +388,7 @@ class GeminiProvider(BaseProvider):
         Returns:
             Dict with 'text' and 'tool_calls'
         """
-        model_name = model or "gemini-2.5-flash"
+        model_name = model or DEFAULT_CHAT_MODEL
         model_name = self._resolve_model_name(model_name)
         temp = temperature if temperature is not None else 0.0
 
@@ -522,7 +528,7 @@ class GeminiProvider(BaseProvider):
             {"type": "tool_call", "name": "...", "args": {...}}
             {"type": "complete", "usage": {...}}
         """
-        model_name = model or "gemini-2.5-flash"
+        model_name = model or DEFAULT_CHAT_MODEL
         model_name = self._resolve_model_name(model_name)
 
         try:
@@ -599,7 +605,7 @@ class GeminiProvider(BaseProvider):
         """
         try:
             # Use new SDK's count_tokens
-            result = self.client.models.count_tokens(model="gemini-2.0-flash", contents=text)
+            result = self.client.models.count_tokens(model=DEFAULT_TOKENIZER_MODEL, contents=text)
             return result.total_tokens
         except Exception:
             # Fallback: rough estimate (1 token ≈ 4 chars)

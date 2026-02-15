@@ -9,20 +9,9 @@ Used for:
 from typing import Optional, List
 import structlog
 
-from app.core.ai.rag.embeddings.models.all_minilm import AllMiniLMEmbedder
+from app.core.ai.embeddings.boundary import get_embedder
 
 logger = structlog.get_logger(__name__)
-
-# Singleton embedder instance
-_embedder: Optional[AllMiniLMEmbedder] = None
-
-
-def get_embedder() -> AllMiniLMEmbedder:
-    """Get singleton embedder instance."""
-    global _embedder
-    if _embedder is None:
-        _embedder = AllMiniLMEmbedder()
-    return _embedder
 
 
 def generate_chat_embedding(

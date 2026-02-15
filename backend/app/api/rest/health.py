@@ -4,7 +4,7 @@ Health check REST API endpoints.
 System health and service status monitoring endpoints.
 Complete implementation with service checks:
 - PostgreSQL database
-- Redis cache
+- PostgreSQL cache (kv_store)
 - Qdrant vector store
 - Gemini API
 
@@ -21,6 +21,7 @@ import logging
 
 from app.api.deps import get_db
 from app.core.config import settings
+from app.core.ai.registry.models import DEFAULT_TOKENIZER_MODEL
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -83,9 +84,9 @@ async def check_postgresql(db: AsyncSession) -> ServiceStatus:
         )
 
 
-async def check_redis() -> ServiceStatus:
+async def check_cache() -> ServiceStatus:
     """
-    Check Redis cache connectivity.
+    Check PostgreSQL cache (kv_store) connectivity.
 
     Returns:
         ServiceStatus with health status
@@ -95,34 +96,31 @@ async def check_redis() -> ServiceStatus:
     start = time.time()
 
     try:
-        import redis.asyncio as redis
+        from app.services.cache.client import get_cache
 
-        redis_client = redis.from_url(settings.REDIS_URL)
-        await redis_client.ping()
+        cache = get_cache()
+        is_alive = await cache.ping()
         latency = (time.time() - start) * 1000
 
-        # Get connection info
-        info = await redis_client.info()
-        used_memory = info.get("used_memory_human", "unknown")
-
-        await redis_client.close()
-
-        return ServiceStatus(
-            status="healthy",
-            message="Connected to Redis",
-            latency_ms=latency,
-            details={
-                "url": settings.REDIS_URL,
-                "used_memory": used_memory,
-                "connected_clients": info.get("connected_clients", 0),
-            },
-        )
+        if is_alive:
+            return ServiceStatus(
+                status="healthy",
+                message="PostgreSQL cache operational",
+                latency_ms=latency,
+                details={"backend": "kv_store (UNLOGGED)"},
+            )
+        else:
+            return ServiceStatus(
+                status="unhealthy",
+                message="PostgreSQL cache ping failed",
+                details={"backend": "kv_store"},
+            )
     except Exception as e:
-        logger.error(f"Redis health check failed: {str(e)}")
+        logger.error(f"Cache health check failed: {str(e)}")
         return ServiceStatus(
             status="unhealthy",
-            message=f"Redis connection failed: {str(e)}",
-            details={"error": str(e), "url": settings.REDIS_URL},
+            message=f"Cache check failed: {str(e)}",
+            details={"error": str(e)},
         )
 
 
@@ -191,7 +189,7 @@ async def check_gemini_api() -> ServiceStatus:
 
         # Test API by making a simple generation request
         response = client.models.generate_content(
-            model="gemini-2.0-flash", contents="Say 'OK' in one word."
+            model=DEFAULT_TOKENIZER_MODEL, contents="Say 'OK' in one word."
         )
         latency = (time.time() - start) * 1000
 
@@ -243,8 +241,8 @@ async def health_check(db: AsyncSession = Depends(get_db)):
     # Check PostgreSQL (critical)
     services["postgresql"] = await check_postgresql(db)
 
-    # Check Redis (important)
-    services["redis"] = await check_redis()
+    # Check PostgreSQL cache (important)
+    services["cache"] = await check_cache()
 
     # Check Qdrant (important)
     services["qdrant"] = await check_qdrant()
@@ -292,18 +290,17 @@ async def readiness_check(db: AsyncSession = Depends(get_db)):
         # Check PostgreSQL (critical for readiness)
         await db.execute(text("SELECT 1"))
 
-        # Check Redis (needed for many features)
-        import redis.asyncio as redis
+        # Check cache (needed for many features)
+        from app.services.cache.client import get_cache
 
-        redis_client = redis.from_url(settings.REDIS_URL)
-        await redis_client.ping()
-        await redis_client.close()
+        cache = get_cache()
+        await cache.ping()
 
         logger.info("Readiness check passed")
         return {
             "status": "ready",
             "timestamp": datetime.utcnow(),
-            "services_required": ["postgresql", "redis"],
+            "services_required": ["postgresql", "cache"],
         }
     except Exception as e:
         logger.error(f"Readiness check failed: {str(e)}")

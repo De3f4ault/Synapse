@@ -13,12 +13,12 @@ The agent never talks to Qdrant or RAG directly - it talks ONLY to this service.
 import time
 from typing import List, Optional
 import structlog
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.schemas.grounding import (
     EvidenceChunk,
     EvidenceUsage,
     GroundingResult,
-    ConfidenceLevel,
 )
 from app.schemas.search_context import SearchContext, SearchIntent
 from app.schemas.search_result import UnifiedSearchResult
@@ -238,14 +238,14 @@ class GroundingService:
             system_prompt += result.formatted_prompt_block
     """
 
-    def __init__(self, unified_search: UnifiedSearchService):
+    def __init__(self, db: AsyncSession):
         """
         Initialize grounding service.
 
         Args:
-            unified_search: Unified search service instance
+            db: Async database session (required for UnifiedSearchService)
         """
-        self.unified_search = unified_search
+        self.unified_search = UnifiedSearchService(db)
 
     async def ground(
         self,
@@ -279,9 +279,8 @@ class GroundingService:
         start_time = time.time()
 
         try:
-            # Build search context
+            # Build search context (query is NOT a field on SearchContext)
             context = SearchContext(
-                query=query,
                 user_id=user_id,
                 intent=SearchIntent.RETRIEVE_CONTEXT,
                 surface=surface,
@@ -289,8 +288,8 @@ class GroundingService:
                 max_results_per_engine=max_chunks * 2,  # Get more, filter down
             )
 
-            # Execute unified search
-            response = await self.unified_search.search(context)
+            # Execute unified search (query is the first arg, context is the second)
+            response = await self.unified_search.search(query, context)
 
             # Flatten results from all engines (intent already filtered participation)
             # The service handles engine failures via status check
@@ -362,22 +361,18 @@ class GroundingService:
 # Factory
 # =============================================================================
 
-_grounding_service: Optional[GroundingService] = None
 
-
-def get_grounding_service() -> GroundingService:
+def get_grounding_service(db: AsyncSession) -> GroundingService:
     """
-    Get or create the grounding service singleton.
+    Create a grounding service for the current request.
+
+    Not a singleton — needs a fresh db session per request
+    (same lifecycle as UnifiedSearchService).
+
+    Args:
+        db: Async database session for the current request
 
     Returns:
         GroundingService instance
     """
-    global _grounding_service
-
-    if _grounding_service is None:
-        from app.services.search import get_unified_search_service
-
-        unified_search = get_unified_search_service()
-        _grounding_service = GroundingService(unified_search)
-
-    return _grounding_service
+    return GroundingService(db)

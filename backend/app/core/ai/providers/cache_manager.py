@@ -13,6 +13,7 @@ from typing import Dict, Any, Optional, List
 from datetime import datetime, timezone, timedelta
 import structlog
 from app.core.ai.providers.gemini import GeminiProvider
+from app.core.ai.registry.models import DEFAULT_CACHE_MODEL
 
 logger = structlog.get_logger(__name__)
 
@@ -93,7 +94,7 @@ class ContextCacheManager:
     }
 
     # Model for caching (must be versioned)
-    CACHE_MODEL = "gemini-2.0-flash-001"
+    CACHE_MODEL = DEFAULT_CACHE_MODEL
 
     def __init__(self, provider: Optional[GeminiProvider] = None):
         """
