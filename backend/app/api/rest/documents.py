@@ -2,14 +2,11 @@
 Document management REST API endpoints.
 
 Document upload, processing status, and chunk retrieval.
-Complete implementation with background processing task triggers.
 """
 
-import os
-import uuid
-import hashlib
 import enum
 from typing import List, Optional
+
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, func
@@ -23,37 +20,24 @@ from app.models.user import User
 from app.models.document import Document, ProcessingStatus
 from app.models.document_chunk import DocumentChunk
 from app.core.config import settings
-from app.core.ai.registry.models import DEFAULT_TOKENIZER_MODEL
-import pypdfium2 as pdfium
-from PIL import Image
+
+# Extracted service layer — file ops, thumbnails, cleanup
+from app.services.document_service import (
+    get_file_extension,
+    validate_file,
+    generate_upload_path,
+    save_uploaded_file,
+    generate_thumbnail,
+    trigger_document_processing,
+    cleanup_document_vectors,
+    cleanup_gemini_file,
+    cleanup_physical_file,
+    ALLOWED_EXTENSIONS,
+    MAX_FILE_SIZE,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
-
-
-# ============================================================================
-# Configuration
-# ============================================================================
-
-ALLOWED_EXTENSIONS = {
-    # Documents
-    ".pdf",
-    ".docx",
-    ".txt",
-    ".md",
-    ".epub",
-    # Images (OCR support)
-    ".png",
-    ".jpg",
-    ".jpeg",
-    ".tiff",
-    ".tif",
-    ".bmp",
-    ".gif",
-    ".webp",
-}
-MAX_FILE_SIZE = 100 * 1024 * 1024  # 100MB
-UPLOAD_DIR = settings.UPLOAD_DIR or "data/uploads"
 
 
 # ============================================================================
@@ -124,15 +108,13 @@ class ProcessingStatusResponse(BaseModel):
     message: str
 
 
-
-
 # Duplicate Detection Models
 class ConflictType(str, enum.Enum):
     """Types of document conflicts during upload."""
 
-    EXACT_DUPLICATE = "exact_duplicate"  # Same hash + same filename
-    SAME_CONTENT = "same_content"  # Same hash, different filename
-    SAME_FILENAME = "same_filename"  # Different hash, same filename
+    EXACT_DUPLICATE = "exact_duplicate"
+    SAME_CONTENT = "same_content"
+    SAME_FILENAME = "same_filename"
 
 
 class DuplicateConflictResponse(BaseModel):
@@ -144,266 +126,6 @@ class DuplicateConflictResponse(BaseModel):
     existing_file_size: int
     existing_uploaded_at: datetime
     message: str
-
-
-# ============================================================================
-# Helper Functions
-# ============================================================================
-
-
-def get_file_extension(filename: str) -> str:
-    """Extract file extension."""
-    return os.path.splitext(filename)[1].lower()
-
-
-def validate_file(file: UploadFile) -> tuple[bool, Optional[str]]:
-    """
-    Validate uploaded file.
-
-    Returns:
-        (is_valid, error_message)
-    """
-    # Check extension
-    ext = get_file_extension(file.filename)
-    if ext not in ALLOWED_EXTENSIONS:
-        return False, f"File type {ext} not allowed. Allowed: {', '.join(ALLOWED_EXTENSIONS)}"
-
-    # File size is checked during upload
-    return True, None
-
-
-def generate_upload_path(user_id: int, filename: str) -> str:
-    """
-    Generate unique upload path for file.
-
-    Files are stored in a flat uploads/ directory with UUID filenames.
-    The database tracks user ownership via user_id column.
-    """
-    # Ensure uploads directory exists
-    os.makedirs(UPLOAD_DIR, exist_ok=True)
-
-    # Generate unique filename using UUID to avoid collisions
-    file_ext = get_file_extension(filename)
-    unique_filename = f"{uuid.uuid4()}{file_ext}"
-
-    return os.path.join(UPLOAD_DIR, unique_filename)
-
-
-async def save_uploaded_file(file: UploadFile, filepath: str) -> tuple[int, str]:
-    """
-    Save uploaded file to disk while computing SHA256 hash.
-
-    Returns:
-        tuple[int, str]: (file_size_in_bytes, sha256_content_hash)
-    """
-    total_size = 0
-    sha256_hash = hashlib.sha256()
-
-    with open(filepath, "wb") as f:
-        while chunk := await file.read(8192):  # 8KB chunks
-            if total_size + len(chunk) > MAX_FILE_SIZE:
-                # Clean up partial file
-                f.close()
-                os.remove(filepath)
-                raise HTTPException(
-                    status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-                    detail=f"File too large. Maximum size: {MAX_FILE_SIZE / 1024 / 1024}MB",
-                )
-            f.write(chunk)
-            sha256_hash.update(chunk)  # Compute hash during streaming
-            total_size += len(chunk)
-
-    return total_size, sha256_hash.hexdigest()
-
-
-def generate_thumbnail(file_path: str, mime_type: str = "application/pdf") -> Optional[str]:
-    """
-    Generate a thumbnail for a document.
-
-    Args:
-        file_path: Path to the source file
-        mime_type: MIME type of the file
-
-    Returns:
-        Path to the generated thumbnail file, or None if generation failed
-    """
-    try:
-        thumb_path = f"{file_path}_thumb.png"
-
-        # If thumbnail already exists, return it
-        if os.path.exists(thumb_path):
-            return thumb_path
-
-        image = None
-
-        if "pdf" in mime_type:
-            # Render first page of PDF
-            pdf = pdfium.PdfDocument(file_path)
-            page = pdf[0]
-            # Render at 72 DPI (web quality)
-            # scale=1 means 72 DPI. Paperless uses higher, but 1-2 is good for thumbnails.
-            bitmap = page.render(scale=2)
-            image = bitmap.to_pil()
-            page.close()
-            pdf.close()
-
-        elif "image" in mime_type:
-            # Resize existing image
-            with Image.open(file_path) as img:
-                # Convert to RGB to handle PNGs with alpha or CMYK
-                if img.mode in ("RGBA", "P"):
-                    img = img.convert("RGB")
-                image = img.copy()
-
-        if image:
-            # Resize to max 500px width/height while maintaining aspect ratio
-            image.thumbnail((500, 500))
-            image.save(thumb_path, format="PNG", optimize=True)
-            return thumb_path
-
-    except Exception as e:
-        logger.error(f"Thumbnail generation failed for {file_path}: {e}")
-        return None
-
-    return None
-
-
-async def trigger_document_processing(document_id: int) -> bool:
-    """
-    Trigger background processing of a document.
-
-    Queues the document for:
-    1. Text extraction
-    2. Chunking
-    3. Embedding generation
-    4. Vector store indexing
-    5. Gemini Files API upload (if applicable)
-
-    Args:
-        document_id: ID of document to process
-
-    Returns:
-        bool: True if task was queued successfully
-    """
-    try:
-        # Import here to avoid circular dependency
-        from app.services.background.tasks import process_document_task
-
-        # Queue background task (async using Celery)
-        task = process_document_task.delay(document_id)
-
-        logger.info(f"Document {document_id} queued for processing (task_id: {task.id})")
-        return True
-
-    except ImportError:
-        logger.warning("Background tasks module not available - document processing deferred")
-        # Celery not configured - document will be processed manually later
-        return False
-    except Exception as e:
-        logger.error(f"Failed to queue document {document_id} for processing: {str(e)}")
-        return False
-
-
-async def cleanup_document_vectors(document_id: int, user_id: int) -> bool:
-    """
-    Delete document embeddings from Qdrant vector store.
-
-    Args:
-        document_id: ID of document
-        user_id: ID of user (for collection name)
-
-    Returns:
-        bool: True if cleanup successful
-    """
-    try:
-        from app.core.ai.rag.vector_store.qdrant.client import get_qdrant_client
-        from qdrant_client import models
-
-        qdrant_client = get_qdrant_client()
-        client = qdrant_client.get_client()
-
-        # Get user's document collection name
-        collection_name = f"synapse_v2_user_{user_id}_documents"
-
-        # Delete points matching document_id
-        client.delete(
-            collection_name=collection_name,
-            points_selector=models.FilterSelector(
-                filter=models.Filter(
-                    must=[
-                        models.FieldCondition(
-                            key="metadata.document_id",
-                            match=models.MatchValue(value=str(document_id)),
-                        )
-                    ]
-                )
-            ),
-        )
-
-        logger.info(f"Deleted vector embeddings from Qdrant for document {document_id}")
-        return True
-
-    except Exception as e:
-        logger.error(f"Error cleaning up Qdrant vectors for document {document_id}: {str(e)}")
-        return False
-
-
-async def cleanup_gemini_file(document: Document) -> bool:
-    """
-    Delete document from Gemini Files API if uploaded.
-
-    Args:
-        document: Document model instance
-
-    Returns:
-        bool: True if cleanup successful (or no Gemini file)
-    """
-    try:
-        if not document.gemini_file_uri:
-            return True
-
-        from google import genai
-        from app.core.config import settings
-
-        client = genai.Client(api_key=settings.GEMINI_API_KEY)
-
-        # Extract file ID from URI (format: "files/FILE_ID")
-        file_id = document.gemini_file_uri.split("/")[-1]
-
-        # Delete the file using new SDK
-        client.files.delete(name=f"files/{file_id}")
-
-        logger.info(f"Deleted file from Gemini Files API: {file_id}")
-        return True
-
-    except Exception as e:
-        logger.error(f"Error deleting Gemini file: {str(e)}")
-        # Don't fail if Gemini cleanup errors - file will expire naturally
-        return True
-
-
-async def cleanup_physical_file(filepath: str) -> bool:
-    """
-    Delete physical file from storage.
-
-    Args:
-        filepath: Path to file on disk
-
-    Returns:
-        bool: True if cleanup successful (or file doesn't exist)
-    """
-    try:
-        if os.path.exists(filepath):
-            os.remove(filepath)
-            logger.info(f"Deleted physical file: {filepath}")
-            return True
-        else:
-            logger.debug(f"Physical file not found: {filepath}")
-            return True
-
-    except Exception as e:
-        logger.error(f"Error deleting physical file {filepath}: {str(e)}")
-        return False
 
 
 # ============================================================================
@@ -758,7 +480,7 @@ async def delete_document(
     await cleanup_document_vectors(document_id, current_user.id)
 
     # Delete from Gemini Files API if applicable
-    await cleanup_gemini_file(doc)
+    await cleanup_gemini_file(doc.gemini_file_uri)
 
     # Delete physical file unless explicitly kept
     if not keep_file:
@@ -854,7 +576,7 @@ async def replace_document(
     await cleanup_document_vectors(document_id, current_user.id)
 
     # Clean up old Gemini file
-    await cleanup_gemini_file(doc)
+    await cleanup_gemini_file(doc.gemini_file_uri)
 
     # Trigger reprocessing
     await trigger_document_processing(document_id)
