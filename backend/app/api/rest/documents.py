@@ -4,6 +4,7 @@ Document management REST API endpoints.
 Document upload, processing status, and chunk retrieval.
 """
 
+import os
 import enum
 from typing import List, Optional
 
