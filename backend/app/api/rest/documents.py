@@ -41,92 +41,17 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-# ============================================================================
-# Request/Response Schemas
-# ============================================================================
-
-
-class DocumentResponse(BaseModel):
-    """Document response."""
-
-    id: int
-    filename: str
-    file_type: str
-    file_size: int
-    processing_status: ProcessingStatus
-    page_count: Optional[int]
-    word_count: Optional[int]
-    ocr_performed: bool = False
-    gemini_file_uri: Optional[str]
-    gemini_file_expired: bool
-    user_id: int
-    created_at: datetime
-    updated_at: datetime
-    # New fields
-    sector: Optional[str] = "Uncategorized"
-    notes: Optional[str] = None
-    ai_summary: Optional[str] = None
-    reading_progress: Optional[float] = 0.0
-
-    class Config:
-        from_attributes = True
-
-
-class DocumentUpdateRequest(BaseModel):
-    """Request to update document metadata."""
-
-    sector: Optional[str] = None
-    notes: Optional[str] = None
-    reading_progress: Optional[float] = None
-    # Phase 2A: Document Actions
-    title: Optional[str] = None
-    is_favorite: Optional[bool] = None
-    is_archived: Optional[bool] = None
-
-
-class DocumentChunkResponse(BaseModel):
-    """Document chunk response."""
-
-    id: int
-    document_id: int
-    content: str
-    chunk_index: int
-    page: Optional[int]
-    start_char: int
-    end_char: int
-    embedding_id: Optional[str]
-
-    class Config:
-        from_attributes = True
-
-
-class ProcessingStatusResponse(BaseModel):
-    """Processing status check response."""
-
-    document_id: int
-    status: ProcessingStatus
-    progress_percentage: float
-    message: str
-
-
-# Duplicate Detection Models
-class ConflictType(str, enum.Enum):
-    """Types of document conflicts during upload."""
-
-    EXACT_DUPLICATE = "exact_duplicate"
-    SAME_CONTENT = "same_content"
-    SAME_FILENAME = "same_filename"
-
-
-class DuplicateConflictResponse(BaseModel):
-    """Response returned when a duplicate document is detected (409 Conflict)."""
-
-    conflict_type: ConflictType
-    existing_document_id: int
-    existing_filename: str
-    existing_file_size: int
-    existing_uploaded_at: datetime
-    message: str
+# Schemas — single source of truth: app/schemas/document.py
+from app.schemas.document import (
+    DocumentResponse,
+    DocumentUpdateRequest,
+    DocumentChunkResponse,
+    ProcessingStatusResponse,
+    ConflictType,
+    DuplicateConflictResponse,
+    MoveDocumentRequest,
+    SummaryResponse,
+)
 
 
 # ============================================================================
@@ -938,12 +863,6 @@ async def update_document(
     return doc
 
 
-class MoveDocumentRequest(BaseModel):
-    """Request to move a document to a different folder."""
-
-    folder_id: Optional[int] = None  # None = move to Inbox
-
-
 @router.patch(
     "/{document_id}/move",
     response_model=DocumentResponse,
@@ -975,13 +894,6 @@ async def move_document(
         f"Document {document_id} moved to folder {request.folder_id} by user {current_user.id}"
     )
     return doc
-
-
-class SummaryResponse(BaseModel):
-    """AI summary response."""
-
-    summary: str
-    cached: bool = False
 
 
 @router.post(
