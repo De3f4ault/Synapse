@@ -22,7 +22,7 @@ from .internal.repository import (
     ChatMessageRepository,
     ChatThreadRepository,
 )
-from .internal.models import MessageRole
+from .internal.models import MessageRole, ChatMessage
 from .interface import ChatSessionResponse, ChatMessageResponse
 
 
@@ -348,12 +348,12 @@ class ChatService:
         user_id: int,
     ) -> Optional[ChatMessageResponse]:
         """
-        Regenerate an AI response.
+        Regenerate an AI response by creating a new version (sibling message).
 
-        Identifies the original user message, re-sends it to the AI (with potentially
-        updated history), and updates the existing assistant message in-place.
+        Instead of overwriting the old response, creates a new message with
+        incremented version at the same branch point. This enables
+        Qwen/ChatGPT-style version carousel navigation (< 1/2 >).
         """
-        from datetime import datetime
 
         def estimate_tokens(text: str) -> int:
             return max(1, len(text) // 4)
@@ -373,7 +373,7 @@ class ChatService:
         # Get session for context
         session = await self._session_repo.get_by_id(old_message.session_id)
 
-        # Get chat history
+        # Get chat history (exclude the old response)
         messages = await self._message_repo.list_by_session(old_message.session_id, limit=50)
         chat_history = [
             {
@@ -399,25 +399,53 @@ class ChatService:
             chat_history=chat_history,
         )
 
-        # Update existing message
-        old_message.content = result.output
-        old_message.tokens = result.tokens_used or estimate_tokens(result.output)
-        old_message.model_used = result.metadata.get("model", result.agent_used)
-        old_message.created_at = datetime.utcnow()
+        # Count existing sibling versions to determine the new version number
+        sibling_count = 1  # The original message is version 1
+        if old_message.parent_message_id:
+            # Count siblings sharing the same parent
+            from sqlalchemy import select, func
 
-        # Handle function_calls
+            count_result = await self.db.execute(
+                select(func.count(ChatMessage.id)).where(
+                    ChatMessage.parent_message_id == old_message.parent_message_id
+                )
+            )
+            sibling_count = count_result.scalar() or 1
+
+        # Deactivate the old message
+        old_message.is_active = False
+
+        # Create a NEW sibling message (new version) with the same parent
+        new_message = ChatMessage(
+            session_id=old_message.session_id,
+            parent_message_id=old_message.parent_message_id or user_message.id,
+            role=MessageRole.ASSISTANT,
+            content=result.output,
+            tokens=result.tokens_used or estimate_tokens(result.output),
+            model_used=result.metadata.get("model", result.agent_used),
+            version=sibling_count + 1,
+            is_active=True,
+        )
+
+        # Handle function_calls from result
         if result.metadata:
             tc = result.metadata.get("tool_calls")
             if isinstance(tc, dict):
-                old_message.function_calls = tc
+                new_message.function_calls = tc
             elif isinstance(tc, int) and tc > 0:
-                old_message.function_calls = {"count": tc}
+                new_message.function_calls = {"count": tc}
 
+        self.db.add(new_message)
         await self.db.commit()
-        await self.db.refresh(old_message)
+        await self.db.refresh(new_message)
 
-        logger.info("message_regenerated", message_id=message_id)
-        return self._to_message_response(old_message)
+        logger.info(
+            "message_regenerated_as_version",
+            old_id=message_id,
+            new_id=new_message.id,
+            version=new_message.version,
+        )
+        return self._to_message_response(new_message)
 
     async def edit_message_with_branch(
         self,

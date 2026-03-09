@@ -35,7 +35,7 @@ interface ParseOptions {
  * Based on Claude's approach: >15 lines or React/HTML.
  */
 const ARTIFACT_CONFIG = {
-    MIN_LINES: 15,
+    MIN_LINES: 40,
     REACT_LANGUAGES: ['tsx', 'jsx', 'react'],
     HTML_PATTERNS: ['<!DOCTYPE', '<html', '<head', '<body'],
 } as const;
@@ -45,7 +45,7 @@ const ARTIFACT_CONFIG = {
  * Used to identify structured documents that should be artifacts.
  */
 const MARKDOWN_DOC_CONFIG = {
-    MIN_LINES: 15,
+    MIN_LINES: 40,
     // Content must have document structure
     HEADING_PATTERN: /^#{1,2}\s+.+/m,
     // Indicators of substantial document
@@ -60,9 +60,9 @@ const MARKDOWN_DOC_CONFIG = {
  * Determine if markdown should be elevated to an artifact.
  * 
  * Criteria:
- * - >15 lines
+ * - >40 lines
  * - Has heading structure (# or ##)
- * - Has multiple sections (2+ headings)
+ * - Has multiple sections (4+ headings) — ensures it's a real document, not just a response
  */
 function shouldElevateToMarkdownArtifact(content: string): boolean {
     const lines = content.split('\n').length;
@@ -78,9 +78,9 @@ function shouldElevateToMarkdownArtifact(content: string): boolean {
         return false;
     }
     
-    // Must have multiple sections (document structure)
+    // Must have many sections (real document structure, not a normal response)
     const headingCount = (content.match(/^#{1,3}\s+.+/gm) || []).length;
-    if (headingCount < 2) {
+    if (headingCount < 4) {
         return false;
     }
     
@@ -129,7 +129,7 @@ function shouldElevateToArtifact(code: string, language: string): boolean {
         );
     }
     
-    // Substantial code (>15 lines)
+    // Substantial code (>40 lines)
     if (lines > ARTIFACT_CONFIG.MIN_LINES) {
         return true;
     }

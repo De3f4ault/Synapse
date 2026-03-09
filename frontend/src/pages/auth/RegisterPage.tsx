@@ -7,6 +7,8 @@ import { Mail, Key, User, Shield } from "lucide-react";
 import { AuthenticationService } from "@/api/generated";
 import { useAuthStore } from "@/stores/authStore";
 import { useToast } from "@/hooks/use-toast";
+import { AuthGuard } from "@/lib/authGuard";
+import { startTokenRefreshCycle } from "@/lib/tokenLifecycle";
 import {
   GatekeeperLayout,
   SecurityBadge,
@@ -36,6 +38,8 @@ export function RegisterPage() {
       setStatus("success");
       setTimeout(() => {
         setAuth(data.access_token, data as any);
+        AuthGuard.reset();
+        startTokenRefreshCycle(data.access_token);
         toast({
           title: "Account Created",
           description: "Welcome to Synapse.",

@@ -43,6 +43,7 @@ import {
   GitBranch,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { stopTokenRefreshCycle } from "@/lib/tokenLifecycle";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -157,6 +158,7 @@ export function Header({ className }: HeaderProps) {
   }, [launcherOpen]);
 
   const handleLogout = () => {
+    stopTokenRefreshCycle();
     clearAuth();
     navigate("/auth/login");
   };

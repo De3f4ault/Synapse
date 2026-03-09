@@ -3,13 +3,16 @@ import { useKnowledgeGraph } from "./hooks/useKnowledgeGraph";
 import { KnowledgeGraph } from "./components/KnowledgeGraph";
 import { KnowledgeSidebar } from "./components/KnowledgeSidebar";
 import { NodeDetailsPanel } from "./components/NodeDetailsPanel";
-import { GraphNode, ENTITY_CONFIG } from "./types";
+import { GraphNode, ENTITY_CONFIG, LINK_COLORS } from "./types";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { MenuIcon, PanelLeftIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LoadingScreen } from "@/components/layout/LoadingScreen";
 import { AuroraBackground } from "@/shared/ui";
+import { PlatformService } from "@/api/generated";
+import { toast } from "sonner";
+
 export const KnowledgeGraphPage: React.FC = () => {
   // State
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
@@ -17,10 +20,14 @@ export const KnowledgeGraphPage: React.FC = () => {
   const [activeFilters, setActiveFilters] = useState<string[]>(
     Object.keys(ENTITY_CONFIG),
   );
+  const [activeLinkTypes, setActiveLinkTypes] = useState<string[]>(
+    Object.keys(LINK_COLORS),
+  );
   const [containerDimensions, setContainerDimensions] = useState({
     width: 0,
     height: 0,
   });
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Sidebar State
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
@@ -44,10 +51,34 @@ export const KnowledgeGraphPage: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Data Fetching
-  const { data, isLoading, refetch } = useKnowledgeGraph({
-    // We fetch all and filter client-side for smoother UX for now
-    // But we could pass filters to API if dataset is huge
-  });
+  const { data, isLoading, refetch } = useKnowledgeGraph({});
+
+  // Semantic Refresh Handler
+  const handleSemanticRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await PlatformService.refreshSemanticLinksApiV1GraphRefreshPost();
+      toast.success("Semantic scan queued", {
+        description: "Your knowledge graph connections will update shortly.",
+      });
+      // Refetch after a brief delay to let the task start
+      setTimeout(() => refetch(), 2000);
+    } catch (err: unknown) {
+      const errorMessage =
+        err instanceof Error ? err.message : "Unknown error";
+      if (errorMessage.includes("429") || errorMessage.includes("rate")) {
+        toast.error("Rate limited", {
+          description: "You can refresh once per hour. Try again later.",
+        });
+      } else {
+        toast.error("Refresh failed", {
+          description: "Could not queue semantic refresh.",
+        });
+      }
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   // Handle Resize
   useEffect(() => {
@@ -66,7 +97,7 @@ export const KnowledgeGraphPage: React.FC = () => {
     return () => resizeObserver.disconnect();
   }, []);
 
-  // Filter Data
+  // Filter Data — entity type + link type filtering
   const { nodes, edges } = useMemo(() => {
     if (!data) return { nodes: [], edges: [] };
 
@@ -76,37 +107,29 @@ export const KnowledgeGraphPage: React.FC = () => {
     );
     const validNodeIds = new Set(validNodes.map((n) => n.id));
 
-    // 2. Filter Edges (both source and target must exist)
+    // 2. Filter Edges by both endpoints existing AND link type
     const validEdges = data.edges.filter((e) => {
-      // D3 mutates source/target to objects, but initially they are strings
-      // We need to handle both cases safely
-      // However, since we recreate the array on every render from `data`,
-      // `data.edges` might still have strings if we didn't mutate IT directly.
-      // But `useKnowledgeGraph` returns new objects.
-      // Let's assume strings for the filter check first.
       const sourceId =
         typeof e.source === "object" ? (e.source as GraphNode).id : e.source;
       const targetId =
         typeof e.target === "object" ? (e.target as GraphNode).id : e.target;
-      return (
+
+      const nodesExist =
         validNodeIds.has(sourceId as string) &&
-        validNodeIds.has(targetId as string)
-      );
+        validNodeIds.has(targetId as string);
+
+      const linkTypeActive = activeLinkTypes.includes(e.type);
+
+      return nodesExist && linkTypeActive;
     });
 
-    // 3. Search Filter (if query exists, maybe just highlight? Or filter exclusive?)
-    // Let's just use Search to highlight for now, not filter out.
-    // It's handled by `highlightedNodeId`.
-
-    // allow disconnected nodes
     return { nodes: validNodes, edges: validEdges };
-  }, [data, activeFilters]);
+  }, [data, activeFilters, activeLinkTypes]);
 
   // Derived State for Search
   const highlightedNodeId = useMemo(() => {
     if (!searchQuery.trim() || !data) return null;
     const query = searchQuery.toLowerCase();
-    // Simple name match
     const found = data.nodes.find(
       (n: GraphNode) =>
         n.label?.toLowerCase().includes(query) ||
@@ -119,6 +142,12 @@ export const KnowledgeGraphPage: React.FC = () => {
   // Handlers
   const handleToggleFilter = (type: string) => {
     setActiveFilters((prev) =>
+      prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type],
+    );
+  };
+
+  const handleToggleLinkType = (type: string) => {
+    setActiveLinkTypes((prev) =>
       prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type],
     );
   };
@@ -145,7 +174,10 @@ export const KnowledgeGraphPage: React.FC = () => {
             onSearchChange={setSearchQuery}
             activeFilters={activeFilters}
             onToggleFilter={handleToggleFilter}
-            onRefresh={refetch}
+            activeLinkTypes={activeLinkTypes}
+            onToggleLinkType={handleToggleLinkType}
+            onRefresh={handleSemanticRefresh}
+            isRefreshing={isRefreshing}
             stats={data?.stats}
             className="h-full rounded-2xl border border-white/5 w-full"
             isCollapsed={sidebarCollapsed}
@@ -164,7 +196,10 @@ export const KnowledgeGraphPage: React.FC = () => {
                 onSearchChange={setSearchQuery}
                 activeFilters={activeFilters}
                 onToggleFilter={handleToggleFilter}
-                onRefresh={refetch}
+                activeLinkTypes={activeLinkTypes}
+                onToggleLinkType={handleToggleLinkType}
+                onRefresh={handleSemanticRefresh}
+                isRefreshing={isRefreshing}
                 stats={data?.stats}
                 className="h-full w-64"
                 isCollapsed={sidebarCollapsed}
@@ -172,6 +207,7 @@ export const KnowledgeGraphPage: React.FC = () => {
             </SheetContent>
           </Sheet>
         </div>
+
         {/* Main Content Area */}
         <div className="flex-1 flex flex-col overflow-hidden relative">
           {/* Floating Header Actions */}

@@ -49,11 +49,81 @@ async def get_entity_relations(
     """
     Get all entities related to the specified entity.
 
-    This queries the knowledge graph for edges connected to this entity.
+    Queries the links table for edges connected to this entity
+    (both outgoing and incoming) and returns them as EntityRelations.
     """
-    # For now, return empty list - will be populated when graph is wired
-    # TODO: Query graph edges and return related entities
-    return []
+    from app.services.link_service import LinkService
+    from app.models.link import LinkEntityType
+
+    # Map schema EntityType → model LinkEntityType
+    _type_map = {
+        EntityType.DOCUMENT: LinkEntityType.DOCUMENT,
+        EntityType.NOTE: LinkEntityType.NOTE,
+        EntityType.FLASHCARD: LinkEntityType.FLASHCARD,
+        EntityType.QUIZ: LinkEntityType.QUIZ,
+    }
+    link_entity_type = _type_map.get(entity_type)
+    if link_entity_type is None:
+        return []
+
+    # Map model LinkEntityType → schema EntityType (reverse, partial)
+    _reverse_type_map = {v: k for k, v in _type_map.items()}
+
+    service = LinkService(db)
+
+    # Get outgoing links (this entity is the source)
+    outgoing = await service.get_links_from(
+        user_id=current_user.id,
+        source_type=link_entity_type,
+        source_id=entity_id,
+    )
+
+    # Get incoming links (this entity is the target / backlinks)
+    incoming = await service.get_links_to(
+        user_id=current_user.id,
+        target_type=link_entity_type,
+        target_id=entity_id,
+    )
+
+    relations: list[EntityRelation] = []
+
+    for link in outgoing:
+        target_schema_type = _reverse_type_map.get(link.target_type)
+        if target_schema_type is None:
+            continue
+        if relation_type and link.link_type.value != relation_type:
+            continue
+        relations.append(
+            EntityRelation(
+                entity=EntityIdentity(
+                    id=link.target_id,
+                    type=target_schema_type,
+                    source_module=_get_module_for_type(target_schema_type),
+                ),
+                relation_type=link.link_type.value,
+                weight=link.strength,
+            )
+        )
+
+    for link in incoming:
+        source_schema_type = _reverse_type_map.get(link.source_type)
+        if source_schema_type is None:
+            continue
+        if relation_type and link.link_type.value != relation_type:
+            continue
+        relations.append(
+            EntityRelation(
+                entity=EntityIdentity(
+                    id=link.source_id,
+                    type=source_schema_type,
+                    source_module=_get_module_for_type(source_schema_type),
+                ),
+                relation_type=link.link_type.value,
+                weight=link.strength,
+            )
+        )
+
+    return relations[:limit]
 
 
 # ============================================================================
@@ -143,6 +213,31 @@ async def get_graph_context(
         strengths=strengths,
         recommended_actions=recommended_actions,
     )
+
+
+# ============================================================================
+# Semantic Refresh
+# ============================================================================
+
+
+@router.post(
+    "/refresh",
+    summary="Refresh Semantic Links",
+    description="Trigger an on-demand semantic link refresh for the current user. Rate-limited to 1/hr.",
+)
+async def refresh_semantic_links(
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    """
+    Queue a semantic link refresh for the current user.
+
+    This is rate-limited to prevent database overload.
+    Returns immediately with the task ID.
+    """
+    from app.services.background.semantic_link_worker import semantic_refresh_user_task
+
+    result = semantic_refresh_user_task.delay(user_id=current_user.id)
+    return {"status": "queued", "task_id": str(result.id)}
 
 
 def _get_module_for_type(entity_type: EntityType) -> ModuleId:

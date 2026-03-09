@@ -51,12 +51,6 @@ import { SearchCommandPalette } from "../../search/components/SearchCommandPalet
 import { useSearchPalette } from "../../search/hooks/useSearchPalette";
 import { isToday, isYesterday, isThisWeek, isThisMonth } from "date-fns";
 
-// ============================================================================
-// Constants - Grok Colors
-// ============================================================================
-
-const GROK_BLACK = "#050505";
-// Grok glassy gray: #363636 (used inline in Tailwind classes)
 
 // ============================================================================
 // Types
@@ -191,11 +185,11 @@ export function ChatSidebar({ currentSessionId, className }: ChatSidebarProps) {
           isCollapsed ? "w-16" : "w-[272px]",
           isCollapsed
             ? "my-3 ml-2 rounded-2xl border border-white/6 bg-[#0a0a0c]/90 backdrop-blur-xl"
-            : "h-full border-r border-white/10",
-          !isCollapsed && "bg-[#050505]",
+            : "h-full border-r border-white/[0.08]",
+          !isCollapsed && "bg-[#0a0a0a]",
           className
         )}
-        style={isCollapsed ? {} : { backgroundColor: GROK_BLACK }}
+        style={isCollapsed ? {} : { backgroundColor: "#0a0a0a" }}
       >
         {/* ============================================================ */}
         {/* COLLAPSED — Grok-style icon rail                              */}
@@ -462,8 +456,8 @@ export function ChatSidebar({ currentSessionId, className }: ChatSidebarProps) {
                             "group flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer text-sm transition-colors",
                             currentSessionId === session.id
                               ? "text-white"
-                              : "text-zinc-400 hover:text-zinc-200 hover:bg-white/5",
-                            currentSessionId === session.id && "bg-[#363636]"
+                              : "text-zinc-300 hover:text-white hover:bg-white/[0.06]",
+                            currentSessionId === session.id && "bg-white/[0.08] border border-white/[0.06]"
                           )}
                           onClick={() => navigate(`/chat/${session.id}`)}
                         >

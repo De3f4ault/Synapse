@@ -6,10 +6,8 @@
  */
 
 import { useEffect, useRef } from 'react';
-import {
-  focusMusicClient,
-  autonomyManager,
-} from '@/platform/audio';
+import { focusMusicClient } from '../clients/FocusMusicClient';
+import { autonomyManager } from '../autonomy/AutonomyManager';
 import { useAudioContext } from '../context/useAudioContext';
 
 interface UseAutonomousAudioOptions {

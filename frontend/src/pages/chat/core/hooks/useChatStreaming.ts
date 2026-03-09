@@ -89,6 +89,13 @@ export function useChatStreaming({
             const eventType = message.type || message.event;
             const eventData = message.data || message;
 
+            // ── THREAD ISOLATION ──
+            // Thread events carry thread_id. Skip them here — the ThreadConversation
+            // component handles its own streaming via a separate subscription.
+            if (eventData.thread_id) {
+                return;
+            }
+
             // Get store actions via getState() for stable reference
             const actions = useChatStore.getState();
 
@@ -105,8 +112,8 @@ export function useChatStreaming({
 
                 case 'thinking':
                     // Check if this is a comparison mode chunk
-                    if (message.model_slot && actions.isComparisonMode) {
-                        actions.appendToSlot(message.model_slot, eventData.text || '', 'thinking');
+                    if (eventData.model_slot && actions.isComparisonMode) {
+                        actions.appendToSlot(eventData.model_slot, eventData.text || '', 'thinking');
                     } else {
                         actions.appendThinking(eventData.text || '');
                     }
@@ -116,8 +123,8 @@ export function useChatStreaming({
 
                 case 'token':
                     // Check if this is a comparison mode chunk
-                    if (message.model_slot && actions.isComparisonMode) {
-                        actions.appendToSlot(message.model_slot, eventData.text || '', 'content');
+                    if (eventData.model_slot && actions.isComparisonMode) {
+                        actions.appendToSlot(eventData.model_slot, eventData.text || '', 'content');
                     } else {
                         actions.appendContent(eventData.text || '');
                     }
@@ -134,16 +141,42 @@ export function useChatStreaming({
                         total_tokens: eventData.total_tokens,
                         model: eventData.model_used,
                     });
-                    // Invalidate queries then clear streaming state
-                    if (sessionId) {
-                        setTimeout(async () => {
-                            await queryClient.invalidateQueries({
-                                queryKey: ['chat-messages', sessionId],
-                            });
-                            useChatStore.getState().clearStreaming();
-                        }, 100);
+                    // Handle comparison mode: mark individual slot complete
+                    if (eventData.model_slot && actions.isComparisonMode) {
+                        actions.markSlotComplete(eventData.model_slot);
+                        // Only clear streaming when BOTH slots are complete
+                        const state = useChatStore.getState();
+                        const otherSlot = eventData.model_slot === 'A' ? 'B' : 'A';
+                        if (state.comparisonStreaming[otherSlot].isComplete) {
+                            // Both done — invalidate, then clear streaming + comparison
+                            // The saved message now has comparison metadata in function_calls,
+                            // so ChatMessage will render it as a ComparisonPanel
+                            if (sessionId) {
+                                setTimeout(async () => {
+                                    await queryClient.invalidateQueries({
+                                        queryKey: ['chat-messages', sessionId],
+                                    });
+                                    const s = useChatStore.getState();
+                                    s.clearStreaming();
+                                    s.clearComparison();
+                                }, 100);
+                            } else {
+                                actions.clearStreaming();
+                                actions.clearComparison();
+                            }
+                        }
                     } else {
-                        actions.clearStreaming();
+                        // Normal mode: clear immediately
+                        if (sessionId) {
+                            setTimeout(async () => {
+                                await queryClient.invalidateQueries({
+                                    queryKey: ['chat-messages', sessionId],
+                                });
+                                useChatStore.getState().clearStreaming();
+                            }, 100);
+                        } else {
+                            actions.clearStreaming();
+                        }
                     }
                     break;
 
@@ -274,6 +307,7 @@ export function useChatStreaming({
             const chatMode = state.chatMode;
             const isComparisonMode = state.isComparisonMode;
             const selectedModels = state.selectedModels;
+            const selectedModel = state.selectedModel;
             
             console.log('[Chat] sendMessage:', {
                 contentLength: content.length,
@@ -281,6 +315,7 @@ export function useChatStreaming({
                 sessionId,
                 subscribedTo: subscribedChannelRef.current,
                 mode: chatMode,
+                model: selectedModel,
                 compare: isComparisonMode,
                 models: isComparisonMode ? selectedModels : undefined,
             });
@@ -324,13 +359,18 @@ export function useChatStreaming({
                     (old = []) => [...old, optimisticMessage]
                 );
 
-                // Send via WebSocket with mode and optional comparison flags
+                // Send via WebSocket with mode and optional comparison/model flags
                 const message: Record<string, unknown> = { 
                     type: 'message', 
                     channel, 
                     content, 
                     mode: chatMode 
                 };
+                
+                // Add model override if a specific model is selected
+                if (selectedModel) {
+                    message.model = selectedModel;
+                }
                 
                 // Add comparison mode flags
                 if (isComparisonMode) {
@@ -339,7 +379,7 @@ export function useChatStreaming({
                 }
                 
                 manager.send(message);
-                console.log('[Chat] Message sent with mode:', chatMode, isComparisonMode ? `(comparing: ${selectedModels.join(' vs ')})` : '');
+                console.log('[Chat] Message sent with mode:', chatMode, selectedModel ? `(model: ${selectedModel})` : '', isComparisonMode ? `(comparing: ${selectedModels.join(' vs ')})` : '');
 
 
                 // Clear any previous streaming state

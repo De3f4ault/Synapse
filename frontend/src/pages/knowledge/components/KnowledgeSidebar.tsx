@@ -1,6 +1,6 @@
 import React from "react";
-import { Search, Filter, Layers, RefreshCw } from "lucide-react";
-import { ENTITY_CONFIG } from "../types";
+import { Search, Filter, Layers, RefreshCw, Loader2 } from "lucide-react";
+import { ENTITY_CONFIG, LINK_COLORS } from "../types";
 import { cn } from "@/lib/utils";
 import { GlassCard } from "@/shared/ui";
 
@@ -9,7 +9,10 @@ interface KnowledgeSidebarProps {
   onSearchChange: (query: string) => void;
   activeFilters: string[];
   onToggleFilter: (type: string) => void;
+  activeLinkTypes: string[];
+  onToggleLinkType: (type: string) => void;
   onRefresh?: () => void;
+  isRefreshing?: boolean;
   stats?: {
     total_nodes: number;
     total_edges: number;
@@ -18,27 +21,40 @@ interface KnowledgeSidebarProps {
   isCollapsed?: boolean;
 }
 
+const LINK_TYPE_LABELS: Record<string, string> = {
+  manual: "Manual",
+  mention: "Mention",
+  derived: "Derived",
+  semantic: "Semantic",
+  suggested: "Suggested",
+};
+
 export const KnowledgeSidebar: React.FC<KnowledgeSidebarProps> = ({
   searchQuery,
   onSearchChange,
   activeFilters,
   onToggleFilter,
+  activeLinkTypes,
+  onToggleLinkType,
   onRefresh,
+  isRefreshing = false,
   stats,
   className = "",
-  isCollapsed = false
+  isCollapsed = false,
 }) => {
   return (
     <GlassCard
       className={cn(
         "flex h-full w-full flex-col bg-zinc-950/40 backdrop-blur-3xl border-r border-white/10 rounded-none transition-all duration-300 ease-in-out gap-6 p-6",
-        className
+        className,
       )}
     >
       {/* Header */}
       <div className="flex justify-between items-start shrink-0">
         <div className={cn(isCollapsed ? "hidden" : "block")}>
-          <h2 className="text-xl font-bold text-white mb-2 tracking-tight">Knowledge Graph</h2>
+          <h2 className="text-xl font-bold text-white mb-2 tracking-tight">
+            Knowledge Graph
+          </h2>
           <div className="flex gap-4 text-xs text-slate-400 font-mono">
             <span className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.5)]" />
@@ -53,9 +69,18 @@ export const KnowledgeSidebar: React.FC<KnowledgeSidebarProps> = ({
         {onRefresh && !isCollapsed && (
           <button
             onClick={onRefresh}
-            className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors border border-white/5"
+            disabled={isRefreshing}
+            className={cn(
+              "p-2 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors border border-white/5",
+              isRefreshing && "opacity-50 cursor-not-allowed",
+            )}
+            title="Refresh semantic links"
           >
-            <RefreshCw className="w-4 h-4" />
+            {isRefreshing ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <RefreshCw className="w-4 h-4" />
+            )}
           </button>
         )}
       </div>
@@ -75,10 +100,11 @@ export const KnowledgeSidebar: React.FC<KnowledgeSidebarProps> = ({
 
       {/* Filters */}
       <div className="flex-1 overflow-y-auto scrollbar-hide">
+        {/* Entity Type Filters */}
         {!isCollapsed && (
           <div className="flex items-center gap-2 mb-4 text-xs font-bold text-slate-500 uppercase tracking-widest px-1">
             <Filter className="w-3 h-3" />
-            <span>Filters</span>
+            <span>Entity Types</span>
           </div>
         )}
 
@@ -97,17 +123,19 @@ export const KnowledgeSidebar: React.FC<KnowledgeSidebarProps> = ({
                   isActive
                     ? "bg-white/5 border-white/10"
                     : "hover:bg-white/[0.02] border-transparent",
-                  isCollapsed ? "p-2 justify-center" : ""
+                  isCollapsed ? "p-2 justify-center" : "",
                 )}
               >
                 <div className="flex items-center gap-3">
                   <div
                     className={cn(
                       "w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200",
-                      isActive ? "bg-white/10" : "bg-white/5 opacity-50 grayscale"
+                      isActive
+                        ? "bg-white/10"
+                        : "bg-white/5 opacity-50 grayscale",
                     )}
                     style={{
-                      color: isActive ? config.color : "#64748b"
+                      color: isActive ? config.color : "#64748b",
                     }}
                   >
                     <Icon className="w-4 h-4" />
@@ -116,7 +144,9 @@ export const KnowledgeSidebar: React.FC<KnowledgeSidebarProps> = ({
                     <span
                       className={cn(
                         "text-sm font-medium transition-colors",
-                        isActive ? "text-white" : "text-slate-500 group-hover:text-slate-300"
+                        isActive
+                          ? "text-white"
+                          : "text-slate-500 group-hover:text-slate-300",
                       )}
                     >
                       {config.label}
@@ -130,7 +160,7 @@ export const KnowledgeSidebar: React.FC<KnowledgeSidebarProps> = ({
                       "w-4 h-4 rounded border flex items-center justify-center transition-all duration-200",
                       isActive
                         ? "bg-cyan-500 border-cyan-500"
-                        : "border-slate-700 group-hover:border-slate-500"
+                        : "border-slate-700 group-hover:border-slate-500",
                     )}
                   >
                     {isActive && <Layers className="w-3 h-3 text-black" />}
@@ -140,6 +170,54 @@ export const KnowledgeSidebar: React.FC<KnowledgeSidebarProps> = ({
             );
           })}
         </div>
+
+        {/* Link Type Legend & Filter */}
+        {!isCollapsed && (
+          <>
+            <div className="flex items-center gap-2 mt-6 mb-4 text-xs font-bold text-slate-500 uppercase tracking-widest px-1">
+              <Filter className="w-3 h-3" />
+              <span>Link Types</span>
+            </div>
+
+            <div className="space-y-1.5">
+              {Object.entries(LINK_COLORS).map(([type, color]) => {
+                const isActive = activeLinkTypes.includes(type);
+                return (
+                  <div
+                    key={type}
+                    onClick={() => onToggleLinkType(type)}
+                    className={cn(
+                      "group flex items-center gap-3 p-2.5 rounded-lg cursor-pointer transition-all duration-200",
+                      isActive
+                        ? "hover:bg-white/5"
+                        : "opacity-40 hover:opacity-60",
+                    )}
+                  >
+                    {/* Color line indicator */}
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="w-6 h-0.5 rounded-full"
+                        style={{
+                          backgroundColor: isActive ? color : "#64748b",
+                        }}
+                      />
+                    </div>
+                    <span
+                      className={cn(
+                        "text-xs font-medium transition-colors",
+                        isActive
+                          ? "text-slate-300"
+                          : "text-slate-600 line-through",
+                      )}
+                    >
+                      {LINK_TYPE_LABELS[type] || type}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
       </div>
 
       {/* Hint */}

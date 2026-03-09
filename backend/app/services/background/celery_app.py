@@ -103,6 +103,9 @@ celery_app.conf.update(
         "embedding.generate_flashcard_embedding": {"queue": "embeddings"},
         "embedding.batch_backfill_notes": {"queue": "embeddings"},
         "embedding.batch_backfill_flashcards": {"queue": "embeddings"},
+        # Graph semantic linking
+        "graph.semantic_link_scan": {"queue": "default"},
+        "graph.semantic_refresh_user": {"queue": "default"},
     },
     # Queues
     task_queues=(
@@ -129,6 +132,12 @@ celery_app.conf.update(
             "schedule": 86400.0,
             "args": ("temp_files",),
             "options": {"expires": 82800.0},  # Expire 1 hour before next daily run
+        },
+        # Nightly semantic link scan: discover, decay, prune
+        "nightly-semantic-link-scan": {
+            "task": "graph.semantic_link_scan",
+            "schedule": 86400.0,  # Every 24 hours
+            "options": {"expires": 82800.0},
         },
     },
 )

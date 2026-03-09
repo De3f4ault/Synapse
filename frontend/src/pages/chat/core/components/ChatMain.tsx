@@ -13,7 +13,7 @@ import { useChatMessages } from "../hooks/useChatMessages";
 import { useChatStreaming } from "../hooks/useChatStreaming";
 import { useImplicitFeedback } from "@/modules/chat/hooks/useImplicitFeedback";
 import { useAuthStore } from "@/stores/authStore";
-import { useTTSAutoRead } from "@/platform/audio";
+import { useTTSAutoRead } from "@/platform/audio/hooks/useTTSAutoRead";
 import { useThreadStore } from "../state/threadStore";
 
 interface ChatMainProps {
@@ -24,6 +24,7 @@ interface ChatMainProps {
 export function ChatMain({ sessionId, sessionTitle }: ChatMainProps) {
   const [message, setMessage] = useState("");
   const [isVoiceOpen, setIsVoiceOpen] = useState(false);
+  const [threadPanelWidth, setThreadPanelWidth] = useState(384);
 
   // Get user ID for telemetry
   const user = useAuthStore((state) => state.user);
@@ -102,7 +103,8 @@ export function ChatMain({ sessionId, sessionTitle }: ChatMainProps) {
   }
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-row">
+      <div className="flex-1 flex flex-col min-w-0">
       {isConversationStarted ? (
         <ChatConversationView
           messages={messages}
@@ -127,9 +129,14 @@ export function ChatMain({ sessionId, sessionTitle }: ChatMainProps) {
           onVoiceClick={handleVoiceClick}
         />
       )}
+      </div>
 
-      {/* Thread Panel - Grok-style slide-out */}
-      <ThreadPanel sessionId={sessionId} />
+      {/* Thread Panel - Grok-style embedded side panel */}
+      <ThreadPanel
+        sessionId={sessionId}
+        panelWidth={threadPanelWidth}
+        onResize={setThreadPanelWidth}
+      />
 
       {/* Voice Mode Overlay */}
       <LiveVoiceOverlay

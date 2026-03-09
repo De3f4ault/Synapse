@@ -352,18 +352,109 @@ async def create_thread_message(
     await db.commit()
     await db.refresh(message)
 
-    # TODO: Generate AI response for thread
-    # For now, just return the user message
-    # Streaming responses will be handled via WebSocket
+    # Build thread-scoped chat history for context
+    thread_history = []
+    try:
+        history_result = await db.execute(
+            select(ChatMessage)
+            .where(ChatMessage.thread_id == thread_id)
+            .order_by(ChatMessage.created_at.asc())
+        )
+        existing_messages = history_result.scalars().all()
+        for msg in existing_messages:
+            thread_history.append(
+                {
+                    "role": msg.role.value if hasattr(msg.role, "value") else str(msg.role),
+                    "content": msg.content or "",
+                }
+            )
+    except Exception as hist_error:
+        logger.warning(
+            "thread_history_build_failed",
+            thread_id=thread_id,
+            error=str(hist_error)[:100],
+        )
+        thread_history = []
 
-    return ChatMessageResponse(
-        id=message.id,
-        session_id=message.session_id,
-        role=message.role,
-        content=message.content,
-        tokens=message.tokens,
-        model_used=message.model_used,
-        function_calls=None,
-        grounding_sources=None,
-        created_at=message.created_at,
-    )
+    # Generate AI response through orchestrator
+    try:
+        from app.core.ai.orchestrator import get_orchestrator
+
+        orchestrator = get_orchestrator()
+
+        full_response = ""
+        total_tokens = 0
+        model_used = None
+
+        async for chunk in orchestrator.handle_message_stream(
+            message=data.content,
+            user_id=current_user.id,
+            session_id=thread.session_id,
+            context={},
+            chat_history=thread_history,
+        ):
+            chunk_type = chunk.get("type")
+
+            if chunk_type == "token":
+                full_response += chunk.get("text", "")
+                model_used = chunk.get("model", model_used)
+            elif chunk_type == "complete":
+                metadata = chunk.get("metadata", {})
+                total_tokens = metadata.get("total_tokens", 0)
+                model_used = metadata.get("model_used", model_used)
+
+        if not full_response:
+            full_response = "I wasn't able to generate a response. Please try again."
+
+        # Save assistant message in the thread
+        assistant_message = ChatMessage(
+            session_id=thread.session_id,
+            thread_id=thread_id,
+            parent_message_id=None,  # INVARIANT: threads don't use parent_message_id
+            role=MessageRole.ASSISTANT,
+            content=full_response,
+            tokens=total_tokens or max(1, len(full_response) // 4),
+            model_used=model_used,
+        )
+        db.add(assistant_message)
+        await db.commit()
+        await db.refresh(assistant_message)
+
+        logger.info(
+            "thread_ai_response_saved",
+            thread_id=thread_id,
+            message_id=assistant_message.id,
+            tokens=assistant_message.tokens,
+        )
+
+        return ChatMessageResponse(
+            id=assistant_message.id,
+            session_id=assistant_message.session_id,
+            role=assistant_message.role,
+            content=assistant_message.content,
+            tokens=assistant_message.tokens,
+            model_used=assistant_message.model_used,
+            function_calls=None,
+            grounding_sources=None,
+            created_at=assistant_message.created_at,
+        )
+
+    except Exception as ai_error:
+        logger.error(
+            "thread_ai_response_failed",
+            thread_id=thread_id,
+            error=str(ai_error),
+            exc_info=True,
+        )
+        # Return the user message if AI generation fails
+        return ChatMessageResponse(
+            id=message.id,
+            session_id=message.session_id,
+            role=message.role,
+            content=message.content,
+            tokens=message.tokens,
+            model_used=message.model_used,
+            function_calls=None,
+            grounding_sources=None,
+            created_at=message.created_at,
+        )

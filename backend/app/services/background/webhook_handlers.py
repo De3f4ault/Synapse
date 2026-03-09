@@ -40,26 +40,11 @@ class WebhookHandler:
 
     def _register_default_handlers(self) -> None:
         """Register default event handlers."""
-        self.register(
-            WebhookEventType.DOCUMENT_UPLOADED.value,
-            self._handle_document_uploaded
-        )
-        self.register(
-            WebhookEventType.DOCUMENT_UPDATED.value,
-            self._handle_document_updated
-        )
-        self.register(
-            WebhookEventType.DOCUMENT_DELETED.value,
-            self._handle_document_deleted
-        )
-        self.register(
-            WebhookEventType.USER_REGISTERED.value,
-            self._handle_user_registered
-        )
-        self.register(
-            WebhookEventType.QUERY_COMPLETED.value,
-            self._handle_query_completed
-        )
+        self.register(WebhookEventType.DOCUMENT_UPLOADED.value, self._handle_document_uploaded)
+        self.register(WebhookEventType.DOCUMENT_UPDATED.value, self._handle_document_updated)
+        self.register(WebhookEventType.DOCUMENT_DELETED.value, self._handle_document_deleted)
+        self.register(WebhookEventType.USER_REGISTERED.value, self._handle_user_registered)
+        self.register(WebhookEventType.QUERY_COMPLETED.value, self._handle_query_completed)
 
     def register(self, event_type: str, handler: Callable) -> None:
         """
@@ -156,41 +141,29 @@ class WebhookHandler:
             logger.error("Missing document_id in event data")
             return
 
-        # Import here to avoid circular imports
-        import asyncio
-        from app.core.events.dispatcher import EventDispatcher
-        from app.core.events.triggers import Event, EventType
-
-        # Create deletion event for cache invalidation
-        # This will automatically trigger the CacheInvalidationSubscriber
-        deletion_event = Event(
-            type=EventType.DOCUMENT_DELETED,
+        # NOTE: EventDispatcher.emit() is async and requires a running event loop.
+        # In Celery (sync) context, we just log the event. The Qdrant cleanup
+        # below handles the actual deletion work synchronously.
+        logger.info(
+            "document_deletion_event",
+            document_id=document_id,
             user_id=user_id,
-            data={"document_id": document_id},
-            source="webhook_handler"
+            note="Event dispatch skipped in sync context; Qdrant cleanup follows",
         )
-
-        # Emit event asynchronously (cache invalidator will handle it)
-        try:
-            dispatcher = EventDispatcher()
-            asyncio.create_task(dispatcher.emit(deletion_event))
-            logger.info(f"Emitted DOCUMENT_DELETED event for document {document_id}")
-        except Exception as e:
-            logger.error(f"Failed to emit deletion event: {e}")
 
         # Clean up vector store (if user_id is available)
         if user_id:
             try:
                 from app.core.ai.rag.vector_store.qdrant.client import get_qdrant_client
                 from qdrant_client import models
-                
+
                 # Get Qdrant client
                 qdrant_client = get_qdrant_client()
                 client = qdrant_client.get_client()
-                
+
                 # Get user's document collection name
                 collection_name = f"synapse_v2_user_{user_id}_documents"
-                
+
                 try:
                     # Delete points matching document_id using Qdrant filter
                     client.delete(
@@ -200,18 +173,18 @@ class WebhookHandler:
                                 must=[
                                     models.FieldCondition(
                                         key="metadata.document_id",
-                                        match=models.MatchValue(value=str(document_id))
+                                        match=models.MatchValue(value=str(document_id)),
                                     )
                                 ]
                             )
-                        )
+                        ),
                     )
-                    
+
                     logger.info(
                         f"Vector store cleanup completed for document {document_id}. "
                         f"Deleted embeddings from Qdrant collection {collection_name}"
                     )
-                    
+
                 except Exception as qdrant_error:
                     # Collection might not exist yet
                     logger.warning(
@@ -221,7 +194,6 @@ class WebhookHandler:
 
             except Exception as e:
                 logger.error(f"Failed to cleanup vector store: {e}", exc_info=True)
-
 
         logger.info(f"Document deletion handling completed for {document_id}")
 
@@ -249,7 +221,7 @@ class WebhookHandler:
             to=email,
             subject="Welcome to RAG App",
             body=f"Hello {name}, welcome to our platform!",
-            html=False
+            html=False,
         )
 
         logger.info(f"Sent welcome email to {email}")

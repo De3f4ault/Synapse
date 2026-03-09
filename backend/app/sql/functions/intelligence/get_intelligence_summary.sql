@@ -30,7 +30,7 @@ CREATE OR REPLACE FUNCTION developer_schema.get_intelligence_summary(
             cm.card_count,
             cm.review_count,
             cm.mastered_cards
-        FROM developer_schema.calculate_mastery(p_user_id, NULL) cm
+        FROM developer_schema.calculate_mastery_v2(p_user_id, NULL) cm
             JOIN developer_schema.decks d ON d.id = cm.deck_id
     ),
     -- Calculate stability: based on review recency and frequency

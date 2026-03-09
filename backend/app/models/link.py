@@ -8,7 +8,16 @@ Enables the knowledge graph and interconnected learning experience.
 import enum
 from typing import Optional
 
-from sqlalchemy import String, Float, Integer, JSON, Enum as SQLEnum, Index
+from sqlalchemy import (
+    String,
+    Float,
+    Integer,
+    JSON,
+    Enum as SQLEnum,
+    Index,
+    UniqueConstraint,
+    CheckConstraint,
+)
 from sqlalchemy.orm import Mapped, mapped_column
 
 from .base import Base
@@ -40,8 +49,14 @@ class Link(Base, TimestampMixin, UserOwnedMixin):
     """
     Link model for knowledge graph connections.
 
-    Stores bidirectional relationships between any two entities.
+    Stores directed relationships between any two entities.
     Powers the knowledge graph, related content, and backlinks features.
+
+    Direction convention (source → target):
+        Document → Flashcard   (source produced target)
+        Note     → Quiz        (source produced target)
+        Deck     → Flashcard   (container → contained)
+        EntityA  → EntityB     (semantic similarity, query both directions)
     """
 
     __tablename__ = "links"
@@ -87,15 +102,34 @@ class Link(Base, TimestampMixin, UserOwnedMixin):
         doc="Additional metadata (context, snippet, AI reasoning, etc.)",
     )
 
-    # Indexes for efficient querying
+    # Indexes and constraints
     __table_args__ = (
-        # Find all links FROM an entity
-        Index("ix_links_source", "source_type", "source_id"),
-        # Find all links TO an entity (backlinks)
-        Index("ix_links_target", "target_type", "target_id"),
+        # --- Unique constraint for idempotent upserts ---
+        # A given (user, source, target, link_type) tuple can only exist once.
+        # This enables ON CONFLICT DO UPDATE in create_link.
+        UniqueConstraint(
+            "user_id",
+            "source_type",
+            "source_id",
+            "target_type",
+            "target_id",
+            "link_type",
+            name="uq_link_edge",
+        ),
+        # --- Prevent self-links ---
+        # An entity cannot link to itself (same type AND same ID).
+        CheckConstraint(
+            "NOT (source_type = target_type AND source_id = target_id)",
+            name="ck_link_no_self_loop",
+        ),
+        # --- Performance indexes ---
+        # Find all links FROM an entity (+ user for scoping)
+        Index("ix_links_user_source", "user_id", "source_type", "source_id"),
+        # Find all links TO an entity (backlinks + user for scoping)
+        Index("ix_links_user_target", "user_id", "target_type", "target_id"),
         # Find links by type
         Index("ix_links_type", "link_type"),
-        # User's links
+        # User's links (kept for simple user-scoped queries)
         Index("ix_links_user", "user_id"),
     )
 

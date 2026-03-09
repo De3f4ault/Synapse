@@ -554,6 +554,12 @@ async def list_models(db: AsyncSession = Depends(get_db)):
     return [AIModelResponse(**m) for m in models]
 
 
+class DashboardMessageCreate(BaseModel):
+    """Simple message schema for dashboard (no session_id needed — managed internally)."""
+
+    content: str = Field(..., min_length=1, max_length=50000, description="Message content")
+
+
 @router.post(
     "/sessions/dashboard/message",
     response_model=ChatMessageResponse,
@@ -561,7 +567,7 @@ async def list_models(db: AsyncSession = Depends(get_db)):
     description="Send message to dashboard orchestrator with full system access",
 )
 async def send_dashboard_message(
-    message_data: ChatMessageCreate,
+    message_data: DashboardMessageCreate,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):

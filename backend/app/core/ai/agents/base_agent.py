@@ -420,6 +420,14 @@ class BaseAgent(ABC):
                             "streaming": True,
                         }
 
+                    elif chunk_type == "thinking":
+                        # Forward thinking content (from <think> tag parsing)
+                        yield {
+                            "type": "thinking",
+                            "text": chunk.get("content", ""),
+                            "model": self.config.model,
+                        }
+
                     elif chunk_type == "tool_call":
                         # Queue tool call for execution after streaming
                         pending_tool_calls.append(

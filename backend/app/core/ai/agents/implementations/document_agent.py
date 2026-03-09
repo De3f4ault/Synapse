@@ -52,12 +52,25 @@ class DocumentAgent(BaseAgent):
         """
         Build document analysis prompt with document context
 
+        If a mode-specific prompt is present in context, it takes priority.
+
         Args:
             context: Includes document_context, user_context
 
         Returns:
             Complete system prompt
         """
+        # Mode-specific prompt takes priority
+        mode_prompt = context.get("mode_system_prompt", "")
+        if mode_prompt:
+            # Add document context to the mode prompt
+            document_context = context.get("document_context", {})
+            if document_context:
+                doc_title = document_context.get("title", "Unknown")
+                doc_type = document_context.get("type", "unknown")
+                mode_prompt += f"\n\n**Active Document:** {doc_title} ({doc_type})"
+            return mode_prompt
+
         document_context = context.get("document_context", {})
         user_context = context.get("user_context", {})
         weak_areas = context.get("weak_areas", [])
@@ -154,11 +167,12 @@ Source: Page X, Section Y
 ```
 
 *For Question Answering:*
-- Answer directly and concisely
-- Support with evidence from document
+- Answer the question completely and thoroughly
+- Support with evidence from the document
 - Cite specific pages
-- Explain reasoning if complex
-- Suggest related concepts to explore
+- Explain reasoning for complex answers — show how you arrived at the answer
+- Suggest related concepts worth exploring
+- Use the formatting that best serves the content (prose for explanations, lists for enumerations, tables for comparisons)
 
 *For Study Material Generation:*
 - Focus on concepts worth memorizing

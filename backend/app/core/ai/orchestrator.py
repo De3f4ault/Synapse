@@ -93,6 +93,7 @@ class AgentOrchestrator:
         from app.core.ai.agents.implementations.document_agent import DocumentAgent
         from app.core.ai.agents.implementations.quiz_agent import QuizAgent
         from app.core.ai.agents.implementations.dashboard_agent import DashboardAgent
+        from app.core.ai.agents.implementations.general_assistant_agent import GeneralAssistantAgent
 
         factory = get_agent_factory()
         registry = AgentRegistry()
@@ -103,6 +104,7 @@ class AgentOrchestrator:
             "document": DocumentAgent,
             "quiz": QuizAgent,
             "dashboard": DashboardAgent,
+            "general": GeneralAssistantAgent,
         }
 
         for name, agent_class in agent_classes.items():
@@ -326,15 +328,18 @@ class AgentOrchestrator:
             }
 
             # 7. Enhance context with mode and model info
+            # Load comprehensive mode prompt from dedicated prompt file
+            from app.core.ai.agents.prompts import get_mode_prompt
+
+            mode_prompt = ""
+            if mode.prompt_module:
+                mode_prompt = get_mode_prompt(mode.prompt_module, context)
+
             enhanced_context = {
                 **context,
                 "mode_id": mode_id,
                 "model_key": model_key,
-                "system_prompt": mode.system_prompt_template.format(
-                    weak_areas=", ".join(context.get("weak_areas", [])),
-                    recent_topics=", ".join(context.get("recent_topics", [])),
-                    student_context=str(context),
-                ),
+                "mode_system_prompt": mode_prompt,
             }
 
             # 8. Stream from agent with fallback support

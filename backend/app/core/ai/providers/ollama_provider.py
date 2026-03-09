@@ -281,9 +281,13 @@ class OllamaProvider(AIProvider):
 
         Yields:
             {"type": "text", "content": "chunk"}
+            {"type": "thinking", "content": "..."} — For <think> block content
             {"type": "complete", "text": "...", "usage": {...}}
         """
+        from app.core.ai.parsing import StreamingThinkParser
+
         model_name = model or "deepseek-r1:32b"
+        parser = StreamingThinkParser()
 
         try:
             client = self._get_client()
@@ -304,9 +308,27 @@ class OllamaProvider(AIProvider):
 
             for chunk in stream:
                 if "message" in chunk and "content" in chunk["message"]:
-                    text = chunk["message"]["content"]
-                    total_text += text
-                    yield {"type": "text", "content": text}
+                    raw_content = chunk["message"]["content"]
+
+                    # Parse for thinking tags (same as stream())
+                    parsed = parser.feed(raw_content)
+
+                    # Yield thinking content separately
+                    if parsed.has_thinking:
+                        yield {"type": "thinking", "content": parsed.thinking}
+
+                    # Yield regular content
+                    if parsed.content:
+                        total_text += parsed.content
+                        yield {"type": "text", "content": parsed.content}
+
+            # Flush any remaining content from parser
+            final = parser.flush()
+            if final.has_thinking:
+                yield {"type": "thinking", "content": final.thinking}
+            if final.content:
+                total_text += final.content
+                yield {"type": "text", "content": final.content}
 
             # Final completion
             yield {

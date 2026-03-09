@@ -83,7 +83,7 @@ fi
 
 # Start backend in background
 echo -e "${GREEN}→${NC} Starting FastAPI server on http://localhost:8000"
-"$PROJECT_ROOT/.venv/bin/uvicorn" app.main:app --reload --host 0.0.0.0 --port 8000 > /tmp/synapse-backend.log 2>&1 &
+"$PROJECT_ROOT/backend/.venv/bin/uvicorn" app.main:app --reload --host 0.0.0.0 --port 8000 > /tmp/synapse-backend.log 2>&1 &
 BACKEND_PID=$!
 echo -e "${GREEN}✓${NC} Backend started (PID: $BACKEND_PID)"
 

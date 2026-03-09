@@ -1,53 +1,48 @@
 /**
  * useRegenerate — Hook for regenerating AI responses
  *
- * Calls REST endpoint to regenerate a message.
- * Invalidates message cache on success.
+ * Sends a 'regenerate' event via WebSocket so the response
+ * streams in real-time through the existing chat streaming pipeline.
  */
 
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import type { ChatMessageResponse } from '@/api/generated';
+import { useCallback } from 'react';
+import { getWebSocketManager } from '@/api/websocket/manager';
+import { useChatStore } from '../state/chatStore';
 import { toast } from 'sonner';
 
 interface UseRegenerateOptions {
-    /** Session ID for cache invalidation */
+    /** Session ID for channel routing and cache invalidation */
     sessionId: number;
-
-    /** Callback on success */
-    onSuccess?: (message: ChatMessageResponse) => void;
 }
 
-export function useRegenerate({ sessionId, onSuccess }: UseRegenerateOptions) {
-    const queryClient = useQueryClient();
+export function useRegenerate({ sessionId }: UseRegenerateOptions) {
 
-    return useMutation({
-        mutationFn: async (messageId: number): Promise<ChatMessageResponse> => {
-            const response = await fetch(`/api/v1/chat/messages/${messageId}/regenerate`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-                },
-            });
-
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.detail || 'Failed to regenerate');
+    const regenerate = useCallback(
+        (messageId: number) => {
+            const manager = getWebSocketManager();
+            if (!manager.isConnected()) {
+                toast.error('WebSocket not connected');
+                return;
             }
 
-            return response.json();
-        },
-        onSuccess: (data) => {
-            // Invalidate message cache to show updated content
-            queryClient.invalidateQueries({
-                queryKey: ['chat-messages', sessionId],
+            const channel = `chat:${sessionId}`;
+
+            // Clear previous streaming state and start fresh
+            const state = useChatStore.getState();
+            state.clearStreaming();
+            state.setIsStreaming(true);
+
+            // Send regenerate event via WS
+            manager.send({
+                type: 'regenerate',
+                channel,
+                messageId,
             });
 
-            toast.success('Response regenerated');
-            onSuccess?.(data);
+            toast.info('Regenerating response...');
         },
-        onError: (error: Error) => {
-            toast.error(`Failed to regenerate: ${error.message}`);
-        },
-    });
+        [sessionId]
+    );
+
+    return { regenerate };
 }

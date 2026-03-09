@@ -19,11 +19,9 @@ import {
 } from './study';
 import { useActiveDeck } from './core';
 import { EmptyState } from './shared';
-import {
-  useTTSFlashcard,
-  useAutonomousAudio,
-  notificationClient,
-} from '@/platform/audio';
+import { useTTSFlashcard } from '@/platform/audio/hooks/useTTSFlashcard';
+import { useAutonomousAudio } from '@/platform/audio/hooks/useAutonomousAudio';
+import { notificationClient } from '@/platform/audio/clients/NotificationClient';
 
 function formatTime(ms: number): string {
   const seconds = Math.floor(ms / 1000);

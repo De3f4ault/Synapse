@@ -27,10 +27,7 @@ class RetryConfig:
     MAX_BACKOFF_SECONDS = 3600  # 1 hour
 
 
-def calculate_next_retry_time(
-    attempts: int,
-    config: RetryConfig = None
-) -> datetime:
+def calculate_next_retry_time(attempts: int, config: RetryConfig = None) -> datetime:
     """
     Calculate next retry time using exponential backoff
 
@@ -46,8 +43,8 @@ def calculate_next_retry_time(
 
     # Calculate backoff delay: initial * (multiplier ^ attempts)
     backoff_seconds = min(
-        config.INITIAL_BACKOFF_SECONDS * (config.BACKOFF_MULTIPLIER ** attempts),
-        config.MAX_BACKOFF_SECONDS
+        config.INITIAL_BACKOFF_SECONDS * (config.BACKOFF_MULTIPLIER**attempts),
+        config.MAX_BACKOFF_SECONDS,
     )
 
     next_retry = datetime.utcnow() + timedelta(seconds=backoff_seconds)
@@ -56,16 +53,13 @@ def calculate_next_retry_time(
         "calculated_retry_time",
         attempts=attempts,
         backoff_seconds=backoff_seconds,
-        next_retry=next_retry.isoformat()
+        next_retry=next_retry.isoformat(),
     )
 
     return next_retry
 
 
-async def retry_failed_webhooks(
-    db_session,
-    config: RetryConfig = None
-) -> Dict[str, int]:
+async def retry_failed_webhooks(db_session, config: RetryConfig = None) -> Dict[str, int]:
     """
     Retry all failed webhooks that are due for retry
 
@@ -83,13 +77,7 @@ async def retry_failed_webhooks(
 
     logger.info("starting_webhook_retry_job")
 
-    stats = {
-        "checked": 0,
-        "retried": 0,
-        "succeeded": 0,
-        "failed": 0,
-        "max_attempts_reached": 0
-    }
+    stats = {"checked": 0, "retried": 0, "succeeded": 0, "failed": 0, "max_attempts_reached": 0}
 
     try:
         # Import models here to avoid circular imports
@@ -100,7 +88,7 @@ async def retry_failed_webhooks(
         query = select(WebhookEvent).where(
             WebhookEvent.status == "failed",
             WebhookEvent.attempts < config.MAX_ATTEMPTS,
-            WebhookEvent.next_retry_at <= datetime.utcnow()
+            WebhookEvent.next_retry_at <= datetime.utcnow(),
         )
 
         result = await db_session.execute(query)
@@ -108,18 +96,11 @@ async def retry_failed_webhooks(
 
         stats["checked"] = len(failed_webhooks)
 
-        logger.info(
-            "found_failed_webhooks",
-            count=len(failed_webhooks)
-        )
+        logger.info("found_failed_webhooks", count=len(failed_webhooks))
 
         # Retry each webhook
         for webhook_event in failed_webhooks:
-            result = await retry_webhook_event(
-                webhook_event,
-                db_session,
-                config
-            )
+            result = await retry_webhook_event(webhook_event, db_session, config)
 
             stats["retried"] += 1
 
@@ -134,25 +115,16 @@ async def retry_failed_webhooks(
         await db_session.commit()
 
     except Exception as e:
-        logger.error(
-            "webhook_retry_job_failed",
-            error=str(e),
-            exc_info=True
-        )
+        logger.error("webhook_retry_job_failed", error=str(e), exc_info=True)
         await db_session.rollback()
 
-    logger.info(
-        "webhook_retry_job_completed",
-        **stats
-    )
+    logger.info("webhook_retry_job_completed", **stats)
 
     return stats
 
 
 async def retry_webhook_event(
-    webhook_event,
-    db_session,
-    config: RetryConfig = None
+    webhook_event, db_session, config: RetryConfig = None
 ) -> Dict[str, Any]:
     """
     Retry a single webhook event
@@ -172,7 +144,7 @@ async def retry_webhook_event(
         "retrying_webhook",
         webhook_id=webhook_event.id,
         webhook_url=webhook_event.webhook_url,
-        attempts=webhook_event.attempts
+        attempts=webhook_event.attempts,
     )
 
     # Reconstruct event from stored payload
@@ -187,7 +159,7 @@ async def retry_webhook_event(
             webhook_url=webhook_event.webhook_url,
             event=event,
             secret=webhook_event.secret,  # Assumes secret is stored
-            webhook_id=str(webhook_event.id)
+            webhook_id=str(webhook_event.id),
         )
 
         # Update webhook event record
@@ -203,20 +175,19 @@ async def retry_webhook_event(
             logger.info(
                 "webhook_retry_succeeded",
                 webhook_id=webhook_event.id,
-                attempts=webhook_event.attempts
+                attempts=webhook_event.attempts,
             )
         else:
             # Still failed - schedule next retry if under max attempts
             if webhook_event.attempts < config.MAX_ATTEMPTS:
                 webhook_event.next_retry_at = calculate_next_retry_time(
-                    webhook_event.attempts,
-                    config
+                    webhook_event.attempts, config
                 )
                 logger.warning(
                     "webhook_retry_failed_rescheduled",
                     webhook_id=webhook_event.id,
                     attempts=webhook_event.attempts,
-                    next_retry=webhook_event.next_retry_at.isoformat()
+                    next_retry=webhook_event.next_retry_at.isoformat(),
                 )
             else:
                 # Max attempts reached - mark as permanently failed
@@ -225,33 +196,177 @@ async def retry_webhook_event(
                 logger.error(
                     "webhook_max_attempts_reached",
                     webhook_id=webhook_event.id,
-                    attempts=webhook_event.attempts
+                    attempts=webhook_event.attempts,
                 )
 
         return result
 
     except Exception as e:
         logger.error(
-            "webhook_retry_error",
-            webhook_id=webhook_event.id,
-            error=str(e),
-            exc_info=True
+            "webhook_retry_error", webhook_id=webhook_event.id, error=str(e), exc_info=True
         )
 
         # Update attempts and schedule retry
         webhook_event.attempts += 1
 
         if webhook_event.attempts < config.MAX_ATTEMPTS:
-            webhook_event.next_retry_at = calculate_next_retry_time(
-                webhook_event.attempts,
-                config
-            )
+            webhook_event.next_retry_at = calculate_next_retry_time(webhook_event.attempts, config)
         else:
             webhook_event.status = "failed_permanent"
             webhook_event.next_retry_at = None
 
-        return {
-            "success": False,
-            "status_code": 0,
-            "response_body": f"Retry error: {str(e)}"
-        }
+        return {"success": False, "status_code": 0, "response_body": f"Retry error: {str(e)}"}
+
+
+# =============================================================================
+# SYNC VERSIONS — Used by Celery background tasks (no event loop)
+# =============================================================================
+
+
+def retry_failed_webhooks_sync(db_session, config: RetryConfig = None) -> Dict[str, int]:
+    """
+    Retry all failed webhooks that are due for retry (sync version).
+
+    Used by Celery beat task. The async version is used by the API layer.
+
+    Args:
+        db_session: Sync database session
+        config: Optional retry configuration
+
+    Returns:
+        Dict with retry statistics
+    """
+    if config is None:
+        config = RetryConfig()
+
+    logger.info("starting_webhook_retry_job")
+
+    stats = {"checked": 0, "retried": 0, "succeeded": 0, "failed": 0, "max_attempts_reached": 0}
+
+    try:
+        from app.models.webhook_event import WebhookEvent
+        from sqlalchemy import select
+
+        query = select(WebhookEvent).where(
+            WebhookEvent.status == "failed",
+            WebhookEvent.attempts < config.MAX_ATTEMPTS,
+            WebhookEvent.next_retry_at <= datetime.utcnow(),
+        )
+
+        result = db_session.execute(query)
+        failed_webhooks = result.scalars().all()
+
+        stats["checked"] = len(failed_webhooks)
+
+        logger.info("found_failed_webhooks", count=len(failed_webhooks))
+
+        for webhook_event in failed_webhooks:
+            result = retry_webhook_event_sync(webhook_event, db_session, config)
+
+            stats["retried"] += 1
+
+            if result["success"]:
+                stats["succeeded"] += 1
+            elif webhook_event.attempts >= config.MAX_ATTEMPTS:
+                stats["max_attempts_reached"] += 1
+            else:
+                stats["failed"] += 1
+
+        db_session.commit()
+
+    except Exception as e:
+        logger.error("webhook_retry_job_failed", error=str(e), exc_info=True)
+        db_session.rollback()
+
+    logger.info("webhook_retry_job_completed", **stats)
+
+    return stats
+
+
+def retry_webhook_event_sync(
+    webhook_event, db_session, config: RetryConfig = None
+) -> Dict[str, Any]:
+    """
+    Retry a single webhook event (sync version).
+
+    Args:
+        webhook_event: WebhookEvent model instance
+        db_session: Sync database session
+        config: Retry configuration
+
+    Returns:
+        Result dict with success status
+    """
+    if config is None:
+        config = RetryConfig()
+
+    logger.info(
+        "retrying_webhook",
+        webhook_id=webhook_event.id,
+        webhook_url=webhook_event.webhook_url,
+        attempts=webhook_event.attempts,
+    )
+
+    from ..triggers import Event
+    from .sender_sync import send_webhook_sync
+
+    try:
+        event = Event.from_dict(webhook_event.payload)
+
+        result = send_webhook_sync(
+            webhook_url=webhook_event.webhook_url,
+            event=event,
+            secret=webhook_event.secret,
+            webhook_id=str(webhook_event.id),
+        )
+
+        webhook_event.attempts += 1
+        webhook_event.response_code = result.get("status_code")
+        webhook_event.response_body = result.get("response_body", "")[:1000]
+
+        if result["success"]:
+            webhook_event.status = "sent"
+            webhook_event.sent_at = datetime.utcnow()
+            webhook_event.next_retry_at = None
+
+            logger.info(
+                "webhook_retry_succeeded",
+                webhook_id=webhook_event.id,
+                attempts=webhook_event.attempts,
+            )
+        else:
+            if webhook_event.attempts < config.MAX_ATTEMPTS:
+                webhook_event.next_retry_at = calculate_next_retry_time(
+                    webhook_event.attempts, config
+                )
+                logger.warning(
+                    "webhook_retry_failed_rescheduled",
+                    webhook_id=webhook_event.id,
+                    attempts=webhook_event.attempts,
+                    next_retry=webhook_event.next_retry_at.isoformat(),
+                )
+            else:
+                webhook_event.status = "failed_permanent"
+                webhook_event.next_retry_at = None
+                logger.error(
+                    "webhook_max_attempts_reached",
+                    webhook_id=webhook_event.id,
+                    attempts=webhook_event.attempts,
+                )
+
+        return result
+
+    except Exception as e:
+        logger.error(
+            "webhook_retry_error", webhook_id=webhook_event.id, error=str(e), exc_info=True
+        )
+
+        webhook_event.attempts += 1
+
+        if webhook_event.attempts < config.MAX_ATTEMPTS:
+            webhook_event.next_retry_at = calculate_next_retry_time(webhook_event.attempts, config)
+        else:
+            webhook_event.status = "failed_permanent"
+            webhook_event.next_retry_at = None
+
+        return {"success": False, "status_code": 0, "response_body": f"Retry error: {str(e)}"}

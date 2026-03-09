@@ -1,7 +1,7 @@
 
 import { useEffect } from 'react';
 import { useAudioUIStore } from '../store/useAudioUIStore';
-import { audioEngine } from '@/platform/audio';
+import { audioEngine } from '../core/AudioEngine';
 
 /**
  * useSmartFlow - The "Nervous System"

@@ -605,6 +605,34 @@ Output JSON:
 
         await db.commit()
 
+        # --- Auto-wire the knowledge graph ---
+        # Document → Deck (DERIVED): the deck was generated from this document.
+        try:
+            from app.services.graph_linker import GraphLinker
+            from app.models.link import LinkEntityType as LET, LinkType as LT
+
+            linker = GraphLinker(db)
+            await linker.on_entity_created(
+                user_id=current_user.id,
+                entity_type=LET.DECK,
+                entity_id=deck["id"],
+                source_refs=[(LET.DOCUMENT, document.id)],
+                link_type=LT.DERIVED,
+                label="generated from",
+                metadata={
+                    "method": "ai",
+                    "source_filename": document.filename,
+                    "cards_generated": cards_created,
+                },
+            )
+        except Exception as link_err:
+            # Link creation is advisory — don't fail the generation
+            import structlog as _sl
+
+            _sl.get_logger(__name__).warning(
+                "graph_linker_failed", error=str(link_err), deck_id=deck["id"]
+            )
+
         return FlashcardGenerateResponse(
             deck_id=deck["id"],
             deck_name=deck["name"],

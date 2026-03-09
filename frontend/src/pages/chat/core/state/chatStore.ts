@@ -46,6 +46,9 @@ interface ChatState {
     // Chat mode: supports multiple AI interaction modes
     chatMode: 'direct' | 'tutor' | 'deep_think' | 'creative' | 'research';
 
+    // Selected model override (null = auto/default)
+    selectedModel: string | null;
+
     // Streaming state (ephemeral - cleared on complete)
     streaming: StreamingState;
 
@@ -71,11 +74,17 @@ interface ChatState {
         B: { content: string; thinking: string; isComplete: boolean };
     };
 
+    // Thinking toggle
+    showThinking: boolean;
+
     // Actions - Connection
     setConnectionState: (state: ConnectionState) => void;
 
     // Actions - Chat Mode
     setChatMode: (mode: 'direct' | 'tutor' | 'deep_think' | 'creative' | 'research') => void;
+
+    // Actions - Model Selection
+    setSelectedModel: (model: string | null) => void;
     toggleChatMode: () => void;
 
     // Actions - Streaming
@@ -111,6 +120,10 @@ interface ChatState {
     appendToSlot: (slot: 'A' | 'B', text: string, type?: 'content' | 'thinking') => void;
     markSlotComplete: (slot: 'A' | 'B') => void;
     clearComparison: () => void;
+
+    // Actions - Thinking toggle
+    toggleThinking: () => void;
+    setShowThinking: (show: boolean) => void;
 }
 
 // Valid chat modes
@@ -127,10 +140,17 @@ const getPersistedChatMode = (): ChatMode => {
     return 'tutor';
 };
 
+// Load persisted model selection from localStorage
+const getPersistedModel = (): string | null => {
+    if (typeof window === 'undefined') return null;
+    return localStorage.getItem('synapse-selected-model') || null;
+};
+
 export const useChatStore = create<ChatState>((set, get) => ({
     // Initial state
     connectionState: 'disconnected',
     chatMode: getPersistedChatMode(),  // Load from localStorage
+    selectedModel: getPersistedModel(), // Load from localStorage
     streaming: INITIAL_STREAMING_STATE,
     toolCalls: [],
     error: null,
@@ -146,6 +166,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
         A: { content: '', thinking: '', isComplete: false },
         B: { content: '', thinking: '', isComplete: false },
     },
+
+    // Thinking toggle - persisted in localStorage
+    showThinking: typeof window !== 'undefined'
+        ? (localStorage.getItem('synapse-show-thinking') !== 'false')  // Default true
+        : true,
 
     // Connection
     setConnectionState: (connectionState) => set({ connectionState }),
@@ -166,6 +191,18 @@ export const useChatStore = create<ChatState>((set, get) => ({
             localStorage.setItem('synapse-chat-mode', newMode);
         }
         set({ chatMode: newMode });
+    },
+
+    // Model selection (with localStorage persistence)
+    setSelectedModel: (model) => {
+        if (typeof window !== 'undefined') {
+            if (model) {
+                localStorage.setItem('synapse-selected-model', model);
+            } else {
+                localStorage.removeItem('synapse-selected-model');
+            }
+        }
+        set({ selectedModel: model });
     },
 
     // Streaming - append operations (key for token-by-token updates)
@@ -330,6 +367,21 @@ export const useChatStore = create<ChatState>((set, get) => ({
                 B: { content: '', thinking: '', isComplete: false },
             },
         });
+    },
+
+    // Thinking toggle
+    toggleThinking: () => {
+        const newVal = !get().showThinking;
+        if (typeof window !== 'undefined') {
+            localStorage.setItem('synapse-show-thinking', String(newVal));
+        }
+        set({ showThinking: newVal });
+    },
+    setShowThinking: (show) => {
+        if (typeof window !== 'undefined') {
+            localStorage.setItem('synapse-show-thinking', String(show));
+        }
+        set({ showThinking: show });
     },
 }));
 

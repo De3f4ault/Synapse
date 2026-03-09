@@ -1,9 +1,9 @@
 /**
- * ChatInputBox - Modern Design with Mode Dropdown & Tools Panel
+ * ChatInputBox - Modern Design with Mode & Model Dropdowns
  *
  * Features:
  * - 5 AI modes with dropdown selector (Direct, Tutor, Deep Think, Creative, Research)
- * - Expandable Tools panel with learning tools
+ * - Model selector with provider grouping (DeepSeek-style)
  * - Search toggle
  * - Mention system (@entity support)
  */
@@ -21,8 +21,8 @@ import {
   Brain,
   Sparkles,
   Search,
-  Wrench,
-  X
+  Cpu,
+  Cloud,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -31,7 +31,9 @@ import { useState, useRef, useEffect } from "react";
 import { useMentionController, EntityPicker } from "@/shared/platform/mentions";
 import { useEntitySearch } from "@/shared/platform/hooks/useEntitySearch";
 import type { EntitySearchResult } from "@/shared/platform/types";
-import { useChatMode, useSetChatMode } from "../state/chatSelectors";
+import { useChatMode, useSetChatMode, useSelectedModel, useSetSelectedModel } from "../state/chatSelectors";
+import { useChatStore } from "../state/chatStore";
+import { useModels } from "../hooks/useModels";
 import { motion, AnimatePresence } from "framer-motion";
 
 // Mode definitions
@@ -85,10 +87,23 @@ const MODES: Mode[] = [
 
 /**
  * Mode Selector Dropdown
+ * Accepts optional mode/onModeChange for independent state (e.g. thread panel).
+ * Falls back to global chatStore when not provided.
  */
-function ModeSelector() {
-  const chatMode = useChatMode();
-  const setChatMode = useSetChatMode();
+function ModeSelector({
+  mode: externalMode,
+  onModeChange: externalOnModeChange,
+}: {
+  mode?: string;
+  onModeChange?: (mode: string) => void;
+} = {}) {
+  const globalChatMode = useChatMode();
+  const globalSetChatMode = useSetChatMode();
+
+  // Use external props if provided, otherwise fall back to global store
+  const chatMode = externalMode ?? globalChatMode;
+  const setChatMode = externalOnModeChange ?? globalSetChatMode;
+
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -185,52 +200,169 @@ function ModeSelector() {
   );
 }
 
+
 /**
- * Tools Panel Component
+ * Model Selector Dropdown — DeepSeek-style
+ * Shows available models grouped by provider with thinking capability badges.
  */
-function ToolsPanel({ onClose }: { onClose: () => void }) {
-  const tools = [
-    { name: "Create Quiz", icon: "📝", desc: "Generate questions" },
-    { name: "Flashcards", icon: "🎴", desc: "Spaced repetition" },
-    { name: "Summarize", icon: "📋", desc: "Condense content" },
-    { name: "Explain", icon: "💡", desc: "Break down concepts" },
-  ];
+function ModelSelector() {
+  const selectedModel = useSelectedModel();
+  const setSelectedModel = useSetSelectedModel();
+  const { models, isLoading } = useModels();
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Find current model info
+  const currentModel = models.find(m => m.id === selectedModel);
+  const displayName = currentModel?.name ?? "Auto";
+
+  // Group models by provider
+  const localModels = models.filter(m => m.provider === "ollama");
+  const cloudModels = models.filter(m => m.provider === "google");
+
+  const handleSelect = (modelId: string | null) => {
+    setSelectedModel(modelId);
+    setIsOpen(false);
+  };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, height: 0 }}
-      animate={{ opacity: 1, height: "auto" }}
-      exit={{ opacity: 0, height: 0 }}
-      className="overflow-hidden mb-2"
-    >
-      <div className="rounded-xl border border-white/10 bg-zinc-900/80 p-3">
-        <div className="flex items-center justify-between mb-3">
-          <span className="text-xs font-medium text-white/60">Available Tools</span>
-          <button 
-            onClick={onClose}
-            className="p-1 rounded hover:bg-white/10 text-white/40 transition-colors"
+    <div className="relative" ref={dropdownRef}>
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => setIsOpen(!isOpen)}
+        className={cn(
+          "h-7 rounded-lg transition-all font-medium text-xs gap-1.5 px-2.5",
+          "hover:bg-white/10",
+          selectedModel ? "text-cyan-400" : "text-zinc-400"
+        )}
+        title={`Model: ${displayName}`}
+      >
+        <Cpu className="size-3.5" />
+        <span className="hidden sm:inline max-w-[80px] truncate">{displayName}</span>
+        <ChevronDown className={cn(
+          "size-3 opacity-50 transition-transform",
+          isOpen && "rotate-180"
+        )} />
+      </Button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: 8, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 8, scale: 0.96 }}
+            transition={{ duration: 0.15 }}
+            className="absolute bottom-full right-0 mb-2 w-64 rounded-xl border border-white/10 bg-zinc-900 p-1.5 shadow-2xl z-50 max-h-80 overflow-y-auto custom-scrollbar"
           >
-            <X className="size-3.5" />
-          </button>
-        </div>
-        <div className="grid grid-cols-2 gap-2">
-          {tools.map((tool) => (
-            <button
-              key={tool.name}
-              className="flex items-center gap-2 p-2.5 rounded-lg bg-white/5 hover:bg-white/10 text-left transition-all"
-            >
-              <span className="text-lg">{tool.icon}</span>
-              <div>
-                <div className="text-xs font-medium text-white">{tool.name}</div>
-                <div className="text-[10px] text-white/40">{tool.desc}</div>
-              </div>
-            </button>
-          ))}
-        </div>
-      </div>
-    </motion.div>
+            {isLoading ? (
+              <div className="text-xs text-zinc-500 px-3 py-4 text-center">Loading models…</div>
+            ) : (
+              <>
+                {/* Auto detect option */}
+                <button
+                  onClick={() => handleSelect(null)}
+                  className={cn(
+                    "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all mb-1",
+                    !selectedModel ? "bg-white/10" : "hover:bg-white/5",
+                  )}
+                >
+                  <Sparkles className="size-4 text-cyan-400 flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <span className="text-sm font-medium text-white">Auto</span>
+                    <p className="text-[11px] text-white/50">Best model for the task</p>
+                  </div>
+                  {!selectedModel && <Check className="size-4 text-cyan-400 flex-shrink-0" />}
+                </button>
+
+                {/* Local models */}
+                {localModels.length > 0 && (
+                  <>
+                    <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-white/40 px-2 py-1.5 mt-1">
+                      <Cpu className="size-3" />
+                      Local Models
+                    </div>
+                    {localModels.map((model) => (
+                      <button
+                        key={model.id}
+                        onClick={() => handleSelect(model.id)}
+                        className={cn(
+                          "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all",
+                          model.id === selectedModel ? "bg-white/10" : "hover:bg-white/5",
+                        )}
+                      >
+                        <Cpu className="size-4 text-emerald-400 flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium text-white truncate">{model.name}</span>
+                            {model.supportsThinking && (
+                              <span className="text-[9px] px-1 py-0.5 rounded bg-purple-500/20 text-purple-300 flex-shrink-0">
+                                Think
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-white/50 truncate">{model.description}</p>
+                        </div>
+                        {model.id === selectedModel && <Check className="size-4 text-cyan-400 flex-shrink-0" />}
+                      </button>
+                    ))}
+                  </>
+                )}
+
+                {/* Cloud models */}
+                {cloudModels.length > 0 && (
+                  <>
+                    <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-white/40 px-2 py-1.5 mt-1">
+                      <Cloud className="size-3" />
+                      Cloud Models
+                    </div>
+                    {cloudModels.map((model) => (
+                      <button
+                        key={model.id}
+                        onClick={() => handleSelect(model.id)}
+                        className={cn(
+                          "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all",
+                          model.id === selectedModel ? "bg-white/10" : "hover:bg-white/5",
+                        )}
+                      >
+                        <Cloud className="size-4 text-blue-400 flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium text-white truncate">{model.name}</span>
+                            {model.supportsThinking && (
+                              <span className="text-[9px] px-1 py-0.5 rounded bg-purple-500/20 text-purple-300 flex-shrink-0">
+                                Think
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-white/50 truncate">{model.description}</p>
+                        </div>
+                        {model.id === selectedModel && <Check className="size-4 text-cyan-400 flex-shrink-0" />}
+                      </button>
+                    ))}
+                  </>
+                )}
+              </>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }
+
+
 
 interface ChatInputBoxProps {
   message: string;
@@ -242,6 +374,11 @@ interface ChatInputBoxProps {
   placeholder?: string;
   disabled?: boolean;
   className?: string;
+  /** Minimal mode — only ModeSelector + Send (used by thread panel) */
+  minimal?: boolean;
+  /** Independent mode state (overrides global store) */
+  mode?: string;
+  onModeChange?: (mode: string) => void;
 }
 
 export function ChatInputBox({
@@ -254,10 +391,15 @@ export function ChatInputBox({
   placeholder = "Ask anything...",
   disabled = false,
   className,
+  minimal = false,
+  mode,
+  onModeChange,
 }: ChatInputBoxProps) {
   const [isFocused, setIsFocused] = useState(false);
-  const [showToolsPanel, setShowToolsPanel] = useState(false);
+
   const [searchEnabled, setSearchEnabled] = useState(false);
+  const showThinking = useChatStore((s) => s.showThinking);
+  const toggleThinking = useChatStore((s) => s.toggleThinking);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Auto-resize textarea when message changes
@@ -349,12 +491,7 @@ export function ChatInputBox({
 
   return (
     <div className={cn("space-y-2", className)}>
-      {/* Tools Panel */}
-      <AnimatePresence>
-        {showToolsPanel && (
-          <ToolsPanel onClose={() => setShowToolsPanel(false)} />
-        )}
-      </AnimatePresence>
+
 
       {/* Main Input Container */}
       <div
@@ -412,81 +549,94 @@ export function ChatInputBox({
 
         {/* Bottom Toolbar */}
         <div className="flex items-center justify-between px-2 pb-2">
-          {/* Left: Tools */}
+          {/* Left: Tools (hidden in minimal mode) */}
           <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 rounded-lg text-zinc-400 hover:text-white hover:bg-white/5 gap-1.5 px-2"
-              type="button"
-              disabled={disabled}
-            >
-              <Plus className="size-4" />
-            </Button>
+            {!minimal && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 rounded-lg text-zinc-400 hover:text-white hover:bg-white/5 gap-1.5 px-2"
+                  type="button"
+                  disabled={disabled}
+                >
+                  <Plus className="size-4" />
+                </Button>
 
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowToolsPanel(!showToolsPanel)}
-              className={cn(
-                "h-8 rounded-lg gap-1.5 px-2.5 transition-all",
-                showToolsPanel
-                  ? "bg-white/10 text-white"
-                  : "text-zinc-400 hover:text-white hover:bg-white/5"
-              )}
-              type="button"
-              disabled={disabled}
-            >
-              <Wrench className="size-3.5" />
-              <span className="text-xs">Tools</span>
-            </Button>
+                {/* Search Toggle */}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSearchEnabled(!searchEnabled)}
+                  className={cn(
+                    "h-8 rounded-lg gap-1.5 px-2.5 transition-all",
+                    searchEnabled
+                      ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                      : "text-zinc-400 hover:text-white hover:bg-white/5"
+                  )}
+                  type="button"
+                  disabled={disabled}
+                >
+                  <Search className="size-3.5" />
+                  <span className="text-xs">Search</span>
+                </Button>
 
-            {/* Search Toggle */}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setSearchEnabled(!searchEnabled)}
-              className={cn(
-                "h-8 rounded-lg gap-1.5 px-2.5 transition-all",
-                searchEnabled
-                  ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
-                  : "text-zinc-400 hover:text-white hover:bg-white/5"
-              )}
-              type="button"
-              disabled={disabled}
-            >
-              <Search className="size-3.5" />
-              <span className="text-xs">Search</span>
-            </Button>
+                {/* Thinking Toggle */}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={toggleThinking}
+                  className={cn(
+                    "h-8 rounded-lg gap-1.5 px-2.5 transition-all",
+                    showThinking
+                      ? "bg-purple-500/20 text-purple-400 border border-purple-500/30"
+                      : "text-zinc-400 hover:text-white hover:bg-white/5"
+                  )}
+                  type="button"
+                  disabled={disabled}
+                  title="Toggle thinking visibility"
+                >
+                  <Brain className="size-3.5" />
+                  <span className="text-xs">Thinking</span>
+                </Button>
+              </>
+            )}
           </div>
 
-          {/* Right: Mode + Actions */}
+          {/* Right: Model + Mode + Actions */}
           <div className="flex items-center gap-1">
-            <ModeSelector />
+            {/* Model Selector (hidden in minimal mode) */}
+            {!minimal && <ModelSelector />}
 
-            <div className="w-px h-4 bg-white/10 mx-1" />
+            <ModeSelector mode={mode} onModeChange={onModeChange} />
 
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-8 rounded-lg text-zinc-400 hover:text-white hover:bg-white/5"
-              type="button"
-              disabled={disabled}
-            >
-              <PaperclipIcon className="size-4" />
-            </Button>
+            {!minimal && (
+              <>
+                <div className="w-px h-4 bg-white/10 mx-1" />
 
-            {onVoiceClick && (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={onVoiceClick}
-                className="size-8 rounded-lg text-zinc-400 hover:text-white hover:bg-white/5"
-                type="button"
-                disabled={disabled || isStreaming}
-              >
-                <Mic className="size-4" />
-              </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-8 rounded-lg text-zinc-400 hover:text-white hover:bg-white/5"
+                  type="button"
+                  disabled={disabled}
+                >
+                  <PaperclipIcon className="size-4" />
+                </Button>
+
+                {onVoiceClick && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={onVoiceClick}
+                    className="size-8 rounded-lg text-zinc-400 hover:text-white hover:bg-white/5"
+                    type="button"
+                    disabled={disabled || isStreaming}
+                  >
+                    <Mic className="size-4" />
+                  </Button>
+                )}
+              </>
             )}
 
             {/* Stop/Send Button */}

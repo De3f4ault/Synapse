@@ -85,7 +85,6 @@ class StreamingThinkParser:
     def __init__(self):
         self._buffer: str = ""
         self._in_thinking: bool = False
-        self._thinking_buffer: str = ""
 
     def feed(self, chunk: str) -> ParsedChunk:
         """
@@ -107,15 +106,28 @@ class StreamingThinkParser:
                 # Look for closing tag
                 end_idx = self._buffer.find("</think>")
                 if end_idx == -1:
-                    # Still in thinking, buffer it
-                    self._thinking_buffer += self._buffer
-                    self._buffer = ""
+                    # Still in thinking — yield content incrementally for real-time streaming
+                    # But check for partial closing tag at end to avoid splitting </think>
+                    partial_tag = "</think>"
+                    for i in range(1, min(len(partial_tag), len(self._buffer) + 1)):
+                        if self._buffer.endswith(partial_tag[:i]):
+                            # Potential partial closing tag — yield everything before it
+                            emit = self._buffer[:-i]
+                            if emit:
+                                thinking_parts.append(emit)
+                            self._buffer = self._buffer[-i:]
+                            break
+                    else:
+                        # No partial tag — yield all buffered thinking content
+                        if self._buffer:
+                            thinking_parts.append(self._buffer)
+                        self._buffer = ""
                     break
                 else:
                     # Found end tag
-                    self._thinking_buffer += self._buffer[:end_idx]
-                    thinking_parts.append(self._thinking_buffer.strip())
-                    self._thinking_buffer = ""
+                    before_tag = self._buffer[:end_idx]
+                    if before_tag:
+                        thinking_parts.append(before_tag)
                     self._buffer = self._buffer[end_idx + 8 :]  # len('</think>')
                     self._in_thinking = False
             else:
@@ -140,7 +152,7 @@ class StreamingThinkParser:
                     self._in_thinking = True
 
         return ParsedChunk(
-            thinking="\n".join(thinking_parts),
+            thinking="".join(thinking_parts),
             content="".join(content_parts),
             has_thinking=bool(thinking_parts),
         )
@@ -150,13 +162,20 @@ class StreamingThinkParser:
         Flush any remaining content in buffers.
         Call at end of stream.
         """
-        result = ParsedChunk(
-            thinking=self._thinking_buffer.strip(),
-            content=self._buffer,
-            has_thinking=bool(self._thinking_buffer.strip()),
-        )
+        # If still inside a <think> block, remaining buffer is thinking content
+        if self._in_thinking:
+            result = ParsedChunk(
+                thinking=self._buffer,
+                content="",
+                has_thinking=bool(self._buffer.strip()),
+            )
+        else:
+            result = ParsedChunk(
+                thinking="",
+                content=self._buffer,
+                has_thinking=False,
+            )
         self._buffer = ""
-        self._thinking_buffer = ""
         self._in_thinking = False
         return result
 
@@ -164,4 +183,3 @@ class StreamingThinkParser:
         """Reset parser state for a new stream."""
         self._buffer = ""
         self._in_thinking = False
-        self._thinking_buffer = ""

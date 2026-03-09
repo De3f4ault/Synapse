@@ -16,6 +16,10 @@ export const useChatMode = () => useChatStore((s) => s.chatMode);
 export const useToggleChatMode = () => useChatStore((s) => s.toggleChatMode);
 export const useSetChatMode = () => useChatStore((s) => s.setChatMode);
 
+// Model selection
+export const useSelectedModel = () => useChatStore((s) => s.selectedModel);
+export const useSetSelectedModel = () => useChatStore((s) => s.setSelectedModel);
+
 // Streaming state
 export const useStreamingState = () => useChatStore((s) => s.streaming);
 export const useIsStreaming = () => useChatStore((s) => s.streaming.isStreaming);

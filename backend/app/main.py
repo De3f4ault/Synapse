@@ -303,7 +303,7 @@ async def _shutdown_application() -> None:
 
     # 1. Stop WebSocket cleanup task
     try:
-        from app.api.websockets.manager import manager
+        from app.api.websockets.core.manager import manager
 
         manager.stop_cleanup_task()
         logger.info("websocket_cleanup_stopped")

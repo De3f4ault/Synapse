@@ -272,7 +272,7 @@ async def create_branch(
         # Select model: use override or default to long-context model for branches
         model = data.model_override or "qwen3-235b"  # Qwen for long context reasoning
 
-        agent = create_agent("general", model=model)
+        agent = await create_agent("general", model=model)
         result = await agent.execute(
             prompt_content,
             context={"history": chat_history},

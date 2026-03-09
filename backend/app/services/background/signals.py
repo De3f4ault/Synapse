@@ -21,12 +21,35 @@ from celery.signals import (
     task_prerun,
     task_postrun,
     task_failure,
+    worker_process_init,
 )
 
 from app.db.session import SessionLocal
 from app.models.synapse_task import SynapseTask, TaskStatus, TaskType, TaskName
 
 logger = logging.getLogger(__name__)
+
+
+# =============================================================================
+# Post-fork cleanup — dispose inherited engine pools
+# =============================================================================
+
+
+@worker_process_init.connect
+def on_worker_process_init(**kwargs):
+    """
+    Clean up inherited resources after prefork.
+
+    When Celery starts with --pool=prefork, the main process imports all task
+    modules (creating engine objects). After fork, child workers inherit these
+    engines including any socket file descriptors. Disposing ensures each child
+    creates its own clean connection pool.
+    """
+    from app.db.session import sync_engine
+
+    sync_engine.dispose()
+    logger.info("Worker process initialized: disposed inherited engine pools")
+
 
 # Tasks to track (add more as needed)
 TRACKED_TASKS = {

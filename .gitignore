@@ -1,3 +1,5 @@
 incorporations/
 Brainstorming/
 backend/celerybeat-schedule
+.venv/
+tests/

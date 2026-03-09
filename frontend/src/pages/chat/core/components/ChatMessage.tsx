@@ -1,6 +1,8 @@
 import { memo, useState } from "react";
 import { cn } from "@/lib/utils";
-import { Loader2, Copy, Check, RefreshCw, MessageSquarePlus } from "lucide-react";
+import { Copy, Check, RefreshCw, MessageSquarePlus, GitBranch } from "lucide-react";
+import { ThinkingBlock } from "./ThinkingBlock";
+import { ComparisonPanel } from "./ComparisonPanel";
 import { toast } from "sonner";
 import { HighlightedText } from "../../search/components/HighlightedText";
 import { MarkdownRenderer } from "@/shared/rendering";
@@ -12,10 +14,11 @@ import { ChatFlashcardSet } from "./ChatFlashcardSet";
 import { ChatQuizPreview } from "./ChatQuizPreview";
 import { ArtifactCard } from "../../artifacts/components/ArtifactCard";
 import { BranchNavigator } from "./BranchNavigator";
-import { useBranchNavigation } from "../hooks/useBranches";
+import { useBranchNavigation, useCreateBranch } from "../hooks/useBranches";
 import { useRegenerate } from "../hooks/useRegenerate";
 import { entityKey } from "@/shared/core/entity";
 import { useThreadStore } from "../state/threadStore";
+import { useChatStore } from "../state/chatStore";
 import { FlashcardsService, QuizzesService, QuizDifficulty, QuestionType } from "@/api/generated";
 import type { FlashcardCardPreview, QuizQuestionPreview } from "@/shared/rendering/schema";
 
@@ -47,7 +50,8 @@ const ChatMessageComponent = ({
   // Branch navigation for assistant messages
   // INVARIANT: Only show for assistant messages, never for thread messages
   const branchNav = useBranchNavigation(
-    !isUser && message.id > 0 ? message.id : undefined
+    !isUser && message.id > 0 ? message.id : undefined,
+    message.session_id,
   );
 
   // Copy message to clipboard
@@ -156,7 +160,7 @@ const ChatMessageComponent = ({
 
   // Render content based on message type
   const renderContent = () => {
-    const content = message.content || "";
+    const content = effectiveContent;
 
     // User messages: plain text with optional highlighting
     if (isUser) {
@@ -305,6 +309,47 @@ const ChatMessageComponent = ({
   // Grok colors
   const GROK_USER_BUBBLE = "#141414";
 
+  // Detect saved comparison messages (from function_calls metadata)
+  const comparisonData = !isUser && message.function_calls?.comparison;
+
+  // Render saved comparison as side-by-side panel
+  if (comparisonData) {
+    return (
+      <div data-message-id={message.id} className="w-full">
+        <ComparisonPanel
+          contentA={comparisonData.model_a?.content || ""}
+          contentB={comparisonData.model_b?.content || ""}
+          modelA={comparisonData.model_a?.key || ""}
+          modelB={comparisonData.model_b?.key || ""}
+          isStreamingA={false}
+          isStreamingB={false}
+        />
+      </div>
+    );
+  }
+
+  // Parse persisted <think> tags from saved message content
+  // When thinking content is saved to DB, it's wrapped as <think>\n...\n</think>
+  const parsedThinking = (() => {
+    if (isUser || thinking) return { thinkContent: "", remainingContent: message.content || "" };
+    const content = message.content || "";
+    const thinkMatch = content.match(/^<think>\n?([\s\S]*?)\n?<\/think>\s*([\s\S]*)$/);
+    if (thinkMatch) {
+      return {
+        thinkContent: thinkMatch[1]?.trim() || "",
+        remainingContent: thinkMatch[2]?.trim() || "",
+      };
+    }
+    return { thinkContent: "", remainingContent: content };
+  })();
+
+  // Thinking toggle from store
+  const showThinking = useChatStore((s) => s.showThinking);
+
+  // Override message content for rendering if we parsed out thinking
+  const effectiveContent = parsedThinking.thinkContent ? parsedThinking.remainingContent : (message.content || "");
+  const effectiveThinking = thinking || parsedThinking.thinkContent;
+
   return (
     <div
       data-message-id={message.id}
@@ -320,12 +365,9 @@ const ChatMessageComponent = ({
           isUser ? "items-end max-w-[70%]" : "items-start max-w-[90%]",
         )}
       >
-        {/* Thinking indicator */}
-        {thinking && (
-          <div className="flex items-center gap-2 px-3 py-1.5 text-xs text-zinc-400 bg-zinc-800/50 rounded-full mb-1">
-            <Loader2 className="size-3 animate-spin" />
-            <span className="opacity-70">Thinking...</span>
-          </div>
+        {/* Thinking block — DeepSeek-style collapsible reasoning (respects toggle) */}
+        {showThinking && effectiveThinking && (
+          <ThinkingBlock content={effectiveThinking} isStreaming={isStreaming} />
         )}
 
         <div
@@ -392,6 +434,11 @@ const ChatMessageComponent = ({
               {/* Thread button */}
               <ThreadButtonInternal sessionId={message.session_id} />
 
+              {/* Branch button - ChatGPT-style "Branch" */}
+              {message.id > 0 && (
+                <BranchButtonInternal messageId={message.id} sessionId={message.session_id} />
+              )}
+
               {/* Branch Navigator */}
               {branchNav.hasBranches && (
                 <BranchNavigator
@@ -429,19 +476,15 @@ const ChatMessageComponent = ({
  * Internal regenerate button with hook integration
  */
 function RegenerateButtonInternal({ messageId, sessionId }: { messageId: number; sessionId: number }) {
-  const regenerateMutation = useRegenerate({ sessionId });
+  const { regenerate } = useRegenerate({ sessionId });
 
   return (
     <button
-      onClick={() => regenerateMutation.mutate(messageId)}
-      disabled={regenerateMutation.isPending}
-      className={cn(
-        "p-1.5 rounded hover:bg-white/10 text-muted-foreground/60 hover:text-muted-foreground transition-colors",
-        regenerateMutation.isPending && "opacity-50 cursor-not-allowed"
-      )}
+      onClick={() => regenerate(messageId)}
+      className="p-1.5 rounded hover:bg-white/10 text-muted-foreground/60 hover:text-muted-foreground transition-colors"
       title="Regenerate response"
     >
-      <RefreshCw className={cn("size-3.5", regenerateMutation.isPending && "animate-spin")} />
+      <RefreshCw className="size-3.5" />
     </button>
   );
 }
@@ -459,6 +502,23 @@ function ThreadButtonInternal({ sessionId: _sessionId }: { sessionId: number }) 
       title="View thread"
     >
       <MessageSquarePlus className="size-3.5" />
+    </button>
+  );
+}
+
+/**
+ * Internal branch button - Creates a new conversation branch from this message
+ */
+function BranchButtonInternal({ messageId, sessionId }: { messageId: number; sessionId: number }) {
+  const createBranch = useCreateBranch(sessionId);
+
+  return (
+    <button
+      onClick={() => createBranch.mutate({ messageId })}
+      className="p-1.5 rounded hover:bg-white/10 text-muted-foreground/60 hover:text-muted-foreground transition-colors"
+      title="Branch from here"
+    >
+      <GitBranch className="size-3.5" />
     </button>
   );
 }

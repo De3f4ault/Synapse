@@ -29,10 +29,7 @@ class SQLExecutor:
         self.session = session
 
     async def execute_sql_function(
-        self,
-        function_name: str,
-        params: Dict[str, Any],
-        retry_on_abort: bool = True
+        self, function_name: str, params: Dict[str, Any], retry_on_abort: bool = True
     ) -> Any:
         """
         Execute a PostgreSQL function with parameters
@@ -66,7 +63,7 @@ class SQLExecutor:
                     "executing_sql_function",
                     function=function_name,
                     params=params,
-                    attempt=attempt + 1
+                    attempt=attempt + 1,
                 )
 
                 # Execute query
@@ -77,11 +74,7 @@ class SQLExecutor:
 
                 # If no results, return None
                 if not rows:
-                    logger.warning(
-                        "sql_function_no_results",
-                        function=function_name,
-                        params=params
-                    )
+                    logger.warning("sql_function_no_results", function=function_name, params=params)
                     return None
 
                 # If single row with single column, return that value
@@ -109,13 +102,16 @@ class SQLExecutor:
                 error_msg = str(e)
 
                 # Check if this is an "aborted transaction" error
-                if "InFailedSQLTransactionError" in error_msg or "current transaction is aborted" in error_msg:
+                if (
+                    "InFailedSQLTransactionError" in error_msg
+                    or "current transaction is aborted" in error_msg
+                ):
                     logger.warning(
                         "sql_function_transaction_aborted",
                         function=function_name,
                         params=params,
                         attempt=attempt + 1,
-                        max_retries=max_retries
+                        max_retries=max_retries,
                     )
 
                     if attempt < max_retries - 1:
@@ -128,7 +124,7 @@ class SQLExecutor:
                             "sql_function_all_retries_failed",
                             function=function_name,
                             params=params,
-                            error=error_msg
+                            error=error_msg,
                         )
                         raise
 
@@ -138,7 +134,7 @@ class SQLExecutor:
                     function=function_name,
                     params=params,
                     error=error_msg,
-                    exc_info=True
+                    exc_info=True,
                 )
                 raise
 
@@ -148,7 +144,7 @@ class SQLExecutor:
                     function=function_name,
                     params=params,
                     error=str(e),
-                    exc_info=True
+                    exc_info=True,
                 )
                 raise
 
@@ -168,9 +164,7 @@ class SQLExecutor:
         """
         try:
             result = await self.execute_sql_function(
-                "developer_schema.build_user_context",
-                {"p_user_id": user_id},
-                retry_on_abort=True
+                "developer_schema.build_user_context", {"p_user_id": user_id}, retry_on_abort=True
             )
 
             # Ensure we return a dict
@@ -185,10 +179,7 @@ class SQLExecutor:
 
         except Exception as e:
             logger.error(
-                "call_build_user_context_failed",
-                user_id=user_id,
-                error=str(e),
-                exc_info=True
+                "call_build_user_context_failed", user_id=user_id, error=str(e), exc_info=True
             )
             # Return empty context on error to prevent cascading failures
             return {}
@@ -205,9 +196,7 @@ class SQLExecutor:
         """
         try:
             result = await self.execute_sql_function(
-                "developer_schema.detect_weak_areas",
-                {"p_user_id": user_id},
-                retry_on_abort=True
+                "developer_schema.detect_weak_areas", {"p_user_id": user_id}, retry_on_abort=True
             )
 
             # Ensure we return a list
@@ -221,27 +210,22 @@ class SQLExecutor:
 
         except Exception as e:
             logger.error(
-                "call_detect_weak_areas_failed",
-                user_id=user_id,
-                error=str(e),
-                exc_info=True
+                "call_detect_weak_areas_failed", user_id=user_id, error=str(e), exc_info=True
             )
             return []
 
     async def call_calculate_mastery(
-        self,
-        user_id: int,
-        deck_id: Optional[int] = None
+        self, user_id: int, deck_id: Optional[int] = None
     ) -> List[Dict[str, Any]]:
         """
-        Call the calculate_mastery SQL function
+        Call the calculate_mastery_v2 SQL function (multi-signal, adaptive weights).
 
         Args:
             user_id: User ID
             deck_id: Optional specific deck ID
 
         Returns:
-            List of mastery score dictionaries
+            List of mastery score dictionaries with flashcard + quiz signals
         """
         try:
             params = {"p_user_id": user_id}
@@ -249,9 +233,7 @@ class SQLExecutor:
                 params["p_deck_id"] = deck_id
 
             result = await self.execute_sql_function(
-                "developer_schema.calculate_mastery",
-                params,
-                retry_on_abort=True
+                "developer_schema.calculate_mastery_v2", params, retry_on_abort=True
             )
 
             # Ensure we return a list
@@ -269,6 +251,97 @@ class SQLExecutor:
                 user_id=user_id,
                 deck_id=deck_id,
                 error=str(e),
-                exc_info=True
+                exc_info=True,
+            )
+            return []
+
+    async def call_traverse_graph(
+        self,
+        user_id: int,
+        start_type: str,
+        start_id: int,
+        max_depth: int = 3,
+        link_type: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        """
+        Call the traverse_graph SQL function (recursive CTE).
+
+        Args:
+            user_id: User scope
+            start_type: Starting entity type
+            start_id: Starting entity ID
+            max_depth: Maximum hops
+            link_type: Optional filter by link type
+
+        Returns:
+            List of reachable node dicts with depth, path, etc.
+        """
+        try:
+            params = {
+                "p_user_id": user_id,
+                "p_start_type": start_type,
+                "p_start_id": start_id,
+                "p_max_depth": max_depth,
+            }
+            if link_type is not None:
+                params["p_link_type"] = link_type
+
+            result = await self.execute_sql_function(
+                "developer_schema.traverse_graph",
+                params,
+                retry_on_abort=True,
+            )
+
+            if result is None:
+                return []
+            if not isinstance(result, list):
+                return [result]
+            return result
+
+        except Exception as e:
+            logger.error(
+                "call_traverse_graph_failed",
+                user_id=user_id,
+                start_type=start_type,
+                start_id=start_id,
+                error=str(e),
+                exc_info=True,
+            )
+            return []
+
+    async def call_graph_metrics(
+        self,
+        user_id: int,
+        limit: int = 50,
+    ) -> List[Dict[str, Any]]:
+        """
+        Call the graph_metrics SQL function.
+
+        Args:
+            user_id: User scope
+            limit: Max nodes to return
+
+        Returns:
+            List of node metric dicts (degree, avg_strength, orphan flag, etc.)
+        """
+        try:
+            result = await self.execute_sql_function(
+                "developer_schema.graph_metrics",
+                {"p_user_id": user_id, "p_limit": limit},
+                retry_on_abort=True,
+            )
+
+            if result is None:
+                return []
+            if not isinstance(result, list):
+                return [result]
+            return result
+
+        except Exception as e:
+            logger.error(
+                "call_graph_metrics_failed",
+                user_id=user_id,
+                error=str(e),
+                exc_info=True,
             )
             return []

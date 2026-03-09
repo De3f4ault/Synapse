@@ -1,13 +1,16 @@
 /**
- * Branch Hooks - API integration for branches
+ * Branch Hooks - Navigation between message versions (regenerations).
  *
- * Uses React Query + generated API or manual fetch.
+ * Uses the conversation tree API to discover sibling messages
+ * and the switch-branch endpoint to navigate between them.
+ *
+ * API endpoints used:
+ * - GET /api/v1/chat/sessions/{id}/tree?include_inactive=true
+ * - POST /api/v1/chat/messages/{id}/switch-branch
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { OpenAPI } from '@/api/generated/core/OpenAPI';
-import { request } from '@/api/generated/core/request';
-import type { ChatMessageResponse } from '@/api/generated/models/ChatMessageResponse';
 
 // ============================================================================
 // Types
@@ -17,28 +20,7 @@ export interface BranchSiblingInfo {
     id: number;
     is_active: boolean;
     version: number;
-    model_used: string | null;
-    created_at: string;
-    content_preview: string;
-}
-
-export interface BranchSiblingsResponse {
-    parent_message_id: number;
-    total_siblings: number;
-    current_index: number;
-    siblings: BranchSiblingInfo[];
-}
-
-export interface BranchActivateResponse {
-    success: boolean;
-    activated_id: number;
-    deactivated_count: number;
-}
-
-export interface CreateBranchParams {
-    messageId: number;
-    prompt?: string;
-    modelOverride?: string;
+    role: string;
 }
 
 // ============================================================================
@@ -47,123 +29,157 @@ export interface CreateBranchParams {
 
 export const branchKeys = {
     all: ['branches'] as const,
-    siblings: (messageId: number) => [...branchKeys.all, 'siblings', messageId] as const,
-    activePath: (messageId: number) => [...branchKeys.all, 'active-path', messageId] as const,
+    siblings: (sessionId: number, messageId: number) =>
+        [...branchKeys.all, 'siblings', sessionId, messageId] as const,
 };
 
 // ============================================================================
-// API Functions
+// API Functions (direct fetch — endpoints not in generated client)
 // ============================================================================
 
-async function fetchSiblings(messageId: number): Promise<BranchSiblingsResponse> {
-    return request(OpenAPI, {
-        method: 'GET',
-        url: '/api/v1/chat/messages/{message_id}/siblings',
-        path: { message_id: messageId },
-    });
+async function fetchConversationTree(sessionId: number) {
+    const base = OpenAPI.BASE || '';
+    const token = typeof OpenAPI.TOKEN === 'function'
+        ? await OpenAPI.TOKEN({} as any)
+        : OpenAPI.TOKEN;
+    const res = await fetch(
+        `${base}/api/v1/chat/sessions/${sessionId}/tree?include_inactive=true`,
+        { headers: { Authorization: `Bearer ${token}` } }
+    );
+    if (!res.ok) throw new Error(`Tree fetch failed: ${res.status}`);
+    return res.json();
 }
 
-async function createBranch(params: CreateBranchParams): Promise<ChatMessageResponse> {
-    return request(OpenAPI, {
-        method: 'POST',
-        url: '/api/v1/chat/messages/{message_id}/branch',
-        path: { message_id: params.messageId },
-        body: {
-            prompt: params.prompt,
-            model_override: params.modelOverride,
-        },
-    });
-}
-
-async function activateBranch(messageId: number): Promise<BranchActivateResponse> {
-    return request(OpenAPI, {
-        method: 'PATCH',
-        url: '/api/v1/chat/messages/{message_id}/activate',
-        path: { message_id: messageId },
-    });
-}
-
-async function fetchActivePath(messageId: number): Promise<ChatMessageResponse[]> {
-    return request(OpenAPI, {
-        method: 'GET',
-        url: '/api/v1/chat/messages/{message_id}/active-path',
-        path: { message_id: messageId },
-    });
+async function switchBranch(messageId: number) {
+    const base = OpenAPI.BASE || '';
+    const token = typeof OpenAPI.TOKEN === 'function'
+        ? await OpenAPI.TOKEN({} as any)
+        : OpenAPI.TOKEN;
+    const res = await fetch(
+        `${base}/api/v1/chat/messages/${messageId}/switch-branch`,
+        { method: 'POST', headers: { Authorization: `Bearer ${token}` } }
+    );
+    if (!res.ok) throw new Error(`Switch branch failed: ${res.status}`);
+    return res.json();
 }
 
 // ============================================================================
-// Hooks
+// Core Hook: Fetch siblings for a specific message
 // ============================================================================
 
-/**
- * Get sibling branches for a message.
- */
-export function useBranchSiblings(messageId: number | undefined) {
+function useSiblings(sessionId: number, messageId: number | undefined) {
     return useQuery({
-        queryKey: branchKeys.siblings(messageId!),
-        queryFn: () => fetchSiblings(messageId!),
-        enabled: !!messageId,
-        staleTime: 5_000, // 5 seconds - siblings don't change often
-    });
-}
+        queryKey: branchKeys.siblings(sessionId, messageId!),
+        queryFn: async () => {
+            const tree = await fetchConversationTree(sessionId);
+            if (!tree?.messages) return null;
 
-/**
- * Get the active conversation path.
- */
-export function useActivePath(messageId: number | undefined) {
-    return useQuery({
-        queryKey: branchKeys.activePath(messageId!),
-        queryFn: () => fetchActivePath(messageId!),
-        enabled: !!messageId,
-    });
-}
+            // Find the current message
+            const currentMsg = tree.messages.find((m: any) => m.id === messageId);
+            if (!currentMsg?.parent_message_id) return null;
 
-/**
- * Create a new branch.
- */
-export function useCreateBranch() {
-    const queryClient = useQueryClient();
+            // Gather siblings: same parent + same role
+            const siblings: BranchSiblingInfo[] = tree.messages
+                .filter((m: any) =>
+                    m.parent_message_id === currentMsg.parent_message_id &&
+                    m.role === currentMsg.role
+                )
+                .sort((a: any, b: any) => a.id - b.id)
+                .map((m: any) => ({
+                    id: m.id,
+                    is_active: m.is_active,
+                    version: m.version,
+                    role: m.role,
+                }));
 
-    return useMutation({
-        mutationFn: createBranch,
-        onSuccess: (_newMessage, params) => {
-            // Invalidate siblings query
-            queryClient.invalidateQueries({
-                queryKey: branchKeys.siblings(params.messageId),
-            });
-            // The new branch is returned, caller can use it
+            if (siblings.length <= 1) return null;
+
+            // Find current index (1-indexed for display)
+            const idx = siblings.findIndex((s) => s.id === messageId);
+            return {
+                siblings,
+                current_index: idx >= 0 ? idx + 1 : siblings.length,
+                total_siblings: siblings.length,
+            };
         },
+        enabled: !!messageId && !!sessionId,
+        staleTime: 10_000, // 10s - siblings rarely change mid-session
     });
 }
 
-/**
- * Activate a branch (switch to it).
- */
+// ============================================================================
+// Activate branch mutation
+// ============================================================================
+
 export function useActivateBranch() {
     const queryClient = useQueryClient();
 
     return useMutation({
-        mutationFn: activateBranch,
+        mutationFn: switchBranch,
         onSuccess: () => {
-            // Invalidate all branch-related queries since active state changed
-            queryClient.invalidateQueries({
-                queryKey: branchKeys.all,
-            });
-            // Also invalidate chat messages to refresh the view
-            queryClient.invalidateQueries({
-                queryKey: ['chatMessages'],
-            });
+            queryClient.invalidateQueries({ queryKey: branchKeys.all });
+            queryClient.invalidateQueries({ queryKey: ['chat-messages'] });
         },
     });
 }
 
 /**
- * Helper hook that combines siblings query with navigation actions.
+ * Create a new branch via WebSocket streaming.
  *
- * Returns everything needed for BranchNavigator component.
+ * Sends a 'branch' event through the unified WebSocket.
+ * The streaming response comes through useChatStreaming.
  */
-export function useBranchNavigation(messageId: number | undefined) {
-    const siblingsQuery = useBranchSiblings(messageId);
+export function useCreateBranch(sessionId?: number) {
+    const queryClient = useQueryClient();
+
+    return useMutation({
+        mutationFn: async (params: { messageId: number; prompt?: string; model_override?: string }) => {
+            const { getWebSocketManager } = await import('@/api/websocket/manager');
+            const manager = getWebSocketManager();
+
+            if (!manager.isConnected()) {
+                throw new Error('WebSocket not connected');
+            }
+
+            const channel = sessionId ? `chat:${sessionId}` : '';
+            if (!channel) {
+                throw new Error('No session ID for branch');
+            }
+
+            manager.send({
+                type: 'branch',
+                channel,
+                messageId: params.messageId,
+                prompt: params.prompt,
+                model_override: params.model_override,
+            });
+
+            // Resolve immediately — streaming comes via useChatStreaming
+            return { messageId: params.messageId };
+        },
+        onSuccess: (_result, params) => {
+            queryClient.invalidateQueries({
+                queryKey: branchKeys.siblings(sessionId ?? 0, params.messageId),
+            });
+        },
+    });
+}
+
+// ============================================================================
+// Composite hook for BranchNavigator
+// ============================================================================
+
+/**
+ * useBranchNavigation — Returns everything needed for the `< 1/2 >` navigator.
+ *
+ * Combines sibling discovery with switch-branch actions.
+ */
+export function useBranchNavigation(
+    messageId: number | undefined,
+    sessionId?: number,
+) {
+    const effectiveSessionId = sessionId ?? 0;
+    const siblingsQuery = useSiblings(effectiveSessionId, messageId);
     const activateMutation = useActivateBranch();
 
     const data = siblingsQuery.data;
@@ -173,7 +189,7 @@ export function useBranchNavigation(messageId: number | undefined) {
 
     const goToPrev = () => {
         if (currentIndex > 1 && siblings.length > 0) {
-            const prevSibling = siblings[currentIndex - 2]; // 0-indexed
+            const prevSibling = siblings[currentIndex - 2]; // convert to 0-indexed
             if (prevSibling) {
                 activateMutation.mutate(prevSibling.id);
             }
@@ -189,15 +205,6 @@ export function useBranchNavigation(messageId: number | undefined) {
         }
     };
 
-    const goToIndex = (index: number) => {
-        if (index >= 1 && index <= totalBranches && siblings.length > 0) {
-            const targetSibling = siblings[index - 1];
-            if (targetSibling && !targetSibling.is_active) {
-                activateMutation.mutate(targetSibling.id);
-            }
-        }
-    };
-
     return {
         currentIndex,
         totalBranches,
@@ -206,7 +213,6 @@ export function useBranchNavigation(messageId: number | undefined) {
         isSwitching: activateMutation.isPending,
         goToPrev,
         goToNext,
-        goToIndex,
         hasBranches: totalBranches > 1,
     };
 }

@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "@/components/feedback";
+import { AuthGuard } from "@/lib/authGuard";
 
 /**
  * useQueryError Hook
@@ -81,25 +82,8 @@ export function useQueryError(
     // Handle specific error codes
     switch (statusCode) {
       case 401:
-        // Unauthorized - session expired
-        if (showToast) {
-          toast.error("Session Expired", {
-            description: "Please log in again to continue",
-            action: redirectOnUnauthorized
-              ? {
-                  label: "Login",
-                  onClick: () => navigate("/auth/login"),
-                }
-              : undefined,
-          });
-        }
-
-        if (redirectOnUnauthorized) {
-          // Delay redirect to show toast
-          setTimeout(() => {
-            navigate("/auth/login");
-          }, 1500);
-        }
+        // Delegate to centralized auth handler — prevents duplicate toasts
+        AuthGuard.handleAuthFailure("useQueryError");
         break;
 
       case 403:

@@ -259,12 +259,15 @@ class ChatMessageRepository:
         order_asc: bool = True,
     ) -> Sequence[ChatMessage]:
         """
-        List messages in a session.
+        List messages in a session (excluding thread messages).
         """
         order = ChatMessage.created_at.asc() if order_asc else ChatMessage.created_at.desc()
         stmt = (
             select(ChatMessage)
-            .where(ChatMessage.session_id == session_id)
+            .where(
+                ChatMessage.session_id == session_id,
+                ChatMessage.thread_id.is_(None),  # Exclude thread messages
+            )
             .order_by(order)
             .limit(limit)
         )

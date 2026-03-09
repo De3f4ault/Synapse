@@ -2,6 +2,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AuthenticationService } from "@/api/generated";
 import type { UserLogin, UserRegister } from "@/api/generated";
 import { useAuthStore } from "@/stores/authStore";
+import { AuthGuard } from "@/lib/authGuard";
+import { startTokenRefreshCycle, stopTokenRefreshCycle } from "@/lib/tokenLifecycle";
 
 const AUTH_KEYS = {
   user: ["auth", "user"] as const,
@@ -16,6 +18,8 @@ export function useAuth() {
       AuthenticationService.loginApiV1AuthLoginPost(data),
     onSuccess: (response) => {
       setAuth(response.access_token, null);
+      AuthGuard.reset();
+      startTokenRefreshCycle(response.access_token);
       queryClient.invalidateQueries({ queryKey: AUTH_KEYS.user });
     },
   });
@@ -25,6 +29,8 @@ export function useAuth() {
       AuthenticationService.registerApiV1AuthRegisterPost(data),
     onSuccess: (response) => {
       setAuth(response.access_token, null);
+      AuthGuard.reset();
+      startTokenRefreshCycle(response.access_token);
       queryClient.invalidateQueries({ queryKey: AUTH_KEYS.user });
     },
   });
@@ -32,6 +38,7 @@ export function useAuth() {
   const logoutMutation = useMutation({
     mutationFn: () => AuthenticationService.logoutApiV1AuthLogoutPost(),
     onSuccess: () => {
+      stopTokenRefreshCycle();
       clearAuth();
       queryClient.clear();
     },

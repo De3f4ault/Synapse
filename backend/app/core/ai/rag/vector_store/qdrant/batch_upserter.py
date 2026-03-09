@@ -1,7 +1,7 @@
 """
 Batch upserter for Qdrant vector store.
 
-Provides async batch upsert operations for document chunks.
+Provides batch upsert operations for document chunks.
 """
 
 from typing import List, Dict, Any, Optional
@@ -15,7 +15,7 @@ logger = structlog.get_logger(__name__)
 
 class BatchUpserter:
     """
-    Async batch upserter for Qdrant.
+    Batch upserter for Qdrant.
 
     Used by document processing to efficiently upsert embeddings.
     """
@@ -31,7 +31,7 @@ class BatchUpserter:
             self._client = get_qdrant_client().get_client()
         return self._client
 
-    async def upsert_batch(
+    def upsert_batch(
         self,
         collection_name: str,
         vectors: List[List[float]],

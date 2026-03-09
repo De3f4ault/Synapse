@@ -15,7 +15,6 @@ import { useCreateBranch } from "../hooks/useBranches";
 import { useThreadStore } from "../state/threadStore";
 import { useChatStore } from "../state/chatStore";
 import { ThinkingIndicator } from "./ThinkingIndicator";
-import { ThinkingDrawer, ThinkingDrawerToggle } from "./ThinkingDrawer";
 import { ComparisonPanel } from "./ComparisonPanel";
 import { ComparisonToggle } from "./ComparisonToggle";
 import { toast } from "sonner";
@@ -59,8 +58,7 @@ export function ChatConversationView({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   
-  // Thinking drawer state (for panel/drawer layout)
-  const [isThinkingDrawerOpen, setIsThinkingDrawerOpen] = useState(false);
+
 
   // Comparison mode state from chatStore
   const { 
@@ -262,8 +260,8 @@ export function ChatConversationView({
             </div>
           )}
 
-          {/* Streaming Message - shows once content starts arriving */}
-          {streamingMessage && (
+          {/* Streaming Message - shows once content starts arriving (normal mode) */}
+          {streamingMessage && !isComparisonMode && (
             <ChatMessage
               message={streamingMessage}
               isStreaming={true}
@@ -272,6 +270,25 @@ export function ChatConversationView({
               currentOccurrenceId={null}
             />
           )}
+        </div>
+
+        {/* Comparison Panel — rendered OUTSIDE max-w-4xl so it can be wider */}
+        {(comparisonStreaming.A.content || comparisonStreaming.B.content) && (
+          <div className="max-w-7xl mx-auto px-2 mt-6 animate-in fade-in duration-200">
+            <ComparisonPanel
+              contentA={comparisonStreaming.A.content}
+              contentB={comparisonStreaming.B.content}
+              modelA={selectedModels[0]}
+              modelB={selectedModels[1]}
+              isStreamingA={!comparisonStreaming.A.isComplete && isStreaming}
+              isStreamingB={!comparisonStreaming.B.isComplete && isStreaming}
+              thinkingA={comparisonStreaming.A.thinking}
+              thinkingB={comparisonStreaming.B.thinking}
+            />
+          </div>
+        )}
+
+        <div className="max-w-4xl mx-auto">
           <div ref={messagesEndRef} />
         </div>
       </div>
@@ -286,35 +303,10 @@ export function ChatConversationView({
             isStreaming={isStreaming}
           />
 
-          {/* Thinking Drawer Toggle - Shows when there's thinking content */}
-          {streamingThinking && (
-            <div className="flex justify-end mb-2">
-              <ThinkingDrawerToggle
-                onClick={() => setIsThinkingDrawerOpen(true)}
-                hasContent={!!streamingThinking}
-                isStreaming={isStreaming && !!streamingThinking}
-              />
-            </div>
-          )}
-
-          {/* Comparison Mode Toggle - Always visible */}
+          {/* Comparison Mode Toggle */}
           <div className="flex justify-end mb-2">
             <ComparisonToggle />
           </div>
-
-          {/* Comparison Panel - Shows when in comparison mode and streaming */}
-          {isComparisonMode && (comparisonStreaming.A.content || comparisonStreaming.B.content) && (
-            <ComparisonPanel
-              contentA={comparisonStreaming.A.content}
-              contentB={comparisonStreaming.B.content}
-              modelA={selectedModels[0]}
-              modelB={selectedModels[1]}
-              isStreamingA={!comparisonStreaming.A.isComplete && isStreaming}
-              isStreamingB={!comparisonStreaming.B.isComplete && isStreaming}
-              thinkingA={comparisonStreaming.A.thinking}
-              thinkingB={comparisonStreaming.B.thinking}
-            />
-          )}
 
           {/* Chat Input with integrated Stop button */}
           <ChatInputBox
@@ -330,13 +322,7 @@ export function ChatConversationView({
         </div>
       </div>
       
-      {/* Thinking Drawer - Qwen-style right panel */}
-      <ThinkingDrawer
-        isOpen={isThinkingDrawerOpen}
-        onClose={() => setIsThinkingDrawerOpen(false)}
-        content={streamingThinking}
-        isStreaming={isStreaming && !!streamingThinking}
-      />
+
     </div>
   );
 }
@@ -359,7 +345,7 @@ function SuggestionsArea({ sessionId, messages, isStreaming }: SuggestionsAreaPr
   });
 
   const createThread = useCreateThread();
-  const createBranch = useCreateBranch();
+  const createBranch = useCreateBranch(sessionId);
   const { openPanel, switchToThread } = useThreadStore();
 
   const handleAccept = useCallback(async (suggestion: SuggestionSignal) => {

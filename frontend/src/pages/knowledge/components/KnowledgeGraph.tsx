@@ -95,11 +95,6 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
     const g = svg.select<SVGGElement>(".main-group");
     const simulation = simulationRef.current;
 
-    // Update nodes and links
-    // We create a copy to avoid mutating props directly if they are frozen
-    // But D3 needs persistence, so we try to reuse existing objects if possible
-    // For now, simple reassignment. Ideally we'd do a meticulous join.
-
     simulation.nodes(nodes);
     (simulation.force("link") as d3.ForceLink<GraphNode, GraphEdge>).links(
       edges,
@@ -113,8 +108,61 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
       .attr("class", "link")
       .attr("stroke", (d) => LINK_COLORS[d.type] || "#64748b")
       .attr("stroke-opacity", 0.6)
-      .attr("stroke-width", (d) => Math.max(1, d.strength * 2))
-      .attr("marker-end", "url(#arrow)");
+      .attr("stroke-width", (d) => Math.max(1, d.strength * 3))
+      .attr("marker-end", "url(#arrow)")
+      .style("cursor", "pointer");
+
+    // Edge tooltips
+    link.selectAll("title").remove();
+    link.append("title").text((d) => {
+      const sourceLabel =
+        typeof d.source === "object"
+          ? (d.source as GraphNode).label || (d.source as GraphNode).id
+          : d.source;
+      const targetLabel =
+        typeof d.target === "object"
+          ? (d.target as GraphNode).label || (d.target as GraphNode).id
+          : d.target;
+      return `${sourceLabel} → ${targetLabel}\n${d.type} · ${Math.round(d.strength * 100)}%`;
+    });
+
+    // Edge hover: highlight connected nodes
+    link
+      .on("mouseenter", function (_event, d) {
+        // Dim all nodes and links
+        g.selectAll<SVGGElement, GraphNode>(".node").style("opacity", 0.2);
+        g.selectAll<SVGLineElement, GraphEdge>(".link").style("opacity", 0.1);
+
+        // Highlight this edge
+        d3.select(this).style("opacity", 1).attr("stroke-width", function(this: SVGLineElement) {
+          const d = d3.select<SVGLineElement, GraphEdge>(this).datum();
+          return Math.max(2, d.strength * 4);
+        });
+
+        // Highlight connected nodes
+        const sourceId =
+          typeof d.source === "object"
+            ? (d.source as GraphNode).id
+            : d.source;
+        const targetId =
+          typeof d.target === "object"
+            ? (d.target as GraphNode).id
+            : d.target;
+
+        g.selectAll<SVGGElement, GraphNode>(".node")
+          .filter(
+            (n) =>
+              n.id === sourceId || n.id === targetId,
+          )
+          .style("opacity", 1);
+      })
+      .on("mouseleave", function () {
+        // Reset all
+        g.selectAll<SVGGElement, GraphNode>(".node").style("opacity", 1);
+        g.selectAll<SVGLineElement, GraphEdge>(".link")
+          .style("opacity", 0.6)
+          .attr("stroke-width", (d) => Math.max(1, d.strength * 3));
+      });
 
     // Render Nodes
     const node = g
@@ -143,7 +191,7 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
       );
 
     // Node circles
-    node.selectAll("circle").remove(); // Clear to re-render incase type changes
+    node.selectAll("circle").remove();
     node
       .append("circle")
       .attr("r", 20)
@@ -164,8 +212,57 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
       .attr("pointer-events", "none")
       .text((d) => d.type.substring(0, 1).toUpperCase());
 
-    // Labels on hover or short label
+    // Labels on hover
     node.append("title").text((d) => d.label || d.id);
+
+    // Node hover: highlight connected edges
+    node
+      .on("mouseenter", function (_event, d) {
+        // Dim everything
+        g.selectAll<SVGGElement, GraphNode>(".node").style("opacity", 0.2);
+        g.selectAll<SVGLineElement, GraphEdge>(".link").style("opacity", 0.1);
+
+        // Highlight this node
+        d3.select(this).style("opacity", 1);
+
+        // Find connected edges and highlight them + their endpoints
+        g.selectAll<SVGLineElement, GraphEdge>(".link")
+          .filter((e) => {
+            const sourceId =
+              typeof e.source === "object"
+                ? (e.source as GraphNode).id
+                : e.source;
+            const targetId =
+              typeof e.target === "object"
+                ? (e.target as GraphNode).id
+                : e.target;
+            return sourceId === d.id || targetId === d.id;
+          })
+          .style("opacity", 0.8)
+          .attr("stroke-width", (e) => Math.max(2, e.strength * 4))
+          .each(function (e) {
+            const sourceId =
+              typeof e.source === "object"
+                ? (e.source as GraphNode).id
+                : e.source;
+            const targetId =
+              typeof e.target === "object"
+                ? (e.target as GraphNode).id
+                : e.target;
+            const neighborId =
+              sourceId === d.id ? targetId : sourceId;
+
+            g.selectAll<SVGGElement, GraphNode>(".node")
+              .filter((n) => n.id === neighborId)
+              .style("opacity", 1);
+          });
+      })
+      .on("mouseleave", function () {
+        g.selectAll<SVGGElement, GraphNode>(".node").style("opacity", 1);
+        g.selectAll<SVGLineElement, GraphEdge>(".link")
+          .style("opacity", 0.6)
+          .attr("stroke-width", (d) => Math.max(1, d.strength * 3));
+      });
 
     // Click handler
     node.on("click", (event, d) => {
@@ -192,7 +289,7 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
     });
 
     simulation.alpha(1).restart();
-  }, [nodes, edges, width, height]); // Re-run when data changes
+  }, [nodes, edges, width, height]);
 
   // Handle highlighting
   useEffect(() => {
@@ -211,7 +308,6 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
       .attr("stroke-width", 2);
 
     if (highlightedNodeId) {
-      // Highlight specific node
       const target = node.filter((d) => d.id === highlightedNodeId);
 
       target
@@ -221,9 +317,6 @@ export const KnowledgeGraph: React.FC<KnowledgeGraphProps> = ({
         .attr("r", 30)
         .attr("stroke", "#white")
         .attr("stroke-width", 4);
-
-      // Zoom to node if needed
-      // TODO: Calculate transform and call zoomRef.current?.transform(...)
     }
   }, [highlightedNodeId]);
 

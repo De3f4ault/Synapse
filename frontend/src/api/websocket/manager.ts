@@ -2,6 +2,7 @@
 // UPDATED: Now connects to /ws/unified endpoint for all features
 import { getAuthToken } from "../client";
 import { WS_BASE_URL } from "@/lib/constants";
+import { AuthGuard } from "@/lib/authGuard";
 import type { ConnectionState, MessageHandler, UnsubscribeFn } from "./types";
 
 /**
@@ -60,6 +61,14 @@ export class WebSocketManager {
   async connect(): Promise<void> {
     if (this.ws?.readyState === WebSocket.OPEN) {
       console.log("[WS Manager] Already connected");
+      return;
+    }
+
+    // Check token expiry BEFORE attempting connection
+    if (AuthGuard.isTokenExpired()) {
+      console.warn("[WS Manager] Token expired, not connecting");
+      AuthGuard.handleAuthFailure("websocket-connect");
+      this.updateState("error");
       return;
     }
 
@@ -395,6 +404,14 @@ export class WebSocketManager {
   }
 
   private scheduleReconnect(): void {
+    // Don't reconnect if token is expired — fire auth guard instead
+    if (AuthGuard.isTokenExpired()) {
+      console.warn("[WS Manager] Token expired, not reconnecting");
+      AuthGuard.handleAuthFailure("websocket-reconnect");
+      this.updateState("error");
+      return;
+    }
+
     const delay = Math.min(
       this.reconnectBaseDelay * Math.pow(2, this.reconnectAttempts),
       30000,

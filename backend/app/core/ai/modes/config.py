@@ -3,6 +3,9 @@ Mode Configuration — User-facing AI behavior modes.
 
 Modes define HOW the AI behaves, not which model runs.
 The resolver maps modes + tiers to actual models.
+
+Each mode references its dedicated prompt file in prompts/ for
+comprehensive, commercially-quality system prompts.
 """
 
 from dataclasses import dataclass
@@ -35,6 +38,10 @@ class ModeConfig:
 
     Modes are the primary way users select AI behavior.
     Each mode maps to a default tier and set of behaviors.
+
+    The system_prompt_template is a LIGHTWEIGHT fallback — the actual
+    comprehensive prompt comes from the dedicated prompt file in
+    prompts/ (loaded via get_mode_prompt()).
     """
 
     id: str
@@ -51,10 +58,11 @@ class ModeConfig:
     thinking_ui: ThinkingUI = ThinkingUI.COLLAPSED
     initiative: Initiative = Initiative.MEDIUM
 
-    # System prompt template with placeholders:
-    # - {weak_areas}: User's weak areas from context
-    # - {recent_topics}: Recently studied topics
-    # - {student_context}: Full formatted context
+    # Prompt module name — references prompts/<module>.py
+    # Used by orchestrator to load the dedicated prompt file
+    prompt_module: str = ""
+
+    # Lightweight fallback template (used only if prompt_module is empty)
     system_prompt_template: str = ""
 
     # Agent routing - which agent handles this mode
@@ -79,7 +87,7 @@ MODE_REGISTRY: dict[str, ModeConfig] = {
         required_capabilities=(),
         thinking_ui=ThinkingUI.COLLAPSED,
         initiative=Initiative.MEDIUM,
-        system_prompt_template="""""",  # Uses agent's own prompt
+        prompt_module="",  # Uses agent's own prompt
     ),
     "socratic": ModeConfig(
         id="socratic",
@@ -91,56 +99,20 @@ MODE_REGISTRY: dict[str, ModeConfig] = {
         required_capabilities=(AICapability.FORMAL_REASONING,),
         thinking_ui=ThinkingUI.COLLAPSED,
         initiative=Initiative.MEDIUM,
-        system_prompt_template="""You are an expert Socratic tutor for Synapse, a learning platform.
-
-# Teaching Philosophy
-- Never give direct answers first — ask probing questions
-- Guide students to discover insights themselves
-- Build on prior knowledge and weak areas
-- Break complex topics into digestible steps
-- Validate understanding before moving forward
-
-# Thinking Protocol
-When reasoning through problems:
-1. Use <think> tags for your internal reasoning
-2. Show step-by-step logic inside <think> tags
-3. Self-verify conclusions before presenting
-4. If uncertain, ask clarifying questions instead of guessing
-
-# Student Context
-Weak areas: {weak_areas}
-Recent topics: {recent_topics}
-
-# Example Exchange
-Student: "Why does ice float?"
-You: "Great question! Before I explain, what do you already know about how density relates to floating?"
-""",
+        prompt_module="socratic",  # Uses tutor agent's built-in Socratic prompt
     ),
     "direct": ModeConfig(
         id="direct",
         name="Direct Answer",
         icon="⚡",
-        description="Fast, concise responses without extended teaching",
+        description="Fast, efficient responses that get straight to the substance",
         default_tier=Tier.SPEED,
         allowed_tiers=(Tier.SPEED, Tier.BALANCED),
         required_capabilities=(),
         thinking_ui=ThinkingUI.OFF,
         initiative=Initiative.NONE,
-        system_prompt_template="""You are a direct, efficient assistant.
-
-# Guidelines
-- Be concise — no lengthy explanations unless asked
-- Get to the point immediately
-- Use bullet points for multiple items
-- Skip pleasantries and filler
-
-# Format
-- Short sentences
-- No preamble
-- Action-oriented
-
-{student_context}
-""",
+        prompt_module="direct",
+        agent_name="general",
     ),
     "deep_dive": ModeConfig(
         id="deep_dive",
@@ -152,95 +124,34 @@ You: "Great question! Before I explain, what do you already know about how densi
         required_capabilities=(AICapability.STREAM_THOUGHTS,),
         thinking_ui=ThinkingUI.PANEL,
         initiative=Initiative.HIGH,
-        system_prompt_template="""You are a deep reasoning assistant with visible thought process.
-
-# Thinking Protocol
-ALWAYS use <think> tags for your reasoning:
-1. Break down the problem into components
-2. Consider multiple approaches
-3. Evaluate each approach
-4. Choose the best path forward
-5. Self-verify before presenting final answer
-
-# Output Structure
-<think>
-[Your step-by-step reasoning process]
-[Considerations and trade-offs]
-[Self-verification]
-</think>
-
-[Clear, well-structured final answer]
-
-# Student Context
-Weak areas: {weak_areas}
-Recent topics: {recent_topics}
-
-Be thorough. The student wants to see HOW you think, not just WHAT you think.
-""",
+        prompt_module="deep_dive",
+        agent_name="tutor",
     ),
     "creative": ModeConfig(
         id="creative",
         name="Creative",
         icon="✨",
-        description="Imaginative brainstorming and creative writing",
+        description="Imaginative brainstorming, vivid writing, and creative exploration",
         default_tier=Tier.BALANCED,
         allowed_tiers=(Tier.BALANCED, Tier.REASONING),
         required_capabilities=(),
         thinking_ui=ThinkingUI.OFF,
         initiative=Initiative.MEDIUM,
-        system_prompt_template="""You are a creative writing and brainstorming assistant.
-
-# Guidelines
-- Be imaginative and supportive
-- Offer multiple ideas when brainstorming
-- Help refine and expand on user's concepts
-- Use vivid language when appropriate
-- Don't be afraid to suggest unconventional approaches
-
-# Writing Styles
-Adapt to what the user needs:
-- Essays and academic writing
-- Creative fiction and storytelling
-- Brainstorming and ideation
-- Poetry and expressive writing
-
-{student_context}
-
-Let creativity flow!
-""",
+        prompt_module="creative",
+        agent_name="general",
     ),
     "research": ModeConfig(
         id="research",
         name="Research",
         icon="🔬",
-        description="In-depth investigation with source gathering and analysis",
+        description="Comprehensive investigation with multi-perspective analysis",
         default_tier=Tier.REASONING,
         allowed_tiers=(Tier.REASONING, Tier.THINKING),
         required_capabilities=(AICapability.FORMAL_REASONING,),
         thinking_ui=ThinkingUI.PANEL,
         initiative=Initiative.HIGH,
-        system_prompt_template="""You are a research assistant for Synapse, a learning platform.
-
-# Research Approach
-- Gather comprehensive information on the topic
-- Cite sources when possible
-- Present multiple perspectives
-- Identify knowledge gaps and areas needing further investigation
-- Organize findings logically
-
-# Thinking Protocol
-Use <think> tags to:
-1. Plan your research strategy
-2. Evaluate source credibility
-3. Synthesize findings
-4. Identify contradictions or gaps
-
-# Student Context
-Weak areas: {weak_areas}
-Recent topics: {recent_topics}
-
-Provide thorough, well-researched responses with visible reasoning.
-""",
+        prompt_module="research",
+        agent_name="general",
     ),
     "vision": ModeConfig(
         id="vision",
@@ -252,28 +163,14 @@ Provide thorough, well-researched responses with visible reasoning.
         required_capabilities=(AICapability.MULTIMODAL_VISION,),
         thinking_ui=ThinkingUI.COLLAPSED,
         initiative=Initiative.MEDIUM,
-        system_prompt_template="""You are a vision-capable AI assistant for Synapse.
-
-# Capabilities
-- Analyze images, diagrams, charts, and graphs
-- OCR and text extraction from images
-- Visual reasoning and description
-- Compare visual elements and identify patterns
-- Explain complex diagrams step by step
-
-# Output Style
-- Be descriptive and precise
-- Reference specific parts of images by location (top-left, center, etc.)
-- Explain visual relationships clearly
-- If you can't see an image, ask the user to provide one
-
-# Student Context
-{student_context}
-
-Describe what you see and provide insightful analysis.
-""",
+        prompt_module="vision",
+        agent_name="general",
     ),
 }
+
+# Frontend compatibility aliases — frontend uses shorter IDs
+MODE_REGISTRY["tutor"] = MODE_REGISTRY["socratic"]
+MODE_REGISTRY["deep_think"] = MODE_REGISTRY["deep_dive"]
 
 
 # =============================================================================

@@ -1,12 +1,7 @@
-"""
-Link Service
-
-Business logic for managing entity links and knowledge graph operations.
-"""
-
 from typing import Dict, List, Optional, Any
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, or_, and_, delete
+from sqlalchemy import select, or_, and_, delete, func
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import selectinload
 import structlog
 
@@ -25,7 +20,7 @@ class LinkService:
     Service layer for link operations.
 
     Handles:
-    - CRUD operations for links
+    - CRUD operations for links (with idempotent upserts)
     - Graph queries (forward links, backlinks)
     - Knowledge graph data for visualization
     """
@@ -51,7 +46,14 @@ class LinkService:
         metadata: Optional[dict] = None,
     ) -> Link:
         """
-        Create a new link between entities.
+        Create or update a link between entities (idempotent upsert).
+
+        Uses PostgreSQL ON CONFLICT DO UPDATE on the unique constraint
+        (user_id, source_type, source_id, target_type, target_id, link_type).
+        On conflict: updates strength (keeps higher), label, metadata, and timestamp.
+
+        This is safe for concurrent calls and auto-wiring — calling it multiple
+        times with the same arguments is a no-op (idempotent).
 
         Args:
             user_id: Owner user ID
@@ -65,22 +67,9 @@ class LinkService:
             metadata: Optional additional metadata
 
         Returns:
-            Created Link instance
+            Created or updated Link instance
         """
-        # Check if link already exists
-        existing = await self.get_link_between(
-            user_id, source_type, source_id, target_type, target_id
-        )
-        if existing:
-            logger.info(
-                "link_already_exists",
-                link_id=existing.id,
-                source=f"{source_type.value}:{source_id}",
-                target=f"{target_type.value}:{target_id}",
-            )
-            return existing
-
-        link = Link(
+        values = dict(
             user_id=user_id,
             source_type=source_type,
             source_id=source_id,
@@ -92,16 +81,36 @@ class LinkService:
             link_metadata=metadata or {},
         )
 
-        self.session.add(link)
+        stmt = pg_insert(Link).values(**values)
+
+        # On conflict: keep the higher strength, update label/metadata/timestamp
+        update_set = {
+            "strength": func.greatest(Link.strength, stmt.excluded.strength),
+            "updated_at": func.now(),
+        }
+        # Only overwrite label and metadata if the new values are non-null
+        if label is not None:
+            update_set["label"] = stmt.excluded.label
+        if metadata is not None:
+            update_set["link_metadata"] = stmt.excluded.link_metadata
+
+        stmt = stmt.on_conflict_do_update(
+            constraint="uq_link_edge",
+            set_=update_set,
+        ).returning(Link)
+
+        result = await self.session.execute(stmt)
+        link = result.scalar_one()
         await self.session.commit()
         await self.session.refresh(link)
 
         logger.info(
-            "link_created",
+            "link_upserted",
             link_id=link.id,
             source=f"{source_type.value}:{source_id}",
             target=f"{target_type.value}:{target_id}",
             link_type=link_type.value,
+            strength=link.strength,
         )
 
         return link

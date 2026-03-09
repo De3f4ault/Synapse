@@ -38,7 +38,7 @@ from . import (
 )
 
 # Import WebSocket endpoint
-from app.api.websockets.dashboard import dashboard_websocket_endpoint
+from app.api.websockets.endpoints.dashboard import dashboard_websocket_endpoint
 
 # Create main API router
 api_router = APIRouter()

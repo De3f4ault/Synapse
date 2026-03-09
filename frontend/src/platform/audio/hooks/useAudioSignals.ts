@@ -1,6 +1,7 @@
 
 import { useState, useEffect } from 'react';
-import { audioAnalysis, AudioSignal } from '@/platform/audio';
+import { audioAnalysis } from '../core/AudioAnalysis';
+import type { AudioSignal } from '../core/AudioAnalysis';
 import { useAudioUIStore } from '../store/useAudioUIStore';
 
 /**

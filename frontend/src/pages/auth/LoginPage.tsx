@@ -6,6 +6,8 @@ import { Mail, Key } from "lucide-react";
 import { AuthenticationService } from "@/api/generated";
 import { useAuthStore } from "@/stores/authStore";
 import { useToast } from "@/hooks/use-toast";
+import { AuthGuard } from "@/lib/authGuard";
+import { startTokenRefreshCycle } from "@/lib/tokenLifecycle";
 import {
   GatekeeperLayout,
   SecurityBadge,
@@ -51,6 +53,10 @@ export function LoginPage() {
 
       // Set token first to authenticate subsequent requests
       setAuth(accessToken, null);
+
+      // Reset AuthGuard and start proactive token refresh cycle
+      AuthGuard.reset();
+      startTokenRefreshCycle(accessToken);
 
       try {
         // Fetch user profile

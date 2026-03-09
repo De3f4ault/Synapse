@@ -39,15 +39,15 @@ install-dev: ## Install development dependencies
 	pip install -r requirements.txt
 	pip install black isort mypy ruff pytest pytest-cov pytest-asyncio
 
-venv: ## Create virtual environment (uses project root .venv)
-	@if [ ! -d "../.venv" ]; then \
-		echo "Creating virtual environment at project root..."; \
-		python3 -m venv ../.venv; \
-		echo "Virtual environment created at ../.venv"; \
+venv: ## Create virtual environment
+	@if [ ! -d ".venv" ]; then \
+		echo "Creating virtual environment..."; \
+		python3 -m venv .venv; \
+		echo "Virtual environment created at backend/.venv"; \
 	else \
-		echo "Virtual environment already exists at ../.venv"; \
+		echo "Virtual environment already exists at backend/.venv"; \
 	fi
-	@echo "Activate with: source ../.venv/bin/activate (from backend/)"
+	@echo "Activate with: source .venv/bin/activate"
 
 setup: ## Complete project setup (venv + install + env check)
 	@if [ ! -f .env ]; then \

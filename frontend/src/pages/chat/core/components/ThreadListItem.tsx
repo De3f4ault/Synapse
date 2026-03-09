@@ -1,12 +1,11 @@
 /**
- * ThreadListItem - Individual thread in the panel
+ * ThreadListItem - DeepSeek-style conversation history entry
  *
- * Displays thread title, message count, and last activity.
- * Click to switch context to that thread.
+ * Dense single-line entry that fills available panel width.
+ * Title text runs to edge before truncating with ellipsis.
+ * Minimal vertical padding. Active state: subtle bg highlight.
  */
 
-import { formatDistanceToNow } from 'date-fns';
-import { MessageSquare, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { ThreadInfo } from '../state/threadStore';
 
@@ -17,61 +16,19 @@ interface ThreadListItemProps {
 }
 
 export function ThreadListItem({ thread, isActive, onClick }: ThreadListItemProps) {
-    const timeAgo = formatDistanceToNow(new Date(thread.updatedAt), { addSuffix: true });
-
     return (
         <button
             onClick={onClick}
             className={cn(
-                "w-full text-left p-3 rounded-lg transition-all group",
-                "border border-transparent",
+                "w-full text-left px-3 py-[7px] rounded transition-colors",
+                "text-[13px] leading-[1.3] truncate block",
                 isActive
-                    ? "bg-cyan-500/10 border-cyan-500/30"
-                    : "hover:bg-white/5 hover:border-white/10"
+                    ? "bg-white/[0.08] text-zinc-100"
+                    : "text-zinc-500 hover:bg-white/[0.04] hover:text-zinc-300"
             )}
+            title={thread.title || 'Untitled thread'}
         >
-            <div className="flex items-start justify-between gap-2">
-                <div className="flex-1 min-w-0">
-                    {/* Title */}
-                    <h4 className={cn(
-                        "font-medium text-sm truncate",
-                        isActive ? "text-cyan-300" : "text-foreground"
-                    )}>
-                        {thread.title}
-                    </h4>
-
-                    {/* Summary or message count */}
-                    {thread.summary ? (
-                        <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                            {thread.summary}
-                        </p>
-                    ) : (
-                        <p className="text-xs text-muted-foreground mt-1">
-                            {thread.messageCount} messages
-                        </p>
-                    )}
-
-                    {/* Timestamp */}
-                    <p className="text-[10px] text-muted-foreground/60 mt-1.5">
-                        {timeAgo}
-                    </p>
-                </div>
-
-                {/* Indicators */}
-                <div className="flex flex-col items-end gap-1 shrink-0">
-                    <div className={cn(
-                        "flex items-center gap-1 text-xs",
-                        isActive ? "text-cyan-400" : "text-muted-foreground"
-                    )}>
-                        <MessageSquare className="size-3" />
-                        <span>{thread.messageCount}</span>
-                    </div>
-                    <ChevronRight className={cn(
-                        "size-4 opacity-0 group-hover:opacity-100 transition-opacity",
-                        isActive ? "text-cyan-400 opacity-100" : "text-muted-foreground"
-                    )} />
-                </div>
-            </div>
+            {thread.title || 'Untitled thread'}
         </button>
     );
 }

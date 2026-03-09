@@ -6,7 +6,8 @@
  */
 
 import { useEffect, useRef } from 'react';
-import { ttsClient, audioContextResolver } from '@/platform/audio';
+import { ttsClient } from '../clients/TTSClient';
+import { audioContextResolver } from '../context/AudioContextResolver';
 
 interface UseTTSAutoReadOptions {
   /** Is TTS enabled by user? */

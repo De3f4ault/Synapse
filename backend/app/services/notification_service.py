@@ -25,7 +25,7 @@ from app.models.notification import (
 )
 from app.models.user import User
 from app.models.study_session import StudySession
-from app.api.websockets.channels import channel_manager
+from app.api.websockets.core.channels import channel_manager
 
 logger = structlog.get_logger()
 
