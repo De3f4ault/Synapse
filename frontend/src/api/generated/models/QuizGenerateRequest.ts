@@ -2,26 +2,25 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-import type { QuizDifficulty } from './QuizDifficulty';
 /**
  * AI quiz generation request.
  */
 export type QuizGenerateRequest = {
     /**
-     * Topic to generate quiz about
+     * Topic
      */
     topic: string;
     /**
-     * Optional document to base quiz on
+     * Document to base quiz on
      */
     document_id?: (number | null);
     /**
-     * Number of questions to generate
+     * Number of questions
      */
     num_questions?: number;
     /**
-     * Quiz difficulty level
+     * Difficulty: easy, medium, hard
      */
-    difficulty?: QuizDifficulty;
+    difficulty?: string;
 };
 

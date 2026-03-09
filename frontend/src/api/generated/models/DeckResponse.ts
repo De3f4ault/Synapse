@@ -3,19 +3,52 @@
 /* tslint:disable */
 /* eslint-disable */
 /**
- * Deck response.
+ * Deck response schema.
  */
 export type DeckResponse = {
-    id: number;
+    /**
+     * Deck name
+     */
     name: string;
-    description: (string | null);
-    tags: (Array<string> | null);
-    is_public: boolean;
-    ai_generated: boolean;
-    card_count: number;
-    due_count: number;
+    /**
+     * Deck description
+     */
+    description?: (string | null);
+    /**
+     * Deck tags
+     */
+    tags?: Array<string>;
+    /**
+     * Whether deck is public
+     */
+    is_public?: boolean;
+    /**
+     * Deck ID
+     */
+    id: number;
+    /**
+     * Owner user ID
+     */
     user_id: number;
+    /**
+     * Number of cards in deck
+     */
+    card_count?: number;
+    /**
+     * Cards due for review
+     */
+    due_count?: number;
+    /**
+     * Whether AI generated
+     */
+    ai_generated?: boolean;
+    /**
+     * Creation time
+     */
     created_at: string;
+    /**
+     * Last update time
+     */
     updated_at: string;
 };
 

@@ -5,11 +5,11 @@
 import type { DeckCreate } from '../models/DeckCreate';
 import type { DeckResponse } from '../models/DeckResponse';
 import type { DeckUpdate } from '../models/DeckUpdate';
+import type { DueCardResponse } from '../models/DueCardResponse';
 import type { FlashcardCreate } from '../models/FlashcardCreate';
 import type { FlashcardGenerateFromTopicRequest } from '../models/FlashcardGenerateFromTopicRequest';
 import type { FlashcardGenerateRequest } from '../models/FlashcardGenerateRequest';
 import type { FlashcardGenerateResponse } from '../models/FlashcardGenerateResponse';
-import type { FlashcardResponse } from '../models/FlashcardResponse';
 import type { FlashcardUpdate } from '../models/FlashcardUpdate';
 import type { ImportRequest } from '../models/ImportRequest';
 import type { ImportResult } from '../models/ImportResult';
@@ -277,13 +277,13 @@ export class FlashcardsService {
      * Create a new flashcard in a deck
      * @param requestBody
      * @param token Auth token for image/file requests
-     * @returns FlashcardResponse Successful Response
+     * @returns DueCardResponse Successful Response
      * @throws ApiError
      */
     public static createCardApiV1CardsPost(
         requestBody: FlashcardCreate,
         token?: (string | null),
-    ): CancelablePromise<FlashcardResponse> {
+    ): CancelablePromise<DueCardResponse> {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/api/v1/cards',
@@ -303,14 +303,14 @@ export class FlashcardsService {
      * @param deckId Filter by deck
      * @param limit Maximum cards to return
      * @param token Auth token for image/file requests
-     * @returns FlashcardResponse Successful Response
+     * @returns DueCardResponse Successful Response
      * @throws ApiError
      */
     public static getDueCardsApiV1CardsDueGet(
         deckId?: (number | null),
         limit: number = 20,
         token?: (string | null),
-    ): CancelablePromise<Array<FlashcardResponse>> {
+    ): CancelablePromise<Array<DueCardResponse>> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/v1/cards/due',
@@ -359,13 +359,13 @@ export class FlashcardsService {
      * Retrieve a specific flashcard
      * @param cardId
      * @param token Auth token for image/file requests
-     * @returns FlashcardResponse Successful Response
+     * @returns DueCardResponse Successful Response
      * @throws ApiError
      */
     public static getCardApiV1CardsCardIdGet(
         cardId: number,
         token?: (string | null),
-    ): CancelablePromise<FlashcardResponse> {
+    ): CancelablePromise<DueCardResponse> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/v1/cards/{card_id}',
@@ -386,14 +386,14 @@ export class FlashcardsService {
      * @param cardId
      * @param requestBody
      * @param token Auth token for image/file requests
-     * @returns FlashcardResponse Successful Response
+     * @returns DueCardResponse Successful Response
      * @throws ApiError
      */
     public static updateCardApiV1CardsCardIdPut(
         cardId: number,
         requestBody: FlashcardUpdate,
         token?: (string | null),
-    ): CancelablePromise<FlashcardResponse> {
+    ): CancelablePromise<DueCardResponse> {
         return __request(OpenAPI, {
             method: 'PUT',
             url: '/api/v1/cards/{card_id}',

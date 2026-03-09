@@ -3,13 +3,28 @@
 /* tslint:disable */
 /* eslint-disable */
 /**
- * Review result response.
+ * Review result schema (returned after recording review).
  */
 export type ReviewResult = {
+    /**
+     * Next review date
+     */
     next_review_date: string;
+    /**
+     * New interval in days
+     */
     new_interval: number;
-    new_ease_factor: number;
+    /**
+     * New ease factor
+     */
+    new_ease_factor: string;
+    /**
+     * Whether operation succeeded
+     */
     success: boolean;
+    /**
+     * Result message
+     */
     message: string;
 };
 

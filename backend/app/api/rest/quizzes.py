@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, func
 from pydantic import BaseModel, Field
 
-from app.api.deps import get_db, get_current_user
+from app.api.deps import get_db, get_current_user, PaginationParams
 from app.models.user import User
 from app.models.quiz import Quiz, QuizSourceType, QuizDifficulty
 from app.models.quiz_question import QuizQuestion, QuestionType
@@ -477,8 +477,7 @@ Return ONLY valid JSON in this exact format:
 
 @router.get("", response_model=List[QuizResponse])
 async def list_quizzes(
-    page: int = Query(1, ge=1),
-    page_size: int = Query(20, ge=1, le=100),
+    pagination: PaginationParams = Depends(),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -490,8 +489,8 @@ async def list_quizzes(
         .where(and_(Quiz.user_id == current_user.id, Quiz.deleted_at.is_(None)))
         .group_by(Quiz.id)
         .order_by(Quiz.created_at.desc())
-        .offset((page - 1) * page_size)
-        .limit(page_size)
+        .offset(pagination.offset)
+        .limit(pagination.page_size)
     )
 
     result = await db.execute(stmt)

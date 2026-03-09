@@ -16,7 +16,7 @@ from app.schemas.common import MessageResponse
 from datetime import datetime
 import logging
 
-from app.api.deps import get_db, get_current_user
+from app.api.deps import get_db, get_current_user, PaginationParams
 from app.models.user import User
 from app.models.document import Document, ProcessingStatus
 from app.models.document_chunk import DocumentChunk

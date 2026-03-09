@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
 from pydantic import BaseModel, HttpUrl, Field
 
-from app.api.deps import get_db, get_current_user
+from app.api.deps import get_db, get_current_user, PaginationParams
 from app.models.user import User
 from app.models.webhook import Webhook
 from app.models.webhook_event import WebhookStatus
@@ -163,8 +163,7 @@ def generate_webhook_secret() -> str:
     description="Retrieve user's webhooks",
 )
 async def list_webhooks(
-    page: int = Query(1, ge=1, description="Page number"),
-    page_size: int = Query(20, ge=1, le=100, description="Items per page"),
+    pagination: PaginationParams = Depends(),
     active_only: bool = Query(False, description="Only active webhooks"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -176,7 +175,7 @@ async def list_webhooks(
         query = query.where(Webhook.is_active.is_(True))
 
     query = query.order_by(Webhook.created_at.desc())
-    query = query.offset((page - 1) * page_size).limit(page_size)
+    query = query.offset(pagination.offset).limit(pagination.page_size)
 
     result = await db.execute(query)
     webhooks = result.scalars().all()

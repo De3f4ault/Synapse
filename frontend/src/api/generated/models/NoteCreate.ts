@@ -2,15 +2,29 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-import type { NoteFormat } from './NoteFormat';
 /**
- * Note creation request.
+ * Note creation schema.
  */
 export type NoteCreate = {
+    /**
+     * Note title
+     */
     title: string;
+    /**
+     * Note content (string or BlockSuite JSONB)
+     */
     content: (string | Record<string, any>);
-    format?: NoteFormat;
+    /**
+     * Content format
+     */
+    format?: string;
+    /**
+     * Parent note ID for hierarchy
+     */
     parent_id?: (number | null);
-    tags?: (Array<string> | null);
+    /**
+     * Tag names
+     */
+    tags?: Array<string>;
 };
 

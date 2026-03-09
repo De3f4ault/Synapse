@@ -2,13 +2,12 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-import type { QuestionType } from './QuestionType';
 /**
  * Question creation schema.
  */
 export type QuestionCreate = {
     question_text: string;
-    question_type: QuestionType;
+    question_type: string;
     options?: (Record<string, any> | null);
     correct_answer: string;
     explanation?: (string | null);

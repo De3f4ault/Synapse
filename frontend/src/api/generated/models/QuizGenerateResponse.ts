@@ -2,7 +2,6 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-import type { QuizDifficulty } from './QuizDifficulty';
 /**
  * AI quiz generation response.
  */
@@ -10,7 +9,7 @@ export type QuizGenerateResponse = {
     quiz_id: number;
     title: string;
     description: (string | null);
-    difficulty: QuizDifficulty;
+    difficulty: string;
     question_count: number;
     status: string;
     message: string;

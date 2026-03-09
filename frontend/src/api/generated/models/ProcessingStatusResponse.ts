@@ -2,14 +2,25 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-import type { ProcessingStatus } from './ProcessingStatus';
 /**
  * Processing status check response.
  */
 export type ProcessingStatusResponse = {
+    /**
+     * Document ID
+     */
     document_id: number;
-    status: ProcessingStatus;
+    /**
+     * Processing status
+     */
+    status: string;
+    /**
+     * Processing progress 0-100
+     */
     progress_percentage: number;
+    /**
+     * Status message
+     */
     message: string;
 };
 

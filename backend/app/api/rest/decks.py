@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field
 from app.schemas.common import MessageResponse
 from datetime import datetime
 
-from app.api.deps import get_db, get_current_user
+from app.api.deps import get_db, get_current_user, PaginationParams
 from app.models.user import User
 from app.models.deck import Deck
 from app.models.flashcard import Flashcard
@@ -47,8 +47,7 @@ from app.schemas.flashcard import (
 async def list_decks(
     tags: Optional[str] = Query(None, description="Filter by tags (comma-separated)"),
     is_public: Optional[bool] = Query(None, description="Filter by public status"),
-    page: int = Query(1, ge=1, description="Page number"),
-    page_size: int = Query(20, ge=1, le=100, description="Items per page"),
+    pagination: PaginationParams = Depends(),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -97,8 +96,8 @@ async def list_decks(
     stmt = (
         stmt.group_by(Deck.id)
         .order_by(Deck.updated_at.desc())
-        .offset((page - 1) * page_size)
-        .limit(page_size)
+        .offset(pagination.offset)
+        .limit(pagination.page_size)
     )
 
     result = await db.execute(stmt)

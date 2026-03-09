@@ -3,16 +3,40 @@
 /* tslint:disable */
 /* eslint-disable */
 /**
- * Document chunk response.
+ * Document chunk response schema.
  */
 export type DocumentChunkResponse = {
+    /**
+     * Chunk ID
+     */
     id: number;
+    /**
+     * Parent document ID
+     */
     document_id: number;
+    /**
+     * Chunk text content
+     */
     content: string;
+    /**
+     * Chunk index within document
+     */
     chunk_index: number;
-    page: (number | null);
+    /**
+     * Page number
+     */
+    page?: (number | null);
+    /**
+     * Start character position
+     */
     start_char: number;
+    /**
+     * End character position
+     */
     end_char: number;
-    embedding_id: (string | null);
+    /**
+     * Embedding vector ID
+     */
+    embedding_id?: (string | null);
 };
 

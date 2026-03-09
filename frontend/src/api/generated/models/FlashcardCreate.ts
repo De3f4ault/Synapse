@@ -3,13 +3,28 @@
 /* tslint:disable */
 /* eslint-disable */
 /**
- * Flashcard creation request.
+ * Flashcard creation schema.
  */
 export type FlashcardCreate = {
-    deck_id: number;
+    /**
+     * Front of card
+     */
     front_text: string;
+    /**
+     * Back of card
+     */
     back_text: string;
+    /**
+     * Front media URL
+     */
     front_media_url?: (string | null);
+    /**
+     * Back media URL
+     */
     back_media_url?: (string | null);
+    /**
+     * Deck ID
+     */
+    deck_id: number;
 };
 

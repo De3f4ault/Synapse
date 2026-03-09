@@ -3,7 +3,7 @@
 /* tslint:disable */
 /* eslint-disable */
 /**
- * Answer submission with per-question timing (Phase Q1).
+ * Answer submission with per-question timing.
  */
 export type AnswerSubmit = {
     question_id: number;

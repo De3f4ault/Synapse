@@ -2,14 +2,13 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-import type { QuestionType } from './QuestionType';
 /**
  * Question response with answers for learning mode.
  */
 export type QuestionResponse = {
     id: number;
     question_text: string;
-    question_type: QuestionType;
+    question_type: string;
     options: (Record<string, any> | null);
     points: number;
     order: number;

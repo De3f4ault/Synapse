@@ -3,7 +3,7 @@
 /* tslint:disable */
 /* eslint-disable */
 /**
- * Review submission request.
+ * Review submission (card_id passed via URL, not body).
  */
 export type ReviewSubmit = {
     /**

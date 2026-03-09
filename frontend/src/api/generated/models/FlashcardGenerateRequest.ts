@@ -11,15 +11,15 @@ export type FlashcardGenerateRequest = {
      */
     document_id: number;
     /**
-     * Name for the new deck
+     * Deck name
      */
     deck_name: string;
     /**
-     * Number of flashcards to generate
+     * Number of flashcards
      */
     num_cards?: number;
     /**
-     * Difficulty level: easy, medium, hard
+     * Difficulty: easy, medium, hard
      */
     difficulty?: string;
     tags?: (Array<string> | null);

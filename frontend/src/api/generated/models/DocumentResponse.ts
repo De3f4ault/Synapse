@@ -2,27 +2,77 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-import type { ProcessingStatus } from './ProcessingStatus';
 /**
- * Document response.
+ * Document response schema.
  */
 export type DocumentResponse = {
+    /**
+     * Document ID
+     */
     id: number;
-    filename: string;
-    file_type: string;
-    file_size: number;
-    processing_status: ProcessingStatus;
-    page_count: (number | null);
-    word_count: (number | null);
-    ocr_performed?: boolean;
-    gemini_file_uri: (string | null);
-    gemini_file_expired: boolean;
+    /**
+     * Owner user ID
+     */
     user_id: number;
+    /**
+     * Original filename
+     */
+    filename: string;
+    /**
+     * File type (extension)
+     */
+    file_type: string;
+    /**
+     * File size in bytes
+     */
+    file_size: number;
+    /**
+     * Processing status
+     */
+    processing_status: string;
+    /**
+     * Number of pages
+     */
+    page_count?: (number | null);
+    /**
+     * Word count
+     */
+    word_count?: (number | null);
+    /**
+     * Whether OCR was used
+     */
+    ocr_performed?: boolean;
+    /**
+     * Gemini Files API URI
+     */
+    gemini_file_uri?: (string | null);
+    /**
+     * Whether Gemini file has expired
+     */
+    gemini_file_expired?: boolean;
+    /**
+     * Upload time
+     */
     created_at: string;
+    /**
+     * Last update time
+     */
     updated_at: string;
+    /**
+     * Document sector/category
+     */
     sector?: (string | null);
+    /**
+     * User notes on document
+     */
     notes?: (string | null);
+    /**
+     * AI-generated summary
+     */
     ai_summary?: (string | null);
+    /**
+     * Reading progress 0.0-1.0
+     */
     reading_progress?: (number | null);
 };
 

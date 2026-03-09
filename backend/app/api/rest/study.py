@@ -13,7 +13,7 @@ from sqlalchemy import select, and_, or_, func
 from pydantic import BaseModel, Field
 import logging
 
-from app.api.deps import get_db, get_current_user
+from app.api.deps import get_db, get_current_user, PaginationParams
 from app.models.user import User
 from app.models.study_session import StudySession, StudySessionType
 from app.models.flashcard import Flashcard, LearningState
@@ -399,8 +399,7 @@ async def complete_session(
 
 @router.get("/sessions", response_model=List[StudySessionResponse])
 async def list_sessions(
-    page: int = Query(1, ge=1),
-    page_size: int = Query(20, ge=1, le=100),
+    pagination: PaginationParams = Depends(),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -411,7 +410,7 @@ async def list_sessions(
         .order_by(StudySession.started_at.desc())
     )
 
-    query = query.offset((page - 1) * page_size).limit(page_size)
+    query = query.offset(pagination.offset).limit(pagination.page_size)
     result = await db.execute(query)
     sessions = result.scalars().all()
 

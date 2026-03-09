@@ -7,7 +7,7 @@ import type { MessageResponse } from '../models/MessageResponse';
 import type { NoteCreate } from '../models/NoteCreate';
 import type { NoteResponse } from '../models/NoteResponse';
 import type { NoteSearchResult } from '../models/NoteSearchResult';
-import type { NoteTreeNode } from '../models/NoteTreeNode';
+import type { NoteTreeResponse } from '../models/NoteTreeResponse';
 import type { NoteUpdate } from '../models/NoteUpdate';
 import type { NoteVersionResponse } from '../models/NoteVersionResponse';
 import type { CancelablePromise } from '../core/CancelablePromise';
@@ -83,13 +83,13 @@ export class NotesService {
      * Retrieve hierarchical note structure as tree
      * @param rootId Start from specific note (NULL for roots)
      * @param token Auth token for image/file requests
-     * @returns NoteTreeNode Successful Response
+     * @returns NoteTreeResponse Successful Response
      * @throws ApiError
      */
     public static getNoteTreeApiV1NotesTreeGet(
         rootId?: (number | null),
         token?: (string | null),
-    ): CancelablePromise<Array<NoteTreeNode>> {
+    ): CancelablePromise<Array<NoteTreeResponse>> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/v1/notes/tree',

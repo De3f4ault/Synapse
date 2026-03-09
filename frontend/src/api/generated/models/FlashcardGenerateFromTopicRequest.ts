@@ -3,23 +3,23 @@
 /* tslint:disable */
 /* eslint-disable */
 /**
- * Flashcard generation from topic request (like quiz generation).
+ * Flashcard generation from topic (like quiz generation).
  */
 export type FlashcardGenerateFromTopicRequest = {
     /**
-     * Topic to generate flashcards about
+     * Topic
      */
     topic: string;
     /**
-     * Optional deck name (defaults to topic)
+     * Optional deck name
      */
     deck_name?: (string | null);
     /**
-     * Number of flashcards to generate
+     * Number of flashcards
      */
     num_cards?: number;
     /**
-     * Difficulty level: easy, medium, hard
+     * Difficulty: easy, medium, hard
      */
     difficulty?: string;
     tags?: (Array<string> | null);
