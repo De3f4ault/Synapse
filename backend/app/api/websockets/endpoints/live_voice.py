@@ -436,51 +436,23 @@ class LiveVoiceSession:
         await self.save_conversation()
 
 
-async def validate_token(token: str) -> dict:
-    """Validate JWT token and return user info."""
-    from jose import jwt, JWTError
-    from app.core.config import settings
-
-    try:
-        payload = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
-        user_id = payload.get("sub")
-        if user_id is None:
-            raise Exception("Invalid token")
-        return {"id": int(user_id)}
-    except JWTError:
-        raise Exception("Invalid token")
-
-
 async def live_voice_websocket_endpoint(
     websocket: WebSocket, token: str = Query(..., description="JWT authentication token")
 ):
     """
-    Live Voice WebSocket endpoint.
-
-    Provides real-time bidirectional audio streaming with Gemini Live API.
-
-    Authentication via query parameter: ws://host/ws/live?token=xxx
+    Live Voice WebSocket — bidirectional audio streaming with Gemini Live API.
 
     Protocol:
-    - Client sends: {"type": "audio", "data": "<base64 PCM 16kHz>"}
-    - Client sends: {"type": "text", "content": "Hello"}
-    - Client sends: {"type": "interrupt"}
-    - Client sends: {"type": "end_session"}
-    - Server sends: {"type": "audio", "data": "<base64 PCM 24kHz>"}
-    - Server sends: {"type": "input_transcript", "text": "..."}
-    - Server sends: {"type": "output_transcript", "text": "..."}
-    - Server sends: {"type": "grounding", "metadata": {...}}
-    - Server sends: {"type": "turn_complete"}
-    - Server sends: {"type": "interrupted"}
+        audio/text/interrupt/end_session → audio/transcript/grounding/turn_complete
     """
-    # Validate token
-    try:
-        user_info = await validate_token(token)
-        user_id = user_info["id"]
-    except Exception as e:
+    from app.api.websockets.core.auth import get_user_from_token
+
+    user = await get_user_from_token(token)
+    if not user:
         await websocket.close(code=1008, reason="Unauthorized")
-        logger.error("live_voice_auth_failed", error=str(e))
         return
+
+    user_id = user.id
 
     # Check if Live API is available
     if not LIVE_API_AVAILABLE:

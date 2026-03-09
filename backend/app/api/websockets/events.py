@@ -15,7 +15,7 @@ Usage example in FlashcardService:
 """
 
 from typing import Any, Dict
-from .channels import channel_manager
+from .core.channels import channel_manager
 import structlog
 
 logger = structlog.get_logger()
@@ -169,7 +169,7 @@ In backend/app/modules/flashcards/service.py:
         review_result = await self.repository.record_review(card_id, quality)
         await self.session.commit()
 
-        # ✅ Broadcast to dashboard
+        #  Broadcast to dashboard
         await broadcast_card_reviewed(
             user_id=user_id,
             card_id=card_id,
