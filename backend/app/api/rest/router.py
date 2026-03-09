@@ -16,29 +16,25 @@ from . import (
     flashcards,
     notes,
     documents,
-    folders,  # Document folder management (Phase 0)
+    folders,
     quizzes,
-    # chat - MIGRATED to app.modules.chat.api (imported below)
     threads,
-    branches,  # Branch navigation for counterfactual exploration
+    branches,
     study,
     search,
     analytics,
     webhooks,
     health,
-    rag,  # RAG API endpoints
-    links,  # Knowledge graph links
-    entities,  # Platform entity resolution
-    platform_graph,  # Platform graph intelligence
-    actions,  # Platform action execution
-    intelligence,  # Graph Intelligence Engine
-    feedback,  # Feedback Loop
-    notifications,  # Notification system
-    uploads,  # BlockSuite asset uploads
+    rag,
+    links,
+    entities,
+    platform_graph,
+    actions,
+    intelligence,
+    feedback,
+    notifications,
+    uploads,
 )
-
-# Import WebSocket endpoint
-from app.api.websockets.endpoints.dashboard import dashboard_websocket_endpoint
 
 # Create main API router
 api_router = APIRouter()
@@ -110,9 +106,4 @@ api_router.include_router(notifications.router, prefix="/notifications", tags=["
 
 api_router.include_router(uploads.router, prefix="/uploads/blocksuite", tags=["BlockSuite"])
 
-# ==================== WEBSOCKET ENDPOINTS ====================
-# WebSocket endpoints must be registered outside the /api/v1 prefix
-# They are registered in main.py to avoid prefix conflicts
-
-# Export the websocket endpoint for registration in main.py
-__all__ = ["api_router", "dashboard_websocket_endpoint"]
+__all__ = ["api_router"]

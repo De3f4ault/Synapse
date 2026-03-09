@@ -51,6 +51,7 @@ export type { ContextNoteResponse } from './models/ContextNoteResponse';
 export type { ConversationSearchResult } from './models/ConversationSearchResult';
 export type { ConversationTreeResponse } from './models/ConversationTreeResponse';
 export type { CreateFolderRequest } from './models/CreateFolderRequest';
+export type { DashboardMessageCreate } from './models/DashboardMessageCreate';
 export type { DashboardOverview } from './models/DashboardOverview';
 export type { DeckCreate } from './models/DeckCreate';
 export type { DeckResponse } from './models/DeckResponse';

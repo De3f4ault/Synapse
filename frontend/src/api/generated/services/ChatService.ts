@@ -10,6 +10,7 @@ import type { ChatSessionResponse } from '../models/ChatSessionResponse';
 import type { ChatSessionUpdate } from '../models/ChatSessionUpdate';
 import type { ConversationSearchResult } from '../models/ConversationSearchResult';
 import type { ConversationTreeResponse } from '../models/ConversationTreeResponse';
+import type { DashboardMessageCreate } from '../models/DashboardMessageCreate';
 import type { EditMessageRequest } from '../models/EditMessageRequest';
 import type { NotesMessageCreate } from '../models/NotesMessageCreate';
 import type { CancelablePromise } from '../core/CancelablePromise';
@@ -429,7 +430,7 @@ export class ChatService {
      * @throws ApiError
      */
     public static sendDashboardMessageApiV1ChatSessionsDashboardMessagePost(
-        requestBody: ChatMessageCreate,
+        requestBody: DashboardMessageCreate,
         token?: (string | null),
     ): CancelablePromise<ChatMessageResponse> {
         return __request(OpenAPI, {

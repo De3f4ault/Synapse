@@ -1,14 +1,14 @@
 """
-Cross-module search REST API endpoints - ENHANCED with pg_search BM25.
+Cross-module search REST API endpoints.
 
 Unified search with:
 - PostgreSQL pg_search BM25 (keyword matching via ParadeDB)
 - Semantic search (Qdrant or pgvector)
 - Hybrid ranking with RRF
-- NEW: Unified Search Intelligence Bus
+- Unified Search Intelligence Bus
 """
 
-from typing import List, Optional
+from typing import List, Literal, Optional
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel
@@ -19,16 +19,13 @@ from app.services.search.fulltext import FullTextSearchService
 from app.services.search.hybrid_v2 import HybridSearchServiceV2, SearchMode
 from app.services.search.ranking import HybridRankingService
 from app.utils.logging import get_logger
-
-# Import unified search router
-from app.api.rest.unified_search import router as unified_router
+from app.schemas.search_context import SearchContext, SearchIntent
+from app.schemas.search_response import UnifiedSearchResponse
+from app.services.search.unified_service import get_unified_search_service
 
 logger = get_logger(__name__)
 
 router = APIRouter()
-
-# Include the unified search endpoints under /unified
-router.include_router(unified_router, tags=["Unified Search"])
 
 
 # ============================================================================
@@ -407,163 +404,67 @@ async def search_suggestions(
 
 
 # ============================================================================
-# New SQL Function-Based Hybrid Search (PostgreSQL Native)
+# Unified Search Intelligence Bus
 # ============================================================================
 
 
-class NoteHybridResult(BaseModel):
-    """Note result from SQL-based hybrid search."""
-
-    id: int
-    title: Optional[str]
-    content_preview: str
-    bm25_rank: int
-    bm25_score: float
-    vector_rank: int
-    vector_score: float
-    hybrid_score: float
-
-
-class FlashcardHybridResult(BaseModel):
-    """Flashcard result from SQL-based hybrid search."""
-
-    id: int
-    front_text: str
-    back_text: str
-    deck_id: int
-    bm25_rank: int
-    bm25_score: float
-    vector_rank: int
-    vector_score: float
-    hybrid_score: float
-
-
-class NoteHybridResponse(BaseModel):
-    """Response for note hybrid search."""
+class UnifiedSearchRequest(BaseModel):
+    """Request body for unified search."""
 
     query: str
-    total_results: int
-    bm25_weight: float
-    vector_weight: float
-    results: List[NoteHybridResult]
+    intent: SearchIntent = SearchIntent.NAVIGATE
+    surface: Literal["cmdk", "chat", "dashboard", "study_hub"] = "cmdk"
+    max_latency_ms: int = 200
+    max_results_per_engine: int = 20
 
 
-class FlashcardHybridResponse(BaseModel):
-    """Response for flashcard hybrid search."""
-
-    query: str
-    total_results: int
-    bm25_weight: float
-    vector_weight: float
-    results: List[FlashcardHybridResult]
-
-
-@router.get("/hybrid/notes", response_model=NoteHybridResponse, deprecated=True)
-async def search_hybrid_notes(
-    q: str = Query(..., min_length=1, description="Search query"),
-    limit: int = Query(10, ge=1, le=50, description="Maximum results"),
-    bm25_weight: float = Query(0.5, ge=0.0, le=1.0, description="BM25 weight"),
-    vector_weight: float = Query(0.5, ge=0.0, le=1.0, description="Vector weight"),
-    current_user: User = Depends(get_current_user),
+@router.post(
+    "/unified",
+    response_model=UnifiedSearchResponse,
+    summary="Unified Search",
+    description="Execute search across all engines based on intent.",
+)
+async def unified_search(
+    request: UnifiedSearchRequest,
     db: AsyncSession = Depends(get_db),
-):
-    """
-    ⚠️ Deprecated: Use POST /unified instead.
-
-    Hybrid search notes using PostgreSQL-native BM25 + vector search.
-    """
-    from app.services.search.hybrid_v2 import HybridSearchServiceV2
-
-    logger.info(
-        f"Hybrid notes search: '{q}' user={current_user.id} "
-        f"weights=({bm25_weight}, {vector_weight})"
-    )
-
-    raw_results = await HybridSearchServiceV2.hybrid_search_notes(
-        user_id=current_user.id,
-        query=q,
-        db=db,
-        limit=limit,
-        bm25_weight=bm25_weight,
-        semantic_weight=vector_weight,
-    )
-
-    formatted = [
-        NoteHybridResult(
-            id=r["id"],
-            title=r.get("title"),
-            content_preview=r.get("content", "")[:200],
-            bm25_rank=r.get("bm25_rank", 0),
-            bm25_score=0.0,
-            vector_rank=r.get("semantic_rank", 0),
-            vector_score=0.0,
-            hybrid_score=r.get("rrf_score", 0.0),
-        )
-        for r in raw_results
-    ]
-
-    logger.info(f"Hybrid notes search complete: {len(formatted)} results")
-
-    return NoteHybridResponse(
-        query=q,
-        total_results=len(formatted),
-        bm25_weight=bm25_weight,
-        vector_weight=vector_weight,
-        results=formatted,
-    )
-
-
-@router.get("/hybrid/flashcards", response_model=FlashcardHybridResponse, deprecated=True)
-async def search_hybrid_flashcards(
-    q: str = Query(..., min_length=1, description="Search query"),
-    limit: int = Query(10, ge=1, le=50, description="Maximum results"),
-    bm25_weight: float = Query(0.5, ge=0.0, le=1.0, description="BM25 weight"),
-    vector_weight: float = Query(0.5, ge=0.0, le=1.0, description="Vector weight"),
     current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    """
-    ⚠️ Deprecated: Use POST /unified instead.
-
-    Search flashcards using BM25 full-text search.
-    """
-    from app.services.search.hybrid_v2 import HybridSearchServiceV2
-
-    logger.info(f"Hybrid flashcards search: '{q}' user={current_user.id}")
-
-    raw_results = await HybridSearchServiceV2.hybrid_search_flashcards(
+) -> UnifiedSearchResponse:
+    """Execute unified search across the Intelligence Bus."""
+    context = SearchContext(
         user_id=current_user.id,
-        query=q,
-        db=db,
-        limit=limit,
-        bm25_weight=bm25_weight,
-        semantic_weight=vector_weight,
+        intent=request.intent,
+        surface=request.surface,
+        max_latency_ms=request.max_latency_ms,
+        max_results_per_engine=request.max_results_per_engine,
     )
+    service = await get_unified_search_service(db)
+    return await service.search(request.query, context)
 
-    formatted = [
-        FlashcardHybridResult(
-            id=r["id"],
-            front_text=r.get("front_text", ""),
-            back_text=r.get("back_text", ""),
-            deck_id=r.get("deck_id", 0),
-            bm25_rank=r.get("bm25_rank", 0),
-            bm25_score=0.0,
-            vector_rank=r.get("semantic_rank", 0),
-            vector_score=0.0,
-            hybrid_score=r.get("rrf_score", 0.0),
-        )
-        for r in raw_results
-    ]
 
-    logger.info(f"Hybrid flashcards search complete: {len(formatted)} results")
-
-    return FlashcardHybridResponse(
-        query=q,
-        total_results=len(formatted),
-        bm25_weight=bm25_weight,
-        vector_weight=vector_weight,
-        results=formatted,
+@router.get(
+    "/unified",
+    response_model=UnifiedSearchResponse,
+    summary="Unified Search (GET)",
+    description="GET version of unified search for simple queries.",
+)
+async def unified_search_get(
+    q: str = Query(..., description="Search query"),
+    intent: SearchIntent = Query(SearchIntent.NAVIGATE, description="Search intent"),
+    surface: Literal["cmdk", "chat", "dashboard", "study_hub"] = Query("cmdk"),
+    limit: int = Query(20, ge=1, le=100, description="Max results per engine"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> UnifiedSearchResponse:
+    """GET endpoint for unified search."""
+    context = SearchContext(
+        user_id=current_user.id,
+        intent=intent,
+        surface=surface,
+        max_latency_ms=200,
+        max_results_per_engine=limit,
     )
+    service = await get_unified_search_service(db)
+    return await service.search(q, context)
 
 
 # =============================================================================
