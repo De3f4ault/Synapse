@@ -25,85 +25,14 @@ router = APIRouter()
 logger = structlog.get_logger()
 
 
-# ============================================================================
-# Request/Response Schemas
-# ============================================================================
-
-
-class FlashcardCreate(BaseModel):
-    """Flashcard creation request."""
-
-    deck_id: int
-    front_text: str = Field(..., min_length=1)
-    back_text: str = Field(..., min_length=1)
-    front_media_url: Optional[str] = None
-    back_media_url: Optional[str] = None
-
-
-class FlashcardUpdate(BaseModel):
-    """Flashcard update request."""
-
-    front_text: Optional[str] = Field(None, min_length=1)
-    back_text: Optional[str] = Field(None, min_length=1)
-    front_media_url: Optional[str] = None
-    back_media_url: Optional[str] = None
-
-
-class ReviewSubmit(BaseModel):
-    """Review submission request."""
-
-    quality: int = Field(..., ge=0, le=5, description="Quality rating 0-5")
-    time_taken_ms: int = Field(..., ge=0, description="Time taken in milliseconds")
-
-
-class FlashcardResponse(BaseModel):
-    """
-    Flashcard response - matches get_due_cards() SQL function output.
-
-    Note: This differs from the Flashcard database model because
-    get_due_cards() returns calculated fields for prioritization.
-    """
-
-    id: int
-    deck_id: int
-    front_text: str
-    back_text: str
-    front_media_url: Optional[str] = None
-    back_media_url: Optional[str] = None
-
-    # SM-2 algorithm fields
-    ease_factor: float = 2.5
-    interval: int = 0
-    repetitions: int = 0
-    last_review: Optional[datetime] = None
-    next_review: Optional[datetime] = None
-    learning_state: str = "NEW"  # String not enum to match SQL output
-
-    # Review statistics
-    times_reviewed: int = 0
-    accuracy: float = 0.0
-
-    # Extra fields from get_due_cards() function
-    deck_name: Optional[str] = None  # Included in SQL JOIN
-    overdue_days: Optional[int] = 0  # Calculated field
-    priority_score: Optional[float] = 0.0  # Calculated field
-
-    class Config:
-        from_attributes = True
-        # Allow extra fields that might be present
-        extra = "ignore"
-
-
-class ReviewResult(BaseModel):
-    """Review result response."""
-
-    next_review_date: datetime
-    new_interval: int
-    new_ease_factor: float  # Changed from Decimal to float
-    success: bool
-    message: str
-
-
+# Schemas — single source of truth: app/schemas/flashcard.py
+from app.schemas.flashcard import (
+    FlashcardCreate,
+    FlashcardUpdate,
+    DueCardResponse as FlashcardResponse,  # SQL DTO, not ORM model
+    ReviewSubmit,
+    ReviewResult,
+)
 
 
 # ============================================================================

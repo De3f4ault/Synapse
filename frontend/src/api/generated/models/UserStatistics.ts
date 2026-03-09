@@ -3,7 +3,7 @@
 /* tslint:disable */
 /* eslint-disable */
 /**
- * User statistics response - comprehensive learning metrics.
+ * User statistics response.
  */
 export type UserStatistics = {
     total_cards?: number;

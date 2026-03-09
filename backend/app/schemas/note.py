@@ -1,10 +1,11 @@
 """
-Note schemas.
+Note schemas — single source of truth for all note-related API contracts.
 """
 
 from datetime import datetime
 from typing import List, Optional, Union, Any
 from pydantic import BaseModel, Field
+from app.models.note import NoteFormat
 
 
 # Tag Schemas
@@ -86,11 +87,14 @@ class NoteUpdate(BaseModel):
     content: Optional[Union[str, dict, Any]] = Field(
         default=None, description="Note content (string or BlockSuite JSONB)"
     )
-    format: Optional[str] = Field(
-        default=None, pattern="^(markdown|html|plain)$", description="Content format"
-    )
+    format: Optional[NoteFormat] = Field(default=None, description="Content format")
     parent_id: Optional[int] = Field(default=None, description="Parent note ID")
     tags: Optional[List[str]] = Field(default=None, description="Tag names")
+    is_favorite: Optional[bool] = Field(default=None, description="Favorite flag")
+    is_archived: Optional[bool] = Field(default=None, description="Archive flag")
+    journal_date: Optional[str] = Field(
+        default=None, pattern="^\\d{4}-\\d{2}-\\d{2}$", description="Journal date YYYY-MM-DD"
+    )
 
 
 class NoteResponse(NoteBase):
@@ -99,35 +103,16 @@ class NoteResponse(NoteBase):
     id: int = Field(description="Note ID")
     user_id: int = Field(description="Owner user ID")
     parent_id: Optional[int] = Field(default=None, description="Parent note ID")
-    tags: List[TagResponse] = Field(default_factory=list, description="Tags")
-    children_count: int = Field(description="Number of child notes")
+    embedding_id: Optional[str] = Field(default=None, description="Embedding vector ID")
+    journal_date: Optional[str] = Field(default=None, description="YYYY-MM-DD if journal entry")
+    is_favorite: bool = Field(default=False, description="Favorite flag")
+    is_archived: bool = Field(default=False, description="Archive flag")
+    children_count: int = Field(default=0, description="Number of child notes")
     created_at: datetime = Field(description="Creation time")
     updated_at: datetime = Field(description="Last update time")
 
     class Config:
         from_attributes = True
-        json_schema_extra = {
-            "example": {
-                "id": 1,
-                "user_id": 1,
-                "title": "Cell Structure",
-                "content": "# Cell Structure\n\n## Nucleus\nThe nucleus is the control center...",
-                "format": "markdown",
-                "parent_id": None,
-                "tags": [
-                    {
-                        "id": 1,
-                        "user_id": 1,
-                        "name": "biology",
-                        "color": "#4CAF50",
-                        "created_at": "2025-11-01T10:00:00Z",
-                    }
-                ],
-                "children_count": 3,
-                "created_at": "2025-11-01T10:00:00Z",
-                "updated_at": "2025-11-06T12:00:00Z",
-            }
-        }
 
 
 class NoteTreeResponse(BaseModel):
@@ -166,6 +151,8 @@ NoteTreeResponse.model_rebuild()
 class NoteVersionResponse(BaseModel):
     """Note version response schema."""
 
+    id: int = Field(description="Version ID")
+    note_id: int = Field(description="Parent note ID")
     version_number: int = Field(description="Version number")
     title: str = Field(description="Note title at this version")
     created_at: datetime = Field(description="Version creation time")
@@ -173,36 +160,22 @@ class NoteVersionResponse(BaseModel):
 
     class Config:
         from_attributes = True
-        json_schema_extra = {
-            "example": {
-                "version_number": 2,
-                "title": "Cell Structure (Updated)",
-                "created_at": "2025-11-06T12:00:00Z",
-                "created_by": 1,
-            }
-        }
 
 
 class NoteSearchResult(BaseModel):
-    """Note search result schema."""
+    """Note search result — flat format for endpoint consumption."""
 
-    note: NoteResponse = Field(description="Note data")
-    rank: float = Field(description="Search relevance rank")
-    highlights: List[str] = Field(default_factory=list, description="Highlighted matching snippets")
+    id: int
+    title: str
+    content: Union[str, dict, Any]
+    format: NoteFormat
+    score: float = Field(description="Search relevance score")
+    match_type: str = Field(description="Match type: title, content, or semantic")
 
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "note": {
-                    "id": 1,
-                    "title": "Cell Structure",
-                    "content": "...",
-                    "format": "markdown",
-                },
-                "rank": 0.95,
-                "highlights": [
-                    "The <mark>nucleus</mark> is the control center...",
-                    "Cell <mark>membrane</mark> regulates...",
-                ],
-            }
-        }
+
+class JournalDateResponse(BaseModel):
+    """Journal date with note info."""
+
+    date: str = Field(description="Journal date YYYY-MM-DD")
+    note_id: int = Field(description="Associated note ID")
+    title: str = Field(description="Note title")

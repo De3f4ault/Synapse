@@ -2,7 +2,6 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-import type { app__api__rest__uploads__MessageResponse } from '../models/app__api__rest__uploads__MessageResponse';
 import type { DeckCreate } from '../models/DeckCreate';
 import type { DeckResponse } from '../models/DeckResponse';
 import type { DeckUpdate } from '../models/DeckUpdate';
@@ -14,6 +13,7 @@ import type { FlashcardResponse } from '../models/FlashcardResponse';
 import type { FlashcardUpdate } from '../models/FlashcardUpdate';
 import type { ImportRequest } from '../models/ImportRequest';
 import type { ImportResult } from '../models/ImportResult';
+import type { MessageResponse } from '../models/MessageResponse';
 import type { ReviewResult } from '../models/ReviewResult';
 import type { ReviewSubmit } from '../models/ReviewSubmit';
 import type { CancelablePromise } from '../core/CancelablePromise';
@@ -139,13 +139,13 @@ export class FlashcardsService {
      * Delete a deck (soft delete with cascade to flashcards)
      * @param deckId
      * @param token Auth token for image/file requests
-     * @returns app__api__rest__uploads__MessageResponse Successful Response
+     * @returns MessageResponse Successful Response
      * @throws ApiError
      */
     public static deleteDeckApiV1DecksDeckIdDelete(
         deckId: number,
         token?: (string | null),
-    ): CancelablePromise<app__api__rest__uploads__MessageResponse> {
+    ): CancelablePromise<MessageResponse> {
         return __request(OpenAPI, {
             method: 'DELETE',
             url: '/api/v1/decks/{deck_id}',
@@ -415,13 +415,13 @@ export class FlashcardsService {
      * Delete a flashcard (soft delete)
      * @param cardId
      * @param token Auth token for image/file requests
-     * @returns app__api__rest__uploads__MessageResponse Successful Response
+     * @returns MessageResponse Successful Response
      * @throws ApiError
      */
     public static deleteCardApiV1CardsCardIdDelete(
         cardId: number,
         token?: (string | null),
-    ): CancelablePromise<app__api__rest__uploads__MessageResponse> {
+    ): CancelablePromise<MessageResponse> {
         return __request(OpenAPI, {
             method: 'DELETE',
             url: '/api/v1/cards/{card_id}',

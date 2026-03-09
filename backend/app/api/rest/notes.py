@@ -23,86 +23,16 @@ from app.models.tag import Tag
 router = APIRouter()
 
 
-# ============================================================================
-# Request/Response Schemas
-# ============================================================================
-
-
-class NoteCreate(BaseModel):
-    """Note creation request."""
-
-    title: str = Field(..., max_length=500, min_length=1)
-    content: Union[str, dict, Any] = Field(...)  # Supports string or BlockSuite JSONB
-    format: NoteFormat = NoteFormat.MARKDOWN
-    parent_id: Optional[int] = None
-    tags: Optional[List[str]] = None
-
-
-class NoteUpdate(BaseModel):
-    """Note update request."""
-
-    title: Optional[str] = Field(None, max_length=500, min_length=1)
-    content: Optional[Union[str, dict, Any]] = Field(None)  # Supports string or BlockSuite JSONB
-    format: Optional[NoteFormat] = None
-    is_favorite: Optional[bool] = None
-    is_archived: Optional[bool] = None
-    journal_date: Optional[str] = Field(
-        None, pattern="^\\d{4}-\\d{2}-\\d{2}$", description="Journal date YYYY-MM-DD"
-    )
-
-
-class NoteResponse(BaseModel):
-    """Note response."""
-
-    id: int
-    title: str
-    content: Union[str, dict, Any]  # Supports string or BlockSuite JSONB
-    format: NoteFormat
-    parent_id: Optional[int]
-    user_id: int
-    embedding_id: Optional[str]
-    journal_date: Optional[str] = None  # YYYY-MM-DD if this is a journal
-    is_favorite: bool = False
-    is_archived: bool = False
-    created_at: datetime
-    updated_at: datetime
-    children_count: int = 0
-
-    class Config:
-        from_attributes = True
-
-
-class NoteTreeNode(BaseModel):
-    """Recursive note tree node."""
-
-    id: int
-    title: str
-    parent_id: Optional[int]
-    children: List["NoteTreeNode"] = []
-
-
-class NoteVersionResponse(BaseModel):
-    """Note version history response."""
-
-    id: int
-    note_id: int
-    version_number: int
-    title: str
-    created_at: datetime
-    created_by: int
-
-
-class NoteSearchResult(BaseModel):
-    """Note search result."""
-
-    id: int
-    title: str
-    content: Union[str, dict, Any]  # Supports string or BlockSuite JSONB
-    format: NoteFormat
-    score: float
-    match_type: str  # "title", "content", "semantic"
-
-
+# Schemas — single source of truth: app/schemas/note.py
+from app.schemas.note import (
+    NoteCreate,
+    NoteUpdate,
+    NoteResponse,
+    NoteTreeResponse as NoteTreeNode,
+    NoteVersionResponse,
+    NoteSearchResult,
+    JournalDateResponse,
+)
 
 
 # ============================================================================
@@ -593,15 +523,6 @@ async def delete_note(
 # ============================================================================
 # Journal Endpoints
 # ============================================================================
-
-
-class JournalDateResponse(BaseModel):
-    """Journal date with note info."""
-
-    date: str  # YYYY-MM-DD
-    note_id: int
-    title: str
-
 
 @router.get(
     "/journals/dates",

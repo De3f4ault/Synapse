@@ -1,5 +1,5 @@
 """
-Flashcard schemas.
+Flashcard schemas — single source of truth for flashcard, deck, and review API contracts.
 """
 
 from datetime import datetime
@@ -47,7 +47,8 @@ class DeckResponse(DeckBase):
 
     id: int = Field(description="Deck ID")
     user_id: int = Field(description="Owner user ID")
-    card_count: int = Field(description="Number of cards in deck")
+    card_count: int = Field(default=0, description="Number of cards in deck")
+    due_count: int = Field(default=0, description="Cards due for review")
     ai_generated: bool = Field(default=False, description="Whether AI generated")
     created_at: datetime = Field(description="Creation time")
     updated_at: datetime = Field(description="Last update time")
@@ -268,3 +269,105 @@ class DeckStatistics(BaseModel):
                 "avg_accuracy": 82.0
             }
         }
+
+
+class DueCardResponse(BaseModel):
+    """
+    Due card DTO — matches get_due_cards() SQL function output.
+
+    Distinct from FlashcardResponse because the SQL function returns
+    calculated fields (deck_name, overdue_days, priority_score) that
+    don't exist on the ORM model.
+    """
+
+    id: int
+    deck_id: int
+    front_text: str
+    back_text: str
+    front_media_url: Optional[str] = None
+    back_media_url: Optional[str] = None
+
+    # SM-2 algorithm fields
+    ease_factor: float = 2.5
+    interval: int = 0
+    repetitions: int = 0
+    last_review: Optional[datetime] = None
+    next_review: Optional[datetime] = None
+    learning_state: str = "NEW"
+
+    # Review statistics
+    times_reviewed: int = 0
+    accuracy: float = 0.0
+
+    # Extra fields from get_due_cards() SQL JOIN
+    deck_name: Optional[str] = None
+    overdue_days: Optional[int] = 0
+    priority_score: Optional[float] = 0.0
+
+    class Config:
+        from_attributes = True
+        extra = "ignore"
+
+
+class ReviewSubmit(BaseModel):
+    """Review submission (card_id passed via URL, not body)."""
+
+    quality: int = Field(..., ge=0, le=5, description="Quality rating 0-5")
+    time_taken_ms: int = Field(..., ge=0, description="Time taken in milliseconds")
+
+
+# ============================================================================
+# Generation & Import Schemas
+# ============================================================================
+
+
+class FlashcardGenerateRequest(BaseModel):
+    """Flashcard generation from document request."""
+
+    document_id: int = Field(..., description="Document to generate from")
+    deck_name: str = Field(..., min_length=1, max_length=255, description="Deck name")
+    num_cards: int = Field(10, ge=1, le=50, description="Number of flashcards")
+    difficulty: str = Field("medium", description="Difficulty: easy, medium, hard")
+    tags: Optional[List[str]] = None
+
+
+class FlashcardGenerateFromTopicRequest(BaseModel):
+    """Flashcard generation from topic (like quiz generation)."""
+
+    topic: str = Field(..., min_length=3, max_length=500, description="Topic")
+    deck_name: Optional[str] = Field(None, max_length=255, description="Optional deck name")
+    num_cards: int = Field(10, ge=5, le=50, description="Number of flashcards")
+    difficulty: str = Field("medium", description="Difficulty: easy, medium, hard")
+    tags: Optional[List[str]] = None
+
+
+class FlashcardGenerateResponse(BaseModel):
+    """Flashcard generation response."""
+
+    deck_id: int
+    deck_name: str
+    cards_generated: int
+    status: str
+    message: str
+
+
+class ImportCard(BaseModel):
+    """Card data for import."""
+
+    front: str = Field(..., min_length=1)
+    back: str = Field(..., min_length=1)
+
+
+class ImportRequest(BaseModel):
+    """Bulk import request."""
+
+    cards: List[ImportCard] = Field(..., min_length=1, max_length=1000)
+
+
+class ImportResult(BaseModel):
+    """Import result."""
+
+    imported: int
+    skipped_duplicates: int
+    errors: List[str]
+    message: str

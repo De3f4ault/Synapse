@@ -3,9 +3,7 @@
 /* tslint:disable */
 /* eslint-disable */
 import type { app__api__rest__search__SearchResponse } from '../models/app__api__rest__search__SearchResponse';
-import type { FlashcardHybridResponse } from '../models/FlashcardHybridResponse';
 import type { HybridSearchResponse } from '../models/HybridSearchResponse';
-import type { NoteHybridResponse } from '../models/NoteHybridResponse';
 import type { SearchClickRequest } from '../models/SearchClickRequest';
 import type { SearchClickResponse } from '../models/SearchClickResponse';
 import type { SearchIntent } from '../models/SearchIntent';
@@ -15,72 +13,6 @@ import type { CancelablePromise } from '../core/CancelablePromise';
 import { OpenAPI } from '../core/OpenAPI';
 import { request as __request } from '../core/request';
 export class SearchService {
-    /**
-     * Unified Search
-     * Execute search across all participating engines based on intent.
-     *
-     * Returns results per-engine in envelopes, preserving:
-     * - Raw scores (no normalization)
-     * - Role semantics (navigation, evidence, diagnostic)
-     * - Assertion types (factual, inferential, heuristic)
-     * - Temporal validity
-     *
-     * Consumers (UI) decide how to filter, rank, and display.
-     * @param requestBody
-     * @param token Auth token for image/file requests
-     * @returns UnifiedSearchResponse Successful Response
-     * @throws ApiError
-     */
-    public static unifiedSearchApiV1SearchUnifiedPost(
-        requestBody: UnifiedSearchRequest,
-        token?: (string | null),
-    ): CancelablePromise<UnifiedSearchResponse> {
-        return __request(OpenAPI, {
-            method: 'POST',
-            url: '/api/v1/search/unified',
-            query: {
-                'token': token,
-            },
-            body: requestBody,
-            mediaType: 'application/json',
-            errors: {
-                422: `Validation Error`,
-            },
-        });
-    }
-    /**
-     * Unified Search (GET)
-     * GET version of unified search for simple queries.
-     * @param q Search query
-     * @param intent Search intent
-     * @param surface
-     * @param limit Max results per engine
-     * @param token Auth token for image/file requests
-     * @returns UnifiedSearchResponse Successful Response
-     * @throws ApiError
-     */
-    public static unifiedSearchGetApiV1SearchUnifiedGet(
-        q: string,
-        intent: SearchIntent = 'navigate',
-        surface: 'cmdk' | 'chat' | 'dashboard' | 'study_hub' = 'cmdk',
-        limit: number = 20,
-        token?: (string | null),
-    ): CancelablePromise<UnifiedSearchResponse> {
-        return __request(OpenAPI, {
-            method: 'GET',
-            url: '/api/v1/search/unified',
-            query: {
-                'q': q,
-                'intent': intent,
-                'surface': surface,
-                'limit': limit,
-                'token': token,
-            },
-            errors: {
-                422: `Validation Error`,
-            },
-        });
-    }
     /**
      * Search All
      * Advanced cross-module search (now using pg_search BM25).
@@ -203,70 +135,56 @@ export class SearchService {
         });
     }
     /**
-     * @deprecated
-     * Search Hybrid Notes
-     * ⚠️ Deprecated: Use POST /unified instead.
-     *
-     * Hybrid search notes using PostgreSQL-native BM25 + vector search.
-     * @param q Search query
-     * @param limit Maximum results
-     * @param bm25Weight BM25 weight
-     * @param vectorWeight Vector weight
+     * Unified Search
+     * Execute search across all engines based on intent.
+     * @param requestBody
      * @param token Auth token for image/file requests
-     * @returns NoteHybridResponse Successful Response
+     * @returns UnifiedSearchResponse Successful Response
      * @throws ApiError
      */
-    public static searchHybridNotesApiV1SearchHybridNotesGet(
-        q: string,
-        limit: number = 10,
-        bm25Weight: number = 0.5,
-        vectorWeight: number = 0.5,
+    public static unifiedSearchApiV1SearchUnifiedPost(
+        requestBody: UnifiedSearchRequest,
         token?: (string | null),
-    ): CancelablePromise<NoteHybridResponse> {
+    ): CancelablePromise<UnifiedSearchResponse> {
         return __request(OpenAPI, {
-            method: 'GET',
-            url: '/api/v1/search/hybrid/notes',
+            method: 'POST',
+            url: '/api/v1/search/unified',
             query: {
-                'q': q,
-                'limit': limit,
-                'bm25_weight': bm25Weight,
-                'vector_weight': vectorWeight,
                 'token': token,
             },
+            body: requestBody,
+            mediaType: 'application/json',
             errors: {
                 422: `Validation Error`,
             },
         });
     }
     /**
-     * @deprecated
-     * Search Hybrid Flashcards
-     * ⚠️ Deprecated: Use POST /unified instead.
-     *
-     * Search flashcards using BM25 full-text search.
+     * Unified Search (GET)
+     * GET version of unified search for simple queries.
      * @param q Search query
-     * @param limit Maximum results
-     * @param bm25Weight BM25 weight
-     * @param vectorWeight Vector weight
+     * @param intent Search intent
+     * @param surface
+     * @param limit Max results per engine
      * @param token Auth token for image/file requests
-     * @returns FlashcardHybridResponse Successful Response
+     * @returns UnifiedSearchResponse Successful Response
      * @throws ApiError
      */
-    public static searchHybridFlashcardsApiV1SearchHybridFlashcardsGet(
+    public static unifiedSearchGetApiV1SearchUnifiedGet(
         q: string,
-        limit: number = 10,
-        bm25Weight: number = 0.5,
-        vectorWeight: number = 0.5,
+        intent: SearchIntent = 'navigate',
+        surface: 'cmdk' | 'chat' | 'dashboard' | 'study_hub' = 'cmdk',
+        limit: number = 20,
         token?: (string | null),
-    ): CancelablePromise<FlashcardHybridResponse> {
+    ): CancelablePromise<UnifiedSearchResponse> {
         return __request(OpenAPI, {
             method: 'GET',
-            url: '/api/v1/search/hybrid/flashcards',
+            url: '/api/v1/search/unified',
             query: {
                 'q': q,
+                'intent': intent,
+                'surface': surface,
                 'limit': limit,
-                'bm25_weight': bm25Weight,
-                'vector_weight': vectorWeight,
                 'token': token,
             },
             errors: {

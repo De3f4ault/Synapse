@@ -2,7 +2,6 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-import type { app__api__rest__uploads__MessageResponse } from '../models/app__api__rest__uploads__MessageResponse';
 import type { ConnectedEntityResponse } from '../models/ConnectedEntityResponse';
 import type { EntityLinksResponse } from '../models/EntityLinksResponse';
 import type { KnowledgeGraphResponse } from '../models/KnowledgeGraphResponse';
@@ -11,6 +10,7 @@ import type { LinkEntityType } from '../models/LinkEntityType';
 import type { LinkResponse } from '../models/LinkResponse';
 import type { LinkType } from '../models/LinkType';
 import type { LinkUpdate } from '../models/LinkUpdate';
+import type { MessageResponse } from '../models/MessageResponse';
 import type { CancelablePromise } from '../core/CancelablePromise';
 import { OpenAPI } from '../core/OpenAPI';
 import { request as __request } from '../core/request';
@@ -258,13 +258,13 @@ export class LinksService {
      * Delete a link
      * @param linkId
      * @param token Auth token for image/file requests
-     * @returns app__api__rest__uploads__MessageResponse Successful Response
+     * @returns MessageResponse Successful Response
      * @throws ApiError
      */
     public static deleteLinkApiV1LinksLinkIdDelete(
         linkId: number,
         token?: (string | null),
-    ): CancelablePromise<app__api__rest__uploads__MessageResponse> {
+    ): CancelablePromise<MessageResponse> {
         return __request(OpenAPI, {
             method: 'DELETE',
             url: '/api/v1/links/{link_id}',

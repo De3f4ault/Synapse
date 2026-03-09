@@ -19,87 +19,18 @@ from app.models.flashcard import Flashcard
 
 router = APIRouter()
 
-# ============================================================================
-# Request/Response Schemas
-# ============================================================================
-
-
-class DeckCreate(BaseModel):
-    """Deck creation request."""
-
-    name: str = Field(..., min_length=1, max_length=255)
-    description: Optional[str] = None
-    tags: Optional[List[str]] = None
-    is_public: bool = False
-
-
-class DeckUpdate(BaseModel):
-    """Deck update request."""
-
-    name: Optional[str] = Field(None, min_length=1, max_length=255)
-    description: Optional[str] = None
-    tags: Optional[List[str]] = None
-    is_public: Optional[bool] = None
-
-
-# ---------------------------------------------------------------------------
-# Flashcard Generation Schemas (UPDATED VERSION)
-# ---------------------------------------------------------------------------
-
-
-class FlashcardGenerateRequest(BaseModel):
-    """Flashcard generation from document request."""
-
-    document_id: int = Field(..., description="Document to generate from")
-    deck_name: str = Field(..., min_length=1, max_length=255, description="Name for the new deck")
-    num_cards: int = Field(10, ge=1, le=50, description="Number of flashcards to generate")
-    difficulty: str = Field("medium", description="Difficulty level: easy, medium, hard")
-    tags: Optional[List[str]] = None
-
-
-class FlashcardGenerateFromTopicRequest(BaseModel):
-    """Flashcard generation from topic request (like quiz generation)."""
-
-    topic: str = Field(
-        ..., min_length=3, max_length=500, description="Topic to generate flashcards about"
-    )
-    deck_name: Optional[str] = Field(
-        None, max_length=255, description="Optional deck name (defaults to topic)"
-    )
-    num_cards: int = Field(10, ge=5, le=50, description="Number of flashcards to generate")
-    difficulty: str = Field("medium", description="Difficulty level: easy, medium, hard")
-    tags: Optional[List[str]] = None
-
-
-class FlashcardGenerateResponse(BaseModel):
-    """Flashcard generation response."""
-
-    deck_id: int
-    deck_name: str
-    cards_generated: int
-    status: str
-    message: str
-
-
-class DeckResponse(BaseModel):
-    """Deck response."""
-
-    id: int
-    name: str
-    description: Optional[str]
-    tags: Optional[List[str]]
-    is_public: bool
-    ai_generated: bool
-    card_count: int
-    due_count: int  # Cards due: new (NULL) or scheduled (next_review <= now)
-    user_id: int
-    created_at: datetime
-    updated_at: datetime
-
-    class Config:
-        from_attributes = True
-
-
+# Schemas — single source of truth: app/schemas/flashcard.py
+from app.schemas.flashcard import (
+    DeckCreate,
+    DeckUpdate,
+    DeckResponse,
+    FlashcardGenerateRequest,
+    FlashcardGenerateFromTopicRequest,
+    FlashcardGenerateResponse,
+    ImportCard,
+    ImportRequest,
+    ImportResult,
+)
 
 
 # ============================================================================
@@ -818,28 +749,6 @@ Return ONLY valid JSON in this exact format:
 # ============================================================================
 # Bulk Import Endpoint
 # ============================================================================
-
-
-class ImportCard(BaseModel):
-    """Card data for import."""
-
-    front: str = Field(..., min_length=1)
-    back: str = Field(..., min_length=1)
-
-
-class ImportRequest(BaseModel):
-    """Import request."""
-
-    cards: List[ImportCard] = Field(..., min_length=1, max_length=1000)
-
-
-class ImportResult(BaseModel):
-    """Structured import result."""
-
-    imported: int
-    skipped_duplicates: int
-    errors: List[str]
-    message: str
 
 
 @router.post(
