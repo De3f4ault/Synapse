@@ -11,6 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_
 from pydantic import BaseModel, EmailStr, Field
+from app.schemas.common import MessageResponse
 import logging
 
 from app.api.deps import get_db, get_current_user
@@ -63,9 +64,6 @@ class UserStatistics(BaseModel):
     study_sessions_count: int = 0
 
 
-class MessageResponse(BaseModel):
-    """Simple message response."""
-    message: str
 
 
 # ============================================================================

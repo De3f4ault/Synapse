@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, or_, func
 from pydantic import BaseModel, Field
+from app.schemas.common import MessageResponse
 from datetime import datetime
 from decimal import Decimal
 import structlog
@@ -103,10 +104,6 @@ class ReviewResult(BaseModel):
     message: str
 
 
-class MessageResponse(BaseModel):
-    """Simple message response."""
-
-    message: str
 
 
 # ============================================================================

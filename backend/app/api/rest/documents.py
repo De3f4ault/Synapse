@@ -14,6 +14,7 @@ from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, status,
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, func
 from pydantic import BaseModel
+from app.schemas.common import MessageResponse
 from datetime import datetime
 import logging
 
@@ -123,10 +124,6 @@ class ProcessingStatusResponse(BaseModel):
     message: str
 
 
-class MessageResponse(BaseModel):
-    """Simple message response."""
-
-    message: str
 
 
 # Duplicate Detection Models

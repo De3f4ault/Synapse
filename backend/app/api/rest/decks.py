@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_
 from pydantic import BaseModel, Field
+from app.schemas.common import MessageResponse
 from datetime import datetime
 
 from app.api.deps import get_db, get_current_user
@@ -99,10 +100,6 @@ class DeckResponse(BaseModel):
         from_attributes = True
 
 
-class MessageResponse(BaseModel):
-    """Simple message response."""
-
-    message: str
 
 
 # ============================================================================

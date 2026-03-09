@@ -14,6 +14,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
+from app.schemas.common import MessageResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_db, get_current_user
@@ -56,10 +57,6 @@ class UploadResponse(BaseModel):
     size: int = Field(..., description="File size in bytes")
 
 
-class MessageResponse(BaseModel):
-    """Simple message response."""
-
-    message: str
 
 
 # ============================================================================

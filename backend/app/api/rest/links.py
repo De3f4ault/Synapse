@@ -8,6 +8,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel, Field
+from app.schemas.common import MessageResponse
 from datetime import datetime
 
 from app.api.deps import get_db, get_current_user
@@ -115,10 +116,6 @@ class ConnectedEntityResponse(BaseModel):
     depth: int
 
 
-class MessageResponse(BaseModel):
-    """Simple message response."""
-
-    message: str
 
 
 # ============================================================================

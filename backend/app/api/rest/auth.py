@@ -35,6 +35,7 @@ router = APIRouter()
 pwd_context = CryptContext(schemes=["argon2", "bcrypt"], deprecated="auto")
 
 from pydantic import BaseModel, Field
+from app.schemas.common import MessageResponse
 
 
 class UserResponse(BaseModel):
@@ -54,10 +55,6 @@ class UserResponse(BaseModel):
         from_attributes = True
 
 
-class MessageResponse(BaseModel):
-    """Simple message response."""
-
-    message: str
 
 
 # ============================================================================
