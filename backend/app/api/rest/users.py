@@ -2,26 +2,32 @@
 User management REST API endpoints.
 
 Profile management, preferences, and comprehensive user statistics.
-Complete implementation with real dashboard data queries.
 """
 
 from typing import Optional, Dict
-from datetime import datetime, timedelta
+from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, and_
 from pydantic import BaseModel, EmailStr, Field
 from app.schemas.common import MessageResponse
 import logging
 
 from app.api.deps import get_db, get_current_user
 from app.models.user import User
-from app.models.flashcard import Flashcard, LearningState
-from app.models.deck import Deck
-from app.models.review import Review
-from app.models.note import Note
-from app.models.document import Document
-from app.models.study_session import StudySession
+
+# Extracted statistics queries
+from app.services.user_stats_service import (
+    count_flashcards,
+    count_decks,
+    count_notes,
+    count_documents,
+    calculate_study_streak,
+    count_reviews_today,
+    count_total_reviews,
+    calculate_accuracy,
+    calculate_study_time,
+    count_study_sessions,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -45,270 +51,21 @@ class PasswordChange(BaseModel):
 
 
 class UserStatistics(BaseModel):
-    """User statistics response - comprehensive learning metrics."""
+    """User statistics response."""
     # Content metrics
     total_cards: int = 0
     due_cards: int = 0
     total_decks: int = 0
     total_notes: int = 0
     total_documents: int = 0
-
     # Learning metrics
     study_streak_days: int = 0
     reviews_today: int = 0
     total_reviews: int = 0
     overall_accuracy: float = 0.0
-
     # Engagement metrics
     total_study_time_minutes: int = 0
     study_sessions_count: int = 0
-
-
-
-
-# ============================================================================
-# Helper Functions - Statistics Queries
-# ============================================================================
-
-async def count_user_flashcards(user_id: int, db: AsyncSession) -> tuple[int, int]:
-    """
-    Count total and due flashcards for user.
-
-    Returns:
-        (total_cards, due_cards)
-    """
-    try:
-        # Total cards
-        total_query = select(func.count(Flashcard.id)).select_from(
-            Flashcard
-        ).join(Deck).where(
-            and_(
-                Deck.user_id == user_id,
-                Flashcard.deleted_at.is_(None),
-                Deck.deleted_at.is_(None)
-            )
-        )
-        total_result = await db.execute(total_query)
-        total_cards = total_result.scalar() or 0
-
-        # Due cards (overdue or today)
-        due_query = select(func.count(Flashcard.id)).select_from(
-            Flashcard
-        ).join(Deck).where(
-            and_(
-                Deck.user_id == user_id,
-                Flashcard.deleted_at.is_(None),
-                Deck.deleted_at.is_(None),
-                Flashcard.next_review <= datetime.utcnow()
-            )
-        )
-        due_result = await db.execute(due_query)
-        due_cards = due_result.scalar() or 0
-
-        return total_cards, due_cards
-
-    except Exception as e:
-        logger.error(f"Error counting flashcards: {str(e)}")
-        return 0, 0
-
-
-async def count_user_decks(user_id: int, db: AsyncSession) -> int:
-    """Count total decks for user."""
-    try:
-        query = select(func.count(Deck.id)).where(
-            and_(
-                Deck.user_id == user_id,
-                Deck.deleted_at.is_(None)
-            )
-        )
-        result = await db.execute(query)
-        return result.scalar() or 0
-    except Exception as e:
-        logger.error(f"Error counting decks: {str(e)}")
-        return 0
-
-
-async def count_user_notes(user_id: int, db: AsyncSession) -> int:
-    """Count total notes for user."""
-    try:
-        query = select(func.count(Note.id)).where(
-            and_(
-                Note.user_id == user_id,
-                Note.deleted_at.is_(None)
-            )
-        )
-        result = await db.execute(query)
-        return result.scalar() or 0
-    except Exception as e:
-        logger.error(f"Error counting notes: {str(e)}")
-        return 0
-
-
-async def count_user_documents(user_id: int, db: AsyncSession) -> int:
-    """Count total documents for user."""
-    try:
-        query = select(func.count(Document.id)).where(
-            and_(
-                Document.user_id == user_id,
-                Document.deleted_at.is_(None)
-            )
-        )
-        result = await db.execute(query)
-        return result.scalar() or 0
-    except Exception as e:
-        logger.error(f"Error counting documents: {str(e)}")
-        return 0
-
-
-async def calculate_study_streak(user_id: int, db: AsyncSession) -> int:
-    """
-    Calculate consecutive days with reviews (study streak).
-
-    Returns:
-        Number of consecutive days with activity
-    """
-    try:
-        # Get reviews for last 30 days
-        thirty_days_ago = datetime.utcnow() - timedelta(days=30)
-
-        query = select(
-            func.date(Review.created_at).label('review_date')
-        ).where(
-            and_(
-                Review.user_id == user_id,
-                Review.created_at >= thirty_days_ago
-            )
-        ).group_by(func.date(Review.created_at)).order_by(
-            func.date(Review.created_at).desc()
-        )
-
-        result = await db.execute(query)
-        review_dates = [row[0] for row in result.all()]
-
-        if not review_dates:
-            return 0
-
-        # Calculate consecutive streak from most recent date
-        streak = 0
-        current_date = datetime.utcnow().date()
-
-        for i in range(30):
-            check_date = current_date - timedelta(days=i)
-            if check_date in review_dates:
-                streak += 1
-            else:
-                break
-
-        return streak
-
-    except Exception as e:
-        logger.error(f"Error calculating study streak: {str(e)}")
-        return 0
-
-
-async def count_reviews_today(user_id: int, db: AsyncSession) -> int:
-    """Count reviews completed today."""
-    try:
-        today = datetime.utcnow().date()
-
-        query = select(func.count(Review.id)).where(
-            and_(
-                Review.user_id == user_id,
-                func.date(Review.created_at) == today
-            )
-        )
-        result = await db.execute(query)
-        return result.scalar() or 0
-    except Exception as e:
-        logger.error(f"Error counting reviews today: {str(e)}")
-        return 0
-
-
-async def count_total_reviews(user_id: int, db: AsyncSession) -> int:
-    """Count total reviews for user."""
-    try:
-        query = select(func.count(Review.id)).where(
-            Review.user_id == user_id
-        )
-        result = await db.execute(query)
-        return result.scalar() or 0
-    except Exception as e:
-        logger.error(f"Error counting total reviews: {str(e)}")
-        return 0
-
-
-async def calculate_overall_accuracy(user_id: int, db: AsyncSession) -> float:
-    """
-    Calculate overall accuracy from reviews.
-
-    Returns:
-        Percentage (0.0 - 100.0)
-    """
-    try:
-        # Query reviews with quality scores
-        # Quality >= 3 means the user got it right (SM-2 algorithm)
-        query = select(
-            func.count(Review.id).label('total'),
-            func.sum(
-                func.cast(Review.quality >= 3, type_=int)
-            ).label('correct')
-        ).where(Review.user_id == user_id)
-
-        result = await db.execute(query)
-        row = result.first()
-
-        if not row or row[0] == 0:
-            return 0.0
-
-        total = row[0]
-        correct = row[1] or 0
-
-        return (correct / total) * 100.0
-
-    except Exception as e:
-        logger.error(f"Error calculating accuracy: {str(e)}")
-        return 0.0
-
-
-async def calculate_total_study_time(user_id: int, db: AsyncSession) -> int:
-    """
-    Calculate total study time in minutes.
-
-    Returns:
-        Total minutes of study
-    """
-    try:
-        query = select(
-            func.sum(StudySession.time_spent_seconds)
-        ).where(
-            and_(
-                StudySession.user_id == user_id,
-                StudySession.ended_at.isnot(None)
-            )
-        )
-        result = await db.execute(query)
-        total_seconds = result.scalar() or 0
-
-        return int(total_seconds / 60)
-    except Exception as e:
-        logger.error(f"Error calculating study time: {str(e)}")
-        return 0
-
-
-async def count_study_sessions(user_id: int, db: AsyncSession) -> int:
-    """Count completed study sessions."""
-    try:
-        query = select(func.count(StudySession.id)).where(
-            and_(
-                StudySession.user_id == user_id,
-                StudySession.ended_at.isnot(None)
-            )
-        )
-        result = await db.execute(query)
-        return result.scalar() or 0
-    except Exception as e:
-        logger.error(f"Error counting study sessions: {str(e)}")
-        return 0
 
 
 # ============================================================================
@@ -445,15 +202,15 @@ async def get_statistics(
     """
     try:
         # Fetch all statistics concurrently (could be optimized with asyncio.gather)
-        total_cards, due_cards = await count_user_flashcards(current_user.id, db)
-        total_decks = await count_user_decks(current_user.id, db)
-        total_notes = await count_user_notes(current_user.id, db)
-        total_documents = await count_user_documents(current_user.id, db)
+        total_cards, due_cards = await count_flashcards(current_user.id, db)
+        total_decks = await count_decks(current_user.id, db)
+        total_notes = await count_notes(current_user.id, db)
+        total_documents = await count_documents(current_user.id, db)
         study_streak = await calculate_study_streak(current_user.id, db)
         reviews_today = await count_reviews_today(current_user.id, db)
         total_reviews = await count_total_reviews(current_user.id, db)
-        accuracy = await calculate_overall_accuracy(current_user.id, db)
-        study_time = await calculate_total_study_time(current_user.id, db)
+        accuracy = await calculate_accuracy(current_user.id, db)
+        study_time = await calculate_study_time(current_user.id, db)
         sessions = await count_study_sessions(current_user.id, db)
 
         logger.info(
