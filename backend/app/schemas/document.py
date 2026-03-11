@@ -29,6 +29,11 @@ class DocumentResponse(BaseModel):
     notes: Optional[str] = Field(default=None, description="User notes on document")
     ai_summary: Optional[str] = Field(default=None, description="AI-generated summary")
     reading_progress: Optional[float] = Field(default=0.0, description="Reading progress 0.0-1.0")
+    # Folder & flags (Phase 2: UI overhaul)
+    folder_id: Optional[int] = Field(default=None, description="Folder ID (null = Inbox)")
+    is_favorite: bool = Field(default=False, description="Favorite flag")
+    is_pinned: bool = Field(default=False, description="Pinned to top")
+    is_archived: bool = Field(default=False, description="Archived flag")
 
     class Config:
         from_attributes = True
@@ -119,3 +124,25 @@ class DocumentAnalysisResponse(BaseModel):
     model_used: str = Field(description="AI model used")
     tokens_used: int = Field(description="Tokens consumed")
     created_at: datetime = Field(description="Analysis time")
+
+
+# ─── File Manager UI schemas ─────────────────────────────────────────────────
+
+
+class StorageBreakdownItem(BaseModel):
+    """Per-category storage usage for the file manager storage widgets."""
+
+    type: str = Field(description="Category name (Images, Videos, Documents, etc.)")
+    size: int = Field(description="Total bytes used by this category")
+    count: int = Field(description="Number of files in this category")
+    color: str = Field(description="Hex color code for UI display")
+
+
+class RecentActivityItem(BaseModel):
+    """Recent user action derived from document timestamps."""
+
+    action: str = Field(description="Action type (uploaded, modified, favorited)")
+    filename: str = Field(description="Document filename")
+    file_type: str = Field(description="File extension")
+    time: datetime = Field(description="When the action occurred")
+    document_id: int = Field(description="Associated document ID")

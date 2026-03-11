@@ -10,7 +10,7 @@ from typing import List, Optional
 
 from fastapi import APIRouter, Depends, UploadFile, File, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, func
+from sqlalchemy import select, and_, func, text
 from pydantic import BaseModel
 from app.schemas.common import MessageResponse
 from datetime import datetime
@@ -51,6 +51,8 @@ from app.schemas.document import (
     DuplicateConflictResponse,
     MoveDocumentRequest,
     SummaryResponse,
+    StorageBreakdownItem,
+    RecentActivityItem,
 )
 
 
@@ -204,21 +206,85 @@ async def upload_document(
     if not processing_queued:
         logger.warning(f"Could not queue document {new_document.id} for processing")
 
-    return DocumentResponse(
-        id=new_document.id,
-        filename=new_document.filename,
-        file_type=new_document.file_type,
-        file_size=new_document.file_size,
-        processing_status=new_document.processing_status,
-        page_count=new_document.page_count,
-        word_count=new_document.word_count,
-        ocr_performed=new_document.ocr_performed,
-        gemini_file_uri=new_document.gemini_file_uri,
-        gemini_file_expired=new_document.gemini_file_expired,
-        user_id=new_document.user_id,
-        created_at=new_document.created_at,
-        updated_at=new_document.updated_at,
+    return DocumentResponse.model_validate(new_document)
+
+
+# ── New endpoints: storage & activity (must come before /{document_id}) ──────
+
+
+@router.get(
+    "/storage-breakdown",
+    response_model=List[StorageBreakdownItem],
+    summary="Get storage breakdown",
+    description="Per-category storage usage (Images, Videos, Documents, etc.)",
+)
+async def get_storage_breakdown(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return storage breakdown computed by the database."""
+    result = await db.execute(
+        text("SELECT * FROM developer_schema.get_storage_breakdown(:uid)"),
+        {"uid": current_user.id},
     )
+    rows = result.fetchall()
+    return [
+        StorageBreakdownItem(
+            type=row.type_category,
+            size=row.total_bytes,
+            count=row.file_count,
+            color=row.color,
+        )
+        for row in rows
+    ]
+
+
+@router.get(
+    "/recent-activity",
+    response_model=List[RecentActivityItem],
+    summary="Get recent activity",
+    description="Recent user actions (uploaded, modified, favorited)",
+)
+async def get_recent_activity(
+    limit: int = Query(15, ge=1, le=50, description="Max number of items"),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return recent activity derived from document timestamps."""
+    result = await db.execute(
+        text("SELECT * FROM developer_schema.get_recent_activity(:uid, :lim)"),
+        {"uid": current_user.id, "lim": limit},
+    )
+    rows = result.fetchall()
+    return [
+        RecentActivityItem(
+            action=row.action_type,
+            filename=row.filename,
+            file_type=row.file_type,
+            time=row.action_time,
+            document_id=row.document_id,
+        )
+        for row in rows
+    ]
+
+
+@router.patch(
+    "/{document_id}/favorite",
+    response_model=DocumentResponse,
+    summary="Toggle favorite",
+    description="Toggle is_favorite flag on a document",
+)
+async def toggle_favorite(
+    document_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Toggle the is_favorite flag."""
+    doc = await _get_doc_or_404(document_id, current_user, db)
+    doc.is_favorite = not doc.is_favorite
+    await db.commit()
+    await db.refresh(doc)
+    return doc
 
 
 @router.get(
@@ -306,24 +372,7 @@ async def list_documents(
     result = await db.execute(query)
     documents = result.scalars().all()
 
-    return [
-        DocumentResponse(
-            id=doc.id,
-            filename=doc.filename,
-            file_type=doc.file_type,
-            file_size=doc.file_size,
-            processing_status=doc.processing_status,
-            page_count=doc.page_count,
-            word_count=doc.word_count,
-            ocr_performed=doc.ocr_performed,
-            gemini_file_uri=doc.gemini_file_uri,
-            gemini_file_expired=doc.gemini_file_expired,
-            user_id=doc.user_id,
-            created_at=doc.created_at,
-            updated_at=doc.updated_at,
-        )
-        for doc in documents
-    ]
+    return [DocumentResponse.model_validate(doc) for doc in documents]
 
 
 @router.get(
@@ -352,21 +401,7 @@ async def get_document(
     if not doc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
 
-    return DocumentResponse(
-        id=doc.id,
-        filename=doc.filename,
-        file_type=doc.file_type,
-        file_size=doc.file_size,
-        processing_status=doc.processing_status,
-        page_count=doc.page_count,
-        word_count=doc.word_count,
-        ocr_performed=doc.ocr_performed,
-        gemini_file_uri=doc.gemini_file_uri,
-        gemini_file_expired=doc.gemini_file_expired,
-        user_id=doc.user_id,
-        created_at=doc.created_at,
-        updated_at=doc.updated_at,
-    )
+    return DocumentResponse.model_validate(doc)
 
 
 @router.delete(
@@ -507,21 +542,7 @@ async def replace_document(
     # Trigger reprocessing
     await trigger_document_processing(document_id)
 
-    return DocumentResponse(
-        id=doc.id,
-        filename=doc.filename,
-        file_type=doc.file_type,
-        file_size=doc.file_size,
-        processing_status=doc.processing_status,
-        page_count=doc.page_count,
-        word_count=doc.word_count,
-        ocr_performed=doc.ocr_performed,
-        gemini_file_uri=doc.gemini_file_uri,
-        gemini_file_expired=doc.gemini_file_expired,
-        user_id=doc.user_id,
-        created_at=doc.created_at,
-        updated_at=doc.updated_at,
-    )
+    return DocumentResponse.model_validate(doc)
 
 
 @router.get(

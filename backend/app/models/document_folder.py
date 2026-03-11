@@ -119,11 +119,11 @@ class DocumentFolder(Base, TimestampMixin, UserOwnedMixin):
 
 # Default system folders (seeded on user creation)
 DEFAULT_SYSTEM_FOLDERS = [
-    {"name": "Inbox", "rank": "a0", "settings": {"icon": "inbox"}},
-    {"name": "Notes", "rank": "a1", "settings": {"icon": "file-text"}},
-    {"name": "Books", "rank": "a2", "settings": {"icon": "book-open"}},
-    {"name": "Media", "rank": "a3", "settings": {"icon": "image"}},
-    {"name": "Projects", "rank": "a4", "settings": {"icon": "folder-kanban"}},
-    {"name": "Exports", "rank": "a5", "settings": {"icon": "download"}},
-    {"name": "Archive", "rank": "a6", "settings": {"icon": "archive"}},
+    {"name": "Inbox", "rank": "a0", "settings": {"icon": "inbox", "color": "#8B5CF6"}},
+    {"name": "Notes", "rank": "a1", "settings": {"icon": "file-text", "color": "#F59E0B"}},
+    {"name": "Books", "rank": "a2", "settings": {"icon": "book-open", "color": "#EC4899"}},
+    {"name": "Media", "rank": "a3", "settings": {"icon": "image", "color": "#06B6D4"}},
+    {"name": "Projects", "rank": "a4", "settings": {"icon": "folder-kanban", "color": "#10B981"}},
+    {"name": "Exports", "rank": "a5", "settings": {"icon": "download", "color": "#6366F1"}},
+    {"name": "Archive", "rank": "a6", "settings": {"icon": "archive", "color": "#6B7280"}},
 ]
