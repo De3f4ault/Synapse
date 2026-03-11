@@ -8,7 +8,7 @@
 import { Folder, ChevronUp, ChevronDown, Star, MoreVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
-import { FileIcon, getFileColor } from "./FileIcon";
+import { FileIcon } from "./FileIcon";
 import type { EnhancedDocument } from "../core/types";
 import type { FolderTreeNode } from "../core/types/folder.types";
 

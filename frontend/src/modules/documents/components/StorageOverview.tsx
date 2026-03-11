@@ -47,7 +47,6 @@ export function StorageOverview({ data, maxStorage = 15 * 1024 * 1024 * 1024, is
   if (!data || data.length === 0) return null;
 
   const totalUsed = data.reduce((sum, item) => sum + item.size, 0);
-  const usedPct = Math.min((totalUsed / maxStorage) * 100, 100);
 
   return (
     <div className="rounded-xl border border-border/50 bg-card p-4">

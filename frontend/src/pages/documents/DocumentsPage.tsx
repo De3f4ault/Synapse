@@ -40,6 +40,12 @@ import { useDocumentUpload } from "./upload/hooks/useDocumentUpload";
 import type { EnhancedDocument } from "@/modules/documents/core/types";
 import type { FolderTreeNode } from "@/modules/documents/core/types/folder.types";
 
+// New widgets
+import { StorageCards } from "@/modules/documents/components/StorageCards";
+import { StorageOverview } from "@/modules/documents/components/StorageOverview";
+import { RecentActivity } from "@/modules/documents/components/RecentActivity";
+import { EmptyState } from "@/modules/documents/components/EmptyState";
+
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 interface ClipboardState {
@@ -523,7 +529,7 @@ export function DocumentsPage() {
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <div className="flex h-[calc(100vh-64px)] bg-zinc-950" ref={mainRef} style={{ fontFamily: "'Roboto', sans-serif" }}>
+      <div className="flex h-[calc(100vh-64px)]" ref={mainRef} style={{ fontFamily: "'Roboto', sans-serif" }}>
         {/* Sidebar */}
         <Sidebar
           selectedFolderId={selectedFolderId}
@@ -561,47 +567,63 @@ export function DocumentsPage() {
             onContextMenu={handleBackgroundContextMenu}
             onClick={handleBackgroundClick}
           >
-            {isLoading ? (
-              <div className="flex items-center justify-center h-64 text-slate-500 text-sm">
-                Loading...
-              </div>
-            ) : viewMode === "grid" ? (
-              <FileGrid
-                documents={filteredAndSortedDocs}
-                folders={currentFolders}
-                selectedIds={selectedIds}
-                thumbnails={thumbnails.data ?? {}}
-                onItemClick={handleItemClick}
-                onFolderOpen={handleFolderNavigate}
-                onFileOpen={handleFileOpen}
-                onContextMenu={handleContextMenu}
-                renamingId={renamingId}
-                renameValue={renameValue}
-                onRenameChange={setRenameValue}
-                onRenameSubmit={handleRenameSubmit}
-                onRenameCancel={handleRenameCancel}
-              />
-            ) : (
-              <FileList
-                documents={filteredAndSortedDocs}
-                folders={currentFolders}
-                selectedIds={selectedIds}
-                onItemClick={handleItemClick}
-                onFolderOpen={handleFolderNavigate}
-                onFileOpen={handleFileOpen}
-                onContextMenu={handleContextMenu}
-                sortField={sortField}
-                sortDir={sortDir}
-                onSort={handleSort}
-              />
-            )}
+            {/* 3-column layout: main + right panel */}
+            <div className="flex flex-col xl:flex-row gap-6">
+              {/* Main content area */}
+              <div className="flex-1 min-w-0 space-y-6">
+                {/* Storage cards row (only at root / all-docs view) */}
+                {selectedFolderId === null && (
+                  <StorageCards data={[]} isLoading={false} />
+                )}
 
-            {/* Empty state */}
-            {!isLoading && currentFolders.length === 0 && filteredAndSortedDocs.length === 0 && (
-              <div className="text-center py-16 text-sm text-slate-500">
-                {filters.search ? "No files match your search." : "This folder is empty. Drop files here or click Upload."}
+                {isLoading ? (
+                  <div className="flex items-center justify-center h-64 text-muted-foreground text-sm">
+                    Loading...
+                  </div>
+                ) : currentFolders.length === 0 && filteredAndSortedDocs.length === 0 ? (
+                  <EmptyState
+                    view={filters.search ? "search" : "folder"}
+                  />
+                ) : viewMode === "grid" ? (
+                  <FileGrid
+                    documents={filteredAndSortedDocs}
+                    folders={currentFolders}
+                    selectedIds={selectedIds}
+                    thumbnails={thumbnails.data ?? {}}
+                    onItemClick={handleItemClick}
+                    onFolderOpen={handleFolderNavigate}
+                    onFileOpen={handleFileOpen}
+                    onContextMenu={handleContextMenu}
+                    renamingId={renamingId}
+                    renameValue={renameValue}
+                    onRenameChange={setRenameValue}
+                    onRenameSubmit={handleRenameSubmit}
+                    onRenameCancel={handleRenameCancel}
+                    onToggleFavorite={(id) => toggleFavorite.mutate(id, false)}
+                  />
+                ) : (
+                  <FileList
+                    documents={filteredAndSortedDocs}
+                    folders={currentFolders}
+                    selectedIds={selectedIds}
+                    onItemClick={handleItemClick}
+                    onFolderOpen={handleFolderNavigate}
+                    onFileOpen={handleFileOpen}
+                    onContextMenu={handleContextMenu}
+                    sortField={sortField}
+                    sortDir={sortDir}
+                    onSort={handleSort}
+                    onToggleFavorite={(id) => toggleFavorite.mutate(id, false)}
+                  />
+                )}
               </div>
-            )}
+
+              {/* Right panel — hidden below xl */}
+              <aside className="hidden xl:block xl:w-80 shrink-0 space-y-4">
+                <StorageOverview data={[]} isLoading={false} />
+                <RecentActivity data={[]} isLoading={false} />
+              </aside>
+            </div>
           </div>
 
 

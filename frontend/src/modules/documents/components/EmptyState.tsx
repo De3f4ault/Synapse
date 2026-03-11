@@ -12,7 +12,6 @@ import {
   Folder,
   Search,
   FileText,
-  Upload,
 } from "lucide-react";
 
 type EmptyView = "starred" | "recent" | "archived" | "folder" | "search" | "default";
