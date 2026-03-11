@@ -25,7 +25,6 @@ import { useListStore } from "./list/state/listStore";
 
 // Components (all new)
 import { Sidebar } from "@/modules/documents/components/Sidebar";
-import { Breadcrumbs } from "@/modules/documents/components/Breadcrumbs";
 import { Toolbar } from "@/modules/documents/components/Toolbar";
 import { FileGrid } from "@/modules/documents/components/FileGrid";
 import { FileList, type SortField, type SortDir } from "@/modules/documents/components/FileList";
@@ -41,7 +40,6 @@ import type { EnhancedDocument } from "@/modules/documents/core/types";
 import type { FolderTreeNode } from "@/modules/documents/core/types/folder.types";
 
 // New widgets
-import { StorageCards } from "@/modules/documents/components/StorageCards";
 import { StorageOverview } from "@/modules/documents/components/StorageOverview";
 import { RecentActivity } from "@/modules/documents/components/RecentActivity";
 import { EmptyState } from "@/modules/documents/components/EmptyState";
@@ -65,6 +63,7 @@ export function DocumentsPage() {
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [lastClickedId, setLastClickedId] = useState<string | null>(null);
   const [showUpload, setShowUpload] = useState(false);
+  const [smartView, setSmartView] = useState<"all" | "starred" | "recent" | "trash" | null>(null);
 
   // Clipboard (survives folder navigation as per user spec)
   const [clipboard, setClipboard] = useState<ClipboardState | null>(null);
@@ -529,22 +528,19 @@ export function DocumentsPage() {
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <div className="flex h-[calc(100vh-64px)]" ref={mainRef} style={{ fontFamily: "'Roboto', sans-serif" }}>
-        {/* Sidebar */}
+      <div className="flex h-[calc(100vh-64px)]" ref={mainRef}>
+        {/* ── Sidebar (Square UI style) ── */}
         <Sidebar
           selectedFolderId={selectedFolderId}
           onFolderSelect={handleFolderNavigate}
-          className="shrink-0"
+          smartView={smartView}
+          onSmartViewSelect={setSmartView}
         />
 
-        {/* Main content */}
-        <main className="flex-1 flex flex-col overflow-hidden" onClick={handleBackgroundClick}>
-          <div className="px-6 pt-3">
-            <Breadcrumbs
-              folderId={selectedFolderId}
-              folders={folderTree}
-              onNavigate={handleFolderNavigate}
-            />
+        {/* ── Main content area (lg:p-2 wrapping rounded-xl container) ── */}
+        <div className="h-full overflow-hidden lg:p-2 w-full">
+          <div className="lg:border lg:border-border/50 lg:rounded-xl overflow-hidden flex flex-col items-center justify-start h-full w-full bg-background">
+            {/* Header/Toolbar (sticky) */}
             <Toolbar
               viewMode={viewMode}
               onViewChange={setViewMode}
@@ -554,88 +550,83 @@ export function DocumentsPage() {
               selectedCount={selectedIds.size}
               searchQuery={filters.search}
               onSearchChange={setSearch}
-              sortField={sortField}
-              onSort={handleSort}
               totalItems={currentFolders.length + filteredAndSortedDocs.length}
+              folderId={selectedFolderId}
+              folders={folderTree}
+              onNavigate={handleFolderNavigate}
             />
-          </div>
 
-          {/* File view area — background context menu fires here */}
-          <div
-            className="flex-1 overflow-y-auto px-6 pb-6 pt-2"
-            data-file-area
-            onContextMenu={handleBackgroundContextMenu}
-            onClick={handleBackgroundClick}
-          >
-            {/* 3-column layout: main + right panel */}
-            <div className="flex flex-col xl:flex-row gap-6">
-              {/* Main content area */}
-              <div className="flex-1 min-w-0 space-y-6">
-                {/* Storage cards row (only at root / all-docs view) */}
-                {selectedFolderId === null && (
-                  <StorageCards data={[]} isLoading={false} />
-                )}
+            {/* File view area — background context menu fires here */}
+            <div
+              className="flex-1 overflow-y-auto w-full"
+              data-file-area
+              onContextMenu={handleBackgroundContextMenu}
+              onClick={handleBackgroundClick}
+            >
+              <div className="flex flex-col xl:flex-row gap-6 p-4 md:p-6">
+                {/* ── Main content ── */}
+                <div className="flex-1 space-y-6 min-w-0">
+                  {isLoading ? (
+                    <div className="flex items-center justify-center h-64 text-muted-foreground text-sm">
+                      Loading...
+                    </div>
+                  ) : currentFolders.length === 0 && filteredAndSortedDocs.length === 0 ? (
+                    <EmptyState
+                      view={filters.search ? "search" : "folder"}
+                    />
+                  ) : viewMode === "grid" ? (
+                    <FileGrid
+                      documents={filteredAndSortedDocs}
+                      folders={currentFolders}
+                      selectedIds={selectedIds}
+                      thumbnails={thumbnails.data ?? {}}
+                      onItemClick={handleItemClick}
+                      onFolderOpen={handleFolderNavigate}
+                      onFileOpen={handleFileOpen}
+                      onContextMenu={handleContextMenu}
+                      renamingId={renamingId}
+                      renameValue={renameValue}
+                      onRenameChange={setRenameValue}
+                      onRenameSubmit={handleRenameSubmit}
+                      onRenameCancel={handleRenameCancel}
+                      onToggleFavorite={(id) => toggleFavorite.mutate(id, false)}
+                    />
+                  ) : (
+                    <FileList
+                      documents={filteredAndSortedDocs}
+                      folders={currentFolders}
+                      selectedIds={selectedIds}
+                      onItemClick={handleItemClick}
+                      onFolderOpen={handleFolderNavigate}
+                      onFileOpen={handleFileOpen}
+                      onContextMenu={handleContextMenu}
+                      sortField={sortField}
+                      sortDir={sortDir}
+                      onSort={handleSort}
+                      onToggleFavorite={(id) => toggleFavorite.mutate(id, false)}
+                    />
+                  )}
+                </div>
 
-                {isLoading ? (
-                  <div className="flex items-center justify-center h-64 text-muted-foreground text-sm">
-                    Loading...
+                {/* ── Right panel (xl:w-80, only on "all" view) ── */}
+                {selectedFolderId === null && !smartView && (
+                  <div className="w-full xl:w-80 shrink-0 space-y-4">
+                    <StorageOverview data={[]} isLoading={false} />
+                    <RecentActivity data={[]} isLoading={false} />
                   </div>
-                ) : currentFolders.length === 0 && filteredAndSortedDocs.length === 0 ? (
-                  <EmptyState
-                    view={filters.search ? "search" : "folder"}
-                  />
-                ) : viewMode === "grid" ? (
-                  <FileGrid
-                    documents={filteredAndSortedDocs}
-                    folders={currentFolders}
-                    selectedIds={selectedIds}
-                    thumbnails={thumbnails.data ?? {}}
-                    onItemClick={handleItemClick}
-                    onFolderOpen={handleFolderNavigate}
-                    onFileOpen={handleFileOpen}
-                    onContextMenu={handleContextMenu}
-                    renamingId={renamingId}
-                    renameValue={renameValue}
-                    onRenameChange={setRenameValue}
-                    onRenameSubmit={handleRenameSubmit}
-                    onRenameCancel={handleRenameCancel}
-                    onToggleFavorite={(id) => toggleFavorite.mutate(id, false)}
-                  />
-                ) : (
-                  <FileList
-                    documents={filteredAndSortedDocs}
-                    folders={currentFolders}
-                    selectedIds={selectedIds}
-                    onItemClick={handleItemClick}
-                    onFolderOpen={handleFolderNavigate}
-                    onFileOpen={handleFileOpen}
-                    onContextMenu={handleContextMenu}
-                    sortField={sortField}
-                    sortDir={sortDir}
-                    onSort={handleSort}
-                    onToggleFavorite={(id) => toggleFavorite.mutate(id, false)}
-                  />
                 )}
               </div>
-
-              {/* Right panel — hidden below xl */}
-              <aside className="hidden xl:block xl:w-80 shrink-0 space-y-4">
-                <StorageOverview data={[]} isLoading={false} />
-                <RecentActivity data={[]} isLoading={false} />
-              </aside>
             </div>
           </div>
-
-
-        </main>
+        </div>
 
         {/* Drag overlay — shows ghost card while dragging */}
         <DragOverlay dropAnimation={null}>
           {draggingDoc && (
-            <div className="px-4 py-2 rounded-lg bg-zinc-800/90 backdrop-blur-sm border border-cyan-500/30 shadow-xl text-sm text-white flex items-center gap-2 pointer-events-none">
+            <div className="px-4 py-2 rounded-lg bg-card/90 backdrop-blur-sm border border-primary/30 shadow-xl text-sm text-foreground flex items-center gap-2 pointer-events-none">
               <span className="truncate max-w-[200px]">{draggingDoc.filename}</span>
               {dragCount > 1 && (
-                <span className="bg-cyan-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-medium">
+                <span className="bg-primary text-primary-foreground text-xs rounded-full w-5 h-5 flex items-center justify-center font-medium">
                   {dragCount}
                 </span>
               )}

@@ -1,13 +1,17 @@
 /**
- * Toolbar — Gallery Mode.
- * Clean, minimal. Actions as icon buttons.
- * Search expands inline. Sort dropdown. View toggle pill.
+ * Toolbar — Square UI Files header.
+ *
+ * Layout: SidebarTrigger | Breadcrumb (left) | QuickActions pill (center) | Search + ViewToggle (right)
+ *
+ * Matches Square UI's header.tsx exactly.
  */
 
-import { FolderPlus, Upload, Grid, List, Trash2, Search, X, ArrowUpDown } from "lucide-react";
+import { Upload, FolderPlus, Search, X, LayoutGrid, List, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { Breadcrumbs } from "./Breadcrumbs";
 import type { SortField } from "./FileList";
+import type { FolderTreeNode } from "../core/types/folder.types";
 
 interface ToolbarProps {
   viewMode: "grid" | "list";
@@ -21,118 +25,127 @@ interface ToolbarProps {
   sortField?: SortField;
   onSort?: (field: SortField) => void;
   totalItems?: number;
+  // Breadcrumb props
+  folderId?: number | null;
+  folders?: FolderTreeNode[];
+  onNavigate?: (folderId: number | null) => void;
 }
 
 export function Toolbar({
   viewMode, onViewChange, onNewFolder, onUpload, onDelete,
   selectedCount, searchQuery, onSearchChange,
-  sortField, onSort, totalItems = 0,
+  totalItems = 0,
+  folderId, folders = [], onNavigate,
 }: ToolbarProps) {
   const [searchOpen, setSearchOpen] = useState(false);
-  const [sortOpen, setSortOpen] = useState(false);
 
   return (
-    <div className="flex items-center gap-1.5 py-2">
-      {/* Actions */}
-      <IconBtn icon={FolderPlus} tip="New Folder" onClick={onNewFolder} />
-      <IconBtn icon={Upload} tip="Upload" onClick={onUpload} />
+    <header className="flex items-center gap-2 sm:gap-3 px-4 sm:px-6 py-2 sm:py-3 border-b border-border/50 bg-card sticky top-0 z-10 w-full">
+      {/* ── Left: Breadcrumb ── */}
+      <div className="hidden lg:block">
+        <Breadcrumbs
+          folderId={folderId ?? null}
+          folders={folders}
+          onNavigate={onNavigate ?? (() => {})}
+        />
+      </div>
+      <div className="flex-1 lg:hidden">
+        <Breadcrumbs
+          folderId={folderId ?? null}
+          folders={folders}
+          onNavigate={onNavigate ?? (() => {})}
+        />
+      </div>
 
-      {selectedCount > 0 && (
-        <>
-          <div className="w-px h-4 bg-white/[0.06] mx-0.5" />
-          <IconBtn icon={Trash2} tip={`Delete (${selectedCount})`} onClick={onDelete} danger />
-        </>
-      )}
-
-      <div className="flex-1" />
-
-      {/* Item count */}
-      <span className="text-[11px] text-zinc-600 tabular-nums mr-1">
-        {selectedCount > 0 ? `${selectedCount} selected` : `${totalItems} items`}
-      </span>
-
-      {/* Sort (grid only) */}
-      {viewMode === "grid" && (
-        <div className="relative">
-          <IconBtn icon={ArrowUpDown} tip="Sort" onClick={() => setSortOpen(!sortOpen)} />
-          {sortOpen && (
-            <div className="absolute right-0 top-full mt-1.5 z-50 min-w-[140px] py-1 rounded-xl bg-zinc-900/95 backdrop-blur-xl border border-white/[0.06] shadow-[0_12px_40px_rgba(0,0,0,0.5)]">
-              {(["name", "date", "size", "type"] as SortField[]).map((f) => (
-                <button
-                  key={f}
-                  onClick={() => { onSort?.(f); setSortOpen(false); }}
-                  className={cn(
-                    "w-full text-left px-3.5 py-1.5 text-[13px] hover:bg-white/[0.04] transition-colors",
-                    sortField === f ? "text-cyan-400" : "text-zinc-400"
-                  )}
-                >
-                  {f === "name" ? "Name" : f === "date" ? "Date" : f === "size" ? "Size" : "Type"}
-                </button>
-              ))}
-            </div>
+      {/* ── Center: QuickActions pill ── */}
+      <div className="hidden lg:flex items-center gap-1 flex-1 justify-center">
+        <div className="flex items-center gap-1 p-1 rounded-xl border border-border/50 bg-card">
+          <ActionBtn icon={Upload} tip="Upload File" onClick={onUpload} />
+          <ActionBtn icon={FolderPlus} tip="New Folder" onClick={onNewFolder} />
+          {selectedCount > 0 && (
+            <ActionBtn icon={Trash2} tip={`Delete (${selectedCount})`} onClick={onDelete} danger />
           )}
         </div>
-      )}
+      </div>
 
-      {/* Search */}
-      {searchOpen ? (
-        <div className="flex items-center gap-2 bg-white/[0.03] rounded-xl px-3 py-1.5 border border-white/[0.06]">
-          <Search className="w-3.5 h-3.5 text-zinc-500" />
-          <input
-            autoFocus
-            value={searchQuery}
-            onChange={(e) => onSearchChange(e.target.value)}
-            placeholder="Search…"
-            className="bg-transparent text-[13px] text-zinc-200 placeholder:text-zinc-600 outline-none w-40"
-          />
-          <button onClick={() => { onSearchChange(""); setSearchOpen(false); }}>
-            <X className="w-3 h-3 text-zinc-600 hover:text-zinc-300 transition-colors" />
+      {/* ── Right: Search + ViewToggle ── */}
+      <div className="flex items-center gap-2">
+        {/* Search */}
+        {searchOpen ? (
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+            <input
+              autoFocus
+              value={searchQuery}
+              onChange={(e) => onSearchChange(e.target.value)}
+              placeholder="Search files..."
+              className="h-9 pl-9 pr-8 rounded-lg border border-border bg-card text-sm text-foreground placeholder:text-muted-foreground outline-none w-48"
+            />
+            <button
+              onClick={() => { onSearchChange(""); setSearchOpen(false); }}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2"
+            >
+              <X className="size-3.5 text-muted-foreground hover:text-foreground transition-colors" />
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => setSearchOpen(true)}
+            className="size-9 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+            title="Search"
+          >
+            <Search className="size-4" />
+          </button>
+        )}
+
+        {/* Item count */}
+        <span className="text-[11px] text-muted-foreground tabular-nums hidden sm:block">
+          {selectedCount > 0 ? `${selectedCount} selected` : `${totalItems} items`}
+        </span>
+
+        {/* View toggle — matches Square UI exactly */}
+        <div className="hidden sm:flex items-center gap-0.5 border border-border/50 rounded-lg p-0.5">
+          <button
+            onClick={() => onViewChange("grid")}
+            className={cn(
+              "size-7.5 flex items-center justify-center rounded-md transition-colors",
+              viewMode === "grid" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <LayoutGrid className="size-4" />
+          </button>
+          <button
+            onClick={() => onViewChange("list")}
+            className={cn(
+              "size-7.5 flex items-center justify-center rounded-md transition-colors",
+              viewMode === "list" ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <List className="size-4" />
           </button>
         </div>
-      ) : (
-        <IconBtn icon={Search} tip="Search" onClick={() => setSearchOpen(true)} />
-      )}
-
-      {/* View toggle */}
-      <div className="flex items-center bg-white/[0.03] rounded-xl p-0.5 border border-white/[0.04]">
-        <button
-          onClick={() => onViewChange("grid")}
-          className={cn(
-            "p-1.5 rounded-lg transition-all",
-            viewMode === "grid" ? "bg-white/[0.08] text-zinc-200" : "text-zinc-500 hover:text-zinc-300"
-          )}
-        >
-          <Grid className="w-3.5 h-3.5" />
-        </button>
-        <button
-          onClick={() => onViewChange("list")}
-          className={cn(
-            "p-1.5 rounded-lg transition-all",
-            viewMode === "list" ? "bg-white/[0.08] text-zinc-200" : "text-zinc-500 hover:text-zinc-300"
-          )}
-        >
-          <List className="w-3.5 h-3.5" />
-        </button>
       </div>
-    </div>
+    </header>
   );
 }
 
-function IconBtn({ icon: Icon, tip, onClick, danger }: {
+// ─── Action button (for QuickActions pill) ────────────────────────────────────
+
+function ActionBtn({ icon: Icon, tip, onClick, danger }: {
   icon: React.ElementType; tip: string; onClick: () => void; danger?: boolean;
 }) {
   return (
     <button
       onClick={onClick}
       className={cn(
-        "w-8 h-8 flex items-center justify-center rounded-xl transition-all",
+        "size-9 flex items-center justify-center rounded-lg transition-colors",
         danger
-          ? "text-red-400/70 hover:text-red-400 hover:bg-red-500/10"
-          : "text-zinc-500 hover:text-zinc-200 hover:bg-white/[0.05]"
+          ? "text-destructive hover:bg-destructive/10"
+          : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
       )}
       title={tip}
     >
-      <Icon className="w-4 h-4" />
+      <Icon className="size-4" />
     </button>
   );
 }
