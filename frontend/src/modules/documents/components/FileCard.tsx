@@ -1,12 +1,15 @@
 /**
  * FileCard — Gallery Mode.
- * Borderless, content-first. Hover lift + shadow bloom.
- * Type pill overlaid on thumbnail corner.
+ *
+ * Square UI aesthetic: rounded-xl card, tinted FileIcon background,
+ * star toggle, hover action dropdown.
+ * Preserves: thumbnails, drag handle, processing indicator, inline rename.
  */
 
-import { GripVertical, FileText, Book, Image as ImageIcon, File } from "lucide-react";
+import { GripVertical, Star, MoreVertical } from "lucide-react";
 import { useDraggable } from "@dnd-kit/core";
 import { cn } from "@/lib/utils";
+import { FileIcon } from "./FileIcon";
 import type { EnhancedDocument } from "../core/types";
 
 interface FileCardProps {
@@ -21,42 +24,22 @@ interface FileCardProps {
   onRenameChange?: (value: string) => void;
   onRenameSubmit?: () => void;
   onRenameCancel?: () => void;
+  onToggleFavorite?: (docId: number) => void;
 }
 
-const ICON: Record<string, React.ElementType> = {
-  pdf: Book, epub: Book,
-  jpg: ImageIcon, jpeg: ImageIcon, png: ImageIcon, gif: ImageIcon, webp: ImageIcon,
-  txt: FileText, md: FileText, docx: FileText, doc: FileText,
-};
-
-const DOT_COLOR: Record<string, string> = {
-  pdf: "bg-red-400", epub: "bg-amber-400",
-  jpg: "bg-purple-400", jpeg: "bg-purple-400", png: "bg-purple-400", gif: "bg-purple-400",
-  md: "bg-blue-400", txt: "bg-zinc-400", docx: "bg-blue-400",
-  csv: "bg-emerald-400", xlsx: "bg-emerald-400",
-};
-
-const ICON_BG: Record<string, string> = {
-  pdf: "text-red-400/60 bg-red-500/8",
-  epub: "text-amber-400/60 bg-amber-500/8",
-  jpg: "text-purple-400/60 bg-purple-500/8",
-  png: "text-purple-400/60 bg-purple-500/8",
-  md: "text-blue-400/60 bg-blue-500/8",
-  txt: "text-zinc-400/60 bg-zinc-500/8",
-  docx: "text-blue-400/60 bg-blue-500/8",
-};
-
-export function FileCard({ doc, isSelected, thumbnailUrl, onClick, onDoubleClick, onContextMenu, isRenaming, renameValue, onRenameChange, onRenameSubmit, onRenameCancel }: FileCardProps) {
+export function FileCard({
+  doc, isSelected, thumbnailUrl, onClick, onDoubleClick, onContextMenu,
+  isRenaming, renameValue, onRenameChange, onRenameSubmit, onRenameCancel,
+  onToggleFavorite,
+}: FileCardProps) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `doc-${doc.id}`,
     data: { type: "document", document: doc },
   });
 
   const ext = doc.type?.toLowerCase() || "file";
-  const Icon = ICON[ext] || File;
-  const iconBg = ICON_BG[ext] || "text-zinc-400/60 bg-zinc-500/8";
-  const dotColor = DOT_COLOR[ext] || "bg-zinc-500";
   const thumb = thumbnailUrl || doc.thumbnail_url;
+  const isFavorite = !!(doc as any).is_favorite;
 
   return (
     <div
@@ -65,11 +48,11 @@ export function FileCard({ doc, isSelected, thumbnailUrl, onClick, onDoubleClick
       onDoubleClick={onDoubleClick}
       onContextMenu={onContextMenu}
       className={cn(
-        "group cursor-pointer rounded-2xl transition-all duration-300 relative",
-        "hover:-translate-y-1 hover:shadow-[0_12px_40px_rgba(0,0,0,0.5)]",
+        "group cursor-pointer rounded-xl border bg-card transition-all duration-200 relative overflow-hidden",
+        "hover:shadow-lg hover:shadow-black/20 hover:-translate-y-0.5",
         isSelected
-          ? "ring-2 ring-cyan-500/40 bg-cyan-500/[0.04]"
-          : "hover:bg-white/[0.02]",
+          ? "ring-2 ring-primary/50 border-primary/30"
+          : "border-border/50 hover:border-border",
         isDragging && "opacity-30 scale-95"
       )}
     >
@@ -77,40 +60,58 @@ export function FileCard({ doc, isSelected, thumbnailUrl, onClick, onDoubleClick
       <div
         {...attributes}
         {...listeners}
-        className="absolute top-2.5 left-2.5 z-10 w-6 h-6 flex items-center justify-center
-                   rounded-lg bg-black/50 backdrop-blur-sm text-zinc-400
+        className="absolute top-2 left-2 z-10 size-6 flex items-center justify-center
+                   rounded-md bg-black/60 backdrop-blur-sm text-zinc-400
                    opacity-0 group-hover:opacity-100
-                   hover:text-white hover:bg-black/70 transition-all cursor-grab active:cursor-grabbing"
+                   hover:text-white hover:bg-black/80 transition-all cursor-grab active:cursor-grabbing"
       >
-        <GripVertical className="w-3.5 h-3.5" />
+        <GripVertical className="size-3.5" />
       </div>
 
-      {/* Preview */}
-      <div className="aspect-[3/4] flex items-center justify-center overflow-hidden rounded-2xl relative bg-zinc-900/40">
+      {/* Star toggle */}
+      <button
+        onClick={(e) => { e.stopPropagation(); onToggleFavorite?.(doc.id); }}
+        className={cn(
+          "absolute top-2 right-2 z-10 size-6 flex items-center justify-center rounded-md transition-all",
+          isFavorite
+            ? "text-amber-400 opacity-100"
+            : "text-zinc-400 opacity-0 group-hover:opacity-100 hover:text-amber-400"
+        )}
+      >
+        <Star className="size-3.5" fill={isFavorite ? "currentColor" : "none"} />
+      </button>
+
+      {/* Preview area */}
+      <div className="aspect-[3/4] flex items-center justify-center overflow-hidden bg-muted/30 relative">
         {thumb ? (
           <img src={thumb} alt={doc.filename} className="w-full h-full object-cover object-top" />
         ) : (
-          <div className={cn("p-5 rounded-2xl", iconBg)}>
-            <Icon className="w-10 h-10" strokeWidth={1.2} />
-          </div>
+          <FileIcon type={ext} size="lg" />
         )}
-
-        {/* Type pill — overlaid on bottom-right */}
-        <span className={cn("absolute bottom-2 right-2 w-2 h-2 rounded-full", dotColor)} />
 
         {/* Processing indicator */}
         {doc.status === "processing" && (
-          <div className="absolute top-2.5 right-2.5">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute h-full w-full rounded-full bg-cyan-400 opacity-60" />
-              <span className="relative rounded-full h-2 w-2 bg-cyan-400" />
+          <div className="absolute top-2 right-2">
+            <span className="relative flex size-2.5">
+              <span className="animate-ping absolute h-full w-full rounded-full bg-primary opacity-60" />
+              <span className="relative rounded-full size-2.5 bg-primary" />
             </span>
           </div>
         )}
+
+        {/* More menu on hover — bottom-right */}
+        <button
+          onClick={(e) => { e.stopPropagation(); onContextMenu(e); }}
+          className="absolute bottom-2 right-2 size-7 flex items-center justify-center rounded-md
+                     bg-black/60 backdrop-blur-sm text-zinc-400
+                     opacity-0 group-hover:opacity-100 hover:text-white hover:bg-black/80 transition-all"
+        >
+          <MoreVertical className="size-4" />
+        </button>
       </div>
 
       {/* Meta */}
-      <div className="px-1.5 py-2.5">
+      <div className="px-3 py-2.5">
         {isRenaming ? (
           <input
             autoFocus
@@ -122,15 +123,15 @@ export function FileCard({ doc, isSelected, thumbnailUrl, onClick, onDoubleClick
               if (e.key === "Escape") onRenameCancel?.();
             }}
             onBlur={onRenameSubmit}
-            className="w-full bg-zinc-800/80 border border-cyan-500/40 rounded-lg px-2.5 py-1.5 text-[13px] text-white outline-none"
+            className="w-full bg-muted/80 border border-primary/40 rounded-lg px-2.5 py-1.5 text-[13px] text-foreground outline-none"
             onClick={(e) => e.stopPropagation()}
           />
         ) : (
-          <p className="text-[13px] font-medium text-zinc-100 truncate leading-snug" title={doc.filename}>
+          <p className="text-[13px] font-medium text-foreground truncate leading-snug" title={doc.filename}>
             {doc.filename}
           </p>
         )}
-        <p className="text-[11px] text-zinc-500 mt-0.5">{doc.size}</p>
+        <p className="text-[11px] text-muted-foreground mt-0.5">{doc.size}</p>
       </div>
     </div>
   );

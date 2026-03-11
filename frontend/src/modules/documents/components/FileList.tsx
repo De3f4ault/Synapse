@@ -1,12 +1,14 @@
 /**
- * FileList — Gallery Mode list view.
- * Clean rows: no visible borders, alternating subtle bg,
- * colored dots for file type, minimal columns.
+ * FileList — Table/list view with Square UI aesthetic.
+ *
+ * Rounded card wrapper, muted header row, FileIcon per row,
+ * star toggle + more menu on hover.
  */
 
-import { Folder, ChevronUp, ChevronDown } from "lucide-react";
+import { Folder, ChevronUp, ChevronDown, Star, MoreVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
+import { FileIcon, getFileColor } from "./FileIcon";
 import type { EnhancedDocument } from "../core/types";
 import type { FolderTreeNode } from "../core/types/folder.types";
 
@@ -24,14 +26,14 @@ interface FileListProps {
   sortField?: SortField;
   sortDir?: SortDir;
   onSort?: (field: SortField) => void;
+  onToggleFavorite?: (docId: number) => void;
 }
 
-const DOT: Record<string, string> = {
-  pdf: "bg-red-400", epub: "bg-amber-400",
-  jpg: "bg-purple-400", jpeg: "bg-purple-400", png: "bg-purple-400",
-  md: "bg-blue-400", txt: "bg-zinc-400", docx: "bg-blue-400",
-  csv: "bg-emerald-400", xlsx: "bg-emerald-400",
-};
+/** Default palette for folders that have no color set */
+const DEFAULT_FOLDER_COLORS = [
+  "#8B5CF6", "#F59E0B", "#EC4899", "#06B6D4",
+  "#10B981", "#6366F1", "#EF4444", "#14B8A6",
+];
 
 function fmtDate(d: string | undefined | null): string {
   if (!d) return "—";
@@ -41,33 +43,35 @@ function fmtDate(d: string | undefined | null): string {
 function SortIcon({ field, active, dir }: { field: SortField; active?: SortField; dir?: SortDir }) {
   if (field !== active) return null;
   return dir === "asc"
-    ? <ChevronUp className="w-3 h-3 text-cyan-400" />
-    : <ChevronDown className="w-3 h-3 text-cyan-400" />;
+    ? <ChevronUp className="size-3 text-primary" />
+    : <ChevronDown className="size-3 text-primary" />;
 }
 
 export function FileList({
   documents, folders, selectedIds,
   onItemClick, onFolderOpen, onFileOpen, onContextMenu,
-  sortField, sortDir, onSort,
+  sortField, sortDir, onSort, onToggleFavorite,
 }: FileListProps) {
   return (
-    <div className="rounded-xl overflow-hidden">
+    <div className="rounded-xl border border-border/50 bg-card overflow-hidden">
       {/* Header */}
-      <div className="grid grid-cols-[1fr_80px_100px] gap-4 px-5 py-2.5 text-[11px] font-medium text-zinc-600 uppercase tracking-wider">
-        <button className="flex items-center gap-1 hover:text-zinc-300 transition-colors text-left" onClick={() => onSort?.("name")}>
+      <div className="grid grid-cols-[1fr_100px_120px_70px] gap-4 px-4 py-2.5 bg-muted/50 text-[11px] font-medium text-muted-foreground uppercase tracking-wider border-b border-border/50">
+        <button className="flex items-center gap-1 hover:text-foreground transition-colors text-left" onClick={() => onSort?.("name")}>
           Name <SortIcon field="name" active={sortField} dir={sortDir} />
         </button>
-        <button className="flex items-center gap-1 hover:text-zinc-300 transition-colors text-left" onClick={() => onSort?.("size")}>
+        <button className="flex items-center gap-1 hover:text-foreground transition-colors text-left" onClick={() => onSort?.("size")}>
           Size <SortIcon field="size" active={sortField} dir={sortDir} />
         </button>
-        <button className="flex items-center gap-1 hover:text-zinc-300 transition-colors text-left" onClick={() => onSort?.("date")}>
+        <button className="flex items-center gap-1 hover:text-foreground transition-colors text-left" onClick={() => onSort?.("date")}>
           Modified <SortIcon field="date" active={sortField} dir={sortDir} />
         </button>
+        <span />
       </div>
 
       {/* Folder rows */}
-      {folders.map((folder, i) => {
+      {folders.map((folder) => {
         const id = `folder:${folder.id}`;
+        const folderColor = folder.settings?.color || DEFAULT_FOLDER_COLORS[folder.id % DEFAULT_FOLDER_COLORS.length];
         return (
           <div
             key={id}
@@ -75,27 +79,34 @@ export function FileList({
             onDoubleClick={() => onFolderOpen(folder.id)}
             onContextMenu={(e) => onContextMenu(id, "folder", e)}
             className={cn(
-              "grid grid-cols-[1fr_80px_100px] gap-4 px-5 py-2.5 cursor-pointer transition-all duration-150 rounded-lg mx-1 mb-px",
+              "group grid grid-cols-[1fr_100px_120px_70px] gap-4 px-4 py-2.5 cursor-pointer transition-colors border-b border-border/30 last:border-0",
               selectedIds.has(id)
-                ? "bg-cyan-500/[0.06]"
-                : i % 2 === 0 ? "hover:bg-white/[0.03]" : "bg-white/[0.015] hover:bg-white/[0.04]"
+                ? "bg-primary/[0.06]"
+                : "hover:bg-muted/30"
             )}
           >
             <div className="flex items-center gap-3 min-w-0">
-              <Folder className="w-4 h-4 text-cyan-500/70 fill-cyan-400/10 shrink-0" />
-              <span className="text-[13px] text-zinc-200 truncate">{folder.name}</span>
+              <div
+                className="size-8 rounded-lg flex items-center justify-center shrink-0"
+                style={{ backgroundColor: `${folderColor}15` }}
+              >
+                <Folder className="size-4" style={{ color: folderColor }} fill={`${folderColor}30`} />
+              </div>
+              <span className="text-[13px] font-medium text-foreground truncate">{folder.name}</span>
             </div>
-            <span className="text-[13px] text-zinc-600">—</span>
-            <span className="text-[13px] text-zinc-600">—</span>
+            <span className="text-[13px] text-muted-foreground self-center">—</span>
+            <span className="text-[13px] text-muted-foreground self-center">—</span>
+            <span />
           </div>
         );
       })}
 
       {/* Document rows */}
-      {documents.map((doc, i) => {
+      {documents.map((doc) => {
         const id = `doc:${doc.id}`;
         const ext = doc.type?.toLowerCase() || "";
-        const idx = folders.length + i;
+        const isFavorite = !!(doc as any).is_favorite;
+
         return (
           <div
             key={id}
@@ -103,24 +114,44 @@ export function FileList({
             onDoubleClick={() => onFileOpen(doc.id)}
             onContextMenu={(e) => onContextMenu(id, "doc", e)}
             className={cn(
-              "group grid grid-cols-[1fr_80px_100px] gap-4 px-5 py-2.5 cursor-pointer transition-all duration-150 rounded-lg mx-1 mb-px",
+              "group grid grid-cols-[1fr_100px_120px_70px] gap-4 px-4 py-2.5 cursor-pointer transition-colors border-b border-border/30 last:border-0",
               selectedIds.has(id)
-                ? "bg-cyan-500/[0.06]"
-                : idx % 2 === 0 ? "hover:bg-white/[0.03]" : "bg-white/[0.015] hover:bg-white/[0.04]"
+                ? "bg-primary/[0.06]"
+                : "hover:bg-muted/30"
             )}
           >
             <div className="flex items-center gap-3 min-w-0">
-              <span className={cn("w-2 h-2 rounded-full shrink-0", DOT[ext] || "bg-zinc-500")} />
-              <span className="text-[13px] text-zinc-200 truncate">{doc.filename}</span>
+              <FileIcon type={ext} size="sm" />
+              <span className="text-[13px] text-foreground truncate">{doc.filename}</span>
             </div>
-            <span className="text-[13px] text-zinc-400">{doc.size}</span>
-            <span className="text-[13px] text-zinc-500 group-hover:text-zinc-300 transition-colors">{fmtDate(doc.updated_at)}</span>
+            <span className="text-[13px] text-muted-foreground self-center">{doc.size}</span>
+            <span className="text-[13px] text-muted-foreground self-center">{fmtDate(doc.updated_at)}</span>
+            <div className="flex items-center justify-end gap-1">
+              <button
+                onClick={(e) => { e.stopPropagation(); onToggleFavorite?.(doc.id); }}
+                className={cn(
+                  "size-6 flex items-center justify-center rounded-md transition-all",
+                  isFavorite
+                    ? "text-amber-400"
+                    : "text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-amber-400"
+                )}
+              >
+                <Star className="size-3.5" fill={isFavorite ? "currentColor" : "none"} />
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); onContextMenu(id, "doc", e); }}
+                className="size-6 flex items-center justify-center rounded-md text-muted-foreground
+                           opacity-0 group-hover:opacity-100 hover:text-foreground hover:bg-muted/50 transition-all"
+              >
+                <MoreVertical className="size-3.5" />
+              </button>
+            </div>
           </div>
         );
       })}
 
       {folders.length === 0 && documents.length === 0 && (
-        <div className="py-16 text-center text-[13px] text-zinc-600">
+        <div className="py-16 text-center text-[13px] text-muted-foreground">
           This folder is empty.
         </div>
       )}
