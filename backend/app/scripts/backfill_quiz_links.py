@@ -19,7 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import AsyncSessionLocal
 from app.models.quiz import Quiz
 from app.models.link import LinkEntityType, LinkType
-from app.services.graph_linker import GraphLinker
+from app.services.graph.linker import GraphLinker
 
 logger = structlog.get_logger(__name__)
 

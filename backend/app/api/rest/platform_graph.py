@@ -52,7 +52,7 @@ async def get_entity_relations(
     Queries the links table for edges connected to this entity
     (both outgoing and incoming) and returns them as EntityRelations.
     """
-    from app.services.link_service import LinkService
+    from app.services.graph.link_service import LinkService
     from app.models.link import LinkEntityType
 
     # Map schema EntityType → model LinkEntityType
