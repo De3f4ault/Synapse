@@ -27,32 +27,14 @@ from app.models.user import User
 # ============================================================================
 # Import schemas from the shared schemas module
 from app.schemas.auth import UserLogin, UserRegister, TokenResponse
+from app.schemas.user import UserResponse
+from app.schemas.common import MessageResponse
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
 # Password hashing context - Argon2 primary, bcrypt fallback for legacy hashes
 pwd_context = CryptContext(schemes=["argon2", "bcrypt"], deprecated="auto")
-
-from pydantic import BaseModel, Field
-from app.schemas.common import MessageResponse
-
-
-class UserResponse(BaseModel):
-    """User profile response."""
-
-    id: int
-    email: str
-    full_name: str
-    is_active: bool
-    is_admin: bool
-    email_verified: bool
-    timezone: Optional[str]
-    created_at: datetime
-    last_login: Optional[datetime]
-
-    class Config:
-        from_attributes = True
 
 
 
@@ -243,7 +225,7 @@ async def register(user_data: UserRegister, db: AsyncSession = Depends(get_db)):
 
     # Send welcome notification
     try:
-        from app.services.notification_service import NotificationService
+        from app.services.notification.service import NotificationService
         from app.models.notification import NotificationType, NotificationCategory
 
         notification_service = NotificationService(db)
