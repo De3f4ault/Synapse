@@ -20,44 +20,14 @@ from app.models.flashcard import Flashcard, LearningState
 from app.models.deck import Deck
 from app.models.quiz import Quiz, QuizDifficulty
 from app.models.quiz_attempt import QuizAttempt
+from app.schemas.study import (
+    StudyItemResponse,
+    StudySessionCreate,
+    StudySessionResponse,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
-
-
-# ============================================================================
-# Schemas
-# ============================================================================
-
-
-class StudyItemResponse(BaseModel):
-    """Study item (flashcard, quiz, etc.)."""
-
-    type: str  # "flashcard" or "quiz"
-    id: int
-    data: dict
-
-
-class StudySessionCreate(BaseModel):
-    """Study session creation."""
-
-    session_type: StudySessionType
-    modules: List[str] = Field(default_factory=lambda: ["flashcards", "quizzes"])
-
-
-class StudySessionResponse(BaseModel):
-    """Study session response."""
-
-    id: int
-    session_type: StudySessionType
-    modules_used: List[str]
-    items_completed: int
-    items_correct: int
-    accuracy: float
-    time_spent_seconds: int
-    started_at: datetime
-    ended_at: Optional[datetime]
-    is_completed: bool
 
 
 # ============================================================================

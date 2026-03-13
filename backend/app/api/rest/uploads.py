@@ -20,6 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import get_db, get_current_user
 from app.models.user import User
 from app.core.config import settings
+from app.schemas.upload import UploadResponse
 
 router = APIRouter()
 
@@ -42,19 +43,6 @@ ALLOWED_EXTENSIONS = {
     ".ogg",  # Audio
     ".pdf",  # Documents
 }
-
-
-# ============================================================================
-# Schemas
-# ============================================================================
-
-
-class UploadResponse(BaseModel):
-    """Asset upload response."""
-
-    url: str = Field(..., description="URL to access the uploaded asset")
-    filename: str = Field(..., description="Original filename")
-    size: int = Field(..., description="File size in bytes")
 
 
 

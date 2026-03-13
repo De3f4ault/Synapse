@@ -7,8 +7,6 @@ Complete implementation with service checks:
 - PostgreSQL cache (kv_store)
 - Qdrant vector store
 - Gemini API
-
-Note: DuckDB removed - using PostgreSQL materialized views for analytics.
 """
 
 from datetime import datetime
@@ -22,31 +20,10 @@ import logging
 from app.api.deps import get_db
 from app.core.config import settings
 from app.core.ai.registry.models import DEFAULT_TOKENIZER_MODEL
+from app.schemas.health import ServiceStatus, HealthResponse
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
-
-
-# ============================================================================
-# Response Schemas
-# ============================================================================
-
-
-class ServiceStatus(BaseModel):
-    """Individual service status."""
-
-    status: str  # "healthy" or "unhealthy"
-    message: str
-    latency_ms: Optional[float] = None
-    details: Optional[Dict] = None
-
-
-class HealthResponse(BaseModel):
-    """Overall health status response."""
-
-    status: str  # "healthy" or "unhealthy"
-    timestamp: datetime
-    services: Dict[str, ServiceStatus]
 
 
 # ============================================================================
@@ -167,8 +144,7 @@ async def check_qdrant() -> ServiceStatus:
         )
 
 
-# NOTE: DuckDB check removed - analytics now use PostgreSQL materialized views
-# See app/sql/views/user_dashboard_stats.sql
+
 
 
 async def check_gemini_api() -> ServiceStatus:
@@ -228,9 +204,8 @@ async def health_check(db: AsyncSession = Depends(get_db)):
 
     Verifies connectivity and basic functionality of:
     - PostgreSQL database
-    - Redis cache
+    - PostgreSQL cache (kv_store)
     - Qdrant vector store
-    - DuckDB analytics database
     - Gemini API
 
     Returns 200 with "healthy" status if all services are operational.
@@ -247,7 +222,7 @@ async def health_check(db: AsyncSession = Depends(get_db)):
     # Check Qdrant (important)
     services["qdrant"] = await check_qdrant()
 
-    # NOTE: DuckDB removed - analytics now use PostgreSQL materialized views
+
 
     # Check Gemini API (important)
     services["gemini_api"] = await check_gemini_api()
