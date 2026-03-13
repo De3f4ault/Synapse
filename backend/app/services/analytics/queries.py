@@ -58,7 +58,7 @@ class UserAnalyticsQueries:
                         (SELECT COUNT(*) FROM documents WHERE user_id = :uid) AS total_documents,
                         (SELECT COUNT(*) FROM quizzes WHERE user_id = :uid) AS total_quizzes,
                         (SELECT COUNT(*) FROM reviews WHERE user_id = :uid) AS total_reviews,
-                        (SELECT MAX(created_at) FROM reviews WHERE user_id = :uid) AS last_activity
+                        (SELECT MAX(reviewed_at) FROM reviews WHERE user_id = :uid) AS last_activity
                 """),
                 {"uid": user_id},
             )
@@ -104,14 +104,14 @@ class UserAnalyticsQueries:
             result = await self.db_session.execute(
                 text("""
                     SELECT
-                        DATE(created_at) AS review_date,
+                        DATE(reviewed_at) AS review_date,
                         COUNT(*) AS daily_reviews,
                         AVG(CASE WHEN quality >= 3 THEN 1.0 ELSE 0.0 END) AS daily_accuracy,
-                        AVG(new_ease_factor) AS avg_ease_factor
+                        AVG(ease_factor_after) AS avg_ease_factor
                     FROM reviews
                     WHERE user_id = :uid
-                      AND created_at >= CURRENT_DATE - :days * INTERVAL '1 day'
-                    GROUP BY DATE(created_at)
+                      AND reviewed_at >= CURRENT_DATE - :days * INTERVAL '1 day'
+                    GROUP BY DATE(reviewed_at)
                     ORDER BY review_date
                 """),
                 {"uid": user_id, "days": days},
@@ -152,14 +152,14 @@ class UserAnalyticsQueries:
                 text("""
                     SELECT
                         fc.id AS card_id,
-                        fc.front AS front_text,
+                        fc.front_text AS front_text,
                         COUNT(r.id) AS review_count,
                         AVG(CASE WHEN r.quality >= 3 THEN 1.0 ELSE 0.0 END) * 100 AS accuracy
                     FROM reviews r
-                    JOIN flashcards fc ON r.flashcard_id = fc.id
+                    JOIN flashcards fc ON r.card_id = fc.id
                     JOIN decks d ON fc.deck_id = d.id
                     WHERE d.user_id = :uid
-                    GROUP BY fc.id, fc.front
+                    GROUP BY fc.id, fc.front_text
                     HAVING AVG(CASE WHEN r.quality >= 3 THEN 1.0 ELSE 0.0 END) * 100 < :threshold
                     ORDER BY accuracy ASC
                     LIMIT 20
@@ -198,7 +198,7 @@ class UserAnalyticsQueries:
         try:
             result = await self.db_session.execute(
                 text("""
-                    SELECT DISTINCT DATE(created_at) AS review_date
+                    SELECT DISTINCT DATE(reviewed_at) AS review_date
                     FROM reviews
                     WHERE user_id = :uid
                     ORDER BY review_date DESC
@@ -269,10 +269,10 @@ class UserAnalyticsQueries:
                 text("""
                     SELECT
                         COUNT(*) AS total,
-                        COUNT(DISTINCT DATE(created_at)) AS active_days
+                        COUNT(DISTINCT DATE(reviewed_at)) AS active_days
                     FROM reviews
                     WHERE user_id = :uid
-                      AND created_at >= CURRENT_DATE - :days * INTERVAL '1 day'
+                      AND reviewed_at >= CURRENT_DATE - :days * INTERVAL '1 day'
                 """),
                 {"uid": user_id, "days": days},
             )
@@ -289,8 +289,8 @@ class UserAnalyticsQueries:
                     SELECT COUNT(*) AS total
                     FROM reviews
                     WHERE user_id = :uid
-                      AND created_at >= CURRENT_DATE - :prev_days * INTERVAL '1 day'
-                      AND created_at < CURRENT_DATE - :days * INTERVAL '1 day'
+                      AND reviewed_at >= CURRENT_DATE - :prev_days * INTERVAL '1 day'
+                      AND reviewed_at < CURRENT_DATE - :days * INTERVAL '1 day'
                 """),
                 {"uid": user_id, "days": days, "prev_days": days * 2},
             )
@@ -332,7 +332,7 @@ class UserAnalyticsQueries:
                         AVG(CASE WHEN r.quality >= 3 THEN 1.0 ELSE 0.0 END) * 100 AS mastery
                     FROM decks d
                     LEFT JOIN flashcards fc ON d.id = fc.deck_id
-                    LEFT JOIN reviews r ON fc.id = r.flashcard_id
+                    LEFT JOIN reviews r ON fc.id = r.card_id
                     WHERE d.user_id = :uid
                     GROUP BY d.id, d.name
                     HAVING COUNT(r.id) > 0

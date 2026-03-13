@@ -89,7 +89,7 @@ class ReportGenerator:
                         COUNT(DISTINCT user_id) AS unique_users,
                         AVG(CASE WHEN quality >= 3 THEN 1.0 ELSE 0.0 END) * 100 AS avg_accuracy
                     FROM reviews
-                    WHERE created_at >= NOW() - :hours * INTERVAL '1 hour'
+                    WHERE reviewed_at >= NOW() - :hours * INTERVAL '1 hour'
                 """),
                 {"hours": period_hours},
             )
@@ -99,11 +99,11 @@ class ReportGenerator:
             hourly = await self.db.execute(
                 text("""
                     SELECT
-                        DATE_TRUNC('hour', created_at) AS hour,
+                        DATE_TRUNC('hour', reviewed_at) AS hour,
                         COUNT(*) AS review_count
                     FROM reviews
-                    WHERE created_at >= NOW() - :hours * INTERVAL '1 hour'
-                    GROUP BY DATE_TRUNC('hour', created_at)
+                    WHERE reviewed_at >= NOW() - :hours * INTERVAL '1 hour'
+                    GROUP BY DATE_TRUNC('hour', reviewed_at)
                     ORDER BY hour
                 """),
                 {"hours": period_hours},
