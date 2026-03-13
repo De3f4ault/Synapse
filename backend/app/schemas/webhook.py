@@ -114,6 +114,12 @@ class WebhookEventResponse(BaseModel):
         }
 
 
+
+class WebhookTestRequest(BaseModel):
+    """Test webhook request."""
+    event_type: str = Field(..., description="Event type to test")
+
+
 class WebhookTestResponse(BaseModel):
     """Webhook test response schema."""
 

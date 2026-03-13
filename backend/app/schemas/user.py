@@ -49,6 +49,12 @@ class UserUpdate(BaseModel):
         }
 
 
+class PasswordChange(BaseModel):
+    """Password change request."""
+    current_password: str = Field(..., description="Current password")
+    new_password: str = Field(..., min_length=8, description="New password")
+
+
 class UserResponse(UserBase):
     """User response schema."""
 
