@@ -106,6 +106,15 @@ export const queryKeys = {
     topics: () => [...queryKeys.analytics.all, "topics"] as const,
   },
 
+  // Graph Analytics
+  graph: {
+    all: ["graph"] as const,
+    analytics: (days?: number) =>
+      [...queryKeys.graph.all, "analytics", days] as const,
+    hubs: (limit?: number) =>
+      [...queryKeys.graph.all, "hubs", limit] as const,
+  },
+
   // Study
   study: {
     all: ["study"] as const,

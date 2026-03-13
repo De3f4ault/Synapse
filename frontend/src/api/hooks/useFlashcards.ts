@@ -11,6 +11,7 @@ import type {
   FlashcardGenerateRequest,
   ReviewSubmit,
   ReviewResult,
+  ImportResult,
 } from "../generated";
 import { queryKeys } from "@/lib/queryKeys";
 
@@ -210,6 +211,66 @@ export const useDeleteCard = () => {
     mutationFn: (cardId: number) =>
       FlashcardsService.deleteCardApiV1CardsCardIdDelete(cardId),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.flashcards.lists() });
+    },
+  });
+};
+
+// ============================================================================
+// Deck Export / Import
+// ============================================================================
+
+/**
+ * Hook to export a deck as JSON
+ */
+export const useExportDeckJSON = (deckId: number, includeStats: boolean = true) => {
+  return useQuery({
+    queryKey: [...queryKeys.decks.detail(deckId), "export"],
+    queryFn: () =>
+      FlashcardsService.exportDeckApiV1DecksDeckIdExportGet(deckId, includeStats),
+    enabled: false, // Only fetch on demand
+  });
+};
+
+/**
+ * Hook to export deck as CSV (triggers file download)
+ */
+export const useExportDeckCSV = () => {
+  return useMutation({
+    mutationFn: async (deckId: number) => {
+      const csvContent = await FlashcardsService.exportDeckCsvEndpointApiV1DecksDeckIdExportCsvGet(deckId);
+      // Trigger browser download
+      const blob = new Blob([csvContent], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `deck_${deckId}_export.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    },
+  });
+};
+
+/**
+ * Hook to import flashcards from a CSV file
+ */
+export const useImportDeckCSV = () => {
+  const queryClient = useQueryClient();
+  return useMutation<ImportResult, Error, { deckId: number; file: File }>({
+    mutationFn: ({ deckId, file }) =>
+      FlashcardsService.importDeckCsvApiV1DecksDeckIdImportCsvPost(
+        deckId,
+        { file },
+      ),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.decks.cards(variables.deckId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.flashcards.detail(variables.deckId),
+      });
       queryClient.invalidateQueries({ queryKey: queryKeys.flashcards.lists() });
     },
   });
