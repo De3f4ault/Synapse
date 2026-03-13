@@ -204,3 +204,139 @@ async def cleanup_physical_file(filepath: str) -> bool:
     except Exception as e:
         logger.error("file_delete_failed", filepath=filepath, error=str(e))
         return False
+
+
+# ============================================================================
+# Upload Orchestration
+# ============================================================================
+
+
+async def check_upload_conflicts(
+    db, user_id: int, content_hash: str, filename: str
+) -> Optional[dict]:
+    """
+    Check for hash and filename collisions.
+
+    Returns None if no conflict, or a dict with conflict info:
+    {"conflict_type": ..., "existing_doc": doc}
+    """
+    from sqlalchemy import select, and_, func
+    from app.models.document import Document
+
+    # Hash collision
+    hash_result = await db.execute(
+        select(Document).where(and_(
+            Document.content_hash == content_hash,
+            Document.user_id == user_id,
+            Document.deleted_at.is_(None),
+        ))
+    )
+    hash_doc = hash_result.scalars().first()
+
+    # Filename collision
+    name_result = await db.execute(
+        select(Document).where(and_(
+            func.lower(Document.filename) == filename.lower(),
+            Document.user_id == user_id,
+            Document.deleted_at.is_(None),
+        ))
+    )
+    name_doc = name_result.scalars().first()
+
+    if hash_doc and name_doc and hash_doc.id == name_doc.id:
+        return {"conflict_type": "exact_duplicate", "existing_doc": hash_doc}
+    elif hash_doc:
+        return {"conflict_type": "same_content", "existing_doc": hash_doc}
+    elif name_doc:
+        return {"conflict_type": "same_filename", "existing_doc": name_doc}
+
+    return None
+
+
+# ============================================================================
+# Replace Orchestration
+# ============================================================================
+
+
+async def replace_document_file(db, doc, file: UploadFile, user_id: int):
+    """
+    Replace an existing document's file: save new file, update record,
+    cleanup old file/vectors/gemini, trigger reprocessing.
+
+    Mutates doc in-place and commits.
+    """
+    from app.models.document import ProcessingStatus
+
+    is_valid, error_msg = validate_file(file)
+    if not is_valid:
+        raise ValueError(error_msg)
+
+    new_filepath = generate_upload_path(user_id, file.filename)
+    file_size, content_hash = await save_uploaded_file(file, new_filepath)
+
+    old_filepath = doc.file_path
+
+    doc.filename = file.filename
+    doc.file_path = new_filepath
+    doc.file_type = get_file_extension(file.filename)[1:]
+    doc.file_size = file_size
+    doc.content_hash = content_hash
+    doc.processing_status = ProcessingStatus.PENDING
+    doc.gemini_file_uri = None
+    doc.gemini_file_expires_at = None
+    doc.content_text = None
+    doc.page_count = None
+    doc.word_count = None
+    doc.ai_summary = None
+
+    await db.commit()
+    await db.refresh(doc)
+
+    logger.info(f"Document replaced: {doc.id} with {file.filename}")
+
+    await cleanup_physical_file(old_filepath)
+    await cleanup_physical_file(f"{old_filepath}_thumb.png")
+    await cleanup_document_vectors(doc.id, user_id)
+    await cleanup_gemini_file(doc.gemini_file_uri)
+    await trigger_document_processing(doc.id)
+
+
+# ============================================================================
+# AI Summary
+# ============================================================================
+
+
+async def generate_ai_summary(doc, db) -> dict:
+    """
+    Generate AI summary for a document using Gemini.
+
+    Returns {"summary": str, "cached": bool}.
+    """
+    if doc.ai_summary:
+        return {"summary": doc.ai_summary, "cached": True}
+
+    if not doc.content_text:
+        raise ValueError("Document has no extracted text. Wait for processing to complete.")
+
+    from google import genai
+    from app.core.ai.registry.models import DEFAULT_TOKENIZER_MODEL
+
+    client = genai.Client(api_key=settings.GEMINI_API_KEY)
+    content = doc.content_text[:30000] if len(doc.content_text) > 30000 else doc.content_text
+
+    prompt = f"""Provide a concise summary of this document in 3-5 paragraphs.
+Focus on the main topics, key takeaways, and important concepts.
+
+Document Title: {doc.filename}
+
+Content:
+{content}"""
+
+    response = client.models.generate_content(model=DEFAULT_TOKENIZER_MODEL, contents=prompt)
+    summary = response.text
+
+    doc.ai_summary = summary
+    await db.commit()
+
+    logger.info(f"AI summary generated for document {doc.id}")
+    return {"summary": summary, "cached": False}
