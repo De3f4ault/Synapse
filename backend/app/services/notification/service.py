@@ -3,10 +3,10 @@ Notification Service
 
 Core service for creating, delivering, and managing notifications.
 Supports:
+- Multi-channel delivery (WebSocket, Email, PG PubSub)
 - Preference-aware delivery (category toggles, DND)
 - Focus Mode buffering (tied to active StudySession)
 - Batching for similar notifications
-- WebSocket real-time delivery
 - TTL/expiration cleanup
 """
 
@@ -25,7 +25,7 @@ from app.models.notification import (
 )
 from app.models.user import User
 from app.models.study_session import StudySession
-from app.api.websockets.core.channels import channel_manager
+from app.services.notification.channels import get_channel_dispatcher
 
 logger = structlog.get_logger()
 
@@ -126,9 +126,10 @@ class NotificationService:
             status=status.value,
         )
 
-        # If not buffered, broadcast via WebSocket
+        # If not buffered, deliver through all channels
         if status == NotificationStatus.DELIVERED:
-            await self._broadcast(notification)
+            user_email = await self._get_user_email(user_id)
+            await self._dispatch(notification, user_email)
 
         return notification
 
@@ -292,7 +293,9 @@ class NotificationService:
         # Broadcast each (or create a summary if many)
         count = len(notifications)
         if count > 5:
-            # Batch into a summary notification
+            # Batch into a summary notification via WebSocket only
+            from app.api.websockets.core.channels import channel_manager
+
             await channel_manager.broadcast_to_user_channel(
                 user_id=user_id,
                 channel="dashboard",
@@ -303,9 +306,10 @@ class NotificationService:
                 },
             )
         else:
-            # Broadcast individually
+            # Dispatch individually through all channels
+            user_email = await self._get_user_email(user_id)
             for notification in notifications:
-                await self._broadcast(notification)
+                await self._dispatch(notification, user_email)
 
         logger.info("buffered_notifications_flushed", user_id=user_id, count=count)
         return count
@@ -368,22 +372,36 @@ class NotificationService:
         )
         return result.scalar_one_or_none() is not None
 
-    async def _broadcast(self, notification: Notification) -> None:
-        """Broadcast notification via WebSocket."""
+    async def _dispatch(
+        self,
+        notification: Notification,
+        user_email: Optional[str] = None,
+    ) -> None:
+        """Dispatch notification through all applicable channels."""
         try:
-            await channel_manager.broadcast_to_user_channel(
-                user_id=notification.user_id,
-                channel="dashboard",
-                event="notification",
-                data=notification.to_dict(),
+            dispatcher = get_channel_dispatcher()
+            results = await dispatcher.dispatch(notification, user_email)
+            logger.debug(
+                "notification_dispatched",
+                notification_id=notification.id,
+                channels=results,
             )
-            logger.debug("notification_broadcast", notification_id=notification.id)
         except Exception as e:
             logger.error(
-                "notification_broadcast_failed",
+                "notification_dispatch_failed",
                 notification_id=notification.id,
                 error=str(e),
             )
+
+    async def _get_user_email(self, user_id: int) -> Optional[str]:
+        """Fetch user's email for email channel delivery."""
+        try:
+            result = await self.db.execute(
+                select(User.email).where(User.id == user_id)
+            )
+            return result.scalar_one_or_none()
+        except Exception:
+            return None
 
 
 # ==================== HELPER FUNCTIONS ====================
