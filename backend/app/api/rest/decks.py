@@ -7,7 +7,7 @@ Thin controller — business logic lives in:
 """
 
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, File, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, or_, update
 from datetime import datetime
@@ -239,6 +239,98 @@ async def import_flashcards(
     except Exception as e:
         await db.rollback()
         raise HTTPException(status_code=500, detail=f"Failed to import: {e}")
+
+
+# ============================================================================
+# Export / Import (JSON + CSV)
+# ============================================================================
+
+
+@router.get("/{deck_id}/export", summary="Export Deck (JSON)")
+async def export_deck(
+    deck_id: int,
+    include_stats: bool = Query(True, description="Include review statistics per card"),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Export a deck and all its flashcards as JSON.
+
+    The output format is re-importable via POST /{deck_id}/import.
+    """
+    from app.services.deck.import_export import export_deck_json
+
+    try:
+        return await export_deck_json(
+            user_id=current_user.id,
+            deck_id=deck_id,
+            db=db,
+            include_stats=include_stats,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+
+
+@router.get("/{deck_id}/export/csv", summary="Export Deck (CSV)")
+async def export_deck_csv_endpoint(
+    deck_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Export a deck's flashcards as CSV.
+
+    Returns a downloadable CSV file with columns:
+    front_text, back_text, front_media_url, back_media_url,
+    ease_factor, interval, learning_state.
+    """
+    from fastapi.responses import StreamingResponse
+    from app.services.deck.import_export import export_deck_csv
+
+    try:
+        csv_content = await export_deck_csv(
+            user_id=current_user.id, deck_id=deck_id, db=db
+        )
+        return StreamingResponse(
+            iter([csv_content]),
+            media_type="text/csv",
+            headers={
+                "Content-Disposition": f"attachment; filename=deck_{deck_id}_export.csv"
+            },
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+
+
+@router.post("/{deck_id}/import/csv", response_model=ImportResult, status_code=status.HTTP_201_CREATED)
+async def import_deck_csv(
+    deck_id: int,
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Import flashcards from a CSV file.
+
+    Expects columns: front_text (required), back_text (required),
+    front_media_url (optional), back_media_url (optional).
+    """
+    from app.services.deck.import_export import import_from_csv
+
+    try:
+        csv_content = (await file.read()).decode("utf-8")
+        result = await import_from_csv(
+            user_id=current_user.id,
+            deck_id=deck_id,
+            csv_content=csv_content,
+            db=db,
+        )
+        return ImportResult(**result)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to import CSV: {e}")
 
 
 # ============================================================================
