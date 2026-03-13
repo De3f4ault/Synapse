@@ -3,16 +3,16 @@ Report generation utilities for analytics.
 
 Generates formatted reports from analytics data including
 user summaries, performance reports, and usage insights.
+All queries run against PostgreSQL via SQLAlchemy async sessions.
 """
 
 import logging
 from typing import Optional, Dict, Any
 from datetime import datetime, timedelta
-from pathlib import Path
 
-import pandas as pd
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from .client import AnalyticsClient
 from .queries import UserAnalyticsQueries
 
 logger = logging.getLogger(__name__)
@@ -20,27 +20,25 @@ logger = logging.getLogger(__name__)
 
 class ReportGenerator:
     """
-    Generate analytical reports from data.
+    Generate analytical reports from PostgreSQL data.
 
     Creates formatted reports for different stakeholders
-    with visualizations and key metrics.
+    with key metrics and performance data.
     """
 
-    def __init__(self, client: AnalyticsClient):
+    def __init__(self, db_session: AsyncSession):
         """
         Initialize report generator.
 
         Args:
-            client: AnalyticsClient instance
+            db_session: SQLAlchemy async session for PostgreSQL
         """
-        self.client = client
-        self.queries = UserAnalyticsQueries(client)
+        self.db = db_session
+        self.queries = UserAnalyticsQueries(db_session)
         logger.debug("Initialized ReportGenerator")
 
-    def generate_user_report(
-        self,
-        user_id: str,
-        period_days: int = 30
+    async def generate_user_report(
+        self, user_id: int, period_days: int = 30
     ) -> Dict[str, Any]:
         """
         Generate comprehensive user activity report.
@@ -52,66 +50,30 @@ class ReportGenerator:
         Returns:
             dict: User report data
         """
-        start_date = datetime.now() - timedelta(days=period_days)
-
-        # User activity
-        activity_query = f"""
-        SELECT
-            COUNT(*) as total_queries,
-            AVG(response_time_ms) as avg_response_time,
-            COUNT(DISTINCT DATE(timestamp)) as active_days,
-            AVG(relevance_score) as avg_relevance
-        FROM queries
-        WHERE user_id = '{user_id}'
-        AND timestamp >= '{start_date.isoformat()}'
-        """
-
-        activity = self.client.query(activity_query).iloc[0].to_dict()
-
-        # Most accessed documents
-        docs_query = f"""
-        SELECT
-            document_id,
-            COUNT(*) as access_count
-        FROM query_results
-        WHERE user_id = '{user_id}'
-        AND timestamp >= '{start_date.isoformat()}'
-        GROUP BY document_id
-        ORDER BY access_count DESC
-        LIMIT 10
-        """
-
-        top_documents = self.client.query(docs_query).to_dict('records')
-
-        # Daily activity trend
-        trend_query = f"""
-        SELECT
-            DATE(timestamp) as date,
-            COUNT(*) as queries
-        FROM queries
-        WHERE user_id = '{user_id}'
-        AND timestamp >= '{start_date.isoformat()}'
-        GROUP BY DATE(timestamp)
-        ORDER BY date
-        """
-
-        daily_trend = self.client.query(trend_query).to_dict('records')
+        summary = await self.queries.get_user_learning_summary(user_id)
+        trends = await self.queries.get_performance_trends(user_id, period_days)
+        streaks = await self.queries.get_study_streaks(user_id)
+        velocity = await self.queries.get_learning_velocity(user_id, min(period_days, 14))
+        mastery = await self.queries.get_mastery_scores(user_id)
+        weak_areas = await self.queries.get_weak_areas(user_id)
 
         return {
             "user_id": user_id,
             "period_days": period_days,
-            "generated_at": datetime.now().isoformat(),
-            "activity_summary": activity,
-            "top_documents": top_documents,
-            "daily_trend": daily_trend,
+            "generated_at": datetime.utcnow().isoformat(),
+            "learning_summary": summary,
+            "performance_trends": trends,
+            "streaks": streaks,
+            "learning_velocity": velocity,
+            "mastery_by_deck": mastery[:10],
+            "weak_areas": weak_areas[:10],
         }
 
-    def generate_system_health_report(
-        self,
-        period_hours: int = 24
+    async def generate_system_health_report(
+        self, period_hours: int = 24
     ) -> Dict[str, Any]:
         """
-        Generate system health and performance report.
+        Generate system health and performance report from PostgreSQL.
 
         Args:
             period_hours: Report period in hours
@@ -119,153 +81,85 @@ class ReportGenerator:
         Returns:
             dict: System health report
         """
-        start_time = datetime.now() - timedelta(hours=period_hours)
+        try:
+            result = await self.db.execute(
+                text("""
+                    SELECT
+                        COUNT(*) AS total_reviews,
+                        COUNT(DISTINCT user_id) AS unique_users,
+                        AVG(CASE WHEN quality >= 3 THEN 1.0 ELSE 0.0 END) * 100 AS avg_accuracy
+                    FROM reviews
+                    WHERE created_at >= NOW() - :hours * INTERVAL '1 hour'
+                """),
+                {"hours": period_hours},
+            )
+            row = result.first()
 
-        # Overall metrics
-        metrics_query = f"""
-        SELECT
-            COUNT(*) as total_requests,
-            COUNT(DISTINCT user_id) as unique_users,
-            AVG(response_time_ms) as avg_response_time,
-            PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY response_time_ms) as p95_response_time,
-            SUM(CASE WHEN status = 'error' THEN 1 ELSE 0 END) as error_count,
-            SUM(CASE WHEN status = 'error' THEN 1 ELSE 0 END) * 100.0 / COUNT(*) as error_rate
-        FROM queries
-        WHERE timestamp >= '{start_time.isoformat()}'
-        """
+            # Hourly breakdown
+            hourly = await self.db.execute(
+                text("""
+                    SELECT
+                        DATE_TRUNC('hour', created_at) AS hour,
+                        COUNT(*) AS review_count
+                    FROM reviews
+                    WHERE created_at >= NOW() - :hours * INTERVAL '1 hour'
+                    GROUP BY DATE_TRUNC('hour', created_at)
+                    ORDER BY hour
+                """),
+                {"hours": period_hours},
+            )
 
-        metrics = self.client.query(metrics_query).iloc[0].to_dict()
+            return {
+                "report_period_hours": period_hours,
+                "generated_at": datetime.utcnow().isoformat(),
+                "overall_metrics": {
+                    "total_reviews": int(row.total_reviews) if row else 0,
+                    "unique_users": int(row.unique_users) if row else 0,
+                    "avg_accuracy": float(row.avg_accuracy or 0) if row else 0.0,
+                },
+                "hourly_breakdown": [
+                    {
+                        "hour": str(r.hour),
+                        "review_count": int(r.review_count),
+                    }
+                    for r in hourly.all()
+                ],
+            }
 
-        # Hourly breakdown
-        hourly_query = f"""
-        SELECT
-            DATE_TRUNC('hour', timestamp) as hour,
-            COUNT(*) as request_count,
-            AVG(response_time_ms) as avg_response_time,
-            SUM(CASE WHEN status = 'error' THEN 1 ELSE 0 END) as errors
-        FROM queries
-        WHERE timestamp >= '{start_time.isoformat()}'
-        GROUP BY hour
-        ORDER BY hour
-        """
+        except Exception as e:
+            logger.error(f"Error generating system health report: {e}")
+            return {
+                "report_period_hours": period_hours,
+                "generated_at": datetime.utcnow().isoformat(),
+                "error": str(e),
+            }
 
-        hourly_breakdown = self.client.query(hourly_query).to_dict('records')
-
-        # Slowest queries
-        slow_queries = f"""
-        SELECT
-            query_text,
-            response_time_ms,
-            timestamp,
-            user_id
-        FROM queries
-        WHERE timestamp >= '{start_time.isoformat()}'
-        ORDER BY response_time_ms DESC
-        LIMIT 10
-        """
-
-        slowest = self.client.query(slow_queries).to_dict('records')
-
-        return {
-            "report_period_hours": period_hours,
-            "generated_at": datetime.now().isoformat(),
-            "overall_metrics": metrics,
-            "hourly_breakdown": hourly_breakdown,
-            "slowest_queries": slowest,
-        }
-
-    def generate_weekly_summary(
-        self,
-        week_offset: int = 0
+    async def generate_weekly_summary(
+        self, user_id: int, week_offset: int = 0
     ) -> Dict[str, Any]:
         """
         Generate weekly summary report.
 
         Args:
+            user_id: User ID
             week_offset: Weeks back from current (0 = this week)
 
         Returns:
             dict: Weekly summary report
         """
-        end_date = datetime.now() - timedelta(weeks=week_offset)
+        end_date = datetime.utcnow() - timedelta(weeks=week_offset)
         start_date = end_date - timedelta(days=7)
 
-        # User metrics
-        user_metrics = self.queries.user_activity_summary(start_date, end_date)
-
-        # Document stats
-        doc_stats = self.queries.document_usage_stats(top_n=20)
-
-        # Top queries
-        top_queries = self.queries.top_queries(limit=20)
-
-        # Performance metrics
-        perf_metrics = self.queries.performance_metrics(
-            start_date, end_date, bucket_size="1 day"
-        )
+        trends = await self.queries.get_performance_trends(user_id, days=7)
+        velocity = await self.queries.get_learning_velocity(user_id, days=7)
+        mastery = await self.queries.get_mastery_scores(user_id)
 
         return {
+            "user_id": user_id,
             "week_start": start_date.isoformat(),
             "week_end": end_date.isoformat(),
-            "generated_at": datetime.now().isoformat(),
-            "user_summary": {
-                "total_users": len(user_metrics),
-                "total_queries": int(user_metrics["total_queries"].sum()),
-                "avg_queries_per_user": float(user_metrics["total_queries"].mean()),
-            },
-            "top_users": user_metrics.head(10).to_dict('records'),
-            "popular_documents": doc_stats.head(10).to_dict('records'),
-            "top_queries": top_queries.head(10).to_dict('records'),
-            "daily_performance": perf_metrics.to_dict('records'),
-        }
-
-    def export_report_csv(
-        self,
-        report_data: Dict[str, Any],
-        output_path: Path
-    ) -> None:
-        """
-        Export report data to CSV files.
-
-        Args:
-            report_data: Report dictionary
-            output_path: Output directory path
-        """
-        output_path = Path(output_path)
-        output_path.mkdir(parents=True, exist_ok=True)
-
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-
-        for key, value in report_data.items():
-            if isinstance(value, (list, pd.DataFrame)):
-                df = pd.DataFrame(value) if isinstance(value, list) else value
-                file_path = output_path / f"{key}_{timestamp}.csv"
-                df.to_csv(file_path, index=False)
-                logger.info(f"Exported {key} to {file_path}")
-
-    def generate_custom_report(
-        self,
-        query: str,
-        report_name: str,
-        parameters: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
-        """
-        Generate custom report from SQL query.
-
-        Args:
-            query: SQL query string
-            report_name: Report identifier
-            parameters: Query parameters
-
-        Returns:
-            dict: Custom report data
-        """
-        results = self.queries.execute_custom_query(query, parameters)
-
-        return {
-            "report_name": report_name,
-            "generated_at": datetime.now().isoformat(),
-            "parameters": parameters or {},
-            "row_count": len(results),
-            "data": results.to_dict('records'),
+            "generated_at": datetime.utcnow().isoformat(),
+            "daily_performance": trends,
+            "learning_velocity": velocity,
+            "top_decks_by_mastery": mastery[:5],
         }

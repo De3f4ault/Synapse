@@ -160,7 +160,7 @@ class FlashcardRepository:
         """
         Get comprehensive statistics for a deck.
 
-        Uses DuckDB for aggregations:
+        Uses PostgreSQL for aggregations:
         - Total cards, due cards, mastered cards
         - Average ease factor
         - Overall accuracy

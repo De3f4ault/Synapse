@@ -1,19 +1,17 @@
 """
-Analytics service using DuckDB.
+Analytics service — powered by PostgreSQL.
 
-Provides OLAP analytics capabilities for fast aggregations,
-complex queries, and report generation on application data.
+Provides OLAP analytics, learning metrics, and report generation.
+SQL functions live in: app/sql/functions/analytics/
 """
 
-from app.services.analytics.client import AnalyticsClient
 from app.services.analytics.queries import UserAnalyticsQueries
 from app.services.analytics.reports import ReportGenerator
 
-# Export with alias for convenience
+# Alias for convenience
 AnalyticsQueries = UserAnalyticsQueries
 
 __all__ = [
-    "AnalyticsClient",
     "AnalyticsQueries",
     "UserAnalyticsQueries",
     "ReportGenerator",
