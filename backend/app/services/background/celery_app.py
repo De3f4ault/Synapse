@@ -106,6 +106,12 @@ celery_app.conf.update(
         # Graph semantic linking
         "graph.semantic_link_scan": {"queue": "default"},
         "graph.semantic_refresh_user": {"queue": "default"},
+        # DMS ingestion pipeline
+        "ingestion.ingest_document": {"queue": "ingestion"},
+        "ingestion.batch_ingest": {"queue": "ingestion"},
+        # DMS storage maintenance
+        "storage.sanity_check": {"queue": "default"},
+        "storage.empty_trash": {"queue": "default"},
     },
     # Queues
     task_queues=(
@@ -119,6 +125,8 @@ celery_app.conf.update(
         Queue("ocr", Exchange("ocr"), routing_key="ocr", priority=4),
         # Embeddings queue - for pgvector sync (medium priority)
         Queue("embeddings", Exchange("embeddings"), routing_key="embeddings", priority=6),
+        # DMS ingestion queue
+        Queue("ingestion", Exchange("ingestion"), routing_key="ingestion", priority=6),
     ),
     # Beat schedule for periodic tasks (with expires to prevent pileup)
     beat_schedule={
@@ -138,6 +146,18 @@ celery_app.conf.update(
             "task": "graph.semantic_link_scan",
             "schedule": 86400.0,  # Every 24 hours
             "options": {"expires": 82800.0},
+        },
+        # DMS: Nightly storage sanity check
+        "nightly-sanity-check": {
+            "task": "storage.sanity_check",
+            "schedule": 86400.0,  # Every 24 hours
+            "options": {"expires": 82800.0},
+        },
+        # DMS: Weekly trash cleanup (hard-delete expired soft-deleted docs)
+        "weekly-empty-trash": {
+            "task": "storage.empty_trash",
+            "schedule": 604800.0,  # Every 7 days
+            "options": {"expires": 600000.0},
         },
     },
 )
