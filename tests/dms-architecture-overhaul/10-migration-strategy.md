@@ -36,8 +36,8 @@ This is the complete map of which Synapse files are created, modified, or deprec
 | 2 | `services/classification/matching.py` | 7 matching algorithms | [matching.py](file:///home/de3f4ault/Desktop/Projects/synapse/tests/paperless-ngx/src/documents/matching.py) |
 | 2 | `services/classification/ai_classifier.py` | Gemini zero-shot | Custom (Synapse advantage) |
 | 2 | `services/classification/auto_assign.py` | Auto-classify chain | [signals/handlers.py](file:///home/de3f4ault/Desktop/Projects/synapse/tests/paperless-ngx/src/documents/signals/handlers.py) |
-| 2 | `services/search/service.py` | Hybrid search | [index.py](file:///home/de3f4ault/Desktop/Projects/synapse/tests/paperless-ngx/src/documents/index.py) |
-| 2 | `api/rest/search.py` | Search endpoints | Custom |
+| 2 | `services/search/saved_view_executor.py` | SavedView → search params | [index.py](file:///home/de3f4ault/Desktop/Projects/synapse/tests/paperless-ngx/src/documents/index.py) |
+| 2 | `services/search/tasks.py` | Index maintenance | [tasks.py](file:///home/de3f4ault/Desktop/Projects/synapse/tests/paperless-ngx/src/documents/tasks.py) L63-78 |
 | 3 | `models/workflow.py` | Workflow models | [models.py](file:///home/de3f4ault/Desktop/Projects/synapse/tests/paperless-ngx/src/documents/models.py) L980-1583 |
 | 3 | `services/workflows/engine.py` | Workflow execution | [signals/handlers.py](file:///home/de3f4ault/Desktop/Projects/synapse/tests/paperless-ngx/src/documents/signals/handlers.py) L1100-1546 |
 | 3 | `services/workflows/scheduler.py` | Scheduled workflows | [tasks.py](file:///home/de3f4ault/Desktop/Projects/synapse/tests/paperless-ngx/src/documents/tasks.py) L391-517 |
@@ -60,12 +60,24 @@ This is the complete map of which Synapse files are created, modified, or deprec
 
 ### Files Deprecated (Not Removed Until Fully Replaced)
 
-| Phase | File | Replaced By |
-|---|---|---|
-| 1 | `services/document/ocr_processor.py` (196 lines) | `services/parsers/pdf_parser.py` |
-| 1 | `services/document/processing.py` (106 lines) | `services/ingestion/pipeline.py` |
-| 1 | `services/document/document_processor.py` (388 lines) | `services/background/tasks.py consume_document()` |
-| 2 | `services/document/topic_tagger.py` (131 lines) | `services/classification/auto_assign.py` |
+| Phase | File | Lines | Replaced By |
+|---|---|---|---|
+| 1 | `modules/documents/processing.py` | 297 | `services/parsers/` (unified parser registry) |
+| 1 | `services/background/document_processor.py` | 388 | `services/ingestion/pipeline.py` + `services/background/tasks.py` |
+| 1 | `core/ai/rag/ingestion/parsers/pdf_parser.py` | 83 | `services/parsers/rasterized.py` |
+
+### Files Extended (Not Replaced)
+
+| Phase | File | Lines | Change |
+|---|---|---|---|
+| 1 | `services/ocr/processor.py` | 488 | Return `output_pdf` path from `process_file()` |
+| 1 | `services/document/service.py` | 343 | Use `ParserRegistry` instead of inline extraction |
+| 2 | `services/search/unified_service.py` | 605 | Add document-level DMS filters alongside existing hybrid search |
+| 2 | `services/search/hybrid_v2.py` | 477 | Extend to include DMS metadata filter support |
+| 2 | `services/search/fulltext.py` | 252 | Add `search_vector` GIN-based document FTS |
+| 2 | `api/rest/search.py` | 420 | Add correspondent/type/tag filter params, saved view execution |
+| 3 | `services/storage/manager.py` | 316 | Extend with template-based path resolution, dual-path storage |
+| 3 | `services/storage/local.py` | 316 | No changes — continues as low-level storage backend |
 
 ---
 
@@ -116,7 +128,7 @@ gantt
 1. **No existing columns are removed** — `sector` remains until DocumentType is fully operational
 2. **All new FK columns are nullable** — existing documents are unaffected
 3. **New tables are purely additive** — no schema conflicts
-4. **Old code paths remain importable** — `processing.py`, `document_processor.py` still work
+4. **Old code paths remain importable** — `modules/documents/processing.py`, `services/background/document_processor.py` still work
 5. **API response format unchanged** — new fields are added, none removed
 6. **Feature flags** control activation — `USE_NEW_PIPELINE=true` switches upload path
 

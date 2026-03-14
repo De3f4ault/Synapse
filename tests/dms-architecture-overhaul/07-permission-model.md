@@ -122,6 +122,65 @@ class ShareLink(models.Model):
 
 ---
 
+## Current `user_id` Filtering — Migration Map
+
+> [!WARNING]
+> The following files currently hardcode `user_id == current_user.id` filtering. Each must be updated to use `PermissionService.get_accessible_documents()` or the `require_document_permission` middleware. This is the complete list from `grep -r "user_id ==" backend/app/`.
+
+### API Layer (endpoints that filter by user_id)
+
+| File | Lines | Pattern | Migration |
+|---|---|---|---|
+| `api/rest/documents.py` | 17KB | `Document.user_id == current_user.id` in list/get/update/delete | Replace with `PermissionService.get_accessible_documents()` + middleware |
+| `api/rest/notes.py` | 20KB | `Note.user_id == current_user.id` in all CRUD endpoints | Add `require_document_permission` dependency |
+| `api/rest/flashcards.py` | 14KB | `Flashcard` access via `Deck.user_id == current_user.id` | Keep for now — flashcards are personal until shared study is implemented |
+| `api/rest/decks.py` | 14KB | `Deck.user_id == current_user.id` | Keep for now — personal ownership |
+| `api/rest/quizzes.py` | 22KB | `Quiz.user_id == current_user.id` in all endpoints | Keep for now — personal ownership |
+| `api/rest/folders.py` | 17KB | `DocumentFolder.user_id == current_user.id` | Replace with permission-aware folder access |
+| `api/rest/links.py` | 9KB | `Link.user_id == current_user.id` | Keep — links are personal knowledge graph edges |
+| `modules/artifacts/api.py` | 14KB | `Artifact.user_id == current_user.id` (lines 283, 322, 357) | Keep — artifacts are personal |
+
+### Service Layer (business logic with user_id filtering)
+
+| File | Lines | Pattern | Migration |
+|---|---|---|---|
+| `services/document/service.py` | 343 | `Document.user_id == user_id` (lines 230, 240) in conflict checks | Replace with `PermissionService.has_permission()` |
+| `services/notification/service.py` | ~400 | `Notification.user_id == user_id` (7 locations) | Keep — notifications are personal |
+| `services/user/stats.py` | ~150 | `*.user_id == user_id` (11 locations) for stats aggregation | Keep — stats are personal; add optional workspace scope later |
+| `services/graph/link_service.py` | ~550 | `Link.user_id == user_id` (7 locations) | Keep — knowledge graph is personal |
+| `services/quiz/sm2.py` | ~170 | `QuestionLearningState.user_id == user_id` | Keep — spaced repetition is personal |
+| `services/analytics/service.py` | ~200 | `ActivityLog.user_id == user_id` (3 locations) | Keep — analytics are personal |
+| `services/deck/generation.py` | ~320 | `Document.user_id == user_id`, `Deck.user_id == user_id` | Replace document check with `has_permission()` |
+| `services/deck/import_export.py` | ~330 | `Deck.user_id == user_id` | Keep — deck ownership |
+
+### Platform Modules (graph/link dispatch)
+
+| File | Lines | Pattern | Migration |
+|---|---|---|---|
+| `platform/modules/documents.py` | ~140 | `Document.user_id == user_id` (lines 54, 84, 129) | Replace with `has_permission("view")` |
+| `platform/modules/notes.py` | ~130 | `Note.user_id == user_id` (lines 52, 80, 122) | Replace with `has_permission("view")` |
+| `platform/modules/flashcards.py` | ~110 | `Deck.user_id == user_id` (line 52) | Keep — personal |
+| `platform/modules/quizzes.py` | ~130 | `Quiz.user_id == user_id` (lines 48, 76, 119) | Keep — personal |
+
+### Migration Priority
+
+**Phase 3A (Documents only):**
+
+1. `api/rest/documents.py` — the primary target
+2. `services/document/service.py` — conflict checks
+3. `platform/modules/documents.py` — graph integration
+4. `api/rest/folders.py` — folder access
+
+**Phase 3B (Notes — if sharing notes is desired):**
+5. `api/rest/notes.py`
+6. `platform/modules/notes.py`
+
+**Deferred (keep `user_id` filtering):**
+
+- All flashcard, deck, quiz, notification, analytics, link, and stats code remains single-user until collaborative features are scoped.
+
+---
+
 ## Synapse Implementation
 
 ### Data Models

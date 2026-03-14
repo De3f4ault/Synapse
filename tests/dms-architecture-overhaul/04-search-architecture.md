@@ -162,6 +162,30 @@ def get_permissions_criterias(user=None):
 
 ---
 
+## Existing Synapse Search System
+
+> [!IMPORTANT]
+> Synapse already has a **mature 12-file search system**. The DMS search additions **extend** this system — they do NOT replace it.
+
+| File | Size | What It Does | DMS Change |
+|---|---|---|---|
+| [unified_service.py](file:///home/de3f4ault/Desktop/Projects/synapse/backend/app/services/search/unified_service.py) | 605 lines | `UnifiedSearchService` — orchestrates Hybrid, RAG, and Graph engines | **Extend**: Add DMS adapter for document-level search with metadata filters |
+| [hybrid_v2.py](file:///home/de3f4ault/Desktop/Projects/synapse/backend/app/services/search/hybrid_v2.py) | 477 lines | `HybridSearchServiceV2` — SQL-level BM25 + Vector with RRF | **Extend**: Add document entity type alongside notes/flashcards/chat |
+| [fulltext.py](file:///home/de3f4ault/Desktop/Projects/synapse/backend/app/services/search/fulltext.py) | 252 lines | PostgreSQL FTS with `ts_rank` | **Extend**: Add `search_vector` GIN query for documents table |
+| [adapters.py](file:///home/de3f4ault/Desktop/Projects/synapse/backend/app/services/search/adapters.py) | 309 lines | Result adapters for notes/flashcards/chat | **Add**: `adapt_dms_document_results()` adapter |
+| [unified_retrieval.py](file:///home/de3f4ault/Desktop/Projects/synapse/backend/app/services/search/unified_retrieval.py) | 308 lines | Multi-source retrieval | No changes |
+| [ranking.py](file:///home/de3f4ault/Desktop/Projects/synapse/backend/app/services/search/ranking.py) | 188 lines | Result ranking + weights | No changes |
+| [analytics.py](file:///home/de3f4ault/Desktop/Projects/synapse/backend/app/services/search/analytics.py) | 188 lines | Search analytics | No changes |
+| [contract.py](file:///home/de3f4ault/Desktop/Projects/synapse/backend/app/services/search/contract.py) | 109 lines | Search interface contracts | **Extend**: Add `SearchIntent.DMS_FILTER` |
+| [result_types.py](file:///home/de3f4ault/Desktop/Projects/synapse/backend/app/services/search/result_types.py) | 38 lines | Result type definitions | **Add**: `DMS_DOCUMENT` result type |
+| [zero_result_handler.py](file:///home/de3f4ault/Desktop/Projects/synapse/backend/app/services/search/zero_result_handler.py) | 122 lines | Zero-result fallback | No changes |
+| [chat_embedding.py](file:///home/de3f4ault/Desktop/Projects/synapse/backend/app/services/search/chat_embedding.py) | 89 lines | Chat embedding search | No changes |
+| [search.py API](file:///home/de3f4ault/Desktop/Projects/synapse/backend/app/api/rest/search.py) | 420 lines | Search API endpoints | **Extend**: Add DMS filter params, saved view execution endpoint |
+
+**Integration strategy**: The new `SearchService` (DMS-focused, Paperless-inspired) acts as a **domain-specific search engine** that plugs into the existing `UnifiedSearchService` as a new engine alongside Hybrid, RAG, and Graph. It does NOT replace the existing search infrastructure.
+
+---
+
 ## Synapse Files Being Modified
 
 | File | Current State | Change |
@@ -169,9 +193,10 @@ def get_permissions_criterias(user=None):
 | [repository.py](file:///home/de3f4ault/Desktop/Projects/synapse/backend/app/modules/documents/repository.py) (237 lines) | `search_chunks()` — raw SQL with `ts_rank` + `to_tsvector` on `document_chunks.content` only | **Major rewrite**: Add document-level `search_documents()` with GIN index on `documents.search_vector` |
 | [documents.py API](file:///home/de3f4ault/Desktop/Projects/synapse/backend/app/api/rest/documents.py) (421 lines) | `list_documents()` — basic filters (folder_id, status, sort_order) | **Extend**: Add full-text search query param, tag/type/correspondent filters, saved view execution |
 | [document.py model](file:///home/de3f4ault/Desktop/Projects/synapse/backend/app/models/document.py) | No `search_vector` column | **Add**: Generated `tsvector` column + GIN index |
-| **New file**: `services/search/service.py` | Does not exist | **Create**: `SearchService` with FTS + metadata filters + vector hybrid |
+| **New file**: `services/search/dms_search.py` | Does not exist | **Create**: DMS `SearchService` — document-level FTS + metadata filters (integrates with `UnifiedSearchService`) |
+| **New file**: `services/search/saved_view_executor.py` | Does not exist | **Create**: Convert `SavedView` filter rules to search params |
+| **New file**: `services/search/tasks.py` | Does not exist | **Create**: Index maintenance periodic task |
 | **New file**: `models/saved_view.py` | Does not exist | **Create**: `SavedView` + `SavedViewFilterRule` models |
-| **New file**: `api/rest/search.py` | Does not exist | **Create**: Search API router with query + filters + saved views |
 
 ---
 
@@ -820,17 +845,28 @@ def search_index_maintenance():
 ## Module Structure
 
 ```
-backend/app/services/search/
-├── __init__.py
-├── service.py                # SearchService — FTS + filters + hybrid
-├── saved_view_executor.py    # SavedView → SearchService params
-└── tasks.py                  # Index maintenance periodic tasks
+backend/app/services/search/          ← EXISTING directory (12 files)
+├── __init__.py                       # Existing — update exports
+├── unified_service.py                # EXISTING — add DMS engine adapter
+├── hybrid_v2.py                      # EXISTING — extend with document entities
+├── fulltext.py                       # EXISTING — add search_vector queries
+├── adapters.py                       # EXISTING — add adapt_dms_document_results()
+├── contract.py                       # EXISTING — add DMS intent
+├── result_types.py                   # EXISTING — add DMS_DOCUMENT type
+├── unified_retrieval.py              # EXISTING — no changes
+├── ranking.py                        # EXISTING — no changes
+├── analytics.py                      # EXISTING — no changes
+├── zero_result_handler.py            # EXISTING — no changes
+├── chat_embedding.py                 # EXISTING — no changes
+├── dms_search.py                     # NEW — DMS SearchService (FTS + metadata filters)
+├── saved_view_executor.py            # NEW — SavedView → search params
+└── tasks.py                          # NEW — Index maintenance
 
 backend/app/models/
-├── saved_view.py             # SavedView + SavedViewFilterRule
+├── saved_view.py                     # NEW — SavedView + SavedViewFilterRule
 
 backend/app/api/rest/
-├── search.py                 # Search endpoints
+├── search.py                         # EXISTING — extend with DMS endpoints
 ```
 
 ---

@@ -117,13 +117,33 @@ def check_sanity(*, scheduled=False):
 
 ---
 
+## Existing Synapse Storage System
+
+> [!IMPORTANT]
+> Synapse already has a storage layer. The new `FileManager` **extends** the existing `StorageManager` — it does NOT replace it.
+
+| File | Size | What It Does | DMS Change |
+|---|---|---|---|
+| [local.py](file:///home/de3f4ault/Desktop/Projects/synapse/backend/app/services/storage/local.py) | 316 lines | `LocalStorage` — low-level read/write/delete/list operations | **No changes** — continues as the storage backend |
+| [manager.py](file:///home/de3f4ault/Desktop/Projects/synapse/backend/app/services/storage/manager.py) | 316 lines | `StorageManager` — `save_file()`, `save_document()`, `save_upload()`, `save_temp_file()`, `cleanup_temp_files()` with category-based paths (documents, media, temp, uploads, exports) | **Extend**: Add `store_original()`, `store_archive()`, `update_filename_and_move_files()` methods for template-based DMS paths |
+
+**Integration strategy**: The new `FileManager` either:
+
+- (Option A) Inherits from `StorageManager` and adds DMS-specific methods, or
+- (Option B) Composes `StorageManager` internally, delegating low-level ops while adding template resolution, dual-path storage, and auto-rename on top.
+
+Option B is recommended to avoid modifying the existing `StorageManager` contract that other parts of Synapse depend on.
+
+---
+
 ## Synapse Files Being Modified
 
 | File | Current State | Change |
 |---|---|---|
-| [service.py](file:///home/de3f4ault/Desktop/Projects/synapse/backend/app/services/document/service.py) (343 lines) | `generate_upload_path()` → `{upload_dir}/{user_id}/{uuid}_{filename}` | **Replace** with template-based path + dual storage |
+| [service.py](file:///home/de3f4ault/Desktop/Projects/synapse/backend/app/services/document/service.py) (343 lines) | `generate_upload_path()` → `{upload_dir}/{user_id}/{uuid}_{filename}` | **Replace** upload path generation with `FileManager.resolve_path()` |
 | [document.py model](file:///home/de3f4ault/Desktop/Projects/synapse/backend/app/models/document.py) | `file_path`, `content_hash` columns only | **Add**: `archive_path`, `archive_checksum`, `archive_filename` |
-| **New file**: `services/storage/file_manager.py` | Does not exist | **Create**: Template resolution, auto-rename, file operations |
+| [manager.py](file:///home/de3f4ault/Desktop/Projects/synapse/backend/app/services/storage/manager.py) (316 lines) | Category-based paths (documents, media, temp) | **No breaking changes** — `FileManager` composes this internally |
+| **New file**: `services/storage/file_manager.py` | Does not exist | **Create**: Template resolution, auto-rename, dual-path ops (uses `StorageManager` internally) |
 | **New file**: `services/storage/sanity_check.py` | Does not exist | **Create**: Integrity verification task |
 | **New file**: `config/storage.py` | Does not exist | **Create**: Storage directories configuration |
 
@@ -551,13 +571,15 @@ def empty_trash(days_old: int = 30):
 ## Module Structure
 
 ```
-backend/app/services/storage/
-├── __init__.py
-├── file_manager.py            # FileManager: paths, store, rename, checksum
-├── sanity_check.py            # sanity_check() + empty_trash() tasks
+backend/app/services/storage/         ← EXISTING directory
+├── __init__.py                       # EXISTING — update exports
+├── local.py                          # EXISTING (316 lines) — low-level ops, NO CHANGES
+├── manager.py                        # EXISTING (316 lines) — StorageManager, NO CHANGES
+├── file_manager.py                   # NEW — DMS FileManager (composes StorageManager)
+├── sanity_check.py                   # NEW — sanity_check() + empty_trash() tasks
 
 backend/app/config/
-├── storage.py                 # StorageConfig pydantic settings
+├── storage.py                        # NEW — StorageConfig pydantic settings
 ```
 
 ---
