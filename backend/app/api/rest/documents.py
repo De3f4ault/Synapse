@@ -105,8 +105,20 @@ async def upload_document(
     await db.refresh(new_doc)
 
     logger.info(f"Document uploaded: {new_doc.id} ({file.filename}) by user {current_user.id}")
-    if not await trigger_document_processing(new_doc.id):
-        logger.warning(f"Could not queue document {new_doc.id} for processing")
+
+    # Feature flag: route through new DMS pipeline or legacy processor
+    use_dms = os.environ.get("USE_DMS_PIPELINE", "false").lower() in ("true", "1", "yes")
+    if use_dms:
+        from app.services.background.tasks import consume_document
+        consume_document.delay({
+            "source_path": filepath,
+            "original_filename": file.filename,
+            "user_id": current_user.id,
+            "document_id": new_doc.id,
+        })
+    else:
+        if not await trigger_document_processing(new_doc.id):
+            logger.warning(f"Could not queue document {new_doc.id} for processing")
 
     return _doc_response(new_doc)
 
@@ -258,7 +270,14 @@ async def trigger_processing(
         raise HTTPException(status_code=400, detail=f"Cannot reprocess document in status: {doc.processing_status.value}")
     doc.processing_status = ProcessingStatus.PENDING
     await db.commit()
-    await trigger_document_processing(document_id)
+
+    use_dms = os.environ.get("USE_DMS_PIPELINE", "false").lower() in ("true", "1", "yes")
+    if use_dms:
+        from app.services.background.tasks import reprocess_document
+        reprocess_document.delay(document_id)
+    else:
+        await trigger_document_processing(document_id)
+
     return MessageResponse(message="Document processing triggered")
 
 

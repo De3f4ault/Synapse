@@ -4,6 +4,7 @@ Background task definitions - ENHANCED.
 Includes document processing with embedding generation.
 """
 
+import asyncio
 import logging
 from typing import Any, Dict
 from celery import Task, shared_task
@@ -617,3 +618,234 @@ def index_documents_task(document_ids: list[str]) -> Dict[str, int]:
     except Exception as e:
         logger.error(f"Error in bulk indexing: {e}")
         raise
+
+
+# =============================================================================
+# DMS PHASE 2 — INGESTION PIPELINE TASKS
+# =============================================================================
+
+
+def _run_async(coro):
+    """Run an async coroutine from a sync Celery task."""
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor() as pool:
+                return pool.submit(asyncio.run, coro).result()
+        else:
+            return loop.run_until_complete(coro)
+    except RuntimeError:
+        return asyncio.run(coro)
+
+
+def _create_task_record(
+    task_id: str,
+    task_name: str,
+    filename: str = "",
+    owner_id: int = None,
+) -> None:
+    """Create a SynapseTask record for UI tracking (best-effort)."""
+    try:
+        from app.db.session import SessionLocal
+        from app.models.synapse_task import SynapseTask, TaskType
+
+        with SessionLocal() as db:
+            task = SynapseTask(
+                task_id=task_id,
+                task_name=task_name,
+                celery_task_name=f"ingestion.{task_name.lower()}",
+                task_type=TaskType.AUTO,
+                status="PENDING",
+                task_file_name=filename,
+                owner_id=owner_id,
+            )
+            db.add(task)
+            db.commit()
+    except Exception as e:
+        logger.debug("Failed to create SynapseTask record: %s", e)
+
+
+@shared_task(
+    bind=True,
+    name="ingestion.ingest_document",
+    acks_late=True,
+    reject_on_worker_lost=True,
+    time_limit=1800,       # 30-minute hard limit
+    soft_time_limit=1500,  # 25-minute soft limit
+    queue="ingestion",
+)
+def consume_document(self: Task, consumable_data: dict):
+    """
+    Ingest a new document through the DMS plugin pipeline.
+
+    Sourced from Paperless tasks.py:138-204 consume_file().
+
+    Key reliability patterns:
+    - bind=True: access to self.request for task ID
+    - acks_late: message only acked after SUCCESS (survives worker crash)
+    - reject_on_worker_lost: requeue if worker dies mid-task
+
+    Args:
+        consumable_data: Dict with:
+            - source_path: str — path to uploaded file on disk
+            - original_filename: str — user-visible filename
+            - user_id: int — owning user ID
+            - mime_type: str (optional) — pre-detected MIME type
+            - folder_id: int (optional) — target folder
+            - document_id: int (optional) — existing Document row ID
+    """
+    from app.services.background.progress import ProgressManager, ProgressStatus
+    from app.services.ingestion import create_pipeline, IngestDocument
+
+    source_path = consumable_data["source_path"]
+    filename = consumable_data.get("original_filename", "unknown")
+    user_id = consumable_data["user_id"]
+
+    # Create SynapseTask record for UI tracking
+    _create_task_record(
+        task_id=self.request.id,
+        task_name="CONSUME_DOCUMENT",
+        filename=filename,
+        owner_id=user_id,
+    )
+
+    with ProgressManager(filename, self.request.id) as progress:
+        doc = IngestDocument(
+            source_path=source_path,
+            original_filename=filename,
+            user_id=user_id,
+            mime_type=consumable_data.get("mime_type"),
+            folder_id=consumable_data.get("folder_id"),
+        )
+        doc.document_id = consumable_data.get("document_id")
+
+        pipeline = create_pipeline()
+
+        def progress_cb(plugin_name, step, total):
+            progress.send_progress(
+                ProgressStatus.WORKING,
+                f"Running {plugin_name}",
+                step, total,
+            )
+
+        result = _run_async(pipeline.run(doc, progress_callback=progress_cb))
+
+    return {
+        "status": result.status.value,
+        "document_id": result.document_id,
+        "filename": result.original_filename,
+        "text_length": len(result.text) if result.text else 0,
+        "error": result.error_message,
+    }
+
+
+@shared_task(
+    bind=True,
+    name="ingestion.reprocess_document",
+    time_limit=900,
+    soft_time_limit=600,
+    queue="ingestion",
+    max_retries=2,
+    default_retry_delay=30,
+)
+def reprocess_document(self: Task, document_id: int):
+    """
+    Re-OCR an existing document and update content.
+
+    Sourced from Paperless tasks.py:246-351.
+    """
+    from app.services.parsers import get_parser_for_mime_type
+    from app.services.storage.file_manager import FileManager
+    from app.models.document import Document, ProcessingStatus
+
+    _create_task_record(
+        task_id=self.request.id,
+        task_name="REPROCESS_DOCUMENT",
+        filename=f"doc:{document_id}",
+    )
+
+    try:
+        from app.db.session import SessionLocal
+        from sqlalchemy import select
+
+        with SessionLocal() as session:
+            document = session.execute(
+                select(Document).where(Document.id == document_id)
+            ).scalar_one_or_none()
+
+            if not document:
+                logger.error("Document %d not found for reprocessing", document_id)
+                return
+
+            mime = document.mime_type or "application/pdf"
+            parser_class = get_parser_for_mime_type(mime)
+            if not parser_class:
+                logger.error("No parser for MIME type %s", mime)
+                return
+
+            parser = parser_class()
+            try:
+                document.processing_status = ProcessingStatus.PROCESSING
+                session.commit()
+
+                parser.parse(document.file_path, mime, document.filename)
+
+                document.content_text = parser.get_text()
+                document.page_count = parser.get_page_count()
+                document.word_count = len((parser.get_text() or "").split())
+
+                # Update archive if parser generates one
+                archive = parser.get_archive_path()
+                if archive:
+                    fm = FileManager()
+                    document.archive_path = str(archive)
+                    document.archive_checksum = FileManager.compute_checksum(str(archive))
+
+                document.processing_status = ProcessingStatus.COMPLETED
+                session.commit()
+                logger.info("Reprocessed document %d successfully", document_id)
+
+            except Exception as e:
+                document.processing_status = ProcessingStatus.FAILED
+                session.commit()
+                logger.exception("Reprocessing failed for document %d: %s", document_id, e)
+                raise self.retry(exc=e)
+            finally:
+                parser.cleanup()
+
+    except Retry:
+        raise
+    except Exception as e:
+        logger.error("Error reprocessing document %d: %s", document_id, e)
+        raise
+
+
+@shared_task(name="storage.sanity_check", time_limit=300)
+def run_sanity_check():
+    """Nightly storage integrity check (delegated to storage module)."""
+    from app.services.storage.sanity_check import run_sanity_check as _check
+
+    async def _run():
+        from app.db.session import async_session_factory
+        async with async_session_factory() as db:
+            return await _check(db)
+
+    result = _run_async(_run())
+    logger.info("Sanity check complete: %s", result)
+    return str(result)
+
+
+@shared_task(name="storage.empty_trash", time_limit=300)
+def run_empty_trash():
+    """Weekly hard-delete of expired soft-deleted documents."""
+    from app.services.storage.sanity_check import empty_trash as _trash
+
+    async def _run():
+        from app.db.session import async_session_factory
+        async with async_session_factory() as db:
+            return await _trash(db)
+
+    count = _run_async(_run())
+    logger.info("Trash cleanup: deleted %d documents", count)
+    return f"Deleted {count} documents"
