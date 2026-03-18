@@ -103,6 +103,28 @@ class Document(Base, TimestampMixin, SoftDeleteMixin, UserOwnedMixin):
         doc="Document creation date (extracted by parser or set by user)",
     )
 
+    # -------------------------------------------------------------------------
+    # DMS Classification Fields (Phase 3)
+    # -------------------------------------------------------------------------
+
+    correspondent_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("correspondents.id", ondelete="SET NULL"),
+        nullable=True, index=True,
+        doc="Auto-assigned correspondent (sender/receiver)",
+    )
+
+    document_type_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("document_types.id", ondelete="SET NULL"),
+        nullable=True, index=True,
+        doc="Auto-assigned document type (Invoice, Contract, etc.)",
+    )
+
+    storage_path_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("storage_paths.id", ondelete="SET NULL"),
+        nullable=True, index=True,
+        doc="Template-based storage path for file organization",
+    )
+
     # Gemini Files API Integration
     gemini_file_uri: Mapped[Optional[str]] = mapped_column(
         String(500), nullable=True, default=None, doc="URI of file uploaded to Gemini Files API"
@@ -208,7 +230,13 @@ class Document(Base, TimestampMixin, SoftDeleteMixin, UserOwnedMixin):
         foreign_keys=[folder_id],
     )
 
-    # Relationships
+    # Classification relationships (Phase 3)
+    correspondent = relationship("Correspondent", back_populates="documents")
+    document_type = relationship("DocumentType", back_populates="documents")
+    storage_path = relationship("StoragePath", back_populates="documents")
+    tags = relationship("Tag", secondary="document_tags", back_populates="documents", lazy="selectin")
+
+    # Other relationships
     # chunks: One-to-many with DocumentChunk (defined in document_chunk.py)
     # user: Many-to-one with User (from UserOwnedMixin)
 
