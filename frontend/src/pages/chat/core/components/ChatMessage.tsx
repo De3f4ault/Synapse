@@ -19,7 +19,8 @@ import { useRegenerate } from "../hooks/useRegenerate";
 import { entityKey } from "@/shared/core/entity";
 import { useThreadStore } from "../state/threadStore";
 import { useChatStore } from "../state/chatStore";
-import { FlashcardsService, QuizzesService, QuizDifficulty, QuestionType } from "@/api/generated";
+import { FlashcardsService, QuizzesService } from "@/api/generated";
+import { QuizDifficulty, QuestionType } from "@/modules/quizzes/core/types";
 import type { FlashcardCardPreview, QuizQuestionPreview } from "@/shared/rendering/schema";
 
 import type { ChatMessageResponse } from "@/api/generated";
