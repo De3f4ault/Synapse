@@ -44,6 +44,11 @@ import { StorageOverview } from "@/modules/documents/components/StorageOverview"
 import { RecentActivity } from "@/modules/documents/components/RecentActivity";
 import { EmptyState } from "@/modules/documents/components/EmptyState";
 
+// Sprint 5-7 wiring
+import { DocumentTabs } from "@/modules/documents/components/dms/DocumentTabs";
+import { IngestionProgressList } from "@/modules/documents/components/dms/IngestionProgressBar";
+import { useIngestionProgress } from "@/modules/documents/hooks/useIngestionProgress";
+
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 interface ClipboardState {
@@ -540,6 +545,13 @@ export function DocumentsPage() {
         {/* ── Main content area (lg:p-2 wrapping rounded-xl container) ── */}
         <div className="h-full overflow-hidden lg:p-2 w-full">
           <div className="lg:border lg:border-border/50 lg:rounded-xl overflow-hidden flex flex-col items-center justify-start h-full w-full bg-background">
+            {/* Open document tabs (Sprint 5) */}
+            <DocumentTabs
+              activeDocId={null}
+              onTabClick={(doc) => navigate(`/documents/${doc.id}`)}
+              onCloseConfirm={() => {}}
+              onCloseAllConfirm={() => {}}
+            />
             {/* Header/Toolbar (sticky) */}
             <Toolbar
               viewMode={viewMode}
@@ -660,6 +672,25 @@ export function DocumentsPage() {
         onKeepBothFile={() => upload.handleKeepBoth()}
         isProcessing={upload.isUploading}
       />
+
+      {/* Ingestion progress overlay (Sprint 5) */}
+      <IngestionProgressOverlay />
     </DndContext>
+  );
+}
+
+// ─── Ingestion Progress Overlay (Sprint 5 wiring) ────────────────────────────
+
+function IngestionProgressOverlay() {
+  const { statuses, dismiss, dismissCompleted } = useIngestionProgress();
+  if (statuses.length === 0) return null;
+  return (
+    <div className="fixed bottom-4 right-4 z-50 w-80">
+      <IngestionProgressList
+        statuses={statuses}
+        onDismiss={dismiss}
+        onDismissCompleted={dismissCompleted}
+      />
+    </div>
   );
 }

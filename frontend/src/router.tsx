@@ -100,6 +100,16 @@ const DocumentViewerPage = React.lazy(() =>
     default: module.DocumentViewerPage,
   })),
 );
+const TrashPage = React.lazy(() =>
+  import("@/modules/documents/components/dms/TrashPage").then((module) => ({
+    default: module.TrashPage,
+  })),
+);
+const SettingsPage = React.lazy(() =>
+  import("@/modules/documents/components/dms/SettingsPage").then((module) => ({
+    default: module.SettingsPage,
+  })),
+);
 
 // Quizzes
 const QuizzesPage = React.lazy(() =>
@@ -286,7 +296,11 @@ export function Router() {
 
             {/* ========== DOCUMENTS (Omni-Kinetic) ========== */}
             <Route path="/documents" element={<DocumentsPage />} />
+            <Route path="/documents/trash" element={<TrashPage />} />
             <Route path="/documents/:documentId" element={<DocumentViewerPage />} />
+
+            {/* ========== SETTINGS ========== */}
+            <Route path="/settings" element={<SettingsPage />} />
 
             {/* ========== QUIZZES (Protocol: Crucible) ========== */}
             <Route path="/quizzes" element={<QuizzesPage />} />
