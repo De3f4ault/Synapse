@@ -15,17 +15,12 @@ import { cn } from "@/lib/utils";
 import { GlassCard } from "@/shared/ui";
 import { Button } from "@/components/ui/button";
 import {
-  Sun,
-  Moon,
-  Monitor,
   Bell,
   FileText,
   Trash2,
   RotateCcw,
   Settings,
   Palette,
-  StickyNote,
-  History,
   Layers,
 } from "lucide-react";
 import { useUserSettings, SETTINGS_KEYS } from "../../hooks/useUserSettings";

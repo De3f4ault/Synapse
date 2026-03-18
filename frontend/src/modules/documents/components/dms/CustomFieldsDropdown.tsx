@@ -12,7 +12,6 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Plus, Check, ChevronDown, Search } from "lucide-react";
 import {
-  CustomFieldDataType,
   DATA_TYPE_LABELS,
 } from "./CustomFieldDisplay";
 import type { CustomField } from "./CustomFieldDisplay";
