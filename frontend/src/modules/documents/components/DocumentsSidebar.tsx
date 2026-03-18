@@ -7,6 +7,7 @@
 
 import { useState, useCallback } from "react";
 import { FolderOpen, Plus, Clock, Star, Archive, Hash } from "lucide-react";
+import { SavedViewSidebar } from "./dms/SavedViewSidebar";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { NeumorphicButton } from "@/components/neumorphic";
@@ -242,6 +243,9 @@ export const DocumentsSidebar = ({
                             );
                         })}
                     </div>
+
+                    {/* ─── Saved Views (DMS) ─── */}
+                    {!isCollapsed && <SavedViewSidebar views={[]} activeViewId={null} onViewClick={() => {}} className="mx-3 pt-3 border-t border-white/5" />}
                 </div>
 
                 {/* Footer Hint */}
