@@ -93,9 +93,10 @@ function toTableDoc(
   docTypes: DocumentType[],
   allTags: Tag[]
 ): TableDocument {
+  const docAny = doc as Record<string, unknown>;
   return {
     id: typeof doc.id === "string" ? parseInt(doc.id) : doc.id,
-    title: doc.title || doc.filename,
+    title: (docAny.title as string) || doc.filename,
     created: doc.created_at,
     added: doc.created_at,
     correspondent: doc.correspondent_id
@@ -104,11 +105,11 @@ function toTableDoc(
     documentType: doc.document_type_id
       ? docTypes.find((dt) => dt.id === doc.document_type_id) || null
       : null,
-    tags: (doc.tag_ids || [])
+    tags: (Array.isArray(docAny.tag_ids) ? docAny.tag_ids as number[] : [])
       .map((tid: number) => allTags.find((t) => t.id === tid))
       .filter(Boolean) as Tag[],
-    asn: doc.archive_serial_number || null,
-    notesCount: doc.notes_count || 0,
+    asn: (docAny.archive_serial_number as number) || null,
+    notesCount: (docAny.notes_count as number) || 0,
   };
 }
 
@@ -118,7 +119,7 @@ function toTableDoc(
 
 export const DocumentsHub = ({
   documents,
-  folders = [],
+  folders: _folders = [],
   isLoading,
   searchQuery,
   onSearchChange,
@@ -128,10 +129,10 @@ export const DocumentsHub = ({
   onCreateFolder,
   onDocumentClick,
   onFolderClick,
-  onFolderDoubleClick,
-  onContextMenu,
-  onRenameFolder,
-  onDeleteFolder,
+  onFolderDoubleClick: _onFolderDoubleClick,
+  onContextMenu: _onContextMenu,
+  onRenameFolder: _onRenameFolder,
+  onDeleteFolder: _onDeleteFolder,
   onRefresh = () => {},
   onSelectAll = () => {},
   onPaste,
@@ -177,7 +178,7 @@ export const DocumentsHub = ({
   const { data: docTypes } = useDocumentTypes();
   const { data: tags } = useTags();
   const { data: storagePaths } = useStoragePaths();
-  const { data: savedViews } = useSavedViews();
+  const _savedViews = useSavedViews();
   const createSavedView = useCreateSavedView();
 
   // ── Thumbnails ─────────────────────────────────────────────────────────
@@ -185,7 +186,7 @@ export const DocumentsHub = ({
   const { data: thumbnails } = useThumbnails(documentIds);
 
   // ── Legacy store (folder selection) ────────────────────────────────────
-  const { toggleSelection, selectedItemIds, clearSelection } = useFolderStore();
+  const { clearSelection } = useFolderStore();
 
   // ── Detail panel ───────────────────────────────────────────────────────
   const detailDoc = useMemo(() => {
@@ -228,17 +229,21 @@ export const DocumentsHub = ({
 
   const goToPrev = useCallback(() => {
     if (docIndex > 0) {
-      const prev = documents[docIndex - 1];
-      const id = typeof prev.id === "string" ? parseInt(prev.id) : prev.id;
-      setDetailDocId(id);
+      const prevDoc = documents[docIndex - 1];
+      if (prevDoc) {
+        const id = typeof prevDoc.id === "string" ? parseInt(prevDoc.id) : prevDoc.id;
+        setDetailDocId(id);
+      }
     }
   }, [docIndex, documents]);
 
   const goToNext = useCallback(() => {
     if (docIndex < documents.length - 1) {
-      const next = documents[docIndex + 1];
-      const id = typeof next.id === "string" ? parseInt(next.id) : next.id;
-      setDetailDocId(id);
+      const nextDoc = documents[docIndex + 1];
+      if (nextDoc) {
+        const id = typeof nextDoc.id === "string" ? parseInt(nextDoc.id) : nextDoc.id;
+        setDetailDocId(id);
+      }
     }
   }, [docIndex, documents]);
 
@@ -472,8 +477,8 @@ export const DocumentsHub = ({
 
               {/* Filter toolbar */}
               <FilterEditor
-                rules={filterRules}
-                onRulesChange={handleFilterChange}
+                filterRules={filterRules}
+                onFilterRulesChange={handleFilterChange}
                 correspondents={correspondents}
                 documentTypes={docTypes}
                 tags={tags}
@@ -646,16 +651,16 @@ export const DocumentsHub = ({
                   <DocumentDetailPanel
                     document={{
                       id: typeof detailDoc.id === "string" ? parseInt(detailDoc.id) : detailDoc.id,
-                      title: detailDoc.title || detailDoc.filename,
+                      title: (detailDoc as Record<string, unknown>).title as string || detailDoc.filename,
                       created: detailDoc.created_at,
                       added: detailDoc.created_at,
                       correspondentId: detailDoc.correspondent_id || null,
                       documentTypeId: detailDoc.document_type_id || null,
-                      tagIds: detailDoc.tag_ids || [],
+                      tagIds: Array.isArray((detailDoc as Record<string, unknown>).tag_ids) ? (detailDoc as Record<string, unknown>).tag_ids as number[] : [],
                       storagePathId: detailDoc.storage_path_id || null,
-                      asn: detailDoc.archive_serial_number || null,
+                      asn: (detailDoc as Record<string, unknown>).archive_serial_number as number || null,
                       originalFilename: detailDoc.filename,
-                      mimeType: detailDoc.mime_type,
+                      mimeType: detailDoc.file_type,
                       fileSize: detailDoc.size,
                       notes: [],
                     }}
@@ -663,12 +668,12 @@ export const DocumentsHub = ({
                     documentTypes={docTypes}
                     tags={tags}
                     storagePaths={storagePaths}
-                    onSave={(changes) => {
+                    onSave={(_changes) => {
                       toast.success("Document updated");
                       // TODO: wire to mutation
                     }}
-                    onAddNote={(text) => toast.info("Note added")}
-                    onDeleteNote={(id) => toast.info("Note deleted")}
+                    onAddNote={(_text) => toast.info("Note added")}
+                    onDeleteNote={(_id) => toast.info("Note deleted")}
                     onClose={() => {
                       setDetailPanelOpen(false);
                       setDetailDocId(null);

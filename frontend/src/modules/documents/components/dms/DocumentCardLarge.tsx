@@ -6,7 +6,7 @@
  */
 
 import { motion } from "framer-motion";
-import { FileText, MoreVertical, StickyNote, ExternalLink } from "lucide-react";
+import { FileText, MoreVertical, StickyNote } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { GlassCard } from "@/shared/ui";
 import { TagBadge } from "./TagBadge";
