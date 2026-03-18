@@ -95,7 +95,7 @@ export const useOpenDocuments = create<OpenDocumentsState>((set, get) => ({
 
     // At max capacity — evict oldest (last in array, Paperless L67)
     if (state.openDocs.length >= MAX_OPEN_DOCUMENTS) {
-      const evictedDoc = state.openDocs[state.openDocs.length - 1];
+      const evictedDoc = state.openDocs[state.openDocs.length - 1]!;
 
       // If oldest is dirty, caller needs to show confirmation
       if (state.dirtyDocs.has(evictedDoc.id)) {

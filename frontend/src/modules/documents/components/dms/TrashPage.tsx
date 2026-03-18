@@ -17,7 +17,6 @@ import {
   Trash2,
   RotateCcw,
   AlertTriangle,
-  FileText,
   CheckSquare,
   Square,
   Clock,
