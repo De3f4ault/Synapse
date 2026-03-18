@@ -1,10 +1,12 @@
 """
-Document processing service.
+Document processing service — Embeddings & Chunking.
 
-Handles text extraction from various document formats,
-chunking, and preparation for embedding generation.
+Used by process_document_task for text extraction, chunking,
+and preparation for vector embedding generation.
 
-Enhanced with OCR support for scanned documents and images.
+NOTE: Document INTAKE (upload → parse → store → index) is now
+handled by the DMS ingestion pipeline (services/ingestion/).
+This module handles the EMBEDDING phase that runs AFTER ingestion.
 """
 
 import logging
@@ -19,7 +21,12 @@ MIN_TEXT_LENGTH = 50
 
 
 class DocumentProcessor:
-    """Process documents to extract text content."""
+    """
+    Process documents to extract text for embedding generation.
+
+    Used by process_document_task for chunking + vector embedding.
+    Document intake is handled by services/ingestion/pipeline.py.
+    """
 
     def __init__(self, enable_ocr: bool = True):
         """

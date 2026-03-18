@@ -85,9 +85,38 @@ async def save_uploaded_file(file: UploadFile, filepath: str) -> tuple[int, str]
     return total_size, sha256.hexdigest()
 
 
-# ============================================================================
-# Thumbnail Generation
-# ============================================================================
+async def store_to_final_path(doc, db) -> str:
+    """
+    Move a document from its upload path to the template-based originals directory.
+
+    Called after processing when metadata (correspondent, type) is known.
+    Updates doc.file_path and doc.content_hash in-place (caller must commit).
+
+    Sourced from Paperless consumer.py L496-505 — dual-path store after parse.
+
+    Returns:
+        New relative path in originals_dir.
+    """
+    from app.services.storage.file_manager import FileManager
+
+    fm = FileManager()
+
+    # Current path is the upload location
+    old_path = doc.file_path
+    if not os.path.exists(old_path):
+        logger.warning(f"store_to_final_path: source {old_path} not found, skipping")
+        return doc.file_path
+
+    # Move to template-based location
+    new_rel = fm.store_original(old_path, doc)
+    doc.file_path = new_rel
+
+    # Recompute checksum at final location
+    final_full = os.path.join(fm.config.originals_dir, new_rel)
+    doc.content_hash = fm.compute_checksum(final_full)
+
+    logger.info(f"Document {doc.id} stored: {old_path} → {new_rel}")
+    return new_rel
 
 
 def generate_thumbnail(file_path: str, mime_type: str = "application/pdf") -> Optional[str]:
@@ -130,15 +159,26 @@ def generate_thumbnail(file_path: str, mime_type: str = "application/pdf") -> Op
 
 
 async def trigger_document_processing(document_id: int) -> bool:
-    """Queue document for background processing (Celery). Returns True on success."""
+    """Queue document for background processing via DMS ingestion pipeline."""
     try:
-        from app.services.background.tasks import process_document_task
-        task = process_document_task.delay(document_id)
-        logger.info("document_queued", document_id=document_id, task_id=task.id)
+        from app.services.background.tasks import consume_document
+        from app.db.session import AsyncSessionLocal
+        from app.models.document import Document
+
+        async with AsyncSessionLocal() as db:
+            doc = await db.get(Document, document_id)
+            if not doc:
+                logger.error("document_not_found", document_id=document_id)
+                return False
+
+            consume_document.delay({
+                "source_path": doc.file_path,
+                "original_filename": doc.filename,
+                "user_id": doc.user_id,
+                "document_id": document_id,
+            })
+        logger.info("document_queued_dms", document_id=document_id)
         return True
-    except ImportError:
-        logger.warning("celery_unavailable", document_id=document_id)
-        return False
     except Exception as e:
         logger.error("queue_failed", document_id=document_id, error=str(e))
         return False

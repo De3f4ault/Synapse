@@ -87,33 +87,41 @@ class WebhookHandler:
         """
         Handle document uploaded event.
 
-        Triggers document processing task.
+        Triggers DMS ingestion pipeline.
 
         Args:
-            event_data: Event data containing document_id
+            event_data: Event data containing document_id, source_path, filename, user_id
         """
-        from .tasks import process_document_task
+        from .tasks import consume_document
 
         document_id = event_data.get("document_id")
+        source_path = event_data.get("source_path")
+        filename = event_data.get("filename", "unknown")
+        user_id = event_data.get("user_id")
 
         if not document_id:
             logger.error("Missing document_id in event data")
             return
 
-        # Trigger async processing
-        process_document_task.delay(document_id)
-        logger.info(f"Triggered document processing for {document_id}")
+        # Route through DMS pipeline
+        consume_document.delay({
+            "source_path": source_path or "",
+            "original_filename": filename,
+            "user_id": user_id or 0,
+            "document_id": document_id,
+        })
+        logger.info(f"Triggered DMS ingestion for document {document_id}")
 
     def _handle_document_updated(self, event_data: Dict[str, Any]) -> None:
         """
         Handle document updated event.
 
-        Triggers re-indexing task.
+        Triggers re-processing via DMS pipeline.
 
         Args:
             event_data: Event data containing document_id
         """
-        from .tasks import process_document_task
+        from .tasks import reprocess_document
 
         document_id = event_data.get("document_id")
 
@@ -121,9 +129,9 @@ class WebhookHandler:
             logger.error("Missing document_id in event data")
             return
 
-        # Re-process document
-        process_document_task.delay(document_id)
-        logger.info(f"Triggered document re-indexing for {document_id}")
+        # Re-process through DMS pipeline
+        reprocess_document.delay(document_id)
+        logger.info(f"Triggered DMS reprocessing for document {document_id}")
 
     def _handle_document_deleted(self, event_data: Dict[str, Any]) -> None:
         """

@@ -1,256 +1,435 @@
 """
-DMS FileManager — template-based document file management.
+DMS FileManager — Template-based document file storage.
 
-Composes the existing StorageManager with DMS-specific functionality:
-- Template-based file naming using document metadata
-- Dual-path storage (original + archive PDF/A)
-- SHA-256 checksum computation
-- Automatic rename-on-metadata-change
+Sourced from Paperless-ngx:
+  - file_handling.py L44-178: generate_unique_filename(), generate_filename()
+  - file_handling.py L11-41:  create_source_path_directory(), delete_empty_directories()
+  - consumer.py L496-528:     dual-path file writes (original + archive)
+  - signals/handlers.py L71-100: update_filename_and_move_files()
 
-Sourced from Paperless-ngx file_handling.py — adapted for Synapse.
+Composes the existing StorageManager — no breaking changes to existing
+storage infrastructure. FileManager handles DMS-specific concerns:
+  - Template-based path resolution from Document ORM objects
+  - Dual-path storage (original + archive)
+  - Auto-rename on metadata change
+  - Checksum computation
+  - Collision avoidance
 """
 
 import hashlib
 import logging
 import os
+import re
 import shutil
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-from pathvalidate import sanitize_filename
-
-from app.config.storage import StorageConfig, storage_config
+from app.config.storage import storage_config, StorageConfig
 
 logger = logging.getLogger(__name__)
 
 
 class FileManager:
     """
-    DMS file manager layered on top of StorageManager.
+    Manages document file storage with template-based paths.
 
-    Provides Paperless-style dual-path document storage:
-    - originals_dir/ → the file exactly as uploaded
-    - archive_dir/   → the PDF/A archive generated during parsing
-    - thumbnail_dir/ → generated thumbnails
-
-    File naming is template-based using document metadata.
+    Sourced from Paperless file_handling.py and signals/handlers.py.
+    Uses composition — delegates low-level ops to the filesystem
+    while adding template resolution, dual-path storage, and auto-rename.
     """
+
+    # Template variables available for filename formatting
+    # (from Paperless file_handling.py context dict)
+    TEMPLATE_VARIABLES = [
+        "correspondent", "document_type", "title",
+        "created_year", "created_month", "created_day",
+        "added_year", "added_month", "added_day",
+        "document_id",
+    ]
 
     def __init__(self, config: Optional[StorageConfig] = None):
         self.config = config or storage_config
-        self.config.ensure_directories()
+        self._ensure_directories()
 
-    # -----------------------------------------------------------------------
-    # Path resolution
-    # -----------------------------------------------------------------------
+    def _ensure_directories(self):
+        """Create DMS storage directories if they don't exist."""
+        for d in [
+            self.config.originals_dir,
+            self.config.archive_dir,
+            self.config.thumbnail_dir,
+            self.config.scratch_dir,
+            self.config.consumption_dir,
+        ]:
+            os.makedirs(d, exist_ok=True)
+
+    # ------------------------------------------------------------------
+    # Template resolution
+    # ------------------------------------------------------------------
 
     def resolve_path(
         self,
-        filename: str,
-        *,
-        created_date: Optional[datetime] = None,
-        correspondent: Optional[str] = None,
-        document_type: Optional[str] = None,
-        title: Optional[str] = None,
-        asn: Optional[int] = None,
-        owner: Optional[str] = None,
-        tags: Optional[str] = None,
+        document,
+        template: Optional[str] = None,
     ) -> str:
         """
-        Resolve a storage path from the filename template.
+        Resolve a filename template using document metadata.
 
-        Template variables:
-            {created_year}   — document created year (YYYY)
-            {created_month}  — document created month (MM)
-            {created_day}    — document created day (DD)
-            {correspondent}  — correspondent name or 'none'
-            {document_type}  — document type name or 'none'
-            {title}          — document title (sanitized)
-            {asn}            — archive serial number or 'none'
-            {owner}          — document owner username or 'none'
-            {tags}           — comma-joined tag names or 'none'
+        Sourced from Paperless file_handling.py generate_filename() L125-177.
+
+        Args:
+            document: Document ORM instance.
+            template: Override template string. If None, uses
+                      document.storage_path or default_filename_format.
 
         Returns:
-            Relative path suitable for joining with originals_dir/archive_dir.
+            Relative path (e.g., "2026/ACME Corp/Invoice_March.pdf").
         """
-        now = created_date or datetime.now()
+        if template is None:
+            # Check StoragePath relationship first, then fall back to default
+            sp = getattr(document, "storage_path_rel", None)
+            if sp and hasattr(sp, "path"):
+                template = sp.path
+            else:
+                template = self.config.default_filename_format
 
-        # Build substitution dict
-        subs = {
-            "created_year": now.strftime("%Y"),
-            "created_month": now.strftime("%m"),
-            "created_day": now.strftime("%d"),
-            "correspondent": sanitize_filename(correspondent or "none"),
-            "document_type": sanitize_filename(document_type or "none"),
-            "title": sanitize_filename(title or Path(filename).stem),
-            "asn": str(asn) if asn else "none",
-            "owner": sanitize_filename(owner or "none"),
-            "tags": sanitize_filename(tags or "none"),
+        context = self._build_template_context(document)
+
+        # Format template with context
+        try:
+            path = template.format(**context)
+        except (KeyError, ValueError, IndexError) as e:
+            logger.warning(f"Template '{template}' failed: {e}. Using fallback.")
+            path = f"{context['created_year']}/{context['title']}"
+
+        # Sanitize for filesystem safety
+        path = self._sanitize_path(path)
+
+        # Add original file extension
+        ext = Path(document.filename).suffix if document.filename else ""
+        if ext and not path.endswith(ext):
+            path = f"{path}{ext}"
+
+        return path
+
+    def resolve_archive_path(
+        self,
+        document,
+        template: Optional[str] = None,
+    ) -> str:
+        """
+        Archive version is always .pdf (PDF/A).
+
+        Sourced from Paperless file_handling.py L56-60.
+        """
+        path = self.resolve_path(document, template)
+        return str(Path(path).with_suffix(".pdf"))
+
+    def _build_template_context(self, document) -> dict:
+        """
+        Build template variable context from document metadata.
+
+        Maps document fields to template variables.
+        """
+        # Correspondent name
+        correspondent = "Unknown"
+        if hasattr(document, "correspondent") and document.correspondent:
+            correspondent = document.correspondent.name
+        elif hasattr(document, "correspondent_id") and document.correspondent_id:
+            correspondent = f"correspondent_{document.correspondent_id}"
+
+        # Document type name
+        doc_type = "Uncategorized"
+        if hasattr(document, "document_type") and document.document_type:
+            doc_type = document.document_type.name
+        elif hasattr(document, "document_type_id") and document.document_type_id:
+            doc_type = f"type_{document.document_type_id}"
+
+        # Title from filename stem
+        title = Path(document.filename).stem if document.filename else "untitled"
+
+        # Created date
+        created = getattr(document, "created_date", None)
+        now = datetime.utcnow()
+
+        # Added date (created_at timestamp)
+        added = getattr(document, "created_at", None) or now
+
+        return {
+            "correspondent": correspondent,
+            "document_type": doc_type,
+            "title": title,
+            "created_year": str(created.year if created else now.year),
+            "created_month": f"{created.month:02d}" if created else "00",
+            "created_day": f"{created.day:02d}" if created else "00",
+            "added_year": str(added.year),
+            "added_month": f"{added.month:02d}",
+            "added_day": f"{added.day:02d}",
+            "document_id": str(document.id) if document.id else "0",
         }
 
-        try:
-            relative = self.config.filename_format.format(**subs)
-        except KeyError as e:
-            logger.warning("Invalid filename format key %s, using default", e)
-            relative = f"{subs['created_year']}/{subs['title']}"
-
-        # Append the file extension
-        ext = Path(filename).suffix
-        if not relative.endswith(ext):
-            relative = relative + ext
-
-        return relative
-
-    # -----------------------------------------------------------------------
-    # Store operations
-    # -----------------------------------------------------------------------
-
-    def store_original(
-        self,
-        source_path: str,
-        relative_path: str,
-    ) -> str:
+    def _sanitize_path(self, path: str) -> str:
         """
-        Copy a file into the originals directory.
+        Sanitize a path for filesystem safety.
+
+        Removes invalid characters while preserving directory separators.
+        """
+        # Replace invalid chars with underscores
+        path = re.sub(r'[<>:"|?*]', "_", path)
+        # Collapse multiple slashes/underscores
+        path = re.sub(r"/{2,}", "/", path)
+        path = re.sub(r"_{2,}", "_", path)
+        # Remove leading/trailing whitespace per component
+        parts = [p.strip() for p in path.split("/") if p.strip()]
+        return "/".join(parts)
+
+    # ------------------------------------------------------------------
+    # File storage operations
+    # ------------------------------------------------------------------
+
+    def store_original(self, source_path: str, document) -> str:
+        """
+        Move original file to ORIGINALS_DIR using resolved template path.
+
+        Sourced from Paperless consumer.py L496-505.
+
+        Args:
+            source_path: Current file location (upload path).
+            document: Document ORM instance.
 
         Returns:
-            Absolute path to the stored original.
+            Relative path stored (to be saved as document.file_path).
         """
-        dest = self.config.originals_dir / relative_path
-        dest.parent.mkdir(parents=True, exist_ok=True)
+        rel_path = self._unique_path(
+            self.resolve_path(document),
+            self.config.originals_dir,
+        )
+        dest = os.path.join(self.config.originals_dir, rel_path)
+        os.makedirs(os.path.dirname(dest), exist_ok=True)
+        shutil.move(source_path, dest)
+        logger.info(f"Stored original: {rel_path}")
+        return rel_path
 
-        shutil.copy2(source_path, dest)
-        logger.info("Stored original: %s", dest)
-        return str(dest)
-
-    def store_archive(
-        self,
-        source_path: str,
-        relative_path: str,
-    ) -> str:
+    def store_archive(self, source_path: str, document) -> str:
         """
-        Copy a file into the archive directory.
+        Move archive PDF/A to ARCHIVE_DIR.
 
-        The archive copy is typically a PDF/A generated by the parser.
+        Sourced from Paperless consumer.py L513-523.
 
         Returns:
-            Absolute path to the stored archive.
+            Relative path stored (to be saved as document.archive_path).
         """
-        # Force .pdf extension for archive files
-        archive_relative = Path(relative_path).with_suffix(".pdf")
-        dest = self.config.archive_dir / archive_relative
-        dest.parent.mkdir(parents=True, exist_ok=True)
+        rel_path = self._unique_path(
+            self.resolve_archive_path(document),
+            self.config.archive_dir,
+        )
+        dest = os.path.join(self.config.archive_dir, rel_path)
+        os.makedirs(os.path.dirname(dest), exist_ok=True)
+        shutil.move(source_path, dest)
+        logger.info(f"Stored archive: {rel_path}")
+        return rel_path
 
-        shutil.copy2(source_path, dest)
-        logger.info("Stored archive: %s", dest)
-        return str(dest)
-
-    def store_thumbnail(
-        self,
-        source_path: str,
-        document_id: int,
-    ) -> str:
+    def store_thumbnail(self, source_path: str, document_id: int) -> str:
         """
-        Store a thumbnail image.
+        Store thumbnail as {id:07d}.webp.
+
+        Sourced from Paperless models.py L39-41.
 
         Returns:
-            Absolute path to the stored thumbnail.
+            Filename stored (e.g., "0000042.webp").
         """
-        ext = Path(source_path).suffix or ".png"
-        dest = self.config.thumbnail_dir / f"{document_id}{ext}"
-        dest.parent.mkdir(parents=True, exist_ok=True)
+        filename = f"{document_id:07d}.webp"
+        dest = os.path.join(self.config.thumbnail_dir, filename)
+        os.makedirs(os.path.dirname(dest), exist_ok=True)
+        shutil.move(source_path, dest)
+        logger.info(f"Stored thumbnail: {filename}")
+        return filename
 
-        shutil.copy2(source_path, dest)
-        logger.info("Stored thumbnail: %s", dest)
-        return str(dest)
+    # ------------------------------------------------------------------
+    # Auto-rename on metadata change
+    # ------------------------------------------------------------------
 
-    # -----------------------------------------------------------------------
-    # File operations
-    # -----------------------------------------------------------------------
-
-    def update_filename_and_move_files(
-        self,
-        old_relative: str,
-        new_relative: str,
-    ) -> tuple[Optional[str], Optional[str]]:
+    def update_filename_and_move_files(self, document, old_values: dict = None):
         """
-        Rename/move files when document metadata changes.
+        When metadata changes that alter the storage path, rename files on disk.
 
-        Moves both original and archive files.
+        Sourced from Paperless signals/handlers.py L71-100
+        update_filename_and_move_files().
 
-        Returns:
-            Tuple of (new_original_path, new_archive_path).
+        Args:
+            document: Updated Document ORM instance.
+            old_values: Dict of old field values (for logging).
         """
-        new_orig = None
-        new_arch = None
+        new_path = self._unique_path(
+            self.resolve_path(document),
+            self.config.originals_dir,
+        )
+
+        if document.file_path == new_path:
+            return  # No change needed
+
+        old_rel = document.file_path
+        logger.info(f"Renaming doc {document.id}: {old_rel} → {new_path}")
 
         # Move original
-        old_orig = self.config.originals_dir / old_relative
-        if old_orig.exists():
-            new_dest = self.config.originals_dir / new_relative
-            new_dest.parent.mkdir(parents=True, exist_ok=True)
-            shutil.move(str(old_orig), str(new_dest))
-            new_orig = str(new_dest)
-            logger.info("Moved original: %s → %s", old_orig, new_dest)
+        old_full = os.path.join(self.config.originals_dir, old_rel)
+        new_full = os.path.join(self.config.originals_dir, new_path)
 
-        # Move archive
-        old_archive_rel = Path(old_relative).with_suffix(".pdf")
-        new_archive_rel = Path(new_relative).with_suffix(".pdf")
-        old_arch = self.config.archive_dir / old_archive_rel
-        if old_arch.exists():
-            new_dest = self.config.archive_dir / new_archive_rel
-            new_dest.parent.mkdir(parents=True, exist_ok=True)
-            shutil.move(str(old_arch), str(new_dest))
-            new_arch = str(new_dest)
-            logger.info("Moved archive: %s → %s", old_arch, new_dest)
+        if os.path.exists(old_full):
+            os.makedirs(os.path.dirname(new_full), exist_ok=True)
+            shutil.move(old_full, new_full)
+            self._cleanup_empty_dirs(
+                os.path.dirname(old_full),
+                self.config.originals_dir,
+            )
 
-        return new_orig, new_arch
+        document.file_path = new_path
+
+        # Move archive if exists
+        if document.archive_path:
+            new_archive = self._unique_path(
+                self.resolve_archive_path(document),
+                self.config.archive_dir,
+            )
+            old_archive_full = os.path.join(
+                self.config.archive_dir, document.archive_path
+            )
+            new_archive_full = os.path.join(
+                self.config.archive_dir, new_archive
+            )
+
+            if os.path.exists(old_archive_full):
+                os.makedirs(os.path.dirname(new_archive_full), exist_ok=True)
+                shutil.move(old_archive_full, new_archive_full)
+                self._cleanup_empty_dirs(
+                    os.path.dirname(old_archive_full),
+                    self.config.archive_dir,
+                )
+
+            document.archive_path = new_archive
+
+    # ------------------------------------------------------------------
+    # Physical file deletion (for trash and sanity check)
+    # ------------------------------------------------------------------
 
     def delete_document_files(
         self,
-        relative_path: str,
+        file_path: str,
+        archive_path: Optional[str] = None,
         document_id: Optional[int] = None,
-    ) -> None:
-        """Delete all files associated with a document (original, archive, thumbnail)."""
+    ):
+        """
+        Delete all physical files for a document.
+
+        Sourced from Paperless tasks.py L545-559 (empty_trash inline).
+
+        Args:
+            file_path: Relative path in originals_dir.
+            archive_path: Relative path in archive_dir (optional).
+            document_id: For thumbnail deletion.
+        """
         # Original
-        orig = self.config.originals_dir / relative_path
-        if orig.exists():
-            orig.unlink()
-            logger.info("Deleted original: %s", orig)
+        orig = os.path.join(self.config.originals_dir, file_path)
+        if os.path.exists(orig):
+            os.remove(orig)
+            self._cleanup_empty_dirs(
+                os.path.dirname(orig), self.config.originals_dir
+            )
+            logger.info(f"Deleted original: {orig}")
 
         # Archive
-        archive_path = self.config.archive_dir / Path(relative_path).with_suffix(".pdf")
-        if archive_path.exists():
-            archive_path.unlink()
-            logger.info("Deleted archive: %s", archive_path)
+        if archive_path:
+            arch = os.path.join(self.config.archive_dir, archive_path)
+            if os.path.exists(arch):
+                os.remove(arch)
+                self._cleanup_empty_dirs(
+                    os.path.dirname(arch), self.config.archive_dir
+                )
+                logger.info(f"Deleted archive: {arch}")
 
         # Thumbnail
         if document_id:
-            for ext in [".png", ".jpg", ".webp"]:
-                thumb = self.config.thumbnail_dir / f"{document_id}{ext}"
-                if thumb.exists():
-                    thumb.unlink()
-                    logger.info("Deleted thumbnail: %s", thumb)
+            thumb = os.path.join(
+                self.config.thumbnail_dir, f"{document_id:07d}.webp"
+            )
+            if os.path.exists(thumb):
+                os.remove(thumb)
+                logger.info(f"Deleted thumbnail: {thumb}")
 
-    # -----------------------------------------------------------------------
-    # Checksum
-    # -----------------------------------------------------------------------
+    # ------------------------------------------------------------------
+    # Checksum computation
+    # ------------------------------------------------------------------
 
     @staticmethod
-    def compute_checksum(file_path: str, algorithm: str = "sha256") -> str:
+    def compute_checksum(file_path: str) -> str:
         """
-        Compute file checksum.
+        SHA-256 checksum of file (streaming, memory-safe).
 
-        Args:
-            file_path: Path to file.
-            algorithm: Hash algorithm (default sha256).
-
-        Returns:
-            Hexadecimal digest string.
+        Paperless uses MD5 (consumer.py L525-528); Synapse uses SHA-256.
         """
-        h = hashlib.new(algorithm)
+        sha256 = hashlib.sha256()
         with open(file_path, "rb") as f:
             for chunk in iter(lambda: f.read(8192), b""):
-                h.update(chunk)
-        return h.hexdigest()
+                sha256.update(chunk)
+        return sha256.hexdigest()
+
+    # ------------------------------------------------------------------
+    # Collision handling
+    # ------------------------------------------------------------------
+
+    def _unique_path(self, rel_path: str, root_dir: str) -> str:
+        """
+        Ensure path doesn't collide with existing files.
+
+        Sourced from Paperless file_handling.py L84-99:
+        appends _01, _02, etc. to avoid collisions.
+
+        Args:
+            rel_path: Proposed relative path.
+            root_dir: Root directory to check against.
+
+        Returns:
+            Unique relative path.
+        """
+        full = os.path.join(root_dir, rel_path)
+        if not os.path.exists(full):
+            return rel_path
+
+        stem = Path(rel_path).stem
+        suffix = Path(rel_path).suffix
+        parent = str(Path(rel_path).parent)
+
+        counter = 1
+        while True:
+            new_name = f"{stem}_{counter:02d}{suffix}"
+            new_rel = (
+                os.path.join(parent, new_name)
+                if parent != "."
+                else new_name
+            )
+            if not os.path.exists(os.path.join(root_dir, new_rel)):
+                return new_rel
+            counter += 1
+
+    # ------------------------------------------------------------------
+    # Directory cleanup
+    # ------------------------------------------------------------------
+
+    def _cleanup_empty_dirs(self, dir_path: str, root: str):
+        """
+        Remove empty parent directories up to the storage root.
+
+        Sourced from Paperless file_handling.py L15-41
+        delete_empty_directories().
+        """
+        while dir_path and dir_path != root:
+            if not os.path.isdir(dir_path):
+                break
+            try:
+                if not os.listdir(dir_path):
+                    os.rmdir(dir_path)
+                    dir_path = os.path.dirname(dir_path)
+                else:
+                    break
+            except OSError:
+                break

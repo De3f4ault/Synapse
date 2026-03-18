@@ -11,6 +11,7 @@ Sourced from Paperless-ngx sanity_checker.py — adapted for Synapse.
 """
 
 import logging
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
@@ -101,51 +102,68 @@ async def run_sanity_check(db_session) -> SanityCheckResult:
     for doc in documents:
         # Check original file exists
         if doc.file_path:
-            orig_path = Path(doc.file_path)
-            if not orig_path.exists():
+            orig_path = os.path.join(str(storage_config.originals_dir), doc.file_path)
+            if not os.path.exists(orig_path):
                 result.missing_originals.append({
                     "document_id": doc.id,
                     "filename": doc.filename,
-                    "expected_path": str(orig_path),
+                    "expected_path": orig_path,
                 })
-            known_originals.add(str(orig_path))
+            else:
+                # Verify content_hash if available
+                if doc.content_hash:
+                    actual = FileManager.compute_checksum(orig_path)
+                    if actual != doc.content_hash:
+                        result.checksum_mismatches.append({
+                            "document_id": doc.id,
+                            "filename": doc.filename,
+                            "type": "original",
+                            "expected": doc.content_hash,
+                            "actual": actual,
+                        })
+            known_originals.add(orig_path)
 
         # Check archive file exists (if document has one)
         archive_path = getattr(doc, "archive_path", None)
         if archive_path:
-            arch_path = Path(archive_path)
-            if not arch_path.exists():
+            arch_full = os.path.join(str(storage_config.archive_dir), archive_path)
+            if not os.path.exists(arch_full):
                 result.missing_archives.append({
                     "document_id": doc.id,
                     "filename": doc.filename,
-                    "expected_path": str(arch_path),
+                    "expected_path": arch_full,
                 })
             else:
                 # Verify checksum if available
                 archive_checksum = getattr(doc, "archive_checksum", None)
                 if archive_checksum:
-                    actual = FileManager.compute_checksum(str(arch_path))
+                    actual = FileManager.compute_checksum(arch_full)
                     if actual != archive_checksum:
                         result.checksum_mismatches.append({
                             "document_id": doc.id,
                             "filename": doc.filename,
+                            "type": "archive",
                             "expected": archive_checksum,
                             "actual": actual,
                         })
-            known_archives.add(str(arch_path))
+            known_archives.add(arch_full)
 
     # Check for orphan files on disk
-    originals_dir = storage_config.originals_dir
-    if originals_dir.exists():
-        for f in originals_dir.rglob("*"):
-            if f.is_file() and str(f) not in known_originals:
-                result.orphan_originals.append(str(f))
+    originals_dir = str(storage_config.originals_dir)
+    if os.path.isdir(originals_dir):
+        for root, dirs, files in os.walk(originals_dir):
+            for fname in files:
+                full = os.path.join(root, fname)
+                if full not in known_originals:
+                    result.orphan_originals.append(full)
 
-    archive_dir = storage_config.archive_dir
-    if archive_dir.exists():
-        for f in archive_dir.rglob("*"):
-            if f.is_file() and str(f) not in known_archives:
-                result.orphan_archives.append(str(f))
+    archive_dir = str(storage_config.archive_dir)
+    if os.path.isdir(archive_dir):
+        for root, dirs, files in os.walk(archive_dir):
+            for fname in files:
+                full = os.path.join(root, fname)
+                if full not in known_archives:
+                    result.orphan_archives.append(full)
 
     logger.info("Sanity check complete: %s", result.summary)
     return result
@@ -187,6 +205,7 @@ async def empty_trash(db_session, older_than_days: int = 30) -> int:
             if doc.file_path:
                 file_manager.delete_document_files(
                     doc.file_path,
+                    archive_path=doc.archive_path,
                     document_id=doc.id,
                 )
 

@@ -1,71 +1,44 @@
 """
-Storage configuration for DMS document management.
+DMS Storage configuration.
 
-Provides directory layout configuration for originals, archives,
-thumbnails, consumption, and scratch space.
+Directory layout and filename template settings for the document
+management system. All values overridable via SYNAPSE_STORAGE_* env vars.
 
-All paths read from environment variables with SYNAPSE_STORAGE_ prefix.
-Falls back to sensible defaults under data/.
+Sourced from Paperless-ngx settings:
+  - ORIGINALS_DIR, ARCHIVE_DIR, THUMBNAIL_DIR, SCRATCH_DIR
+  - FILENAME_FORMAT (default template)
 """
 
 import os
-from pathlib import Path
-from typing import Optional
 
-# ---------------------------------------------------------------------------
-# Base data directory — all storage relative to this
-# ---------------------------------------------------------------------------
-_DEFAULT_DATA_DIR = os.getenv("SYNAPSE_DATA_DIR", "data")
+from pydantic_settings import BaseSettings
 
 
-class StorageConfig:
+class StorageConfig(BaseSettings):
     """
-    DMS storage directory configuration.
+    Storage directory and filename template configuration.
 
-    Reads from environment variables:
-        SYNAPSE_STORAGE_ORIGINALS_DIR  — original uploaded files
-        SYNAPSE_STORAGE_ARCHIVE_DIR    — PDF/A archive copies
-        SYNAPSE_STORAGE_THUMBNAIL_DIR  — generated thumbnails
-        SYNAPSE_STORAGE_CONSUMPTION_DIR — auto-consumption watch folder
-        SYNAPSE_STORAGE_SCRATCH_DIR    — temporary processing scratch space
-        SYNAPSE_STORAGE_FILENAME_FORMAT — template for stored filenames
+    Environment variables (prefix: SYNAPSE_STORAGE_):
+      SYNAPSE_STORAGE_ORIGINALS_DIR  — pristine source files
+      SYNAPSE_STORAGE_ARCHIVE_DIR    — PDF/A archive copies
+      SYNAPSE_STORAGE_THUMBNAIL_DIR  — document thumbnails
+      SYNAPSE_STORAGE_SCRATCH_DIR    — temporary processing
+      SYNAPSE_STORAGE_CONSUMPTION_DIR — watched folder for auto-ingest
+      SYNAPSE_STORAGE_DEFAULT_FILENAME_FORMAT — template string
     """
+    originals_dir: str = "data/originals"
+    archive_dir: str = "data/archive"
+    thumbnail_dir: str = "data/thumbnails"
+    scratch_dir: str = "/tmp/synapse_scratch"
+    consumption_dir: str = "data/consume"
 
-    def __init__(self):
-        base = Path(_DEFAULT_DATA_DIR)
-        self.originals_dir = Path(
-            os.getenv("SYNAPSE_STORAGE_ORIGINALS_DIR", str(base / "originals"))
-        )
-        self.archive_dir = Path(
-            os.getenv("SYNAPSE_STORAGE_ARCHIVE_DIR", str(base / "archive"))
-        )
-        self.thumbnail_dir = Path(
-            os.getenv("SYNAPSE_STORAGE_THUMBNAIL_DIR", str(base / "thumbnails"))
-        )
-        self.consumption_dir = Path(
-            os.getenv("SYNAPSE_STORAGE_CONSUMPTION_DIR", str(base / "consumption"))
-        )
-        self.scratch_dir = Path(
-            os.getenv("SYNAPSE_STORAGE_SCRATCH_DIR", str(base / "scratch"))
-        )
-        self.filename_format: str = os.getenv(
-            "SYNAPSE_STORAGE_FILENAME_FORMAT",
-            "{created_year}/{correspondent}/{title}",
-        )
+    # Default filename template (Paperless file_handling.py L136-143)
+    # Used when no StoragePath is assigned to the document
+    default_filename_format: str = "{created_year}/{correspondent}/{title}"
 
-    def ensure_directories(self) -> None:
-        """Create all configured storage directories if they don't exist."""
-        for directory in [
-            self.originals_dir,
-            self.archive_dir,
-            self.thumbnail_dir,
-            self.consumption_dir,
-            self.scratch_dir,
-        ]:
-            directory.mkdir(parents=True, exist_ok=True)
+    class Config:
+        env_prefix = "SYNAPSE_STORAGE_"
 
 
-# ---------------------------------------------------------------------------
-# Module-level singleton
-# ---------------------------------------------------------------------------
+# Singleton instance
 storage_config = StorageConfig()
