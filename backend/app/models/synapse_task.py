@@ -43,6 +43,8 @@ class TaskName(str, enum.Enum):
     """Known task names for categorization."""
 
     PROCESS_DOCUMENT = "process_document"
+    CONSUME_DOCUMENT = "consume_document"
+    REPROCESS_DOCUMENT = "reprocess_document"
     INGEST_RAG = "ingest_rag"
     BATCH_INGEST = "batch_ingest"
     SEND_EMAIL = "send_email"

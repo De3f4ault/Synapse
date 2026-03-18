@@ -5,6 +5,7 @@ All SQLAlchemy ORM models are exported from here.
 
 UPDATED: Added ActivityLog model.
 UPDATED: Added SynapseTask for Celery task tracking.
+UPDATED: Added DMS classification models (Phase 3) and saved views (Phase 4).
 """
 
 from .base import Base
@@ -14,6 +15,9 @@ from .flashcard import Flashcard
 from .review import Review
 from .note import Note
 from .note_version import NoteVersion
+# DMS: document_tags MUST be imported before Document
+# so the Table is registered in Base.metadata for relationship resolution.
+from .document_tags import document_tags
 from .document import Document
 from .document_chunk import DocumentChunk
 from .document_folder import DocumentFolder, DEFAULT_SYSTEM_FOLDERS
@@ -42,6 +46,25 @@ from .synapse_task import SynapseTask, TaskStatus, TaskType, TaskName
 from .intelligence import IntelligenceAdaptationLog
 from .ranking_weight import RankingWeight
 from .notification import Notification, NotificationType, NotificationCategory, NotificationStatus
+
+# DMS Classification (Phase 3)
+from .matching import MatchingAlgorithm
+from .correspondent import Correspondent
+from .document_type import DocumentType
+from .storage_path import StoragePath
+
+# DMS Search (Phase 4)
+from .saved_view import SavedView, SavedViewFilterRule, FilterRuleType
+
+# DMS Workflows (Phase 5)
+from .workflow import (
+    Workflow, WorkflowTrigger, WorkflowAction, WorkflowRun,
+    WorkflowTriggerType, WorkflowActionType, DocumentSource,
+    workflow_triggers_assoc, workflow_actions_assoc,
+)
+
+# DMS Permissions (Phase 6)
+from .document_permission import DocumentPermission, ShareLink, PermissionLevel
 
 __all__ = [
     "Base",
@@ -85,4 +108,28 @@ __all__ = [
     "NotificationStatus",
     "DocumentFolder",
     "DEFAULT_SYSTEM_FOLDERS",
+    # DMS Classification (Phase 3)
+    "document_tags",
+    "MatchingAlgorithm",
+    "Correspondent",
+    "DocumentType",
+    "StoragePath",
+    # DMS Search (Phase 4)
+    "SavedView",
+    "SavedViewFilterRule",
+    "FilterRuleType",
+    # DMS Workflows (Phase 5)
+    "Workflow",
+    "WorkflowTrigger",
+    "WorkflowAction",
+    "WorkflowRun",
+    "WorkflowTriggerType",
+    "WorkflowActionType",
+    "DocumentSource",
+    "workflow_triggers_assoc",
+    "workflow_actions_assoc",
+    # DMS Permissions (Phase 6)
+    "DocumentPermission",
+    "ShareLink",
+    "PermissionLevel",
 ]

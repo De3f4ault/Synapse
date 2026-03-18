@@ -2,10 +2,13 @@
 Background task service using Celery.
 
 Provides asynchronous task execution for long-running
-operations including email, reports, data processing, and embedding generation.
+operations including email, reports, data processing,
+DMS ingestion pipeline, and embedding generation.
 """
 
 from .tasks import (
+    consume_document,
+    reprocess_document,
     process_document_task,
     send_email_task,
     generate_report_task,
@@ -22,6 +25,8 @@ from .celery_app import celery_app
 from .webhook_handlers import handle_webhook_event
 
 __all__ = [
+    "consume_document",
+    "reprocess_document",
     "process_document_task",
     "send_email_task",
     "generate_report_task",

@@ -1,11 +1,14 @@
 """
 Platform Graph API.
 
-Provides graph relation and intelligence endpoints.
+Provides graph relation, intelligence, and analytics endpoints.
 
 Endpoints:
   GET /graph/relations/{type}/{id} - Get related entities
   GET /graph/context/{type}/{id} - Get graph intelligence context
+  GET /graph/analytics - Full graph analytics dashboard
+  GET /graph/analytics/hubs - Most connected entities
+  POST /graph/refresh - Trigger semantic link refresh
 """
 
 from fastapi import APIRouter, Depends
@@ -25,6 +28,71 @@ from app.schemas.platform import (
 )
 
 router = APIRouter()
+
+
+# ============================================================================
+# Graph Analytics
+# ============================================================================
+
+
+@router.get(
+    "/analytics",
+    summary="Graph Analytics Dashboard",
+    description="Get aggregate knowledge graph metrics: stats, hubs, orphans, clusters, distribution, growth.",
+)
+async def get_graph_analytics(
+    days: int = 30,
+    hub_limit: int = 10,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    """
+    Full graph analytics dashboard.
+
+    Returns aggregate metrics about the user's knowledge graph
+    including density, hub detection, orphan nodes, clusters,
+    link type distribution, and growth trends.
+    """
+    from app.services.graph.analytics import GraphAnalytics
+
+    analytics = GraphAnalytics(db)
+
+    stats = await analytics.get_graph_stats(current_user.id)
+    distribution = await analytics.get_link_type_distribution(current_user.id)
+    clusters = await analytics.get_cluster_summary(current_user.id)
+    orphans = await analytics.get_orphan_nodes(current_user.id)
+    growth = await analytics.get_growth_trend(current_user.id, days=days)
+    hubs = await analytics.get_most_connected(current_user.id, limit=hub_limit)
+
+    return {
+        "stats": stats,
+        "hubs": hubs,
+        "orphans": orphans,
+        "clusters": clusters,
+        "link_type_distribution": distribution,
+        "growth_trend": growth,
+    }
+
+
+@router.get(
+    "/analytics/hubs",
+    summary="Most Connected Entities",
+    description="Get the most connected entities (hubs) in the knowledge graph.",
+)
+async def get_graph_hubs(
+    limit: int = 20,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> list[dict]:
+    """
+    Get the most connected entities in the knowledge graph.
+
+    Returns entities ranked by total connections (outgoing + incoming).
+    """
+    from app.services.graph.analytics import GraphAnalytics
+
+    analytics = GraphAnalytics(db)
+    return await analytics.get_most_connected(current_user.id, limit=limit)
 
 
 # ============================================================================
@@ -52,7 +120,7 @@ async def get_entity_relations(
     Queries the links table for edges connected to this entity
     (both outgoing and incoming) and returns them as EntityRelations.
     """
-    from app.services.link_service import LinkService
+    from app.services.graph.link_service import LinkService
     from app.models.link import LinkEntityType
 
     # Map schema EntityType → model LinkEntityType

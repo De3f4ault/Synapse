@@ -174,8 +174,8 @@ async def grade_and_submit(
 
     Returns dict with attempt_id, score, max_score, percentage, time_taken, answer_results.
     """
-    from app.services.quiz_quality import map_quality_score, clamp_duration, normalize_accuracy
-    from app.services.question_sm2_service import update_question_learning_state
+    from app.services.quiz.quality import map_quality_score, clamp_duration, normalize_accuracy
+    from app.services.quiz.sm2 import update_question_learning_state
     from app.models.activity_log import ModuleType
 
     # Get attempt
@@ -381,7 +381,7 @@ async def _wire_graph_link(
 ):
     """Wire knowledge graph link: Document → Quiz (DERIVED)."""
     try:
-        from app.services.graph_linker import GraphLinker
+        from app.services.graph.linker import GraphLinker
         from app.models.link import LinkEntityType as LET, LinkType as LT
 
         linker = GraphLinker(db)

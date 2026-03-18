@@ -9,7 +9,6 @@ import type { DocumentResponse } from '../models/DocumentResponse';
 import type { DocumentUpdateRequest } from '../models/DocumentUpdateRequest';
 import type { MessageResponse } from '../models/MessageResponse';
 import type { MoveDocumentRequest } from '../models/MoveDocumentRequest';
-import type { ProcessingStatus } from '../models/ProcessingStatus';
 import type { ProcessingStatusResponse } from '../models/ProcessingStatusResponse';
 import type { SummaryResponse } from '../models/SummaryResponse';
 import type { CancelablePromise } from '../core/CancelablePromise';
@@ -17,8 +16,8 @@ import { OpenAPI } from '../core/OpenAPI';
 import { request as __request } from '../core/request';
 export class DocumentsService {
     /**
-     * Upload document
-     * Upload a document for processing (PDF, DOCX, TXT, MD, EPUB)
+     * Upload Document
+     * Upload a document for processing. Returns 409 Conflict on duplicates.
      * @param formData
      * @param token Auth token for image/file requests
      * @returns DocumentResponse Successful Response
@@ -42,132 +41,8 @@ export class DocumentsService {
         });
     }
     /**
-     * List documents
-     * Retrieve user's uploaded documents
-     * @param folderId Filter by folder ID (null = root/unfiled documents)
-     * @param includeAll If true, return all documents ignoring folder filter
-     * @param view Smart view filter: 'recent', 'favorites', or 'archived'
-     * @param statusFilter Filter by processing status
-     * @param page Page number
-     * @param pageSize Items per page
-     * @param token Auth token for image/file requests
-     * @returns DocumentResponse Successful Response
-     * @throws ApiError
-     */
-    public static listDocumentsApiV1DocumentsGet(
-        folderId?: (number | null),
-        includeAll: boolean = false,
-        view?: (string | null),
-        statusFilter?: (ProcessingStatus | null),
-        page: number = 1,
-        pageSize: number = 20,
-        token?: (string | null),
-    ): CancelablePromise<Array<DocumentResponse>> {
-        return __request(OpenAPI, {
-            method: 'GET',
-            url: '/api/v1/documents',
-            query: {
-                'folder_id': folderId,
-                'include_all': includeAll,
-                'view': view,
-                'status_filter': statusFilter,
-                'page': page,
-                'page_size': pageSize,
-                'token': token,
-            },
-            errors: {
-                422: `Validation Error`,
-            },
-        });
-    }
-    /**
-     * Get document
-     * Retrieve a specific document by ID
-     * @param documentId
-     * @param token Auth token for image/file requests
-     * @returns DocumentResponse Successful Response
-     * @throws ApiError
-     */
-    public static getDocumentApiV1DocumentsDocumentIdGet(
-        documentId: number,
-        token?: (string | null),
-    ): CancelablePromise<DocumentResponse> {
-        return __request(OpenAPI, {
-            method: 'GET',
-            url: '/api/v1/documents/{document_id}',
-            path: {
-                'document_id': documentId,
-            },
-            query: {
-                'token': token,
-            },
-            errors: {
-                422: `Validation Error`,
-            },
-        });
-    }
-    /**
-     * Delete document
-     * Delete a document and all its chunks
-     * @param documentId
-     * @param keepFile Keep physical file on disk (default: delete it)
-     * @param token Auth token for image/file requests
-     * @returns MessageResponse Successful Response
-     * @throws ApiError
-     */
-    public static deleteDocumentApiV1DocumentsDocumentIdDelete(
-        documentId: number,
-        keepFile: boolean = false,
-        token?: (string | null),
-    ): CancelablePromise<MessageResponse> {
-        return __request(OpenAPI, {
-            method: 'DELETE',
-            url: '/api/v1/documents/{document_id}',
-            path: {
-                'document_id': documentId,
-            },
-            query: {
-                'keep_file': keepFile,
-                'token': token,
-            },
-            errors: {
-                422: `Validation Error`,
-            },
-        });
-    }
-    /**
-     * Update document metadata
-     * Update sector, notes, or reading progress for a document
-     * @param documentId
-     * @param requestBody
-     * @param token Auth token for image/file requests
-     * @returns DocumentResponse Successful Response
-     * @throws ApiError
-     */
-    public static updateDocumentApiV1DocumentsDocumentIdPatch(
-        documentId: number,
-        requestBody: DocumentUpdateRequest,
-        token?: (string | null),
-    ): CancelablePromise<DocumentResponse> {
-        return __request(OpenAPI, {
-            method: 'PATCH',
-            url: '/api/v1/documents/{document_id}',
-            path: {
-                'document_id': documentId,
-            },
-            query: {
-                'token': token,
-            },
-            body: requestBody,
-            mediaType: 'application/json',
-            errors: {
-                422: `Validation Error`,
-            },
-        });
-    }
-    /**
-     * Replace document
-     * Replace an existing document's file while preserving its ID and metadata
+     * Replace Document
+     * Replace an existing document's file while preserving its ID.
      * @param documentId
      * @param formData
      * @param token Auth token for image/file requests
@@ -196,11 +71,141 @@ export class DocumentsService {
         });
     }
     /**
-     * Get document chunks
-     * Retrieve all chunks for a document
+     * List Documents
+     * List user's documents with folder, smart view, and status filtering.
+     * @param folderId Filter by folder ID
+     * @param smartView Smart view: recent, favorites, archived
+     * @param processingStatus Filter by status
+     * @param search Search by filename
+     * @param sortBy Sort field
+     * @param sortOrder asc or desc
+     * @param page
+     * @param pageSize
+     * @param token Auth token for image/file requests
+     * @returns DocumentResponse Successful Response
+     * @throws ApiError
+     */
+    public static listDocumentsApiV1DocumentsGet(
+        folderId?: (number | null),
+        smartView?: (string | null),
+        processingStatus?: (string | null),
+        search?: (string | null),
+        sortBy?: (string | null),
+        sortOrder?: (string | null),
+        page: number = 1,
+        pageSize: number = 20,
+        token?: (string | null),
+    ): CancelablePromise<Array<DocumentResponse>> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/documents',
+            query: {
+                'folder_id': folderId,
+                'smart_view': smartView,
+                'processing_status': processingStatus,
+                'search': search,
+                'sort_by': sortBy,
+                'sort_order': sortOrder,
+                'page': page,
+                'page_size': pageSize,
+                'token': token,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Get Document
+     * Get a specific document.
      * @param documentId
-     * @param page Page number
-     * @param pageSize Chunks per page
+     * @param token Auth token for image/file requests
+     * @returns DocumentResponse Successful Response
+     * @throws ApiError
+     */
+    public static getDocumentApiV1DocumentsDocumentIdGet(
+        documentId: number,
+        token?: (string | null),
+    ): CancelablePromise<DocumentResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/documents/{document_id}',
+            path: {
+                'document_id': documentId,
+            },
+            query: {
+                'token': token,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Delete Document
+     * Delete a document (soft delete + physical cleanup by default).
+     * @param documentId
+     * @param keepFile Keep physical file on disk
+     * @param token Auth token for image/file requests
+     * @returns MessageResponse Successful Response
+     * @throws ApiError
+     */
+    public static deleteDocumentApiV1DocumentsDocumentIdDelete(
+        documentId: number,
+        keepFile: boolean = false,
+        token?: (string | null),
+    ): CancelablePromise<MessageResponse> {
+        return __request(OpenAPI, {
+            method: 'DELETE',
+            url: '/api/v1/documents/{document_id}',
+            path: {
+                'document_id': documentId,
+            },
+            query: {
+                'keep_file': keepFile,
+                'token': token,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Update Document
+     * Update document metadata.
+     * @param documentId
+     * @param requestBody
+     * @param token Auth token for image/file requests
+     * @returns DocumentResponse Successful Response
+     * @throws ApiError
+     */
+    public static updateDocumentApiV1DocumentsDocumentIdPatch(
+        documentId: number,
+        requestBody: DocumentUpdateRequest,
+        token?: (string | null),
+    ): CancelablePromise<DocumentResponse> {
+        return __request(OpenAPI, {
+            method: 'PATCH',
+            url: '/api/v1/documents/{document_id}',
+            path: {
+                'document_id': documentId,
+            },
+            query: {
+                'token': token,
+            },
+            body: requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Get Document Chunks
+     * Get all chunks for a document.
+     * @param documentId
+     * @param page
+     * @param pageSize
      * @param token Auth token for image/file requests
      * @returns DocumentChunkResponse Successful Response
      * @throws ApiError
@@ -228,8 +233,8 @@ export class DocumentsService {
         });
     }
     /**
-     * Get processing status
-     * Check document processing status and progress
+     * Get Processing Status
+     * Get document processing status.
      * @param documentId
      * @param token Auth token for image/file requests
      * @returns ProcessingStatusResponse Successful Response
@@ -254,8 +259,8 @@ export class DocumentsService {
         });
     }
     /**
-     * Trigger processing
-     * Manually trigger document processing (if pending or failed)
+     * Trigger Processing
+     * Manually trigger document processing.
      * @param documentId
      * @param token Auth token for image/file requests
      * @returns MessageResponse Successful Response
@@ -280,8 +285,8 @@ export class DocumentsService {
         });
     }
     /**
-     * Get document content
-     * Stream the raw document file (inline viewing)
+     * Get Document Content
+     * Stream the raw document file.
      * @param documentId
      * @param token Auth token for image/file requests
      * @returns any Successful Response
@@ -306,8 +311,8 @@ export class DocumentsService {
         });
     }
     /**
-     * Get document thumbnail
-     * Get a visual thumbnail/cover image for the document
+     * Get Document Thumbnail
+     * Serve the document thumbnail.
      * @param documentId
      * @param token Auth token for image/file requests
      * @returns any Successful Response
@@ -332,8 +337,8 @@ export class DocumentsService {
         });
     }
     /**
-     * Get multiple document thumbnails
-     * Fetch thumbnails for multiple documents in a single request. Returns base64-encoded PNGs.
+     * Get Batch Thumbnails
+     * Batch fetch document thumbnails (base64).
      * @param ids Comma-separated document IDs
      * @param token Auth token for image/file requests
      * @returns any Successful Response
@@ -356,8 +361,8 @@ export class DocumentsService {
         });
     }
     /**
-     * Move document
-     * Move a document to a different folder
+     * Move Document
+     * Move a document to a different folder.
      * @param documentId
      * @param requestBody
      * @param token Auth token for image/file requests
@@ -386,8 +391,8 @@ export class DocumentsService {
         });
     }
     /**
-     * Generate AI summary
-     * Generate or retrieve cached AI summary for a document
+     * Generate Document Summary
+     * Generate or retrieve cached AI summary.
      * @param documentId
      * @param token Auth token for image/file requests
      * @returns SummaryResponse Successful Response

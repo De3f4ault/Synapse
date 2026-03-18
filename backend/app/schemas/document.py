@@ -34,6 +34,10 @@ class DocumentResponse(BaseModel):
     is_favorite: bool = Field(default=False, description="Favorite flag")
     is_pinned: bool = Field(default=False, description="Pinned to top")
     is_archived: bool = Field(default=False, description="Archived flag")
+    # Classification fields (DMS)
+    correspondent_id: Optional[int] = Field(default=None, description="Assigned correspondent ID")
+    document_type_id: Optional[int] = Field(default=None, description="Assigned document type ID")
+    storage_path_id: Optional[int] = Field(default=None, description="Assigned storage path ID")
 
     class Config:
         from_attributes = True

@@ -26,55 +26,15 @@ from app.models.user import User
 # Chat models from module interface (temporary migration)
 from app.modules.chat.interface import ChatSession, ChatMessage, MessageRole
 from app.schemas.chat import ChatMessageResponse
+from app.schemas.branch import (
+    BranchCreateRequest,
+    BranchSiblingInfo,
+    BranchSiblingsResponse,
+    BranchActivateResponse,
+)
 
 logger = structlog.get_logger(__name__)
 router = APIRouter()
-
-
-# ============================================================================
-# Schemas
-# ============================================================================
-
-
-class BranchCreateRequest(BaseModel):
-    """Request to create a branch from a message."""
-
-    prompt: Optional[str] = Field(
-        None,
-        description="Optional rephrased prompt. If not provided, regenerates from same context.",
-    )
-    model_override: Optional[str] = Field(
-        None,
-        description="Force specific model (e.g., 'qwen3-235b', 'deepseek-r1'). Default uses routing.",
-    )
-
-
-class BranchSiblingInfo(BaseModel):
-    """Info about a sibling branch."""
-
-    id: int
-    is_active: bool
-    version: int
-    model_used: Optional[str]
-    created_at: datetime
-    content_preview: str = Field(description="First 100 chars of content")
-
-
-class BranchSiblingsResponse(BaseModel):
-    """Response with sibling branches."""
-
-    parent_message_id: int
-    total_siblings: int
-    current_index: int
-    siblings: List[BranchSiblingInfo]
-
-
-class BranchActivateResponse(BaseModel):
-    """Response after activating a branch."""
-
-    success: bool
-    activated_id: int
-    deactivated_count: int
 
 
 # ============================================================================

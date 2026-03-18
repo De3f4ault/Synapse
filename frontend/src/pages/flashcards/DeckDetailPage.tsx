@@ -26,11 +26,18 @@ import {
     BarChart3,
     Zap,
     Repeat,
+    Download,
+    Upload,
+    FileJson,
+    FileSpreadsheet,
+    ChevronDown,
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/queryKeys';
 import { FlashcardsService } from '@/api/generated';
 import { cn } from '@/lib/utils';
+import { useExportDeckJSON, useExportDeckCSV, useImportDeckCSV } from '@/api/hooks/useFlashcards';
+import { toast } from 'sonner';
 
 // Core Imports
 import { useDeck } from './list';
@@ -273,6 +280,7 @@ export function DeckDetailPage() {
     // Selected Card State
     const [selectedCardId, setSelectedCardId] = useState<number | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
+    const [exportMenuOpen, setExportMenuOpen] = useState(false);
 
     // Sync with Core
     useActiveDeck({ deckId: id });
@@ -284,6 +292,11 @@ export function DeckDetailPage() {
         queryFn: () => FlashcardsService.listDeckCardsApiV1DecksDeckIdCardsGet(id),
         enabled: !!id,
     });
+
+    // Export / Import hooks
+    const { refetch: fetchExportJSON } = useExportDeckJSON(id);
+    const exportCSV = useExportDeckCSV();
+    const importCSV = useImportDeckCSV();
 
     const cards = useMemo(() => cardsResponse as Flashcard[] | undefined, [cardsResponse]);
 
@@ -309,6 +322,55 @@ export function DeckDetailPage() {
 
     // Next review display for active card
     const nextReview = activeCard ? formatNextReview(activeCard.next_review) : null;
+
+    // Export Handlers
+    const handleExportJSON = async () => {
+        setExportMenuOpen(false);
+        try {
+            const { data: exportData } = await fetchExportJSON();
+            if (!exportData) return;
+            const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${deck?.name || 'deck'}_export.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            toast.success('Deck exported as JSON');
+        } catch {
+            toast.error('Failed to export deck');
+        }
+    };
+
+    const handleExportCSV = () => {
+        setExportMenuOpen(false);
+        exportCSV.mutate(id, {
+            onSuccess: () => toast.success('Deck exported as CSV'),
+            onError: () => toast.error('Failed to export CSV'),
+        });
+    };
+
+    const handleImportCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        importCSV.mutate(
+            { deckId: id, file },
+            {
+                onSuccess: (result) => {
+                    toast.success(`Imported ${result.imported} cards`, {
+                        description: result.skipped_duplicates
+                            ? `${result.skipped_duplicates} duplicates skipped`
+                            : undefined,
+                    });
+                },
+                onError: () => toast.error('Failed to import CSV'),
+            },
+        );
+        // Reset input
+        e.target.value = '';
+    };
 
     // Loading / Error States
     if (deckLoading || cardsLoading) {
@@ -367,7 +429,55 @@ export function DeckDetailPage() {
                 )}
 
                 {/* Right: Actions */}
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
+                    {/* Export / Import Dropdown */}
+                    <div className="relative">
+                        <button
+                            onClick={() => setExportMenuOpen(!exportMenuOpen)}
+                            className="flex items-center gap-1.5 p-2 text-slate-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+                            title="Export / Import"
+                        >
+                            <Download size={18} />
+                            <ChevronDown size={12} />
+                        </button>
+
+                        {exportMenuOpen && (
+                            <>
+                                <div
+                                    className="fixed inset-0 z-40"
+                                    onClick={() => setExportMenuOpen(false)}
+                                />
+                                <div className="absolute right-0 top-full mt-1 w-52 py-1.5 bg-zinc-900/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl z-50">
+                                    <button
+                                        onClick={handleExportJSON}
+                                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-colors"
+                                    >
+                                        <FileJson size={15} className="text-cyan-400" />
+                                        Export as JSON
+                                    </button>
+                                    <button
+                                        onClick={handleExportCSV}
+                                        className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-colors"
+                                    >
+                                        <FileSpreadsheet size={15} className="text-emerald-400" />
+                                        Export as CSV
+                                    </button>
+                                    <div className="my-1 border-t border-white/5" />
+                                    <label className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-colors cursor-pointer">
+                                        <Upload size={15} className="text-amber-400" />
+                                        Import CSV
+                                        <input
+                                            type="file"
+                                            accept=".csv"
+                                            className="hidden"
+                                            onChange={handleImportCSV}
+                                        />
+                                    </label>
+                                </div>
+                            </>
+                        )}
+                    </div>
+
                     <button className="p-2 text-slate-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors">
                         <Settings size={18} />
                     </button>

@@ -3,17 +3,44 @@
 /* tslint:disable */
 /* eslint-disable */
 /**
- * User profile response.
+ * User response schema.
  */
 export type UserResponse = {
-    id: number;
+    /**
+     * User email address
+     */
     email: string;
+    /**
+     * User full name
+     */
     full_name: string;
+    /**
+     * User ID
+     */
+    id: number;
+    /**
+     * Whether user is active
+     */
     is_active: boolean;
-    is_admin: boolean;
-    email_verified: boolean;
-    timezone: (string | null);
+    /**
+     * Whether user is admin
+     */
+    is_admin?: boolean;
+    /**
+     * Whether email is verified
+     */
+    email_verified?: boolean;
+    /**
+     * User timezone
+     */
+    timezone?: (string | null);
+    /**
+     * Last login time
+     */
+    last_login?: (string | null);
+    /**
+     * Account creation time
+     */
     created_at: string;
-    last_login: (string | null);
 };
 

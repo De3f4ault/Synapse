@@ -18,6 +18,14 @@ from app.api.deps import get_db, get_current_user, PaginationParams
 from app.models.user import User
 from app.models.webhook import Webhook
 from app.models.webhook_event import WebhookStatus
+from app.schemas.webhook import (
+    WebhookCreate,
+    WebhookUpdate,
+    WebhookResponse,
+    WebhookEventResponse,
+    WebhookTestRequest,
+    WebhookTestResponse,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -43,81 +51,6 @@ AVAILABLE_EVENTS = [
     "study.session.completed",
     "chat.message.sent",
 ]
-
-
-# ============================================================================
-# Request/Response Schemas
-# ============================================================================
-
-
-class WebhookCreate(BaseModel):
-    """Webhook creation request."""
-
-    url: HttpUrl = Field(..., description="Webhook endpoint URL")
-    events: List[str] = Field(..., min_items=1, description="Events to subscribe to")
-    description: Optional[str] = Field(None, max_length=500, description="Webhook description")
-    active: bool = Field(default=True, description="Whether webhook is active")
-
-
-class WebhookUpdate(BaseModel):
-    """Webhook update request."""
-
-    url: Optional[HttpUrl] = None
-    events: Optional[List[str]] = None
-    description: Optional[str] = None
-    active: Optional[bool] = None
-
-
-class WebhookResponse(BaseModel):
-    """Webhook response."""
-
-    id: int
-    url: str
-    events: List[str]
-    description: Optional[str]
-    active: bool
-    secret: str  # Only returned on creation
-    created_at: datetime
-    updated_at: datetime
-    last_triggered_at: Optional[datetime]
-    success_count: int
-    failure_count: int
-
-    class Config:
-        from_attributes = True
-
-
-class WebhookEventResponse(BaseModel):
-    """Webhook event delivery response."""
-
-    id: int
-    webhook_id: int
-    event_type: str
-    payload: dict
-    status: WebhookStatus
-    http_status: Optional[int]
-    response: Optional[str]
-    attempts: int
-    next_retry_at: Optional[datetime]
-    created_at: datetime
-
-    class Config:
-        from_attributes = True
-
-
-class WebhookTestRequest(BaseModel):
-    """Test webhook request."""
-
-    event_type: str = Field(..., description="Event type to test")
-
-
-class WebhookTestResponse(BaseModel):
-    """Test webhook response."""
-
-    success: bool
-    http_status: int
-    response_time_ms: float
-    message: str
 
 
 # ============================================================================

@@ -20,7 +20,7 @@ export class AnalyticsService {
      * Get dashboard overview from pre-computed materialized view.
      *
      * Falls back to direct queries if view not available.
-     * Performance: 1 query vs 8 queries (original implementation).
+     * Performance: 1 SQL function call vs 8 Python queries.
      * @param token Auth token for image/file requests
      * @returns DashboardOverview Successful Response
      * @throws ApiError
@@ -66,13 +66,6 @@ export class AnalyticsService {
     /**
      * Get Performance
      * Get performance trends over time with configurable time buckets.
-     *
-     * Aggregation rules:
-     * - accuracy: AVG of all events in bucket (not avg of daily avgs)
-     * - reviews_count: COUNT of events in bucket
-     * - study_time_minutes: SUM of duration in bucket
-     *
-     * Buckets change resolution, not meaning.
      * @param days Number of days to analyze
      * @param bucket Time bucket: day, week, or month
      * @param token Auth token for image/file requests
@@ -145,12 +138,6 @@ export class AnalyticsService {
     /**
      * Get Today Stats
      * Get today's study statistics from the Learning Ledger.
-     *
-     * This endpoint provides real-time today's metrics:
-     * - Total study time in minutes
-     * - Number of learning events
-     * - Reviews completed
-     * - Average accuracy
      * @param token Auth token for image/file requests
      * @returns TodayStats Successful Response
      * @throws ApiError
@@ -171,13 +158,7 @@ export class AnalyticsService {
     }
     /**
      * Get Forecast
-     * Get review forecast for planning.
-     *
-     * Returns counts of reviews due:
-     * - Today
-     * - Tomorrow
-     * - This week (next 7 days)
-     * - Overdue (past due)
+     * Get review forecast — cards due today, tomorrow, this week, and overdue.
      * @param token Auth token for image/file requests
      * @returns ReviewForecast Successful Response
      * @throws ApiError
@@ -198,17 +179,7 @@ export class AnalyticsService {
     }
     /**
      * Get Last Session
-     * Get last study session quality feedback.
-     *
-     * Session boundary rule (explicit, not magic):
-     * - Find the most recent learning event
-     * - Include all events within SESSION_WINDOW_MINUTES (45) before it
-     * - This forms the "last session"
-     *
-     * Quality labels:
-     * - 90%+ accuracy → "Strong recall"
-     * - 70-89% → "Good practice"
-     * - <70% → "Needs review"
+     * Get last study session quality feedback (45-min session window).
      * @param token Auth token for image/file requests
      * @returns LastSessionStats Successful Response
      * @throws ApiError

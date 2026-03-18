@@ -366,6 +366,7 @@ class OcrProcessor:
                 - page_count: Number of pages (for PDFs)
                 - ocr_performed: Whether OCR was performed
                 - method: Extraction method used
+                - output_pdf: Path to OCR-processed output PDF (or None)
 
         Raises:
             OcrError: On processing failure
@@ -379,6 +380,7 @@ class OcrProcessor:
                 "page_count": None,
                 "ocr_performed": False,
                 "method": "disabled",
+                "output_pdf": None,
             }
 
         # Auto-detect MIME type if not provided
@@ -408,6 +410,7 @@ class OcrProcessor:
                     "page_count": self._get_page_count(file_path),
                     "ocr_performed": False,
                     "method": "pdftotext",
+                    "output_pdf": None,
                 }
 
         # Run OCR
@@ -425,6 +428,7 @@ class OcrProcessor:
                 "page_count": self._get_page_count(str(output_file)),
                 "ocr_performed": True,
                 "method": "ocrmypdf",
+                "output_pdf": str(output_file) if output_file.exists() else None,
             }
 
         except (NoTextFoundError, OcrError) as e:
@@ -448,6 +452,7 @@ class OcrProcessor:
                     "page_count": self._get_page_count(str(output_file_fallback)),
                     "ocr_performed": True,
                     "method": "ocrmypdf_force",
+                    "output_pdf": str(output_file_fallback) if output_file_fallback.exists() else None,
                 }
 
             except EncryptedPdfError:
@@ -458,6 +463,7 @@ class OcrProcessor:
                         "page_count": self._get_page_count(file_path),
                         "ocr_performed": False,
                         "method": "pdftotext_encrypted",
+                        "output_pdf": None,
                     }
                 raise
 
@@ -471,6 +477,7 @@ class OcrProcessor:
                         "page_count": self._get_page_count(file_path),
                         "ocr_performed": False,
                         "method": "pdftotext_fallback",
+                        "output_pdf": None,
                     }
 
                 raise OcrError(f"OCR failed: {fallback_error}") from fallback_error

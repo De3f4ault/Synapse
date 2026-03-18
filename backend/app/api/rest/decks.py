@@ -1,25 +1,22 @@
 """
 Deck management REST API endpoints.
 
-CRUD operations for flashcard decks + AI flashcard generation from documents.
+Thin controller — business logic lives in:
+- Service layer: app/services/deck_generation_service.py
+- Schemas: app/schemas/flashcard.py
 """
 
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, File, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, and_
-from pydantic import BaseModel, Field
-from app.schemas.common import MessageResponse
+from sqlalchemy import select, func, and_, or_, update
 from datetime import datetime
 
 from app.api.deps import get_db, get_current_user, PaginationParams
 from app.models.user import User
 from app.models.deck import Deck
 from app.models.flashcard import Flashcard
-
-router = APIRouter()
-
-# Schemas — single source of truth: app/schemas/flashcard.py
+from app.schemas.common import MessageResponse
 from app.schemas.flashcard import (
     DeckCreate,
     DeckUpdate,
@@ -27,23 +24,24 @@ from app.schemas.flashcard import (
     FlashcardGenerateRequest,
     FlashcardGenerateFromTopicRequest,
     FlashcardGenerateResponse,
-    ImportCard,
     ImportRequest,
     ImportResult,
 )
-
-
-# ============================================================================
-# Endpoints
-# ============================================================================
-
-
-@router.get(
-    "",
-    response_model=List[DeckResponse],
-    summary="List decks",
-    description="Retrieve user's decks with optional filtering",
+from app.services.deck.generation import (
+    generate_from_document,
+    generate_from_topic,
+    bulk_import,
 )
+
+router = APIRouter()
+
+
+# ============================================================================
+# CRUD Endpoints
+# ============================================================================
+
+
+@router.get("", response_model=List[DeckResponse])
 async def list_decks(
     tags: Optional[str] = Query(None, description="Filter by tags (comma-separated)"),
     is_public: Optional[bool] = Query(None, description="Filter by public status"),
@@ -51,36 +49,19 @@ async def list_decks(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """List user's decks with card counts and due counts (optimized - single query).
+    """List user's decks with card counts and due counts."""
+    now = datetime.utcnow()
 
-    Due count includes:
-    - New cards (next_review IS NULL) - never reviewed
-    - Scheduled cards (next_review <= now) - need review
-
-    This matches the dashboard materialized view definition.
-    """
-    from datetime import datetime as dt
-    from sqlalchemy import or_
-
-    now = dt.utcnow()
-
-    # Single query with LEFT OUTER JOIN to get decks, card counts, and due counts together
-    # Due count: NULL (new) OR next_review <= now (scheduled)
     stmt = (
         select(
             Deck,
             func.count(Flashcard.id).filter(Flashcard.deleted_at.is_(None)).label("card_count"),
-            func.count(Flashcard.id)
-            .filter(
+            func.count(Flashcard.id).filter(
                 and_(
                     Flashcard.deleted_at.is_(None),
-                    or_(
-                        Flashcard.next_review.is_(None),  # New cards
-                        Flashcard.next_review <= now,  # Scheduled due
-                    ),
+                    or_(Flashcard.next_review.is_(None), Flashcard.next_review <= now),
                 )
-            )
-            .label("due_count"),
+            ).label("due_count"),
         )
         .outerjoin(Flashcard, Flashcard.deck_id == Deck.id)
         .where(and_(Deck.user_id == current_user.id, Deck.deleted_at.is_(None)))
@@ -88,230 +69,82 @@ async def list_decks(
 
     if is_public is not None:
         stmt = stmt.where(Deck.is_public == is_public)
-
     if tags:
         tag_list = [t.strip() for t in tags.split(",")]
         stmt = stmt.where(Deck.tags.contains(tag_list))
 
-    stmt = (
-        stmt.group_by(Deck.id)
-        .order_by(Deck.updated_at.desc())
-        .offset(pagination.offset)
-        .limit(pagination.page_size)
-    )
-
+    stmt = stmt.group_by(Deck.id).order_by(Deck.updated_at.desc()).offset(pagination.offset).limit(pagination.page_size)
     result = await db.execute(stmt)
-    decks_with_counts = result.all()
-
-    return [
-        DeckResponse(
-            id=deck.id,
-            name=deck.name,
-            description=deck.description,
-            tags=deck.tags,
-            is_public=deck.is_public,
-            ai_generated=deck.ai_generated,
-            card_count=card_count,
-            due_count=due_count,
-            user_id=deck.user_id,
-            created_at=deck.created_at,
-            updated_at=deck.updated_at,
-        )
-        for deck, card_count, due_count in decks_with_counts
-    ]
+    return [_deck_response(deck, card_count, due_count) for deck, card_count, due_count in result.all()]
 
 
-@router.post(
-    "",
-    response_model=DeckResponse,
-    status_code=status.HTTP_201_CREATED,
-    summary="Create deck",
-    description="Create a new flashcard deck",
-)
+@router.post("", response_model=DeckResponse, status_code=status.HTTP_201_CREATED)
 async def create_deck(
     deck_data: DeckCreate,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    """Create a new flashcard deck."""
     new_deck = Deck(
-        user_id=current_user.id,
-        name=deck_data.name,
-        description=deck_data.description,
-        tags=deck_data.tags,
-        is_public=deck_data.is_public,
-        ai_generated=False,
+        user_id=current_user.id, name=deck_data.name, description=deck_data.description,
+        tags=deck_data.tags, is_public=deck_data.is_public, ai_generated=False,
     )
-
     db.add(new_deck)
     await db.commit()
     await db.refresh(new_deck)
-
-    return DeckResponse(
-        id=new_deck.id,
-        name=new_deck.name,
-        description=new_deck.description,
-        tags=new_deck.tags,
-        is_public=new_deck.is_public,
-        ai_generated=new_deck.ai_generated,
-        card_count=0,
-        due_count=0,
-        user_id=new_deck.user_id,
-        created_at=new_deck.created_at,
-        updated_at=new_deck.updated_at,
-    )
+    return _deck_response(new_deck, 0, 0)
 
 
-@router.get(
-    "/{deck_id}",
-    response_model=DeckResponse,
-    summary="Get deck",
-    description="Retrieve a specific deck by ID",
-)
+@router.get("/{deck_id}", response_model=DeckResponse)
 async def get_deck(
-    deck_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
+    deck_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
 ):
-    from datetime import datetime as dt
-
-    result = await db.execute(
-        select(Deck).where(
-            and_(Deck.id == deck_id, Deck.user_id == current_user.id, Deck.deleted_at.is_(None))
-        )
-    )
-    deck = result.scalar_one_or_none()
-
-    if not deck:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Deck not found")
-
-    now = dt.utcnow()
-
-    # Get card count
-    card_count_result = await db.execute(
-        select(func.count(Flashcard.id)).where(
-            and_(Flashcard.deck_id == deck.id, Flashcard.deleted_at.is_(None))
-        )
-    )
-    card_count = card_count_result.scalar()
-
-    # Get due count (new cards + scheduled due cards)
-    from sqlalchemy import or_
-
-    due_count_result = await db.execute(
-        select(func.count(Flashcard.id)).where(
-            and_(
-                Flashcard.deck_id == deck.id,
-                Flashcard.deleted_at.is_(None),
-                or_(
-                    Flashcard.next_review.is_(None),  # New cards
-                    Flashcard.next_review <= now,  # Scheduled due
-                ),
-            )
-        )
-    )
-    due_count = due_count_result.scalar()
-
-    return DeckResponse(
-        id=deck.id,
-        name=deck.name,
-        description=deck.description,
-        tags=deck.tags,
-        is_public=deck.is_public,
-        ai_generated=deck.ai_generated,
-        card_count=card_count,
-        due_count=due_count or 0,
-        user_id=deck.user_id,
-        created_at=deck.created_at,
-        updated_at=deck.updated_at,
-    )
+    """Retrieve a specific deck by ID."""
+    deck = await _get_user_deck(db, deck_id, current_user.id)
+    card_count, due_count = await _count_cards(db, deck.id)
+    return _deck_response(deck, card_count, due_count)
 
 
-@router.get(
-    "/{deck_id}/cards",
-    summary="List deck cards",
-    description="Get all flashcards in a deck",
-)
+@router.get("/{deck_id}/cards")
 async def list_deck_cards(
     deck_id: int,
-    page: int = Query(1, ge=1, description="Page number"),
-    page_size: int = Query(100, ge=1, le=500, description="Items per page"),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(100, ge=1, le=500),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """
-    Get all flashcards in a deck.
+    """Get all flashcards in a deck."""
+    deck = await _get_user_deck(db, deck_id, current_user.id)
 
-    This returns ALL cards in the deck, not just due cards.
-    Used by DeckDetailPage to display the full card list.
-    """
-    # Verify deck ownership
-    deck_result = await db.execute(
-        select(Deck).where(
-            and_(Deck.id == deck_id, Deck.user_id == current_user.id, Deck.deleted_at.is_(None))
-        )
-    )
-    deck = deck_result.scalar_one_or_none()
-
-    if not deck:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Deck not found")
-
-    # Get all cards in the deck
-    offset = (page - 1) * page_size
     cards_result = await db.execute(
         select(Flashcard)
         .where(and_(Flashcard.deck_id == deck_id, Flashcard.deleted_at.is_(None)))
         .order_by(Flashcard.created_at.desc())
-        .offset(offset)
+        .offset((page - 1) * page_size)
         .limit(page_size)
     )
-    cards = cards_result.scalars().all()
-
-    # Return cards as list of dicts to match FlashcardResponse format
     return [
         {
-            "id": card.id,
-            "deck_id": card.deck_id,
-            "front_text": card.front_text,
-            "back_text": card.back_text,
-            "front_media_url": card.front_media_url,
-            "back_media_url": card.back_media_url,
-            "ease_factor": float(card.ease_factor) if card.ease_factor else 2.5,
-            "interval": card.interval or 0,
-            "repetitions": card.repetitions or 0,
-            "last_review": card.last_review,
-            "next_review": card.next_review,
-            "learning_state": card.learning_state or "new",
-            "times_reviewed": card.times_reviewed or 0,
-            "accuracy": (
-                card.times_correct / card.times_reviewed
-                if card.times_reviewed and card.times_reviewed > 0
-                else 0.0
-            ),
+            "id": c.id, "deck_id": c.deck_id, "front_text": c.front_text, "back_text": c.back_text,
+            "front_media_url": c.front_media_url, "back_media_url": c.back_media_url,
+            "ease_factor": float(c.ease_factor) if c.ease_factor else 2.5,
+            "interval": c.interval or 0, "repetitions": c.repetitions or 0,
+            "last_review": c.last_review, "next_review": c.next_review,
+            "learning_state": c.learning_state or "new", "times_reviewed": c.times_reviewed or 0,
+            "accuracy": c.times_correct / c.times_reviewed if c.times_reviewed and c.times_reviewed > 0 else 0.0,
             "deck_name": deck.name,
         }
-        for card in cards
+        for c in cards_result.scalars().all()
     ]
 
 
-@router.put(
-    "/{deck_id}",
-    response_model=DeckResponse,
-    summary="Update deck",
-    description="Update an existing deck",
-)
+@router.put("/{deck_id}", response_model=DeckResponse)
 async def update_deck(
-    deck_id: int,
-    deck_data: DeckUpdate,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
+    deck_id: int, deck_data: DeckUpdate,
+    current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(
-        select(Deck).where(
-            and_(Deck.id == deck_id, Deck.user_id == current_user.id, Deck.deleted_at.is_(None))
-        )
-    )
-    deck = result.scalar_one_or_none()
-
-    if not deck:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Deck not found")
+    """Update an existing deck."""
+    deck = await _get_user_deck(db, deck_id, current_user.id)
 
     if deck_data.name is not None:
         deck.name = deck_data.name
@@ -324,515 +157,217 @@ async def update_deck(
 
     await db.commit()
     await db.refresh(deck)
-
-    from datetime import datetime as dt
-
-    now = dt.utcnow()
-
-    card_count_result = await db.execute(
-        select(func.count(Flashcard.id)).where(
-            and_(Flashcard.deck_id == deck.id, Flashcard.deleted_at.is_(None))
-        )
-    )
-    card_count = card_count_result.scalar()
-
-    from sqlalchemy import or_
-
-    due_count_result = await db.execute(
-        select(func.count(Flashcard.id)).where(
-            and_(
-                Flashcard.deck_id == deck.id,
-                Flashcard.deleted_at.is_(None),
-                or_(
-                    Flashcard.next_review.is_(None),  # New cards
-                    Flashcard.next_review <= now,  # Scheduled due
-                ),
-            )
-        )
-    )
-    due_count = due_count_result.scalar()
-
-    return DeckResponse(
-        id=deck.id,
-        name=deck.name,
-        description=deck.description,
-        tags=deck.tags,
-        is_public=deck.is_public,
-        ai_generated=deck.ai_generated,
-        card_count=card_count,
-        due_count=due_count or 0,
-        user_id=deck.user_id,
-        created_at=deck.created_at,
-        updated_at=deck.updated_at,
-    )
+    card_count, due_count = await _count_cards(db, deck.id)
+    return _deck_response(deck, card_count, due_count)
 
 
-@router.delete(
-    "/{deck_id}",
-    response_model=MessageResponse,
-    summary="Delete deck",
-    description="Delete a deck (soft delete with cascade to flashcards)",
-)
+@router.delete("/{deck_id}", response_model=MessageResponse)
 async def delete_deck(
-    deck_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
+    deck_id: int, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(
-        select(Deck).where(
-            and_(Deck.id == deck_id, Deck.user_id == current_user.id, Deck.deleted_at.is_(None))
-        )
-    )
-    deck = result.scalar_one_or_none()
-
-    if not deck:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Deck not found")
-
-    # CASCADE: Soft-delete all flashcards in this deck first
-    from sqlalchemy import update
+    """Delete a deck (soft delete with cascade to flashcards)."""
+    deck = await _get_user_deck(db, deck_id, current_user.id)
 
     await db.execute(
         update(Flashcard)
         .where(and_(Flashcard.deck_id == deck_id, Flashcard.deleted_at.is_(None)))
         .values(deleted_at=datetime.utcnow())
     )
-
-    # Then soft-delete the deck
     deck.deleted_at = datetime.utcnow()
     await db.commit()
-
     return MessageResponse(message="Deck and flashcards deleted successfully")
 
 
 # ============================================================================
-# Flashcard Generation Endpoint (UPDATED VERSION)
+# Generation & Import Endpoints
 # ============================================================================
 
 
-@router.post(
-    "/generate",
-    response_model=FlashcardGenerateResponse,
-    status_code=status.HTTP_201_CREATED,
-    summary="Generate flashcards from document",
-    description="Use AI to generate flashcards from a document",
-)
+@router.post("/generate", response_model=FlashcardGenerateResponse, status_code=status.HTTP_201_CREATED)
 async def generate_flashcards(
     request_data: FlashcardGenerateRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """
-    Generate flashcards from a document using AI.
-
-    Steps:
-    1. Verify ownership and ensure document is fully processed
-    2. Create deck with AI metadata
-    3. Use DocumentAgent to generate flashcards
-    4. Save flashcards into DB
-    """
-    from app.models.document import Document
-    from app.core.ai.agents.factory import create_agent
-    from app.modules.flashcards.service import FlashcardService
-
-    # Verify document ownership
-    doc_result = await db.execute(
-        select(Document).where(
-            and_(
-                Document.id == request_data.document_id,
-                Document.user_id == current_user.id,
-                Document.deleted_at.is_(None),
-            )
-        )
-    )
-    document = doc_result.scalar_one_or_none()
-
-    if not document:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
-
-    # Validate processing
-    if document.processing_status != "completed":
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Document processing status is '{document.processing_status}'. Must be 'completed'.",
-        )
-
-    if not document.content_text:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Document has no extractable text content",
-        )
-
-    # Create the deck
-    service = FlashcardService(db)
-    deck_data = {
-        "name": request_data.deck_name,
-        "description": f"AI-generated flashcards from {document.filename}",
-        "tags": request_data.tags or ["ai-generated"],
-        "is_public": False,
-        "ai_generated": True,
-        "ai_metadata": {
-            "source_document_id": document.id,
-            "generation_params": {
-                "num_cards": request_data.num_cards,
-                "difficulty": request_data.difficulty,
-            },
-        },
-    }
-
+    """Generate flashcards from a document using AI."""
     try:
-        deck = await service.create_deck(user_id=current_user.id, data=deck_data)
-
-        agent = await create_agent("document")
-
-        generation_prompt = f"""
-Generate {request_data.num_cards} high-quality flashcards from this document.
-
-Difficulty: {request_data.difficulty}
-
-Document content (first 8000 chars):
-{document.content_text[:8000]}
-
-Output JSON:
-{{
-  "flashcards": [
-    {{
-      "front": "Question or term",
-      "back": "Answer or definition"
-    }}
-  ]
-}}
-"""
-
-        result = await agent.execute(
-            user_id=current_user.id, input=generation_prompt, context={"document_id": document.id}
+        result = await generate_from_document(
+            user_id=current_user.id, document_id=request_data.document_id,
+            deck_name=request_data.deck_name, num_cards=request_data.num_cards,
+            difficulty=request_data.difficulty, tags=request_data.tags, db=db,
         )
-
-        if not result.success:
-            raise Exception(result.error)
-
-        import json, re
-
-        json_match = re.search(r'\{[\s\S]*"flashcards"[\s\S]*\}', result.output)
-        if not json_match:
-            raise Exception("Could not parse flashcards JSON")
-
-        flashcard_data = json.loads(json_match.group())
-        flashcards = flashcard_data.get("flashcards", [])
-
-        cards_created = 0
-        for fc in flashcards[: request_data.num_cards]:
-            if "front" in fc and "back" in fc:
-                await service.create_card(
-                    user_id=current_user.id,
-                    data={
-                        "deck_id": deck["id"],
-                        "front_text": fc["front"],
-                        "back_text": fc["back"],
-                    },
-                )
-                cards_created += 1
-
-        await db.commit()
-
-        # --- Auto-wire the knowledge graph ---
-        # Document → Deck (DERIVED): the deck was generated from this document.
-        try:
-            from app.services.graph_linker import GraphLinker
-            from app.models.link import LinkEntityType as LET, LinkType as LT
-
-            linker = GraphLinker(db)
-            await linker.on_entity_created(
-                user_id=current_user.id,
-                entity_type=LET.DECK,
-                entity_id=deck["id"],
-                source_refs=[(LET.DOCUMENT, document.id)],
-                link_type=LT.DERIVED,
-                label="generated from",
-                metadata={
-                    "method": "ai",
-                    "source_filename": document.filename,
-                    "cards_generated": cards_created,
-                },
-            )
-        except Exception as link_err:
-            # Link creation is advisory — don't fail the generation
-            import structlog as _sl
-
-            _sl.get_logger(__name__).warning(
-                "graph_linker_failed", error=str(link_err), deck_id=deck["id"]
-            )
-
-        return FlashcardGenerateResponse(
-            deck_id=deck["id"],
-            deck_name=deck["name"],
-            cards_generated=cards_created,
-            status="success",
-            message=f"Successfully generated {cards_created} flashcards",
-        )
-
+        return FlashcardGenerateResponse(**result)
+    except ValueError as e:
+        code = status.HTTP_404_NOT_FOUND if "not found" in str(e).lower() else status.HTTP_400_BAD_REQUEST
+        raise HTTPException(status_code=code, detail=str(e))
     except Exception as e:
         await db.rollback()
-        raise HTTPException(status_code=500, detail=f"Failed to generate flashcards: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to generate flashcards: {e}")
 
 
-# ============================================================================
-# Topic-Based Flashcard Generation (Like Quiz Generation)
-# ============================================================================
-
-
-@router.post(
-    "/generate-from-topic",
-    response_model=FlashcardGenerateResponse,
-    status_code=status.HTTP_201_CREATED,
-    summary="Generate flashcards from topic",
-    description="Use AI to generate flashcards from any topic",
-)
+@router.post("/generate-from-topic", response_model=FlashcardGenerateResponse, status_code=status.HTTP_201_CREATED)
 async def generate_flashcards_from_topic(
     request_data: FlashcardGenerateFromTopicRequest,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """
-    Generate flashcards from a topic using AI.
-    Similar to quiz generation but creates flashcards instead.
-    """
-    from app.modules.flashcards.service import FlashcardService
-    import structlog
-    import json
-    import re
-
-    logger = structlog.get_logger(__name__)
-
+    """Generate flashcards from a topic using AI."""
     try:
-        from app.core.ai.orchestrator import get_orchestrator
-
-        # Build generation prompt
-        difficulty_desc = {
-            "easy": "simple, beginner-level concepts",
-            "medium": "intermediate, moderate complexity",
-            "hard": "challenging, advanced concepts",
-        }
-
-        prompt = f"""Generate flashcards about: {request_data.topic}
-
-Requirements:
-- Generate exactly {request_data.num_cards} high-quality flashcards
-- Difficulty: {difficulty_desc.get(request_data.difficulty, "intermediate")}
-- Each flashcard should have a clear question/term on front and answer/definition on back
-- Cover key concepts comprehensively
-- Make them educational and useful for studying
-
-Return ONLY valid JSON in this exact format:
-{{
-  "flashcards": [
-    {{
-      "front": "Question or term",
-      "back": "Answer or definition"
-    }}
-  ]
-}}
-"""
-
-        # Get orchestrator and generate
-        orchestrator = get_orchestrator()
-        result = await orchestrator.handle_message(
-            user_id=current_user.id,
-            session_id=0,  # No session for generation
-            message=prompt,
-            context={"intent": "flashcard_generation"},
+        result = await generate_from_topic(
+            user_id=current_user.id, topic=request_data.topic,
+            num_cards=request_data.num_cards, difficulty=request_data.difficulty,
+            deck_name=request_data.deck_name, tags=request_data.tags, db=db,
         )
-
-        if not result.success:
-            raise Exception(result.error or "AI generation failed")
-
-        # Parse AI response
-        response_text = result.output
-
-        # Extract JSON from response
-        json_match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", response_text)
-        if json_match:
-            json_str = json_match.group(1)
-        else:
-            json_start = response_text.find("{")
-            json_end = response_text.rfind("}") + 1
-            if json_start >= 0 and json_end > json_start:
-                json_str = response_text[json_start:json_end]
-            else:
-                raise ValueError("Could not extract JSON from response")
-
-        flashcard_data = json.loads(json_str)
-        flashcards = flashcard_data.get("flashcards", [])
-
-        if not flashcards:
-            raise ValueError("No flashcards in response")
-
-        # Create deck
-        deck_name = request_data.deck_name or f"Flashcards: {request_data.topic}"
-        service = FlashcardService(db)
-
-        deck_data = {
-            "name": deck_name,
-            "description": f"AI-generated flashcards about {request_data.topic}",
-            "tags": request_data.tags
-            or ["ai-generated", request_data.topic.lower().replace(" ", "-")[:30]],
-            "is_public": False,
-            "ai_generated": True,
-            "ai_metadata": {
-                "source_topic": request_data.topic,
-                "generation_params": {
-                    "num_cards": request_data.num_cards,
-                    "difficulty": request_data.difficulty,
-                },
-            },
-        }
-
-        deck = await service.create_deck(user_id=current_user.id, data=deck_data)
-
-        # Create flashcards
-        cards_created = 0
-        for fc in flashcards[: request_data.num_cards]:
-            if "front" in fc and "back" in fc:
-                await service.create_card(
-                    user_id=current_user.id,
-                    data={
-                        "deck_id": deck["id"],
-                        "front_text": fc["front"],
-                        "back_text": fc["back"],
-                    },
-                )
-                cards_created += 1
-
-        await db.commit()
-
-        logger.info(
-            "flashcards_generated_from_topic",
-            topic=request_data.topic,
-            deck_id=deck["id"],
-            cards_created=cards_created,
-        )
-
-        # Send notification
-        try:
-            from app.services.notification_service import NotificationService
-            from app.models.notification import NotificationType, NotificationCategory
-
-            notification_service = NotificationService(db)
-            await notification_service.send(
-                user_id=current_user.id,
-                type=NotificationType.SUCCESS,
-                category=NotificationCategory.LEARNING,
-                title="Flashcards Generated",
-                message=f"{cards_created} flashcards about '{request_data.topic}' are ready for review.",
-                action_url=f"/decks/{deck['id']}",
-                action_label="Review Now",
-                meta_data={"deck_id": deck["id"], "cards_created": cards_created},
-            )
-        except Exception as notify_err:
-            logger.warning("notification_send_failed", error=str(notify_err))
-
-        return FlashcardGenerateResponse(
-            deck_id=deck["id"],
-            deck_name=deck["name"],
-            cards_generated=cards_created,
-            status="success",
-            message=f"Successfully generated {cards_created} flashcards about {request_data.topic}",
-        )
-
-    except json.JSONDecodeError as e:
-        logger.error("flashcard_generation_json_error", error=str(e))
-        raise HTTPException(status_code=500, detail="Failed to parse AI response")
+        return FlashcardGenerateResponse(**result)
     except Exception as e:
-        logger.error("flashcard_generation_failed", error=str(e))
         await db.rollback()
-        raise HTTPException(status_code=500, detail=f"Failed to generate flashcards: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to generate flashcards: {e}")
 
 
-# ============================================================================
-# Bulk Import Endpoint
-# ============================================================================
-
-
-@router.post(
-    "/{deck_id}/import",
-    response_model=ImportResult,
-    status_code=status.HTTP_201_CREATED,
-    summary="Import flashcards",
-    description="Bulk import flashcards into a deck",
-)
+@router.post("/{deck_id}/import", response_model=ImportResult, status_code=status.HTTP_201_CREATED)
 async def import_flashcards(
+    deck_id: int, import_data: ImportRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Bulk import flashcards into a deck."""
+    try:
+        result = await bulk_import(user_id=current_user.id, deck_id=deck_id, cards=import_data.cards, db=db)
+        return ImportResult(**result)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to import: {e}")
+
+
+# ============================================================================
+# Export / Import (JSON + CSV)
+# ============================================================================
+
+
+@router.get("/{deck_id}/export", summary="Export Deck (JSON)")
+async def export_deck(
     deck_id: int,
-    import_data: ImportRequest,
+    include_stats: bool = Query(True, description="Include review statistics per card"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Bulk import flashcards into a deck with transaction safety and duplicate detection.
+    Export a deck and all its flashcards as JSON.
+
+    The output format is re-importable via POST /{deck_id}/import.
     """
-    # Verify deck ownership
-    result = await db.execute(
-        select(Deck).where(
-            and_(Deck.id == deck_id, Deck.user_id == current_user.id, Deck.deleted_at.is_(None))
-        )
-    )
-    deck = result.scalar_one_or_none()
-
-    if not deck:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Deck not found")
-
-    errors: List[str] = []
-    skipped_duplicates = 0
+    from app.services.deck.import_export import export_deck_json
 
     try:
-        # Query existing front_text values for duplicate detection (case-normalized)
-        existing_result = await db.execute(
-            select(func.lower(Flashcard.front_text)).where(
-                and_(Flashcard.deck_id == deck.id, Flashcard.deleted_at.is_(None))
-            )
+        return await export_deck_json(
+            user_id=current_user.id,
+            deck_id=deck_id,
+            db=db,
+            include_stats=include_stats,
         )
-        existing_fronts = {row[0].strip() for row in existing_result.fetchall()}
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
 
-        # Build flashcard objects for bulk insert, skipping duplicates
-        flashcards = []
-        for i, card in enumerate(import_data.cards):
-            try:
-                front_normalized = card.front.strip().lower()
 
-                # Check for duplicate
-                if front_normalized in existing_fronts:
-                    skipped_duplicates += 1
-                    continue
+@router.get("/{deck_id}/export/csv", summary="Export Deck (CSV)")
+async def export_deck_csv_endpoint(
+    deck_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Export a deck's flashcards as CSV.
 
-                # Track this front to avoid duplicates within the import batch
-                existing_fronts.add(front_normalized)
+    Returns a downloadable CSV file with columns:
+    front_text, back_text, front_media_url, back_media_url,
+    ease_factor, interval, learning_state.
+    """
+    from fastapi.responses import StreamingResponse
+    from app.services.deck.import_export import export_deck_csv
 
-                flashcards.append(
-                    Flashcard(
-                        deck_id=deck.id,
-                        user_id=current_user.id,
-                        front_text=card.front.strip(),
-                        back_text=card.back.strip(),
-                    )
-                )
-            except Exception as e:
-                errors.append(f"Card {i + 1}: {str(e)}")
-
-        # Bulk insert with explicit transaction
-        if flashcards:
-            db.add_all(flashcards)
-            await db.commit()
-
-        # Build message
-        msg_parts = [f"Successfully imported {len(flashcards)} flashcards"]
-        if skipped_duplicates > 0:
-            msg_parts.append(f"{skipped_duplicates} duplicates skipped")
-        if errors:
-            msg_parts.append(f"{len(errors)} errors")
-
-        return ImportResult(
-            imported=len(flashcards),
-            skipped_duplicates=skipped_duplicates,
-            errors=errors,
-            message=" | ".join(msg_parts),
+    try:
+        csv_content = await export_deck_csv(
+            user_id=current_user.id, deck_id=deck_id, db=db
         )
+        return StreamingResponse(
+            iter([csv_content]),
+            media_type="text/csv",
+            headers={
+                "Content-Disposition": f"attachment; filename=deck_{deck_id}_export.csv"
+            },
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
 
+
+@router.post("/{deck_id}/import/csv", response_model=ImportResult, status_code=status.HTTP_201_CREATED)
+async def import_deck_csv(
+    deck_id: int,
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Import flashcards from a CSV file.
+
+    Expects columns: front_text (required), back_text (required),
+    front_media_url (optional), back_media_url (optional).
+    """
+    from app.services.deck.import_export import import_from_csv
+
+    try:
+        csv_content = (await file.read()).decode("utf-8")
+        result = await import_from_csv(
+            user_id=current_user.id,
+            deck_id=deck_id,
+            csv_content=csv_content,
+            db=db,
+        )
+        return ImportResult(**result)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     except Exception as e:
         await db.rollback()
-        raise HTTPException(status_code=500, detail=f"Failed to import flashcards: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to import CSV: {e}")
+
+
+# ============================================================================
+# Internal Helpers
+# ============================================================================
+
+
+async def _get_user_deck(db: AsyncSession, deck_id: int, user_id: int) -> Deck:
+    """Get deck owned by user or raise 404."""
+    result = await db.execute(
+        select(Deck).where(and_(Deck.id == deck_id, Deck.user_id == user_id, Deck.deleted_at.is_(None)))
+    )
+    deck = result.scalar_one_or_none()
+    if not deck:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Deck not found")
+    return deck
+
+
+async def _count_cards(db: AsyncSession, deck_id: int) -> tuple:
+    """Return (card_count, due_count) for a deck."""
+    now = datetime.utcnow()
+    card_count = (await db.execute(
+        select(func.count(Flashcard.id)).where(and_(Flashcard.deck_id == deck_id, Flashcard.deleted_at.is_(None)))
+    )).scalar() or 0
+    due_count = (await db.execute(
+        select(func.count(Flashcard.id)).where(and_(
+            Flashcard.deck_id == deck_id, Flashcard.deleted_at.is_(None),
+            or_(Flashcard.next_review.is_(None), Flashcard.next_review <= now),
+        ))
+    )).scalar() or 0
+    return card_count, due_count
+
+
+def _deck_response(deck: Deck, card_count: int, due_count: int) -> DeckResponse:
+    """Build a DeckResponse from a Deck model + counts."""
+    return DeckResponse(
+        id=deck.id, name=deck.name, description=deck.description, tags=deck.tags,
+        is_public=deck.is_public, ai_generated=deck.ai_generated, card_count=card_count,
+        due_count=due_count or 0, user_id=deck.user_id, created_at=deck.created_at, updated_at=deck.updated_at,
+    )

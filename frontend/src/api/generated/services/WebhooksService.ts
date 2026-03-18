@@ -14,26 +14,26 @@ export class WebhooksService {
     /**
      * List webhooks
      * Retrieve user's webhooks
+     * @param activeOnly Only active webhooks
      * @param page Page number
      * @param pageSize Items per page
-     * @param activeOnly Only active webhooks
      * @param token Auth token for image/file requests
      * @returns WebhookResponse Successful Response
      * @throws ApiError
      */
     public static listWebhooksApiV1WebhooksGet(
+        activeOnly: boolean = false,
         page: number = 1,
         pageSize: number = 20,
-        activeOnly: boolean = false,
         token?: (string | null),
     ): CancelablePromise<Array<WebhookResponse>> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/v1/webhooks',
             query: {
+                'active_only': activeOnly,
                 'page': page,
                 'page_size': pageSize,
-                'active_only': activeOnly,
                 'token': token,
             },
             errors: {

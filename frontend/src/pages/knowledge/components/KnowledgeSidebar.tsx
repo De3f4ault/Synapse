@@ -3,6 +3,7 @@ import { Search, Filter, Layers, RefreshCw, Loader2 } from "lucide-react";
 import { ENTITY_CONFIG, LINK_COLORS } from "../types";
 import { cn } from "@/lib/utils";
 import { GlassCard } from "@/shared/ui";
+import { GraphAnalyticsPanel } from "./GraphAnalyticsPanel";
 
 interface KnowledgeSidebarProps {
   searchQuery: string;
@@ -217,6 +218,13 @@ export const KnowledgeSidebar: React.FC<KnowledgeSidebarProps> = ({
               })}
             </div>
           </>
+        )}
+
+        {/* Graph Analytics */}
+        {!isCollapsed && (
+          <div className="mt-6 pt-6 border-t border-white/5">
+            <GraphAnalyticsPanel />
+          </div>
         )}
       </div>
 

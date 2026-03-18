@@ -33,9 +33,6 @@ class Settings(BaseSettings):
     # Vector Store - LanceDB
     LANCEDB_PATH: str = Field(default="data/lancedb", description="Path to LanceDB vector store")
 
-    # NOTE: DuckDB removed - Analytics now uses PostgreSQL materialized views
-    # See: app/sql/views/user_dashboard_stats.sql
-
     # Gemini API
     GEMINI_API_KEY: str = Field(..., description="Google Gemini API key")
 

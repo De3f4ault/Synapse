@@ -34,6 +34,18 @@ from . import (
     feedback,
     notifications,
     uploads,
+    # DMS Classification & Search (Phase 4)
+    correspondents,
+    document_types,
+    storage_paths,
+    tags,
+    saved_views,
+    # DMS Workflows (Phase 5)
+    workflows,
+    # DMS Permissions & Sharing (Phase 6)
+    shares,
+    # DMS Background Tasks (Phase 8)
+    tasks,
 )
 
 # Create main API router
@@ -59,6 +71,22 @@ api_router.include_router(notes.router, prefix="/notes", tags=["Notes"])
 api_router.include_router(folders.router, prefix="/documents", tags=["Document Folders"])
 
 api_router.include_router(documents.router, prefix="/documents", tags=["Documents"])
+
+# DMS Classification & Search (Phase 4)
+api_router.include_router(correspondents.router, prefix="/correspondents", tags=["DMS"])
+api_router.include_router(document_types.router, prefix="/document-types", tags=["DMS"])
+api_router.include_router(storage_paths.router, prefix="/storage-paths", tags=["DMS"])
+api_router.include_router(tags.router, prefix="/tags", tags=["DMS"])
+api_router.include_router(saved_views.router, prefix="/saved-views", tags=["DMS"])
+
+# DMS Workflows (Phase 5)
+api_router.include_router(workflows.router, prefix="/workflows", tags=["DMS"])
+
+# DMS Permissions & Sharing (Phase 6)
+api_router.include_router(shares.router, tags=["Sharing"])
+
+# DMS Background Tasks (Phase 8)
+api_router.include_router(tasks.router, prefix="/tasks", tags=["DMS"])
 
 api_router.include_router(quizzes.router, prefix="/quizzes", tags=["Quizzes"])
 

@@ -26,7 +26,7 @@ from app.schemas.analytics import (
     ReviewForecast,
     LastSessionStats,
 )
-from app.services.analytics_service import (
+from app.services.analytics.service import (
     get_dashboard_overview as svc_get_dashboard_overview,
     get_review_forecast as svc_get_review_forecast,
     get_performance_trends as svc_get_performance_trends,

@@ -74,8 +74,8 @@ async def update_analytics_on_review(event: Event):
         user_id=event.user_id
     )
 
-    # This would trigger a DuckDB analytics update
-    # For now, just log the intent
+    # Analytics data is already in PostgreSQL from the REST layer.
+    # Materialized views are refreshed on session completion.
     logger.debug(
         "analytics_update_scheduled",
         user_id=event.user_id,

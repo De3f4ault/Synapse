@@ -14,9 +14,11 @@ import logging
 
 from app.api.deps import get_db, get_current_user
 from app.models.user import User
+from app.schemas.user import UserUpdate, PasswordChange, UserStatistics
+from app.schemas.common import MessageResponse
 
 # Extracted statistics queries
-from app.services.user_stats_service import (
+from app.services.user.stats import (
     count_flashcards,
     count_decks,
     count_notes,
@@ -31,41 +33,6 @@ from app.services.user_stats_service import (
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
-
-
-# ============================================================================
-# Request/Response Schemas
-# ============================================================================
-
-class UserUpdate(BaseModel):
-    """User profile update request."""
-    full_name: Optional[str] = Field(None, min_length=1, max_length=255)
-    timezone: Optional[str] = Field(None, max_length=50)
-    preferences: Optional[Dict] = None
-
-
-class PasswordChange(BaseModel):
-    """Password change request."""
-    current_password: str = Field(..., description="Current password")
-    new_password: str = Field(..., min_length=8, description="New password")
-
-
-class UserStatistics(BaseModel):
-    """User statistics response."""
-    # Content metrics
-    total_cards: int = 0
-    due_cards: int = 0
-    total_decks: int = 0
-    total_notes: int = 0
-    total_documents: int = 0
-    # Learning metrics
-    study_streak_days: int = 0
-    reviews_today: int = 0
-    total_reviews: int = 0
-    overall_accuracy: float = 0.0
-    # Engagement metrics
-    total_study_time_minutes: int = 0
-    study_sessions_count: int = 0
 
 
 # ============================================================================

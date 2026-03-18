@@ -150,7 +150,7 @@ class QuizService:
 
         # Send notification with score
         try:
-            from app.services.notification_service import NotificationService
+            from app.services.notification.service import NotificationService
             from app.models.notification import NotificationType, NotificationCategory
 
             notification_service = NotificationService(self.session)

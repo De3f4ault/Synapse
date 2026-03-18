@@ -30,7 +30,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import structlog
 
 from app.models.link import Link, LinkType, LinkEntityType
-from app.services.link_service import LinkService
+from app.services.graph.link_service import LinkService
 
 logger = structlog.get_logger(__name__)
 

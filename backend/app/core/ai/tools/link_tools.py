@@ -67,7 +67,7 @@ class GetRelatedContentTool(BaseTool):
         """Execute related content retrieval."""
         try:
             from app.models.link import LinkEntityType
-            from app.services.link_service import LinkService
+            from app.services.graph.link_service import LinkService
             from app.db.session import get_async_session
 
             entity_type_str = kwargs.get("entity_type")
@@ -204,7 +204,7 @@ class CreateLinkTool(BaseTool):
         """Execute link creation."""
         try:
             from app.models.link import LinkEntityType, LinkType
-            from app.services.link_service import LinkService
+            from app.services.graph.link_service import LinkService
             from app.db.session import get_async_session
 
             source_type = LinkEntityType(kwargs.get("source_type"))
@@ -285,7 +285,7 @@ class GetKnowledgeGraphTool(BaseTool):
         """Execute knowledge graph retrieval."""
         try:
             from app.models.link import LinkEntityType
-            from app.services.link_service import LinkService
+            from app.services.graph.link_service import LinkService
             from app.db.session import get_async_session
 
             entity_types_str = kwargs.get("entity_types")
@@ -368,7 +368,7 @@ class SuggestLinksTool(BaseTool):
             # For now, return pending suggestions from the link service
             # Future: Integrate with RAG for semantic similarity detection
             from app.models.link import LinkEntityType
-            from app.services.link_service import LinkService
+            from app.services.graph.link_service import LinkService
             from app.db.session import get_async_session
 
             entity_type = LinkEntityType(kwargs.get("entity_type"))

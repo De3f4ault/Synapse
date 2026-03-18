@@ -74,5 +74,17 @@ export type DocumentResponse = {
      * Reading progress 0.0-1.0
      */
     reading_progress?: (number | null);
+    /**
+     * Assigned correspondent ID
+     */
+    correspondent_id?: (number | null);
+    /**
+     * Assigned document type ID
+     */
+    document_type_id?: (number | null);
+    /**
+     * Assigned storage path ID
+     */
+    storage_path_id?: (number | null);
 };
 

@@ -2,7 +2,7 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-import type { app__api__rest__search__SearchResponse } from '../models/app__api__rest__search__SearchResponse';
+import type { app__schemas__search__SearchResponse } from '../models/app__schemas__search__SearchResponse';
 import type { HybridSearchResponse } from '../models/HybridSearchResponse';
 import type { SearchClickRequest } from '../models/SearchClickRequest';
 import type { SearchClickResponse } from '../models/SearchClickResponse';
@@ -31,7 +31,7 @@ export class SearchService {
      * @param searchType Search strategy: fts, semantic, or hybrid
      * @param limit Maximum results
      * @param token Auth token for image/file requests
-     * @returns app__api__rest__search__SearchResponse Successful Response
+     * @returns app__schemas__search__SearchResponse Successful Response
      * @throws ApiError
      */
     public static searchAllApiV1SearchGet(
@@ -40,7 +40,7 @@ export class SearchService {
         searchType: string = 'hybrid',
         limit: number = 20,
         token?: (string | null),
-    ): CancelablePromise<app__api__rest__search__SearchResponse> {
+    ): CancelablePromise<app__schemas__search__SearchResponse> {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/v1/search',

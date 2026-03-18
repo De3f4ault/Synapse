@@ -12,7 +12,7 @@ export type DashboardOverview = {
     study_streak_days: number;
     total_cards: number;
     due_cards: number;
-    cards_reviewed_today: number;
+    cards_reviewed_today?: number;
     total_decks: number;
     flashcard_accuracy?: number;
     flashcard_study_time_minutes?: number;

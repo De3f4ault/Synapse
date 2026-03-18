@@ -1,13 +1,17 @@
 """
 User analytics queries for SYNAPSE learning platform.
 
-Provides reusable query templates for user statistics, learning metrics,
+All queries run against PostgreSQL via SQLAlchemy async sessions.
+Provides reusable query methods for user statistics, learning metrics,
 engagement analysis, and performance tracking.
 """
 
 import logging
-from typing import Any, Optional, Dict, List
+from typing import Any, Dict, List
 from datetime import datetime, timedelta
+
+from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
@@ -16,27 +20,22 @@ class UserAnalyticsQueries:
     """
     Collection of analytical queries for user learning data.
 
-    Provides templates for querying user statistics, learning metrics,
-    performance trends, and engagement data from PostgreSQL and DuckDB.
+    All queries run against PostgreSQL via SQLAlchemy async sessions.
     """
 
-    def __init__(self, db_session=None, duckdb_client=None):
+    def __init__(self, db_session: AsyncSession = None):
         """
-        Initialize with database clients.
+        Initialize with database session.
 
         Args:
-            db_session: SQLAlchemy session for PostgreSQL
-            duckdb_client: DuckDB connection for analytics
+            db_session: SQLAlchemy async session for PostgreSQL
         """
         self.db_session = db_session
-        self.duckdb_client = duckdb_client
         logger.debug("Initialized UserAnalyticsQueries")
 
     async def get_user_learning_summary(self, user_id: int) -> Dict[str, Any]:
         """
-        Get comprehensive user learning summary.
-
-        Returns metrics across all learning modules.
+        Get comprehensive user learning summary from PostgreSQL.
 
         Args:
             user_id: User ID
@@ -44,95 +43,52 @@ class UserAnalyticsQueries:
         Returns:
             Dictionary with learning summary data
         """
+        if not self.db_session:
+            return {}
+
         try:
-            summary = {
+            result = await self.db_session.execute(
+                text("""
+                    SELECT
+                        (SELECT COUNT(*) FROM flashcards fc
+                         JOIN decks d ON fc.deck_id = d.id
+                         WHERE d.user_id = :uid) AS total_flashcards,
+                        (SELECT COUNT(*) FROM decks WHERE user_id = :uid) AS total_decks,
+                        (SELECT COUNT(*) FROM notes WHERE user_id = :uid) AS total_notes,
+                        (SELECT COUNT(*) FROM documents WHERE user_id = :uid) AS total_documents,
+                        (SELECT COUNT(*) FROM quizzes WHERE user_id = :uid) AS total_quizzes,
+                        (SELECT COUNT(*) FROM reviews WHERE user_id = :uid) AS total_reviews,
+                        (SELECT MAX(reviewed_at) FROM reviews WHERE user_id = :uid) AS last_activity
+                """),
+                {"uid": user_id},
+            )
+            row = result.first()
+            if not row:
+                return {}
+
+            return {
                 "user_id": user_id,
-                "total_flashcards": 0,
-                "total_decks": 0,
-                "total_notes": 0,
-                "total_documents": 0,
-                "total_quizzes": 0,
-                "total_reviews": 0,
+                "total_flashcards": row.total_flashcards or 0,
+                "total_decks": row.total_decks or 0,
+                "total_notes": row.total_notes or 0,
+                "total_documents": row.total_documents or 0,
+                "total_quizzes": row.total_quizzes or 0,
+                "total_reviews": row.total_reviews or 0,
                 "study_streak_days": 0,
                 "overall_accuracy": 0.0,
                 "total_study_time_minutes": 0,
-                "last_activity": None
+                "last_activity": row.last_activity,
             }
 
-            if self.db_session:
-                from sqlalchemy import select, func
-                from app.models.flashcard import Flashcard
-                from app.models.deck import Deck
-                from app.models.note import Note
-                from app.models.document import Document
-                from app.models.quiz import Quiz
-                from app.models.review import Review
-                from app.models.study_session import StudySession
-
-                # Flashcard count
-                fc_result = await self.db_session.execute(
-                    select(func.count(Flashcard.id)).select_from(Flashcard)
-                    .join(Deck)
-                    .where(Deck.user_id == user_id)
-                )
-                summary["total_flashcards"] = fc_result.scalar() or 0
-
-                # Deck count
-                dc_result = await self.db_session.execute(
-                    select(func.count(Deck.id)).where(Deck.user_id == user_id)
-                )
-                summary["total_decks"] = dc_result.scalar() or 0
-
-                # Note count
-                nc_result = await self.db_session.execute(
-                    select(func.count(Note.id)).where(Note.user_id == user_id)
-                )
-                summary["total_notes"] = nc_result.scalar() or 0
-
-                # Document count
-                doc_result = await self.db_session.execute(
-                    select(func.count(Document.id)).where(Document.user_id == user_id)
-                )
-                summary["total_documents"] = doc_result.scalar() or 0
-
-                # Quiz count
-                qz_result = await self.db_session.execute(
-                    select(func.count(Quiz.id)).where(Quiz.user_id == user_id)
-                )
-                summary["total_quizzes"] = qz_result.scalar() or 0
-
-                # Review count
-                rev_result = await self.db_session.execute(
-                    select(func.count(Review.id)).where(Review.user_id == user_id)
-                )
-                summary["total_reviews"] = rev_result.scalar() or 0
-
-                # Last activity
-                last_review = await self.db_session.execute(
-                    select(Review.created_at)
-                    .where(Review.user_id == user_id)
-                    .order_by(Review.created_at.desc())
-                    .limit(1)
-                )
-                last_review_row = last_review.first()
-                if last_review_row:
-                    summary["last_activity"] = last_review_row[0]
-
-            return summary
-
         except Exception as e:
-            logger.error(f"Error getting user learning summary: {str(e)}")
+            logger.error(f"Error getting user learning summary: {e}")
             return {}
 
     async def get_performance_trends(
-        self,
-        user_id: int,
-        days: int = 30
+        self, user_id: int, days: int = 30
     ) -> List[Dict[str, Any]]:
         """
-        Get user's performance trends over time.
-
-        Returns daily accuracy and review counts.
+        Get user's performance trends over time from PostgreSQL.
 
         Args:
             user_id: User ID
@@ -141,48 +97,45 @@ class UserAnalyticsQueries:
         Returns:
             List of daily performance metrics
         """
-        trends = []
+        if not self.db_session:
+            return []
 
         try:
-            if not self.duckdb_client:
-                return trends
+            result = await self.db_session.execute(
+                text("""
+                    SELECT
+                        DATE(reviewed_at) AS review_date,
+                        COUNT(*) AS daily_reviews,
+                        AVG(CASE WHEN quality >= 3 THEN 1.0 ELSE 0.0 END) AS daily_accuracy,
+                        AVG(ease_factor_after) AS avg_ease_factor
+                    FROM reviews
+                    WHERE user_id = :uid
+                      AND reviewed_at >= CURRENT_DATE - :days * INTERVAL '1 day'
+                    GROUP BY DATE(reviewed_at)
+                    ORDER BY review_date
+                """),
+                {"uid": user_id, "days": days},
+            )
 
-            # Query DuckDB for daily performance
-            query = f"""
-            SELECT
-                DATE(reviewed_at) as review_date,
-                COUNT(*) as daily_reviews,
-                AVG(CASE WHEN quality >= 3 THEN 1.0 ELSE 0.0 END) as daily_accuracy,
-                AVG(ease_factor) as avg_ease_factor
-            FROM flashcard_reviews
-            WHERE user_id = {user_id}
-                AND reviewed_at >= CURRENT_DATE - INTERVAL '{days} days'
-            GROUP BY DATE(reviewed_at)
-            ORDER BY review_date
-            """
-
-            result = await self.duckdb_client.execute(query)
-
-            for row in result:
-                trends.append({
-                    "date": str(row[0]),
-                    "review_count": int(row[1]),
-                    "accuracy": float(row[2]) * 100 if row[2] else 0.0,
-                    "avg_ease_factor": float(row[3]) if row[3] else 0.0
-                })
-
-            logger.debug(f"Retrieved {len(trends)} performance trend records for user {user_id}")
+            return [
+                {
+                    "date": str(row.review_date),
+                    "review_count": int(row.daily_reviews),
+                    "accuracy": float(row.daily_accuracy or 0) * 100,
+                    "avg_ease_factor": float(row.avg_ease_factor or 0),
+                }
+                for row in result.all()
+            ]
 
         except Exception as e:
-            logger.error(f"Error getting performance trends: {str(e)}")
+            logger.error(f"Error getting performance trends: {e}")
+            return []
 
-        return trends
-
-    async def get_weak_areas(self, user_id: int, threshold: float = 70.0) -> List[Dict[str, Any]]:
+    async def get_weak_areas(
+        self, user_id: int, threshold: float = 70.0
+    ) -> List[Dict[str, Any]]:
         """
-        Identify user's weak learning areas.
-
-        Returns topics/tags where accuracy is below threshold.
+        Identify user's weak learning areas from PostgreSQL.
 
         Args:
             user_id: User ID
@@ -191,51 +144,47 @@ class UserAnalyticsQueries:
         Returns:
             List of weak areas with metrics
         """
-        weak_areas = []
+        if not self.db_session:
+            return []
 
         try:
-            if not self.duckdb_client:
-                return weak_areas
+            result = await self.db_session.execute(
+                text("""
+                    SELECT
+                        fc.id AS card_id,
+                        fc.front_text AS front_text,
+                        COUNT(r.id) AS review_count,
+                        AVG(CASE WHEN r.quality >= 3 THEN 1.0 ELSE 0.0 END) * 100 AS accuracy
+                    FROM reviews r
+                    JOIN flashcards fc ON r.card_id = fc.id
+                    JOIN decks d ON fc.deck_id = d.id
+                    WHERE d.user_id = :uid
+                    GROUP BY fc.id, fc.front_text
+                    HAVING AVG(CASE WHEN r.quality >= 3 THEN 1.0 ELSE 0.0 END) * 100 < :threshold
+                    ORDER BY accuracy ASC
+                    LIMIT 20
+                """),
+                {"uid": user_id, "threshold": threshold},
+            )
 
-            # Query DuckDB for accuracy by card/topic
-            query = f"""
-            SELECT
-                fc.id as card_id,
-                fc.front_text,
-                COUNT(fr.id) as review_count,
-                AVG(CASE WHEN fr.quality >= 3 THEN 1.0 ELSE 0.0 END) * 100 as accuracy
-            FROM flashcard_reviews fr
-            JOIN flashcards fc ON fr.card_id = fc.id
-            WHERE fr.user_id = {user_id}
-            GROUP BY fc.id, fc.front_text
-            HAVING AVG(CASE WHEN fr.quality >= 3 THEN 1.0 ELSE 0.0 END) * 100 < {threshold}
-            ORDER BY accuracy ASC
-            LIMIT 20
-            """
-
-            result = await self.duckdb_client.execute(query)
-
-            for row in result:
-                weak_areas.append({
-                    "card_id": int(row[0]),
-                    "topic": str(row[1])[:100],  # Truncate for safety
-                    "review_count": int(row[2]),
-                    "accuracy": float(row[3]),
-                    "difficulty": "hard" if row[3] < 50 else "medium"
-                })
-
-            logger.debug(f"Retrieved {len(weak_areas)} weak areas for user {user_id}")
+            return [
+                {
+                    "card_id": int(row.card_id),
+                    "topic": str(row.front_text)[:100],
+                    "review_count": int(row.review_count),
+                    "accuracy": float(row.accuracy),
+                    "difficulty": "hard" if row.accuracy < 50 else "medium",
+                }
+                for row in result.all()
+            ]
 
         except Exception as e:
-            logger.error(f"Error getting weak areas: {str(e)}")
-
-        return weak_areas
+            logger.error(f"Error getting weak areas: {e}")
+            return []
 
     async def get_study_streaks(self, user_id: int) -> Dict[str, int]:
         """
-        Calculate current and longest study streaks.
-
-        Returns consecutive days with learning activity.
+        Calculate current and longest study streaks from PostgreSQL.
 
         Args:
             user_id: User ID
@@ -243,31 +192,28 @@ class UserAnalyticsQueries:
         Returns:
             Dictionary with current_streak and longest_streak
         """
-        streaks = {"current_streak": 0, "longest_streak": 0}
+        if not self.db_session:
+            return {"current_streak": 0, "longest_streak": 0}
 
         try:
-            if not self.duckdb_client:
-                return streaks
-
-            # Get unique review dates in descending order
-            query = f"""
-            SELECT DISTINCT DATE(reviewed_at) as review_date
-            FROM flashcard_reviews
-            WHERE user_id = {user_id}
-            ORDER BY review_date DESC
-            LIMIT 365
-            """
-
-            result = await self.duckdb_client.execute(query)
-            review_dates = [row[0] for row in result]
+            result = await self.db_session.execute(
+                text("""
+                    SELECT DISTINCT DATE(reviewed_at) AS review_date
+                    FROM reviews
+                    WHERE user_id = :uid
+                    ORDER BY review_date DESC
+                    LIMIT 365
+                """),
+                {"uid": user_id},
+            )
+            review_dates = {row.review_date for row in result.all()}
 
             if not review_dates:
-                return streaks
+                return {"current_streak": 0, "longest_streak": 0}
 
-            # Calculate current streak
-            current_streak = 0
+            # Current streak
             today = datetime.utcnow().date()
-
+            current_streak = 0
             for i in range(365):
                 check_date = today - timedelta(days=i)
                 if check_date in review_dates:
@@ -275,36 +221,29 @@ class UserAnalyticsQueries:
                 else:
                     break
 
-            streaks["current_streak"] = current_streak
-
-            # Calculate longest streak
-            longest_streak = 0
-            current = 0
-
-            for date in sorted(review_dates):
-                if current == 0:
-                    current = 1
-                elif (review_dates[review_dates.index(date) - 1] - timedelta(days=1)) == date:
+            # Longest streak
+            sorted_dates = sorted(review_dates)
+            longest_streak = 1
+            current = 1
+            for i in range(1, len(sorted_dates)):
+                if (sorted_dates[i] - sorted_dates[i - 1]).days == 1:
                     current += 1
-                else:
                     longest_streak = max(longest_streak, current)
+                else:
                     current = 1
 
-            longest_streak = max(longest_streak, current)
-            streaks["longest_streak"] = longest_streak
-
-            logger.debug(
-                f"Calculated streaks for user {user_id}: "
-                f"current={streaks['current_streak']}, "
-                f"longest={streaks['longest_streak']}"
-            )
+            return {
+                "current_streak": current_streak,
+                "longest_streak": longest_streak,
+            }
 
         except Exception as e:
-            logger.error(f"Error calculating study streaks: {str(e)}")
+            logger.error(f"Error calculating study streaks: {e}")
+            return {"current_streak": 0, "longest_streak": 0}
 
-        return streaks
-
-    async def get_learning_velocity(self, user_id: int, days: int = 7) -> Dict[str, Any]:
+    async def get_learning_velocity(
+        self, user_id: int, days: int = 7
+    ) -> Dict[str, Any]:
         """
         Calculate user's learning velocity (cards reviewed per day).
 
@@ -319,140 +258,121 @@ class UserAnalyticsQueries:
             "period_days": days,
             "total_reviews": 0,
             "average_per_day": 0.0,
-            "trend": "stable"  # stable, improving, declining
+            "trend": "stable",
         }
 
+        if not self.db_session:
+            return velocity
+
         try:
-            if not self.duckdb_client:
-                return velocity
-
-            # Get review count for period
-            query = f"""
-            SELECT
-                COUNT(*) as total,
-                COUNT(DISTINCT DATE(reviewed_at)) as active_days
-            FROM flashcard_reviews
-            WHERE user_id = {user_id}
-                AND reviewed_at >= CURRENT_DATE - INTERVAL '{days} days'
-            """
-
-            result = await self.duckdb_client.execute(query)
-            row = result.fetchone()
-
+            result = await self.db_session.execute(
+                text("""
+                    SELECT
+                        COUNT(*) AS total,
+                        COUNT(DISTINCT DATE(reviewed_at)) AS active_days
+                    FROM reviews
+                    WHERE user_id = :uid
+                      AND reviewed_at >= CURRENT_DATE - :days * INTERVAL '1 day'
+                """),
+                {"uid": user_id, "days": days},
+            )
+            row = result.first()
             if row:
-                velocity["total_reviews"] = int(row[0])
-                active_days = int(row[1])
+                velocity["total_reviews"] = int(row.total or 0)
+                active_days = int(row.active_days or 0)
                 if active_days > 0:
                     velocity["average_per_day"] = velocity["total_reviews"] / active_days
 
             # Compare with previous period for trend
-            prev_query = f"""
-            SELECT COUNT(*)
-            FROM flashcard_reviews
-            WHERE user_id = {user_id}
-                AND reviewed_at >= CURRENT_DATE - INTERVAL '{days * 2} days'
-                AND reviewed_at < CURRENT_DATE - INTERVAL '{days} days'
-            """
-
-            prev_result = await self.duckdb_client.execute(prev_query)
-            prev_row = prev_result.fetchone()
-
-            if prev_row and prev_row[0] > 0:
-                prev_velocity = prev_row[0] / days
+            prev_result = await self.db_session.execute(
+                text("""
+                    SELECT COUNT(*) AS total
+                    FROM reviews
+                    WHERE user_id = :uid
+                      AND reviewed_at >= CURRENT_DATE - :prev_days * INTERVAL '1 day'
+                      AND reviewed_at < CURRENT_DATE - :days * INTERVAL '1 day'
+                """),
+                {"uid": user_id, "days": days, "prev_days": days * 2},
+            )
+            prev_row = prev_result.first()
+            if prev_row and prev_row.total and prev_row.total > 0:
+                prev_velocity = prev_row.total / max(1, days)
                 current_velocity = velocity["total_reviews"] / max(1, days)
-
                 if current_velocity > prev_velocity * 1.1:
                     velocity["trend"] = "improving"
                 elif current_velocity < prev_velocity * 0.9:
                     velocity["trend"] = "declining"
 
-            logger.debug(f"Calculated velocity for user {user_id}: {velocity}")
-
         except Exception as e:
-            logger.error(f"Error calculating learning velocity: {str(e)}")
+            logger.error(f"Error calculating learning velocity: {e}")
 
         return velocity
 
     async def get_mastery_scores(self, user_id: int) -> List[Dict[str, Any]]:
         """
-        Calculate mastery scores for different topics/decks.
-
-        Returns accuracy and proficiency metrics grouped by topic.
+        Calculate mastery scores for different decks from PostgreSQL.
 
         Args:
             user_id: User ID
 
         Returns:
-            List of topics with mastery scores
+            List of decks with mastery scores
         """
-        mastery = []
+        if not self.db_session:
+            return []
 
         try:
-            if not self.duckdb_client:
-                return mastery
+            result = await self.db_session.execute(
+                text("""
+                    SELECT
+                        d.id AS deck_id,
+                        d.name AS deck_name,
+                        COUNT(DISTINCT fc.id) AS card_count,
+                        COUNT(r.id) AS total_reviews,
+                        AVG(CASE WHEN r.quality >= 3 THEN 1.0 ELSE 0.0 END) * 100 AS mastery
+                    FROM decks d
+                    LEFT JOIN flashcards fc ON d.id = fc.deck_id
+                    LEFT JOIN reviews r ON fc.id = r.card_id
+                    WHERE d.user_id = :uid
+                    GROUP BY d.id, d.name
+                    HAVING COUNT(r.id) > 0
+                    ORDER BY mastery DESC
+                """),
+                {"uid": user_id},
+            )
 
-            # Query mastery by deck/topic
-            query = f"""
-            SELECT
-                d.id as deck_id,
-                d.name as deck_name,
-                COUNT(DISTINCT fc.id) as card_count,
-                COUNT(fr.id) as total_reviews,
-                AVG(CASE WHEN fr.quality >= 3 THEN 1.0 ELSE 0.0 END) * 100 as mastery
-            FROM decks d
-            LEFT JOIN flashcards fc ON d.id = fc.deck_id
-            LEFT JOIN flashcard_reviews fr ON fc.id = fr.card_id
-            WHERE d.user_id = {user_id}
-            GROUP BY d.id, d.name
-            ORDER BY mastery DESC
-            """
-
-            result = await self.duckdb_client.execute(query)
-
-            for row in result:
-                if row[3] and row[3] > 0:  # Only include if there are reviews
-                    mastery.append({
-                        "deck_id": int(row[0]),
-                        "deck_name": str(row[1]),
-                        "card_count": int(row[2]),
-                        "review_count": int(row[3]),
-                        "mastery_percentage": float(row[4])
-                    })
-
-            logger.debug(f"Retrieved mastery scores for {len(mastery)} decks for user {user_id}")
+            return [
+                {
+                    "deck_id": int(row.deck_id),
+                    "deck_name": str(row.deck_name),
+                    "card_count": int(row.card_count),
+                    "review_count": int(row.total_reviews),
+                    "mastery_percentage": float(row.mastery or 0),
+                }
+                for row in result.all()
+            ]
 
         except Exception as e:
-            logger.error(f"Error getting mastery scores: {str(e)}")
+            logger.error(f"Error getting mastery scores: {e}")
+            return []
 
-        return mastery
-
-    async def execute_custom_query(
-        self,
-        query: str,
-        query_type: str = "duckdb"
-    ) -> List[Any]:
+    async def execute_custom_query(self, query: str) -> list:
         """
-        Execute custom SQL query (for advanced analytics).
+        Execute custom SQL query against PostgreSQL.
 
         Args:
             query: SQL query string
-            query_type: "duckdb" or "postgres"
 
         Returns:
-            Query results
+            Query results as list of rows
         """
-        try:
-            if query_type == "duckdb" and self.duckdb_client:
-                result = await self.duckdb_client.execute(query)
-                return result.fetchall()
-            elif query_type == "postgres" and self.db_session:
-                from sqlalchemy import text
-                result = await self.db_session.execute(text(query))
-                return result.fetchall()
-            else:
-                logger.warning(f"Query client not available: {query_type}")
-                return []
+        if not self.db_session:
+            logger.warning("No db_session available for custom query")
+            return []
 
+        try:
+            result = await self.db_session.execute(text(query))
+            return result.fetchall()
         except Exception as e:
-            logger.error(f"Error executing custom query: {str(e)}")
+            logger.error(f"Error executing custom query: {e}")
             return []

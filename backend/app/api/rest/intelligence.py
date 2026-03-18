@@ -24,35 +24,13 @@ from app.schemas.platform import (
     ModuleId,
     EntityType,
 )
+from app.schemas.intelligence import IntelligenceSummary
 from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import datetime
 
 
 router = APIRouter()
-
-
-# ============================================================================
-# Response Models
-# ============================================================================
-
-
-class IntelligenceSummary(BaseModel):
-    """Intelligence summary response."""
-
-    weak_concepts: list[ConceptState] = Field(
-        default_factory=list, description="Concepts with mastery < 0.3"
-    )
-    fragile_concepts: list[ConceptState] = Field(
-        default_factory=list, description="Concepts at risk of decay"
-    )
-    high_roi_concepts: list[ConceptState] = Field(
-        default_factory=list, description="Concepts with high reinforcement ROI"
-    )
-    recommended_actions: list[PlatformAction] = Field(
-        default_factory=list, description="Recommended platform actions"
-    )
-    generated_at: datetime = Field(default_factory=datetime.utcnow)
 
 
 # ============================================================================
