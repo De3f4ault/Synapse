@@ -55,6 +55,13 @@ export interface EnhancedDocument extends DocumentResponse {
     reading_progress?: number | null;
     content_text?: string | null;
     thumbnail_url?: string | null;
+
+    // DMS fields (from Paperless-ngx extensions)
+    title?: string;
+    tag_ids?: number[];
+    archive_serial_number?: number | null;
+    notes_count?: number;
+    mime_type?: string;
 }
 
 // ============================================================================

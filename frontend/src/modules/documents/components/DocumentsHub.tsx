@@ -36,7 +36,7 @@ import { BulkEditor } from "./dms/BulkEditor";
 
 // DMS Hooks
 import { useCorrespondents, useDocumentTypes, useTags, useStoragePaths } from "../hooks/useTaxonomy";
-import { useSavedViews, useCreateSavedView } from "../hooks/useSavedViews";
+import { useCreateSavedView } from "../hooks/useSavedViews";
 
 // DMS Types
 import {
@@ -94,10 +94,9 @@ function toTableDoc(
   docTypes: DocumentType[],
   allTags: Tag[]
 ): TableDocument {
-  const docAny = doc as Record<string, unknown>;
   return {
     id: typeof doc.id === "string" ? parseInt(doc.id) : doc.id,
-    title: (docAny.title as string) || doc.filename,
+    title: doc.title || doc.filename,
     created: doc.created_at,
     added: doc.created_at,
     correspondent: doc.correspondent_id
@@ -106,11 +105,11 @@ function toTableDoc(
     documentType: doc.document_type_id
       ? docTypes.find((dt) => dt.id === doc.document_type_id) || null
       : null,
-    tags: (Array.isArray(docAny.tag_ids) ? docAny.tag_ids as number[] : [])
+    tags: (doc.tag_ids || [])
       .map((tid: number) => allTags.find((t) => t.id === tid))
       .filter(Boolean) as Tag[],
-    asn: (docAny.archive_serial_number as number) || null,
-    notesCount: (docAny.notes_count as number) || 0,
+    asn: doc.archive_serial_number ?? null,
+    notesCount: doc.notes_count || 0,
   };
 }
 
@@ -179,7 +178,6 @@ export const DocumentsHub = ({
   const { data: docTypes } = useDocumentTypes();
   const { data: tags } = useTags();
   const { data: storagePaths } = useStoragePaths();
-  const _savedViews = useSavedViews();
   const createSavedView = useCreateSavedView();
 
   // ── Thumbnails ─────────────────────────────────────────────────────────
@@ -670,16 +668,16 @@ export const DocumentsHub = ({
                   <DocumentDetailPanel
                     document={{
                       id: typeof detailDoc.id === "string" ? parseInt(detailDoc.id) : detailDoc.id,
-                      title: (detailDoc as Record<string, unknown>).title as string || detailDoc.filename,
+                      title: detailDoc.title || detailDoc.filename,
                       created: detailDoc.created_at,
                       added: detailDoc.created_at,
                       correspondentId: detailDoc.correspondent_id || null,
                       documentTypeId: detailDoc.document_type_id || null,
-                      tagIds: Array.isArray((detailDoc as Record<string, unknown>).tag_ids) ? (detailDoc as Record<string, unknown>).tag_ids as number[] : [],
+                      tagIds: detailDoc.tag_ids || [],
                       storagePathId: detailDoc.storage_path_id || null,
-                      asn: (detailDoc as Record<string, unknown>).archive_serial_number as number || null,
+                      asn: detailDoc.archive_serial_number ?? null,
                       originalFilename: detailDoc.filename,
-                      mimeType: detailDoc.file_type,
+                      mimeType: detailDoc.mime_type || detailDoc.file_type,
                       fileSize: detailDoc.size,
                       notes: [],
                     }}
