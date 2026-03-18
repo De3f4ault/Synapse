@@ -29,6 +29,10 @@ class DocumentResponse(BaseModel):
     notes: Optional[str] = Field(default=None, description="User notes on document")
     ai_summary: Optional[str] = Field(default=None, description="AI-generated summary")
     reading_progress: Optional[float] = Field(default=0.0, description="Reading progress 0.0-1.0")
+    # Classification fields (Phase 3)
+    correspondent_id: Optional[int] = Field(default=None, description="Assigned correspondent ID")
+    document_type_id: Optional[int] = Field(default=None, description="Assigned document type ID")
+    storage_path_id: Optional[int] = Field(default=None, description="Assigned storage path ID")
 
     class Config:
         from_attributes = True
