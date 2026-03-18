@@ -1,12 +1,18 @@
 /**
  * useGlobalSearch — TanStack Query hook for multi-entity search
  *
- * Searches documents, correspondents, types, tags, saved views
+ * Searches documents, correspondents, document types, tags
  * simultaneously. Returns grouped results for the command palette.
+ *
+ * API paths from router.py:
+ *   /api/documents/?search=     (search param on list_documents)
+ *   /api/correspondents/        (no search param on backend — filter client-side)
+ *   /api/document-types/        (hyphenated, from router.py L77)
+ *   /api/tags/                  (no search param — filter client-side)
+ *   /api/saved-views/           (hyphenated, from router.py L80)
  */
 
 import { useQuery } from "@tanstack/react-query";
-import { client } from "@/api/generated/client/client";
 
 // ============================================================================
 // Types
@@ -31,6 +37,17 @@ export interface GroupedSearchResults {
 }
 
 // ============================================================================
+// Helpers
+// ============================================================================
+
+async function fetchJson(url: string): Promise<unknown> {
+  const res = await fetch(url, { credentials: "include" });
+  if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
+  const data = await res.json();
+  return Array.isArray(data) ? data : data.results || [];
+}
+
+// ============================================================================
 // Hook
 // ============================================================================
 
@@ -42,26 +59,34 @@ export function useGlobalSearch(query: string) {
         return { documents: [], correspondents: [], documentTypes: [], tags: [], savedViews: [] };
       }
 
-      // Parallel requests to multiple endpoints
-      const [docsRes, corrsRes, typesRes, tagsRes] = await Promise.allSettled([
-        client.get(`/api/documents/?search=${encodeURIComponent(query)}&page_size=5`),
-        client.get(`/api/correspondents/?search=${encodeURIComponent(query)}`),
-        client.get(`/api/document_types/?search=${encodeURIComponent(query)}`),
-        client.get(`/api/tags/?search=${encodeURIComponent(query)}`),
+      const q = encodeURIComponent(query);
+
+      // Parallel requests — documents have server-side search,
+      // taxonomy endpoints return all items (we filter client-side)
+      const [docsRes, corrsRes, typesRes, tagsRes, viewsRes] = await Promise.allSettled([
+        fetchJson(`/api/documents/?search=${q}&page_size=5`),
+        fetchJson(`/api/correspondents/`),
+        fetchJson(`/api/document-types/`),
+        fetchJson(`/api/tags/`),
+        fetchJson(`/api/saved-views/`),
       ]);
 
-      const extract = (result: PromiseSettledResult<unknown>): unknown[] => {
+      const extract = (result: PromiseSettledResult<unknown>): Record<string, unknown>[] => {
         if (result.status === "fulfilled") {
-          const val = result.value as Record<string, unknown>;
-          return (val?.results as unknown[]) || (Array.isArray(val) ? val : []);
+          return result.value as Record<string, unknown>[];
         }
         return [];
       };
 
-      const docItems = extract(docsRes) as Array<Record<string, unknown>>;
-      const corrItems = extract(corrsRes) as Array<Record<string, unknown>>;
-      const typeItems = extract(typesRes) as Array<Record<string, unknown>>;
-      const tagItems = extract(tagsRes) as Array<Record<string, unknown>>;
+      const lowerQ = query.toLowerCase();
+      const nameMatch = (item: Record<string, unknown>) =>
+        ((item.name as string) || "").toLowerCase().includes(lowerQ);
+
+      const docItems = extract(docsRes);
+      const corrItems = extract(corrsRes).filter(nameMatch);
+      const typeItems = extract(typesRes).filter(nameMatch);
+      const tagItems = extract(tagsRes).filter(nameMatch);
+      const viewItems = extract(viewsRes).filter(nameMatch);
 
       return {
         documents: docItems.slice(0, 5).map((d) => ({
@@ -90,7 +115,11 @@ export function useGlobalSearch(query: string) {
           name: t.name as string,
           detail: `${t.document_count || 0} docs`,
         })),
-        savedViews: [], // TODO: search saved views when endpoint exists
+        savedViews: viewItems.slice(0, 5).map((v) => ({
+          id: v.id as number,
+          type: "savedView" as const,
+          name: v.name as string,
+        })),
       };
     },
     enabled: query.length >= 2,
