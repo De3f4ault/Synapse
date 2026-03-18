@@ -3,24 +3,28 @@
 /* tslint:disable */
 /* eslint-disable */
 /**
- * Webhook creation request.
+ * Webhook creation schema.
  */
 export type WebhookCreate = {
     /**
-     * Webhook endpoint URL
+     * Webhook URL
      */
     url: string;
     /**
-     * Events to subscribe to
+     * Event types to subscribe to
      */
     events: Array<string>;
+    /**
+     * Webhook secret for HMAC signature
+     */
+    secret: string;
+    /**
+     * Whether webhook is active
+     */
+    is_active?: boolean;
     /**
      * Webhook description
      */
     description?: (string | null);
-    /**
-     * Whether webhook is active
-     */
-    active?: boolean;
 };
 

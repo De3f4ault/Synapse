@@ -2,6 +2,7 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
+import type { Body_import_deck_csv_api_v1_decks__deck_id__import_csv_post } from '../models/Body_import_deck_csv_api_v1_decks__deck_id__import_csv_post';
 import type { DeckCreate } from '../models/DeckCreate';
 import type { DeckResponse } from '../models/DeckResponse';
 import type { DeckUpdate } from '../models/DeckUpdate';
@@ -21,8 +22,8 @@ import { OpenAPI } from '../core/OpenAPI';
 import { request as __request } from '../core/request';
 export class FlashcardsService {
     /**
-     * List decks
-     * Retrieve user's decks with optional filtering
+     * List Decks
+     * List user's decks with card counts and due counts.
      * @param tags Filter by tags (comma-separated)
      * @param isPublic Filter by public status
      * @param page Page number
@@ -54,8 +55,8 @@ export class FlashcardsService {
         });
     }
     /**
-     * Create deck
-     * Create a new flashcard deck
+     * Create Deck
+     * Create a new flashcard deck.
      * @param requestBody
      * @param token Auth token for image/file requests
      * @returns DeckResponse Successful Response
@@ -79,8 +80,8 @@ export class FlashcardsService {
         });
     }
     /**
-     * Get deck
-     * Retrieve a specific deck by ID
+     * Get Deck
+     * Retrieve a specific deck by ID.
      * @param deckId
      * @param token Auth token for image/file requests
      * @returns DeckResponse Successful Response
@@ -105,8 +106,8 @@ export class FlashcardsService {
         });
     }
     /**
-     * Update deck
-     * Update an existing deck
+     * Update Deck
+     * Update an existing deck.
      * @param deckId
      * @param requestBody
      * @param token Auth token for image/file requests
@@ -135,8 +136,8 @@ export class FlashcardsService {
         });
     }
     /**
-     * Delete deck
-     * Delete a deck (soft delete with cascade to flashcards)
+     * Delete Deck
+     * Delete a deck (soft delete with cascade to flashcards).
      * @param deckId
      * @param token Auth token for image/file requests
      * @returns MessageResponse Successful Response
@@ -161,11 +162,11 @@ export class FlashcardsService {
         });
     }
     /**
-     * List deck cards
-     * Get all flashcards in a deck
+     * List Deck Cards
+     * Get all flashcards in a deck.
      * @param deckId
-     * @param page Page number
-     * @param pageSize Items per page
+     * @param page
+     * @param pageSize
      * @param token Auth token for image/file requests
      * @returns any Successful Response
      * @throws ApiError
@@ -193,8 +194,8 @@ export class FlashcardsService {
         });
     }
     /**
-     * Generate flashcards from document
-     * Use AI to generate flashcards from a document
+     * Generate Flashcards
+     * Generate flashcards from a document using AI.
      * @param requestBody
      * @param token Auth token for image/file requests
      * @returns FlashcardGenerateResponse Successful Response
@@ -218,8 +219,8 @@ export class FlashcardsService {
         });
     }
     /**
-     * Generate flashcards from topic
-     * Use AI to generate flashcards from any topic
+     * Generate Flashcards From Topic
+     * Generate flashcards from a topic using AI.
      * @param requestBody
      * @param token Auth token for image/file requests
      * @returns FlashcardGenerateResponse Successful Response
@@ -243,8 +244,8 @@ export class FlashcardsService {
         });
     }
     /**
-     * Import flashcards
-     * Bulk import flashcards into a deck
+     * Import Flashcards
+     * Bulk import flashcards into a deck.
      * @param deckId
      * @param requestBody
      * @param token Auth token for image/file requests
@@ -267,6 +268,100 @@ export class FlashcardsService {
             },
             body: requestBody,
             mediaType: 'application/json',
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Export Deck (JSON)
+     * Export a deck and all its flashcards as JSON.
+     *
+     * The output format is re-importable via POST /{deck_id}/import.
+     * @param deckId
+     * @param includeStats Include review statistics per card
+     * @param token Auth token for image/file requests
+     * @returns any Successful Response
+     * @throws ApiError
+     */
+    public static exportDeckApiV1DecksDeckIdExportGet(
+        deckId: number,
+        includeStats: boolean = true,
+        token?: (string | null),
+    ): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/decks/{deck_id}/export',
+            path: {
+                'deck_id': deckId,
+            },
+            query: {
+                'include_stats': includeStats,
+                'token': token,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Export Deck (CSV)
+     * Export a deck's flashcards as CSV.
+     *
+     * Returns a downloadable CSV file with columns:
+     * front_text, back_text, front_media_url, back_media_url,
+     * ease_factor, interval, learning_state.
+     * @param deckId
+     * @param token Auth token for image/file requests
+     * @returns any Successful Response
+     * @throws ApiError
+     */
+    public static exportDeckCsvEndpointApiV1DecksDeckIdExportCsvGet(
+        deckId: number,
+        token?: (string | null),
+    ): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/decks/{deck_id}/export/csv',
+            path: {
+                'deck_id': deckId,
+            },
+            query: {
+                'token': token,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Import Deck Csv
+     * Import flashcards from a CSV file.
+     *
+     * Expects columns: front_text (required), back_text (required),
+     * front_media_url (optional), back_media_url (optional).
+     * @param deckId
+     * @param formData
+     * @param token Auth token for image/file requests
+     * @returns ImportResult Successful Response
+     * @throws ApiError
+     */
+    public static importDeckCsvApiV1DecksDeckIdImportCsvPost(
+        deckId: number,
+        formData: Body_import_deck_csv_api_v1_decks__deck_id__import_csv_post,
+        token?: (string | null),
+    ): CancelablePromise<ImportResult> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/decks/{deck_id}/import/csv',
+            path: {
+                'deck_id': deckId,
+            },
+            query: {
+                'token': token,
+            },
+            formData: formData,
+            mediaType: 'multipart/form-data',
             errors: {
                 422: `Validation Error`,
             },

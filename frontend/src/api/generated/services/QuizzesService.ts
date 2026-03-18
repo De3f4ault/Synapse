@@ -20,16 +20,10 @@ import { request as __request } from '../core/request';
 export class QuizzesService {
     /**
      * Get Due Questions
-     * Get questions due for SM-2 review (Phase Q1).
-     *
-     * Returns questions that are scheduled for review based on spaced repetition.
-     * Can be filtered to a specific quiz or return due questions across all quizzes.
-     *
-     * Phase Q2.5: When bias_by_weakness=true, reorders questions by semantic
-     * proximity to user's weak areas. INVARIANT: Only reorders, never expands the set.
+     * Get questions due for SM-2 review.
      * @param quizId Filter to specific quiz
      * @param limit Max questions to return
-     * @param biasByWeakness Phase Q2.5: Reorder by proximity to weak areas
+     * @param biasByWeakness Reorder by proximity to weak areas
      * @param token Auth token for image/file requests
      * @returns DueQuestionsResponse Successful Response
      * @throws ApiError
@@ -81,9 +75,9 @@ export class QuizzesService {
     }
     /**
      * List Quizzes
-     * List user's quizzes with question counts (optimized - single query).
-     * @param page
-     * @param pageSize
+     * List user's quizzes with question counts.
+     * @param page Page number
+     * @param pageSize Items per page
      * @param token Auth token for image/file requests
      * @returns QuizResponse Successful Response
      * @throws ApiError
@@ -107,8 +101,8 @@ export class QuizzesService {
         });
     }
     /**
-     * Generate quiz with AI
-     * Use AI to generate a quiz from a topic or document
+     * Generate Quiz
+     * Generate a quiz using AI.
      * @param requestBody
      * @param token Auth token for image/file requests
      * @returns QuizGenerateResponse Successful Response
@@ -190,9 +184,6 @@ export class QuizzesService {
     /**
      * Get Quiz Attempt
      * Retrieve a completed quiz attempt's results.
-     *
-     * This endpoint allows fetching results for a previously completed attempt,
-     * enabling refresh-safe results pages and historical review.
      * @param attemptId
      * @param token Auth token for image/file requests
      * @returns QuizResultResponse Successful Response
@@ -219,9 +210,6 @@ export class QuizzesService {
     /**
      * Get Quiz Attempt Insights
      * Get AI-generated insights for a completed quiz attempt.
-     *
-     * Analyzes performance patterns and provides actionable recommendations.
-     * Currently returns a basic analysis; will be enhanced with full AI integration.
      * @param attemptId
      * @param token Auth token for image/file requests
      * @returns QuizInsightsResponse Successful Response
@@ -248,9 +236,6 @@ export class QuizzesService {
     /**
      * Get Active Attempt
      * Check if there's an active (incomplete) attempt for this quiz.
-     *
-     * Returns the attempt_id if one exists, null otherwise.
-     * Used by frontend to decide whether to start new or resume.
      * @param quizId
      * @param token Auth token for image/file requests
      * @returns any Successful Response
@@ -277,9 +262,6 @@ export class QuizzesService {
     /**
      * Resume Quiz Attempt
      * Resume an in-progress quiz attempt.
-     *
-     * Returns questions, partial answers, and timing info.
-     * Allows frontend to rehydrate state after page refresh.
      * @param attemptId
      * @param token Auth token for image/file requests
      * @returns QuizAttemptResume Successful Response
@@ -306,8 +288,6 @@ export class QuizzesService {
     /**
      * Save Partial Answers
      * Save partial answers without submitting.
-     *
-     * Enables resume functionality by persisting progress.
      * @param attemptId
      * @param requestBody
      * @param token Auth token for image/file requests
@@ -336,13 +316,8 @@ export class QuizzesService {
         });
     }
     /**
-     * Get related flashcards (Phase Q3.1)
-     * Surface flashcards semantically close to a quiz question.
-     *
-     * Phase Q3.1: Connect applied recall (quiz) to isolated recall (flashcard)
-     * without coupling. Call this after a user struggles with a question.
-     *
-     * INVARIANT: Advisory only. Nothing is scheduled or reset.
+     * Get Related Flashcards
+     * Surface flashcards semantically close to a quiz question (advisory only).
      * @param questionId
      * @param limit
      * @param token Auth token for image/file requests
@@ -370,13 +345,8 @@ export class QuizzesService {
         });
     }
     /**
-     * Get context notes for weak areas (Phase Q3.2)
-     * Surface notes related to recent low-quality quiz attempts.
-     *
-     * Phase Q3.2: Notes inform but never decay. Surface as optional reference
-     * material near areas where the user has shown difficulty.
-     *
-     * INVARIANT: Notes NEVER enter SM-2. Only advisory.
+     * Get Context For Weakness
+     * Surface notes related to recent low-quality quiz attempts (advisory only).
      * @param lookbackDays
      * @param limit
      * @param token Auth token for image/file requests

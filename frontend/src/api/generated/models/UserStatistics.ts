@@ -3,19 +3,40 @@
 /* tslint:disable */
 /* eslint-disable */
 /**
- * User statistics response.
+ * User statistics schema.
  */
 export type UserStatistics = {
-    total_cards?: number;
-    due_cards?: number;
-    total_decks?: number;
-    total_notes?: number;
-    total_documents?: number;
-    study_streak_days?: number;
-    reviews_today?: number;
-    total_reviews?: number;
-    overall_accuracy?: number;
-    total_study_time_minutes?: number;
-    study_sessions_count?: number;
+    /**
+     * Total flashcards
+     */
+    total_cards: number;
+    /**
+     * Cards due for review
+     */
+    due_cards: number;
+    /**
+     * Total decks
+     */
+    total_decks: number;
+    /**
+     * Total notes
+     */
+    total_notes: number;
+    /**
+     * Total documents
+     */
+    total_documents: number;
+    /**
+     * Current study streak in days
+     */
+    study_streak: number;
+    /**
+     * Total study time in seconds
+     */
+    total_study_time: number;
+    /**
+     * Overall accuracy rate
+     */
+    overall_accuracy?: (number | null);
 };
 

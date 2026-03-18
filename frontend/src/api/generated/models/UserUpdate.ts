@@ -3,11 +3,20 @@
 /* tslint:disable */
 /* eslint-disable */
 /**
- * User profile update request.
+ * User update schema.
  */
 export type UserUpdate = {
+    /**
+     * User full name
+     */
     full_name?: (string | null);
-    timezone?: (string | null);
+    /**
+     * User preferences
+     */
     preferences?: (Record<string, any> | null);
+    /**
+     * User timezone
+     */
+    timezone?: (string | null);
 };
 

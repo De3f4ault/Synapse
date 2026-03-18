@@ -67,8 +67,8 @@ export class StudyService {
     /**
      * List Sessions
      * List user's study sessions with pagination.
-     * @param page
-     * @param pageSize
+     * @param page Page number
+     * @param pageSize Items per page
      * @param token Auth token for image/file requests
      * @returns StudySessionResponse Successful Response
      * @throws ApiError

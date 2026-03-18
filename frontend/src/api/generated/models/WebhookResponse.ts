@@ -3,19 +3,56 @@
 /* tslint:disable */
 /* eslint-disable */
 /**
- * Webhook response.
+ * Webhook response schema.
  */
 export type WebhookResponse = {
+    /**
+     * Webhook ID
+     */
     id: number;
+    /**
+     * Owner user ID
+     */
+    user_id: number;
+    /**
+     * Webhook URL
+     */
     url: string;
+    /**
+     * Subscribed event types
+     */
     events: Array<string>;
-    description: (string | null);
-    active: boolean;
-    secret: string;
+    /**
+     * Whether webhook is active
+     */
+    is_active: boolean;
+    /**
+     * Webhook description
+     */
+    description?: (string | null);
+    /**
+     * Creation time
+     */
     created_at: string;
+    /**
+     * Last update time
+     */
     updated_at: string;
-    last_triggered_at: (string | null);
-    success_count: number;
-    failure_count: number;
+    /**
+     * Last trigger time
+     */
+    last_triggered_at?: (string | null);
+    /**
+     * Total deliveries attempted
+     */
+    total_deliveries: number;
+    /**
+     * Successful deliveries
+     */
+    successful_deliveries: number;
+    /**
+     * Failed deliveries
+     */
+    failed_deliveries: number;
 };
 

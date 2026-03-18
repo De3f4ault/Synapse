@@ -3,12 +3,28 @@
 /* tslint:disable */
 /* eslint-disable */
 /**
- * Test webhook response.
+ * Webhook test response schema.
  */
 export type WebhookTestResponse = {
+    /**
+     * Whether test was successful
+     */
     success: boolean;
-    http_status: number;
-    response_time_ms: number;
-    message: string;
+    /**
+     * HTTP response code
+     */
+    status_code?: (number | null);
+    /**
+     * Response time in milliseconds
+     */
+    response_time_ms?: (number | null);
+    /**
+     * Error message if failed
+     */
+    error?: (string | null);
+    /**
+     * Test payload sent
+     */
+    payload_sent: Record<string, any>;
 };
 
