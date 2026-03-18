@@ -32,6 +32,7 @@ import { DocumentCardSmall } from "./dms/DocumentCardSmall";
 import { DocumentTable, type TableDocument } from "./dms/DocumentTable";
 import { DocumentDetailPanel } from "./dms/DocumentDetailPanel";
 import { SaveViewDialog } from "./dms/SaveViewDialog";
+import { BulkEditor } from "./dms/BulkEditor";
 
 // DMS Hooks
 import { useCorrespondents, useDocumentTypes, useTags, useStoragePaths } from "../hooks/useTaxonomy";
@@ -475,15 +476,33 @@ export const DocumentsHub = ({
                 </div>
               </div>
 
-              {/* Filter toolbar */}
-              <FilterEditor
-                filterRules={filterRules}
-                onFilterRulesChange={handleFilterChange}
-                correspondents={correspondents}
-                documentTypes={docTypes}
-                tags={tags}
-                storagePaths={storagePaths}
-              />
+              {/* Filter toolbar OR Bulk editor */}
+              {selectedIds.size > 0 ? (
+                <BulkEditor
+                  selectionCount={selectedIds.size}
+                  onDeselectAll={selectNone}
+                  correspondents={correspondents}
+                  documentTypes={docTypes}
+                  tags={tags}
+                  storagePaths={storagePaths}
+                  onSetCorrespondent={(_id) => toast.info("Bulk set correspondent — TODO")}
+                  onSetDocumentType={(_id) => toast.info("Bulk set type — TODO")}
+                  onAddTags={(_ids) => toast.info("Bulk add tags — TODO")}
+                  onRemoveTags={(_ids) => toast.info("Bulk remove tags — TODO")}
+                  onSetStoragePath={(_id) => toast.info("Bulk set path — TODO")}
+                  onDelete={() => toast.info("Bulk delete — TODO")}
+                  onDownload={() => toast.info("Bulk download — TODO")}
+                />
+              ) : (
+                <FilterEditor
+                  filterRules={filterRules}
+                  onFilterRulesChange={handleFilterChange}
+                  correspondents={correspondents}
+                  documentTypes={docTypes}
+                  tags={tags}
+                  storagePaths={storagePaths}
+                />
+              )}
             </div>
           </div>
 
