@@ -21,20 +21,22 @@ from .pipeline import PipelineRunner, IngestDocument, ConsumerStatusCode
 
 def create_pipeline() -> PipelineRunner:
     """
-    Create a standard ingestion pipeline with all 4 plugins.
+    Create a standard ingestion pipeline with all 5 plugins.
 
-    Plugin order: preflight → parse → store → index
+    Plugin order: preflight → parse → store → index → summarize
     """
     from .plugins.preflight import PreflightPlugin
     from .plugins.parser_plugin import ParserPlugin
     from .plugins.store_plugin import StorePlugin
     from .plugins.index_plugin import IndexPlugin
+    from .plugins.summarize_plugin import SummarizePlugin
 
     runner = PipelineRunner()
     runner.add_plugin(PreflightPlugin())
     runner.add_plugin(ParserPlugin())
     runner.add_plugin(StorePlugin())
     runner.add_plugin(IndexPlugin())
+    runner.add_plugin(SummarizePlugin())
     return runner
 
 

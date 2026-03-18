@@ -34,6 +34,12 @@ class IndexPlugin(IngestionPlugin):
             document_id = await self._create_document_record(doc)
             doc.document_id = document_id
 
+            # Auto-classify: correspondent, type, tags, storage path
+            await self._auto_classify(doc)
+
+            # Fire DOCUMENT_ADDED workflow trigger (after classification)
+            await self._run_workflows(doc)
+
             # Store thumbnail now that we have a document_id
             if doc.thumbnail_path:
                 await self._store_thumbnail(doc)
@@ -104,6 +110,67 @@ class IndexPlugin(IngestionPlugin):
             doc.thumbnail_path = stored
         except Exception as e:
             logger.debug("Thumbnail storage failed: %s", e)
+
+    async def _auto_classify(self, doc) -> None:
+        """
+        Run auto-classification on the document (best-effort).
+
+        Applies matching rules + AI classification to assign:
+        correspondent, document type, tags, and storage path.
+        """
+        if not doc.document_id:
+            return
+
+        try:
+            from app.db.session import get_db_session
+            from app.services.classification.auto_assign import auto_classify_document
+
+            async with get_db_session() as db:
+                result = await auto_classify_document(doc.document_id, db)
+
+            logger.info(
+                "Auto-classification complete for document %d: %s",
+                doc.document_id, result,
+            )
+        except Exception as e:
+            # Classification failure should never abort the pipeline
+            logger.warning(
+                "Auto-classification failed for document %d: %s",
+                doc.document_id, e,
+            )
+
+    async def _run_workflows(self, doc) -> None:
+        """
+        Fire DOCUMENT_ADDED workflow trigger after classification.
+
+        Best-effort: workflow failure must never abort the pipeline.
+        """
+        if not doc.document_id:
+            return
+
+        try:
+            from app.db.session import AsyncSessionLocal
+            from app.services.workflows.engine import run_workflows
+            from app.models.workflow import WorkflowTriggerType
+
+            async with AsyncSessionLocal() as db:
+                fired = await run_workflows(
+                    trigger_type=WorkflowTriggerType.DOCUMENT_ADDED,
+                    document_id=doc.document_id,
+                    db=db,
+                    source="api_upload",
+                    filename=doc.original_filename,
+                )
+                if fired:
+                    logger.info(
+                        "Workflow: %d workflow(s) fired for document %d",
+                        fired, doc.document_id,
+                    )
+        except Exception as e:
+            logger.warning(
+                "Workflow trigger failed for document %d: %s",
+                doc.document_id, e,
+            )
 
     def _trigger_embedding(self, document_id: int) -> None:
         """Fire-and-forget: queue vector embedding task."""

@@ -3,9 +3,13 @@ Store plugin — save files to dual-path storage (original + archive).
 
 Uses FileManager to resolve template-based paths and store files
 in the originals and archive directories.
+
+Updated for Phase 7 ORM-aware FileManager API — builds a document-
+like namespace from IngestDocument to pass to resolve_path/store_*.
 """
 
 import logging
+from types import SimpleNamespace
 
 from .base import IngestionPlugin
 
@@ -17,8 +21,8 @@ class StorePlugin(IngestionPlugin):
     Store document files using the FileManager.
 
     Sets on IngestDocument:
-        - stored_original_path (absolute path to stored original)
-        - stored_archive_path  (absolute path to stored archive, if exists)
+        - stored_original_path (relative path in originals_dir)
+        - stored_archive_path  (relative path in archive_dir)
         - archive_checksum     (SHA-256 of archive file)
     """
 
@@ -29,31 +33,40 @@ class StorePlugin(IngestionPlugin):
         file_manager = FileManager()
 
         try:
-            # Resolve the storage path from metadata
-            relative_path = file_manager.resolve_path(
-                doc.original_filename,
-                created_date=doc.created_date,
-                correspondent=doc.metadata.get("author"),
-                title=doc.metadata.get("title"),
+            # Build a document-like namespace for the ORM-aware FileManager.
+            # FileManager.resolve_path() expects an object with attributes:
+            #   filename, correspondent, document_type, created_date,
+            #   created_at, storage_path_id, id
+            doc_ns = SimpleNamespace(
+                id=doc.document_id or 0,
+                filename=doc.original_filename,
+                correspondent=SimpleNamespace(name=doc.metadata.get("author")) if doc.metadata.get("author") else None,
+                document_type=None,
+                created_date=doc.created_date.date() if doc.created_date and hasattr(doc.created_date, "date") else doc.created_date,
+                created_at=doc.created_date,
+                storage_path_id=None,
+                archive_path=None,
+                file_path=None,
             )
 
             # 1. Store original
             doc.stored_original_path = file_manager.store_original(
-                doc.source_path, relative_path,
+                doc.source_path, doc_ns,
             )
 
             # 2. Store archive (if parser generated one)
             if doc.archive_path:
                 doc.stored_archive_path = file_manager.store_archive(
-                    doc.archive_path, relative_path,
+                    doc.archive_path, doc_ns,
                 )
-                doc.archive_checksum = FileManager.compute_checksum(
+                import os
+                archive_full = os.path.join(
+                    file_manager.config.archive_dir,
                     doc.stored_archive_path,
                 )
+                doc.archive_checksum = FileManager.compute_checksum(archive_full)
 
-            # 3. Store thumbnail (if parser generated one)
-            # thumbnail_path will be updated after we have a document_id (in IndexPlugin)
-            # For now, keep the parser's temp thumbnail path
+            # 3. Thumbnail stored later in IndexPlugin (needs document_id)
 
             logger.info(
                 "Stored %s: original=%s, archive=%s",
