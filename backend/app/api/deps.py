@@ -162,6 +162,46 @@ async def require_admin(current_user: User = Depends(get_current_user)) -> User:
     return current_user
 
 
+def require_document_permission(permission: str = "view"):
+    """
+    FastAPI dependency factory for document-level permission checks.
+
+    Sourced from Paperless PaperlessObjectPermissions (permissions.py L19-42).
+    Translated to FastAPI's Depends() pattern.
+
+    Usage:
+        @router.get("/{document_id}")
+        async def get_document(
+            document_id: int,
+            _perm = Depends(require_document_permission("view")),
+        ):
+
+    Args:
+        permission: Required permission level ('view' or 'change')
+
+    Returns:
+        Dependency function that raises 403 if permission denied
+    """
+    async def _check_permission(
+        document_id: int,
+        current_user: User = Depends(get_current_user),
+        db: AsyncSession = Depends(get_db),
+    ):
+        from app.services.permissions.service import PermissionService
+
+        perm_service = PermissionService(db)
+        if not await perm_service.has_permission(
+            current_user.id, document_id, permission
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"You do not have {permission} permission on this document",
+            )
+        return True
+
+    return _check_permission
+
+
 def get_optional_user(
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
 ) -> Optional[User]:

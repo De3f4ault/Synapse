@@ -194,12 +194,18 @@ async def list_folders(
         if flat:
             return [FolderResponse.model_validate(f) for f in folders]
 
-        # Get document counts per folder
+        # Get document counts per folder (permission-aware: see shared docs too)
+        from app.services.permissions.service import PermissionService
+        perm_service = PermissionService(db)
+        accessible_ids = (
+            perm_service.get_accessible_query(current_user.id)
+            .with_only_columns(Document.id)
+        )
         doc_counts_result = await db.execute(
             select(Document.folder_id, func.count(Document.id).label("count"))
             .where(
                 and_(
-                    Document.user_id == current_user.id,
+                    Document.id.in_(accessible_ids),
                     Document.deleted_at.is_(None),
                     Document.folder_id.isnot(None),
                 )

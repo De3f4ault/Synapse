@@ -18,6 +18,7 @@ import logging
 import base64
 
 from app.api.deps import get_db, get_current_user, PaginationParams
+from app.services.permissions.service import PermissionService
 from app.models.user import User
 from app.models.document import Document, ProcessingStatus
 from app.models.document_chunk import DocumentChunk
@@ -38,7 +39,6 @@ from app.services.document.service import (
     generate_upload_path,
     save_uploaded_file,
     generate_thumbnail,
-    trigger_document_processing,
     cleanup_physical_file,
     check_upload_conflicts,
     replace_document_file,
@@ -106,19 +106,14 @@ async def upload_document(
 
     logger.info(f"Document uploaded: {new_doc.id} ({file.filename}) by user {current_user.id}")
 
-    # Feature flag: route through new DMS pipeline or legacy processor
-    use_dms = os.environ.get("USE_DMS_PIPELINE", "false").lower() in ("true", "1", "yes")
-    if use_dms:
-        from app.services.background.tasks import consume_document
-        consume_document.delay({
-            "source_path": filepath,
-            "original_filename": file.filename,
-            "user_id": current_user.id,
-            "document_id": new_doc.id,
-        })
-    else:
-        if not await trigger_document_processing(new_doc.id):
-            logger.warning(f"Could not queue document {new_doc.id} for processing")
+    # Route through DMS ingestion pipeline
+    from app.services.background.tasks import consume_document
+    consume_document.delay({
+        "source_path": filepath,
+        "original_filename": file.filename,
+        "user_id": current_user.id,
+        "document_id": new_doc.id,
+    })
 
     return _doc_response(new_doc)
 
@@ -160,7 +155,8 @@ async def list_documents(
     db: AsyncSession = Depends(get_db),
 ):
     """List user's documents with folder, smart view, and status filtering."""
-    stmt = select(Document).where(and_(Document.user_id == current_user.id, Document.deleted_at.is_(None)))
+    perm_service = PermissionService(db)
+    stmt = perm_service.get_accessible_query(current_user.id)
 
     # Smart views
     if smart_view == "recent":
@@ -271,12 +267,8 @@ async def trigger_processing(
     doc.processing_status = ProcessingStatus.PENDING
     await db.commit()
 
-    use_dms = os.environ.get("USE_DMS_PIPELINE", "false").lower() in ("true", "1", "yes")
-    if use_dms:
-        from app.services.background.tasks import reprocess_document
-        reprocess_document.delay(document_id)
-    else:
-        await trigger_document_processing(document_id)
+    from app.services.background.tasks import reprocess_document
+    reprocess_document.delay(document_id)
 
     return MessageResponse(message="Document processing triggered")
 
@@ -330,8 +322,10 @@ async def get_batch_thumbnails(
     if len(doc_ids) > 50:
         raise HTTPException(status_code=400, detail="Maximum 50 documents per request")
 
+    perm_service = PermissionService(db)
+    accessible_stmt = perm_service.get_accessible_query(current_user.id)
     result = await db.execute(
-        select(Document).where(and_(Document.id.in_(doc_ids), Document.user_id == current_user.id, Document.deleted_at.is_(None)))
+        accessible_stmt.where(Document.id.in_(doc_ids))
     )
     thumbnails = {}
     for doc in result.scalars().all():
@@ -362,7 +356,7 @@ async def update_document(
     current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
 ):
     """Update document metadata."""
-    doc = await _get_doc_or_404(document_id, current_user, db)
+    doc = await _get_doc_or_404(document_id, current_user, db, permission="change")
     if update_data.sector is not None:
         doc.sector = update_data.sector
     if update_data.notes is not None:
@@ -377,6 +371,31 @@ async def update_document(
         doc.is_archived = update_data.is_archived
     await db.commit()
     await db.refresh(doc)
+
+    # Auto-rename: if title changed, move physical files to match new
+    # template path. Sourced from Paperless signals/handlers.py L71-100.
+    if update_data.title is not None:
+        try:
+            from app.services.storage.file_manager import FileManager
+            fm = FileManager()
+            fm.update_filename_and_move_files(doc)
+            await db.commit()
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).warning(f"Auto-rename failed for doc {doc.id}: {e}")
+
+    # Fire DOCUMENT_UPDATED workflow trigger (best-effort)
+    try:
+        from app.services.workflows.engine import run_workflows
+        from app.models.workflow import WorkflowTriggerType
+        await run_workflows(
+            trigger_type=WorkflowTriggerType.DOCUMENT_UPDATED,
+            document_id=document_id,
+            db=db,
+        )
+    except Exception:
+        pass  # Workflow failure must never break API response
+
     return _doc_response(doc)
 
 
@@ -386,7 +405,7 @@ async def move_document(
     current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db),
 ):
     """Move a document to a different folder."""
-    doc = await _get_doc_or_404(document_id, current_user, db)
+    doc = await _get_doc_or_404(document_id, current_user, db, permission="change")
     if request.folder_id is not None:
         from app.models import DocumentFolder
         folder = await db.get(DocumentFolder, request.folder_id)
@@ -419,9 +438,16 @@ async def generate_document_summary(
 # ============================================================================
 
 
-async def _get_doc_or_404(document_id: int, user: User, db: AsyncSession) -> Document:
+async def _get_doc_or_404(
+    document_id: int, user: User, db: AsyncSession,
+    permission: str = "view",
+) -> Document:
+    """Fetch document with 3-tier permission check (owner → public → ACL)."""
+    perm_service = PermissionService(db)
+    if not await perm_service.has_permission(user.id, document_id, permission):
+        raise HTTPException(status_code=404, detail="Document not found")
     result = await db.execute(
-        select(Document).where(and_(Document.id == document_id, Document.user_id == user.id, Document.deleted_at.is_(None)))
+        select(Document).where(and_(Document.id == document_id, Document.deleted_at.is_(None)))
     )
     doc = result.scalar_one_or_none()
     if not doc:
@@ -436,4 +462,8 @@ def _doc_response(doc: Document) -> DocumentResponse:
         ocr_performed=doc.ocr_performed, gemini_file_uri=doc.gemini_file_uri,
         gemini_file_expired=doc.gemini_file_expired, user_id=doc.user_id,
         created_at=doc.created_at, updated_at=doc.updated_at,
+        correspondent_id=getattr(doc, "correspondent_id", None),
+        document_type_id=getattr(doc, "document_type_id", None),
+        storage_path_id=getattr(doc, "storage_path_id", None),
     )
+
