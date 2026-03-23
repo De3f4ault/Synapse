@@ -360,6 +360,106 @@ async def search_suggestions(
 
 
 # ============================================================================
+# Multi-Entity Autocomplete (Paperless global search)
+# ============================================================================
+
+
+@router.get("/autocomplete")
+async def search_autocomplete(
+    query: str = Query(..., min_length=1, max_length=100, description="Search query"),
+    limit: int = Query(10, ge=1, le=50, description="Max results per entity type"),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Multi-entity autocomplete for the global search command palette.
+
+    Returns matching documents, correspondents, tags, and document types
+    in a single response — matching Paperless-ngx global search behavior.
+    """
+    from sqlalchemy import select, and_
+    from app.models.document import Document
+    from app.models.correspondent import Correspondent
+    from app.models.document_type import DocumentType
+    from app.models.tag import Tag
+    from app.schemas.search import AutocompleteResult, AutocompleteResponse
+
+    pattern = f"%{query}%"
+
+    # Documents by filename
+    docs_result = await db.execute(
+        select(Document.id, Document.filename)
+        .where(
+            and_(
+                Document.user_id == current_user.id,
+                Document.deleted_at.is_(None),
+                Document.filename.ilike(pattern),
+            )
+        )
+        .limit(limit)
+    )
+    documents = [
+        AutocompleteResult(id=row.id, name=row.filename, type="document")
+        for row in docs_result.all()
+    ]
+
+    # Correspondents by name
+    corr_result = await db.execute(
+        select(Correspondent.id, Correspondent.name)
+        .where(
+            and_(
+                Correspondent.user_id == current_user.id,
+                Correspondent.name.ilike(pattern),
+            )
+        )
+        .limit(limit)
+    )
+    correspondents = [
+        AutocompleteResult(id=row.id, name=row.name, type="correspondent")
+        for row in corr_result.all()
+    ]
+
+    # Tags by name
+    tags_result = await db.execute(
+        select(Tag.id, Tag.name)
+        .where(
+            and_(
+                Tag.user_id == current_user.id,
+                Tag.name.ilike(pattern),
+            )
+        )
+        .limit(limit)
+    )
+    tags = [
+        AutocompleteResult(id=row.id, name=row.name, type="tag")
+        for row in tags_result.all()
+    ]
+
+    # Document types by name
+    types_result = await db.execute(
+        select(DocumentType.id, DocumentType.name)
+        .where(
+            and_(
+                DocumentType.user_id == current_user.id,
+                DocumentType.name.ilike(pattern),
+            )
+        )
+        .limit(limit)
+    )
+    document_types = [
+        AutocompleteResult(id=row.id, name=row.name, type="document_type")
+        for row in types_result.all()
+    ]
+
+    return AutocompleteResponse(
+        documents=documents,
+        correspondents=correspondents,
+        tags=tags,
+        document_types=document_types,
+    )
+
+
+# ============================================================================
 # Unified Search Intelligence Bus
 # ============================================================================
 

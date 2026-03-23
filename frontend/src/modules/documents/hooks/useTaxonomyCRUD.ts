@@ -3,11 +3,11 @@
  *
  * Provides create/update/delete mutations with automatic cache invalidation.
  *
- * API paths from router.py:
- *   /api/correspondents/    (POST, PUT /{id}, DELETE /{id})
- *   /api/document-types/    (POST, PUT /{id}, DELETE /{id})
- *   /api/tags/              (POST, PUT /{id}, DELETE /{id})
- *   /api/storage-paths/     (POST, PUT /{id}, DELETE /{id})
+ * API paths from router.py (no trailing slashes to avoid 307 redirects):
+ *   /api/v1/correspondents    (POST, PUT /{id}, DELETE /{id})
+ *   /api/v1/document-types    (POST, PUT /{id}, DELETE /{id})
+ *   /api/v1/tags              (POST, PUT /{id}, DELETE /{id})
+ *   /api/v1/storage-paths     (POST, PUT /{id}, DELETE /{id})
  *
  * Backend contracts (from schemas):
  *   POST   → 201 + JSON body
@@ -16,6 +16,22 @@
  */
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { getAuthToken } from "@/api/client";
+
+// ============================================================================
+// Auth helpers
+// ============================================================================
+
+function authHeaders(): Record<string, string> {
+  const token = getAuthToken();
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+  return headers;
+}
 
 // ============================================================================
 // Types
@@ -45,8 +61,7 @@ function useTaxonomyMutations(basePath: string, queryKey: string) {
     mutationFn: async (data: TaxonomyMutationData) => {
       const res = await fetch(basePath, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
+        headers: authHeaders(),
         body: JSON.stringify(data),
       });
       if (!res.ok) {
@@ -60,10 +75,9 @@ function useTaxonomyMutations(basePath: string, queryKey: string) {
 
   const update = useMutation({
     mutationFn: async ({ id, data }: { id: number; data: TaxonomyMutationData }) => {
-      const res = await fetch(`${basePath}${id}`, {
+      const res = await fetch(`${basePath}/${id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
+        headers: authHeaders(),
         body: JSON.stringify(data),
       });
       if (!res.ok) {
@@ -77,9 +91,9 @@ function useTaxonomyMutations(basePath: string, queryKey: string) {
 
   const remove = useMutation({
     mutationFn: async (id: number) => {
-      const res = await fetch(`${basePath}${id}`, {
+      const res = await fetch(`${basePath}/${id}`, {
         method: "DELETE",
-        credentials: "include",
+        headers: authHeaders(),
       });
       // Backend returns 204 No Content — no JSON body to parse
       if (!res.ok) {
@@ -93,21 +107,21 @@ function useTaxonomyMutations(basePath: string, queryKey: string) {
 }
 
 // ============================================================================
-// Exports — paths match router.py exactly
+// Exports — paths match router.py (no trailing slashes)
 // ============================================================================
 
 export function useCorrespondentCRUD() {
-  return useTaxonomyMutations("/api/correspondents/", "correspondents");
+  return useTaxonomyMutations("/api/v1/correspondents", "correspondents");
 }
 
 export function useDocumentTypeCRUD() {
-  return useTaxonomyMutations("/api/document-types/", "document_types");
+  return useTaxonomyMutations("/api/v1/document-types", "document_types");
 }
 
 export function useTagCRUD() {
-  return useTaxonomyMutations("/api/tags/", "tags");
+  return useTaxonomyMutations("/api/v1/tags", "tags");
 }
 
 export function useStoragePathCRUD() {
-  return useTaxonomyMutations("/api/storage-paths/", "storage_paths");
+  return useTaxonomyMutations("/api/v1/storage-paths", "storage_paths");
 }

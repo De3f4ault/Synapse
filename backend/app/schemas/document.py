@@ -150,3 +150,20 @@ class RecentActivityItem(BaseModel):
     file_type: str = Field(description="File extension")
     time: datetime = Field(description="When the action occurred")
     document_id: int = Field(description="Associated document ID")
+
+
+# ─── DMS Statistics ──────────────────────────────────────────────────────────
+
+
+class DocumentStatisticsResponse(BaseModel):
+    """Dashboard statistics — matching Paperless StatisticsView."""
+
+    documents_total: int = Field(description="Total document count")
+    documents_inbox: int = Field(description="Documents in inbox (no folder)")
+    correspondents_total: int = Field(description="Total correspondents")
+    document_types_total: int = Field(description="Total document types")
+    tags_total: int = Field(description="Total tags")
+    storage_total_bytes: int = Field(description="Total storage in bytes")
+    documents_this_month: int = Field(description="Documents created this month")
+    documents_last_month: int = Field(description="Documents created last month")
+

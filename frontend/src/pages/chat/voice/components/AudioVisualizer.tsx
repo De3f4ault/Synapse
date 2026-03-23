@@ -82,7 +82,7 @@ export const AudioVisualizer: React.FC<AudioVisualizerProps> = ({
     const pulseScale = 1 + audioLevel * 0.15; // Subtle pulse
 
     return (
-        <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
+        <div className="relative flex items-center justify-center pointer-events-none" style={{ width: size, height: size }}>
             {/* Outer glow ring - pulses with audio */}
             {isActive && (
                 <motion.div

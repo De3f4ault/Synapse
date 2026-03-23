@@ -1,12 +1,13 @@
 /**
- * DocumentCardLarge — Full-width DMS document card with thumbnail + metadata
+ * DocumentCardLarge — Compact DMS document card with thumbnail + metadata
  *
  * Modeled after Paperless-ngx's document-card-large component.
- * Shows thumbnail, title, correspondent/type chips, colored tags, dates, ASN.
+ * Shows compact thumbnail, title, correspondent/type chips, date info,
+ * and action buttons (Open, Preview, Download) at bottom.
  */
 
 import { motion } from "framer-motion";
-import { FileText, MoreVertical, StickyNote } from "lucide-react";
+import { FileText, StickyNote, ExternalLink, Eye, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { GlassCard } from "@/shared/ui";
 import { TagBadge } from "./TagBadge";
@@ -26,8 +27,10 @@ interface DocumentCardLargeProps {
   /** Selection mode */
   selected?: boolean;
   onSelect?: (id: number) => void;
-  /** Click to navigate */
+  /** Click to open detail panel */
   onClick?: () => void;
+  /** Double-click to navigate to full viewer */
+  onDoubleClick?: () => void;
   /** Click on correspondent chip → filter */
   onCorrespondentClick?: (id: number) => void;
   /** Click on type chip → filter */
@@ -50,6 +53,7 @@ export function DocumentCardLarge({
   selected = false,
   onSelect,
   onClick,
+  onDoubleClick,
   onCorrespondentClick,
   onDocumentTypeClick,
   onTagClick,
@@ -64,30 +68,30 @@ export function DocumentCardLarge({
     >
       <GlassCard
         className={cn(
-          "h-[320px] p-0 overflow-hidden relative",
-          "border-white/5 hover:border-cyan-500/30 transition-all",
-          selected && "ring-2 ring-cyan-400 border-cyan-400/50"
+          "p-0 overflow-hidden relative aspect-[3/4]",
+          "border-white/5 hover:border-emerald-500/30 transition-all",
+          selected && "ring-2 ring-emerald-400 border-emerald-400/50"
         )}
         hover
       >
         <div className="h-full flex flex-col">
-          {/* Thumbnail area */}
-          <div className="flex-1 relative overflow-hidden min-h-0 bg-gradient-to-br from-white/[0.02] to-white/[0.05]">
+          {/* Thumbnail area — fills most of the card like Paperless */}
+          <div className="relative overflow-hidden flex-1 min-h-0 bg-gradient-to-br from-white/[0.02] to-white/[0.05]">
             {/* Selection checkbox */}
             {onSelect && (
-              <div className="absolute top-3 left-3 z-20">
+              <div className="absolute top-2 left-2 z-20">
                 <Checkbox
                   checked={selected}
                   onCheckedChange={() => onSelect(id)}
-                  className="h-5 w-5 rounded border-white/30 data-[state=checked]:bg-cyan-500 data-[state=checked]:border-cyan-500"
+                  className="h-4 w-4 rounded border-white/30 data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
                 />
               </div>
             )}
 
             {/* ASN badge */}
             {asn && (
-              <div className="absolute top-3 right-3 z-20">
-                <span className="px-2 py-0.5 text-[10px] font-mono bg-black/60 text-cyan-300 rounded-full border border-cyan-500/30">
+              <div className="absolute top-2 right-2 z-20">
+                <span className="px-1.5 py-0.5 text-[9px] font-mono bg-black/60 text-emerald-300 rounded-full border border-emerald-500/30">
                   #{asn}
                 </span>
               </div>
@@ -95,56 +99,56 @@ export function DocumentCardLarge({
 
             {/* Notes indicator */}
             {notesCount > 0 && (
-              <div className="absolute bottom-3 right-3 z-20 flex items-center gap-1 px-1.5 py-0.5 bg-black/60 rounded-full text-xs text-amber-300 border border-amber-500/30">
-                <StickyNote size={10} />
+              <div className="absolute bottom-2 right-2 z-20 flex items-center gap-1 px-1.5 py-0.5 bg-black/60 rounded-full text-[10px] text-amber-300 border border-amber-500/30">
+                <StickyNote size={9} />
                 {notesCount}
               </div>
             )}
 
             {thumbnailUrl ? (
-              <div className="absolute inset-0 cursor-pointer" onClick={onClick}>
+              <div
+                className="absolute inset-0 cursor-pointer"
+                onClick={onClick}
+                onDoubleClick={onDoubleClick}
+              >
                 <img
                   src={thumbnailUrl}
                   alt={title}
                   className="w-full h-full object-cover object-top opacity-80 group-hover:opacity-100 transition-opacity"
                   loading="lazy"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
               </div>
             ) : (
               <div
                 className="h-full flex items-center justify-center cursor-pointer"
                 onClick={onClick}
+                onDoubleClick={onDoubleClick}
               >
-                <div className="p-5 rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-sm">
-                  <FileText size={56} strokeWidth={1} className="text-slate-400" />
+                <div className="p-4 rounded-xl border border-white/10 bg-white/[0.03]">
+                  <FileText size={36} strokeWidth={1} className="text-slate-500" />
                 </div>
               </div>
             )}
           </div>
 
           {/* Footer with metadata */}
-          <div className="shrink-0 p-3 bg-black/40 backdrop-blur-md border-t border-white/10 space-y-2">
-            {/* Title + actions */}
-            <div className="flex justify-between items-start gap-2">
-              <h3
-                className="text-sm font-semibold text-slate-200 truncate cursor-pointer group-hover:text-cyan-400 transition-colors flex-1"
-                onClick={onClick}
-                title={title}
-              >
-                {title}
-              </h3>
-              <button className="text-slate-500 hover:text-white p-0.5 rounded hover:bg-white/5 flex-shrink-0">
-                <MoreVertical size={14} />
-              </button>
-            </div>
+          <div className="p-2.5 bg-black/40 backdrop-blur-md border-t border-white/10 space-y-1.5">
+            {/* Title */}
+            <h3
+              className="text-xs font-semibold text-slate-200 truncate cursor-pointer group-hover:text-emerald-400 transition-colors"
+              onClick={onClick}
+              title={title}
+            >
+              {title}
+            </h3>
 
             {/* Classification chips */}
-            <div className="flex items-center gap-1.5 flex-wrap">
+            <div className="flex items-center gap-1 flex-wrap">
               {correspondent && (
                 <button
                   onClick={() => onCorrespondentClick?.(correspondent.id)}
-                  className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-500/10 text-blue-300 border border-blue-500/20 hover:bg-blue-500/20 transition-colors truncate max-w-[100px]"
+                  className="text-[9px] px-1 py-0.5 rounded-full bg-blue-500/10 text-blue-300 border border-blue-500/20 hover:bg-blue-500/20 transition-colors truncate max-w-[80px]"
                   title={correspondent.name}
                 >
                   {correspondent.name}
@@ -153,14 +157,18 @@ export function DocumentCardLarge({
               {documentType && (
                 <button
                   onClick={() => onDocumentTypeClick?.(documentType.id)}
-                  className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors truncate max-w-[100px]"
+                  className="text-[9px] px-1 py-0.5 rounded-full bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors truncate max-w-[80px]"
                   title={documentType.name}
                 >
                   {documentType.name}
                 </button>
               )}
+            </div>
+
+            {/* Date + page info row */}
+            <div className="flex items-center gap-2 text-[10px] text-slate-500">
               {created && (
-                <span className="text-[10px] text-slate-500">
+                <span>
                   {new Date(created).toLocaleDateString(undefined, {
                     month: "short",
                     day: "numeric",
@@ -173,7 +181,7 @@ export function DocumentCardLarge({
             {/* Tags */}
             {tags.length > 0 && (
               <div className="flex gap-1 flex-wrap">
-                {tags.slice(0, 4).map((tag) => (
+                {tags.slice(0, 3).map((tag) => (
                   <TagBadge
                     key={tag.id}
                     name={tag.name}
@@ -182,13 +190,37 @@ export function DocumentCardLarge({
                     onClick={() => onTagClick?.(tag.id)}
                   />
                 ))}
-                {tags.length > 4 && (
-                  <span className="text-[10px] text-slate-500 self-center">
-                    +{tags.length - 4}
+                {tags.length > 3 && (
+                  <span className="text-[9px] text-slate-500 self-center">
+                    +{tags.length - 3}
                   </span>
                 )}
               </div>
             )}
+
+            {/* Action buttons — Open, Preview, Download (Paperless-ngx style) */}
+            <div className="flex items-center gap-1 pt-1 border-t border-white/5 opacity-0 group-hover:opacity-100 transition-opacity">
+              <button
+                onClick={onDoubleClick}
+                className="flex-1 flex items-center justify-center gap-1 py-1 rounded text-[10px] text-slate-400 hover:text-emerald-400 hover:bg-white/5 transition-colors"
+                title="Open document"
+              >
+                <ExternalLink size={12} />
+              </button>
+              <button
+                onClick={onClick}
+                className="flex-1 flex items-center justify-center gap-1 py-1 rounded text-[10px] text-slate-400 hover:text-emerald-400 hover:bg-white/5 transition-colors"
+                title="Preview"
+              >
+                <Eye size={12} />
+              </button>
+              <button
+                className="flex-1 flex items-center justify-center gap-1 py-1 rounded text-[10px] text-slate-400 hover:text-emerald-400 hover:bg-white/5 transition-colors"
+                title="Download"
+              >
+                <Download size={12} />
+              </button>
+            </div>
           </div>
         </div>
       </GlassCard>

@@ -75,6 +75,22 @@ export type DocumentResponse = {
      */
     reading_progress?: (number | null);
     /**
+     * Folder ID (null = Inbox)
+     */
+    folder_id?: (number | null);
+    /**
+     * Favorite flag
+     */
+    is_favorite?: boolean;
+    /**
+     * Pinned to top
+     */
+    is_pinned?: boolean;
+    /**
+     * Archived flag
+     */
+    is_archived?: boolean;
+    /**
      * Assigned correspondent ID
      */
     correspondent_id?: (number | null);

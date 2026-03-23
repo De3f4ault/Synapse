@@ -21,7 +21,6 @@ import { useParams, useNavigate } from "react-router-dom";
 // Module public APIs only - no deep imports
 import { ChatSidebar } from "./sidebar";
 import { ChatMain, useChatSessions, useCreateSession } from "./core";
-import { useIsVoiceActive, LiveVoiceOverlay } from "./voice";
 import { ArtifactPanel } from "./artifacts";
 import { ThreadNavigator } from "./thread-nav";
 
@@ -49,14 +48,11 @@ export const ChatPage: React.FC = () => {
 
   // UI state (local only - not domain state)
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-  const [voiceOverlayOpen, setVoiceOverlayOpen] = useState(false);
 
   // Auto-navigation hooks (via module public APIs)
   const { data: sessions = [], isLoading } = useChatSessions();
   const createSessionMutation = useCreateSession();
 
-  // Voice mode check (via module public API)
-  const isVoiceActive = useIsVoiceActive();
 
 
 
@@ -162,12 +158,6 @@ export const ChatPage: React.FC = () => {
             <ArtifactPanel />
           </div>
         </div>
-
-        {/* Voice Mode Overlay */}
-        <LiveVoiceOverlay
-          isOpen={voiceOverlayOpen || isVoiceActive}
-          onClose={() => setVoiceOverlayOpen(false)}
-        />
       </div>
     </ChatProviders>
   );

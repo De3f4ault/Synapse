@@ -25,6 +25,7 @@ interface DocumentCardSmallProps {
   selected?: boolean;
   onSelect?: (id: number) => void;
   onClick?: () => void;
+  onDoubleClick?: () => void;
   onCorrespondentClick?: (id: number) => void;
   onDocumentTypeClick?: (id: number) => void;
   onTagClick?: (id: number) => void;
@@ -44,6 +45,7 @@ export function DocumentCardSmall({
   selected = false,
   onSelect,
   onClick,
+  onDoubleClick,
   onCorrespondentClick,
   onDocumentTypeClick,
   onTagClick,
@@ -59,8 +61,8 @@ export function DocumentCardSmall({
       <div
         className={cn(
           "flex items-stretch rounded-lg border bg-card/50 backdrop-blur-sm overflow-hidden",
-          "hover:border-cyan-500/30 hover:bg-card/80 transition-all cursor-pointer",
-          selected && "ring-2 ring-cyan-400 border-cyan-400/50 bg-cyan-500/5"
+          "hover:border-emerald-500/30 hover:bg-card/80 transition-all cursor-pointer",
+          selected && "ring-2 ring-emerald-400 border-emerald-400/50 bg-emerald-500/5"
         )}
       >
         {/* Checkbox */}
@@ -69,7 +71,7 @@ export function DocumentCardSmall({
             <Checkbox
               checked={selected}
               onCheckedChange={() => onSelect(id)}
-              className="h-4 w-4 rounded border-white/30 data-[state=checked]:bg-cyan-500"
+              className="h-4 w-4 rounded border-white/30 data-[state=checked]:bg-emerald-500"
             />
           </div>
         )}
@@ -78,6 +80,7 @@ export function DocumentCardSmall({
         <div
           className="w-16 h-16 flex-shrink-0 bg-white/[0.03] flex items-center justify-center overflow-hidden"
           onClick={onClick}
+          onDoubleClick={onDoubleClick}
         >
           {thumbnailUrl ? (
             <img
@@ -95,14 +98,15 @@ export function DocumentCardSmall({
         <div
           className="flex-1 min-w-0 px-3 py-2 space-y-1"
           onClick={onClick}
+          onDoubleClick={onDoubleClick}
         >
           {/* Title row */}
           <div className="flex items-center gap-2">
-            <h3 className="text-sm font-medium text-slate-200 truncate group-hover:text-cyan-400 transition-colors">
+            <h3 className="text-sm font-medium text-slate-200 truncate group-hover:text-emerald-400 transition-colors">
               {title}
             </h3>
             {asn && (
-              <span className="text-[9px] font-mono px-1 py-0.5 bg-cyan-500/10 text-cyan-300 rounded border border-cyan-500/20 flex-shrink-0">
+              <span className="text-[9px] font-mono px-1 py-0.5 bg-emerald-500/10 text-emerald-300 rounded border border-emerald-500/20 flex-shrink-0">
                 #{asn}
               </span>
             )}

@@ -35,6 +35,10 @@ from app.schemas.document import (
     StorageBreakdownItem,
     RecentActivityItem,
 )
+from app.models.document_note import DocumentNote
+from app.schemas.document_note import DocumentNoteCreate, DocumentNoteResponse
+from app.schemas.document_metadata import DocumentMetadataResponse
+from app.schemas.bulk_edit import BulkEditRequest
 from app.services.document.service import (
     get_file_extension,
     validate_file,
@@ -177,6 +181,150 @@ async def get_recent_activity(
         )
         for row in rows
     ]
+
+
+@router.get(
+    "/statistics",
+    response_model=None,
+    summary="Get DMS statistics",
+    description="Dashboard statistics: document/correspondent/type/tag totals, inbox count, storage.",
+)
+async def get_statistics(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return dashboard statistics matching Paperless StatisticsView."""
+    from app.models.correspondent import Correspondent
+    from app.models.document_type import DocumentType
+    from app.models.tag import Tag
+    from app.schemas.document import DocumentStatisticsResponse
+    from datetime import datetime, timedelta
+
+    now = datetime.utcnow()
+    first_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    first_of_last_month = (first_of_month - timedelta(days=1)).replace(day=1)
+
+    # All counts in parallel
+    docs_total = (await db.execute(
+        select(func.count(Document.id)).where(
+            and_(Document.user_id == current_user.id, Document.deleted_at.is_(None))
+        )
+    )).scalar() or 0
+
+    docs_inbox = (await db.execute(
+        select(func.count(Document.id)).where(
+            and_(
+                Document.user_id == current_user.id,
+                Document.deleted_at.is_(None),
+                Document.folder_id.is_(None),
+            )
+        )
+    )).scalar() or 0
+
+    storage_bytes = (await db.execute(
+        select(func.coalesce(func.sum(Document.file_size), 0)).where(
+            and_(Document.user_id == current_user.id, Document.deleted_at.is_(None))
+        )
+    )).scalar() or 0
+
+    docs_this_month = (await db.execute(
+        select(func.count(Document.id)).where(
+            and_(
+                Document.user_id == current_user.id,
+                Document.deleted_at.is_(None),
+                Document.created_at >= first_of_month,
+            )
+        )
+    )).scalar() or 0
+
+    docs_last_month = (await db.execute(
+        select(func.count(Document.id)).where(
+            and_(
+                Document.user_id == current_user.id,
+                Document.deleted_at.is_(None),
+                Document.created_at >= first_of_last_month,
+                Document.created_at < first_of_month,
+            )
+        )
+    )).scalar() or 0
+
+    correspondents_total = (await db.execute(
+        select(func.count(Correspondent.id)).where(Correspondent.user_id == current_user.id)
+    )).scalar() or 0
+
+    types_total = (await db.execute(
+        select(func.count(DocumentType.id)).where(DocumentType.user_id == current_user.id)
+    )).scalar() or 0
+
+    tags_total = (await db.execute(
+        select(func.count(Tag.id)).where(Tag.user_id == current_user.id)
+    )).scalar() or 0
+
+    return DocumentStatisticsResponse(
+        documents_total=docs_total,
+        documents_inbox=docs_inbox,
+        correspondents_total=correspondents_total,
+        document_types_total=types_total,
+        tags_total=tags_total,
+        storage_total_bytes=storage_bytes,
+        documents_this_month=docs_this_month,
+        documents_last_month=docs_last_month,
+    )
+
+
+
+
+# ============================================================================
+# Bulk Edit (Paperless-ngx bulk_edit.py, 12 operations)
+# ============================================================================
+
+
+@router.post(
+    "/bulk_edit",
+    response_model=MessageResponse,
+    summary="Bulk edit documents",
+    description="Apply an operation to multiple documents at once.",
+)
+async def bulk_edit(
+    body: BulkEditRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Dispatch a bulk edit operation.
+
+    Matching Paperless-ngx POST /api/documents/bulk_edit/.
+    """
+    from app.services.document.bulk_edit import dispatch
+
+    # Verify user has access to all documents
+    accessible = (await db.execute(
+        select(Document.id).where(
+            and_(
+                Document.id.in_(body.documents),
+                Document.user_id == current_user.id,
+                Document.deleted_at.is_(None),
+            )
+        )
+    )).scalars().all()
+
+    if len(accessible) != len(body.documents):
+        missing = set(body.documents) - set(accessible)
+        raise HTTPException(
+            status_code=404,
+            detail=f"Documents not found or not accessible: {missing}",
+        )
+
+    try:
+        result = await dispatch(
+            db=db,
+            user_id=current_user.id,
+            doc_ids=body.documents,
+            method=body.method,
+            parameters=body.parameters,
+        )
+        return MessageResponse(message=result)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.patch(
@@ -521,6 +669,140 @@ async def trigger_processing(
     reprocess_document.delay(document_id)
 
     return MessageResponse(message="Document processing triggered")
+
+
+# ============================================================================
+# Document Notes (Paperless-ngx models.py L680-712)
+# ============================================================================
+
+
+@router.get(
+    "/{document_id}/notes",
+    response_model=List[DocumentNoteResponse],
+    summary="List document notes",
+)
+async def list_document_notes(
+    document_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """List all notes for a document."""
+    await _get_doc_or_404(document_id, current_user, db)
+    result = await db.execute(
+        select(DocumentNote, User.username)
+        .join(User, DocumentNote.user_id == User.id)
+        .where(DocumentNote.document_id == document_id)
+        .order_by(DocumentNote.created_at.desc())
+    )
+    return [
+        DocumentNoteResponse(
+            id=note.id,
+            document_id=note.document_id,
+            user_id=note.user_id,
+            note=note.note,
+            created_at=note.created_at,
+            username=username,
+        )
+        for note, username in result.all()
+    ]
+
+
+@router.post(
+    "/{document_id}/notes",
+    response_model=DocumentNoteResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Add a note to a document",
+)
+async def create_document_note(
+    document_id: int,
+    body: DocumentNoteCreate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Create a note on a document. Matching Paperless POST /documents/{id}/notes/."""
+    await _get_doc_or_404(document_id, current_user, db)
+    new_note = DocumentNote(
+        document_id=document_id,
+        user_id=current_user.id,
+        note=body.note,
+    )
+    db.add(new_note)
+    await db.commit()
+    await db.refresh(new_note)
+    return DocumentNoteResponse(
+        id=new_note.id,
+        document_id=new_note.document_id,
+        user_id=new_note.user_id,
+        note=new_note.note,
+        created_at=new_note.created_at,
+        username=current_user.username,
+    )
+
+
+@router.delete(
+    "/{document_id}/notes/{note_id}",
+    response_model=MessageResponse,
+    summary="Delete a document note",
+)
+async def delete_document_note(
+    document_id: int,
+    note_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Delete a note. Only the author or document owner can delete."""
+    await _get_doc_or_404(document_id, current_user, db)
+    result = await db.execute(
+        select(DocumentNote).where(
+            and_(
+                DocumentNote.id == note_id,
+                DocumentNote.document_id == document_id,
+            )
+        )
+    )
+    note = result.scalar_one_or_none()
+    if not note:
+        raise HTTPException(status_code=404, detail="Note not found")
+    if note.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Only the note author can delete")
+    await db.delete(note)
+    await db.commit()
+    return MessageResponse(message="Note deleted")
+
+
+# ============================================================================
+# Document Metadata (Paperless DocumentViewSet.metadata())
+# ============================================================================
+
+
+@router.get(
+    "/{document_id}/metadata",
+    response_model=DocumentMetadataResponse,
+    summary="Get document metadata",
+    description="Technical metadata: checksums, MIME type, archive info.",
+)
+async def get_document_metadata(
+    document_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return technical metadata matching Paperless metadata() endpoint."""
+    doc = await _get_doc_or_404(document_id, current_user, db)
+    archive_size = None
+    if doc.archive_path and os.path.exists(doc.archive_path):
+        archive_size = os.path.getsize(doc.archive_path)
+    return DocumentMetadataResponse(
+        original_filename=doc.original_filename or doc.filename,
+        original_mime_type=doc.mime_type,
+        original_checksum=doc.content_hash,
+        archive_checksum=doc.archive_checksum,
+        original_size=doc.file_size,
+        archive_size=archive_size,
+        lang=doc.file_metadata.get("lang") if doc.file_metadata else None,
+        has_archive_version=doc.archive_path is not None,
+    )
+
+
 
 
 # ============================================================================

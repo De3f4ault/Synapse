@@ -14,12 +14,12 @@ import type { EnhancedDocument } from "../../core";
 
 interface UseDocumentsOptions {
     folderId?: number | null;
-    includeAll?: boolean;
+    smartView?: string | null;
     view?: 'recent' | 'favorites' | 'archived';
 }
 
 export function useDocuments(options: UseDocumentsOptions = {}) {
-    const { folderId = null, includeAll = false, view } = options;
+    const { folderId = null, smartView = null, view } = options;
     const queryClient = useQueryClient();
 
     // Fetch documents with folder/view filter
@@ -29,14 +29,16 @@ export function useDocuments(options: UseDocumentsOptions = {}) {
         error,
         refetch,
     } = useQuery({
-        queryKey: [...queryKeys.documents.list(), { folderId, includeAll, view }],
+        queryKey: [...queryKeys.documents.list(), { folderId, smartView: smartView ?? view, }],
         queryFn: () => DocumentsService.listDocumentsApiV1DocumentsGet(
-            folderId ?? undefined,  // folderId
-            includeAll,              // includeAll
-            view,                    // view (Smart Views filter)
-            undefined,               // statusFilter
-            1,                       // page
-            100,                     // pageSize (fetch more for grid)
+            folderId ?? undefined,      // folderId
+            smartView ?? view ?? undefined, // smartView
+            undefined,                  // processingStatus
+            undefined,                  // search
+            undefined,                  // sortBy
+            undefined,                  // sortOrder
+            1,                          // page
+            100,                        // pageSize
         ),
     });
 

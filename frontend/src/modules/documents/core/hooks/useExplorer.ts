@@ -33,7 +33,6 @@ export function useExplorer() {
     deleteDocument 
   } = useDocuments({
     folderId,
-    includeAll: !isFolderView, // If not folder view, we might want all (filtered by view)
     view: !isFolderView ? (currentView.type as 'recent' | 'favorites' | 'archived') : undefined,
   });
 

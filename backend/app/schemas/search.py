@@ -73,3 +73,22 @@ class SearchClickRequest(BaseModel):
 class SearchClickResponse(BaseModel):
     """Response for click tracking."""
     recorded: bool
+
+
+# ─── Multi-Entity Autocomplete ───────────────────────────────────────────────
+
+
+class AutocompleteResult(BaseModel):
+    """A single autocomplete result."""
+    id: int
+    name: str
+    type: str  # "document" | "correspondent" | "tag" | "document_type"
+
+
+class AutocompleteResponse(BaseModel):
+    """Multi-entity autocomplete response."""
+    documents: List[AutocompleteResult] = []
+    correspondents: List[AutocompleteResult] = []
+    tags: List[AutocompleteResult] = []
+    document_types: List[AutocompleteResult] = []
+

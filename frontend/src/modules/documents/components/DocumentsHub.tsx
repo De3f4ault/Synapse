@@ -10,17 +10,18 @@
  */
 
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { FolderOpen, PanelLeftIcon, MenuIcon, PanelRightIcon } from "lucide-react";
+import { PanelRightIcon, ChevronDown, FileText } from "lucide-react";
 import { EmptyState } from "@/shared/ui";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
+
 import { cn } from "@/lib/utils";
 import type { EnhancedDocument } from "../core/types";
 import type { FolderTreeNode } from "../core/folders";
 import { useThumbnails } from "../hooks/useThumbnails";
-import { useFolderStore } from "../core/state/folderStore";
-import { GlobalContextMenu } from "./GlobalContextMenu";
+
+
 import { toast } from "sonner";
 
 // DMS Components (Sprint 1 + 2)
@@ -37,6 +38,7 @@ import { BulkEditor } from "./dms/BulkEditor";
 // DMS Hooks
 import { useCorrespondents, useDocumentTypes, useTags, useStoragePaths } from "../hooks/useTaxonomy";
 import { useCreateSavedView } from "../hooks/useSavedViews";
+import { useBulkEdit } from "@/api/hooks/useBulkEdit";
 
 // DMS Types
 import {
@@ -51,9 +53,8 @@ import {
   type ListViewState,
 } from "../core/types/dms";
 
-// Legacy imports for backward compatibility
-import { DocumentsSidebar } from "./DocumentsSidebar";
-import { DocumentsDock } from "./DocumentsDock";
+// Paperless-ngx sidebar
+import { DMSSidebar } from "./dms/DMSSidebar";
 
 // ============================================================================
 // Props
@@ -122,26 +123,25 @@ export const DocumentsHub = ({
   folders: _folders = [],
   isLoading,
   searchQuery,
-  onSearchChange,
-  activeFilter,
-  onFilterChange,
+  onSearchChange: _onSearchChange,
+  activeFilter: _activeFilter,
+  onFilterChange: _onFilterChange,
   onUpload,
-  onCreateFolder,
-  onDocumentClick,
-  onFolderClick,
+  onCreateFolder: _onCreateFolder,
+  onDocumentClick: _onDocumentClick,
+  onFolderClick: _onFolderClick,
   onFolderDoubleClick: _onFolderDoubleClick,
   onContextMenu: _onContextMenu,
   onRenameFolder: _onRenameFolder,
   onDeleteFolder: _onDeleteFolder,
-  onRefresh = () => {},
-  onSelectAll = () => {},
-  onPaste,
-  canPaste = false,
+  onRefresh: _onRefresh,
+  onSelectAll: _onSelectAll,
+  onPaste: _onPaste,
+  canPaste: _canPaste = false,
 }: DocumentsHubProps) => {
   // ── Sidebar state ──────────────────────────────────────────────────────
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-  const [globalMenuPos, setGlobalMenuPos] = useState<{ x: number; y: number } | null>(null);
+  const navigate = useNavigate();
 
   // ── DMS state ──────────────────────────────────────────────────────────
   const [displayMode, setDisplayMode] = useState<DisplayMode>(DisplayMode.LARGE_CARDS);
@@ -179,13 +179,13 @@ export const DocumentsHub = ({
   const { data: tags } = useTags();
   const { data: storagePaths } = useStoragePaths();
   const createSavedView = useCreateSavedView();
+  const bulkEdit = useBulkEdit();
 
   // ── Thumbnails ─────────────────────────────────────────────────────────
   const documentIds = documents.map((d) => d.id);
   const { data: thumbnails } = useThumbnails(documentIds);
 
-  // ── Legacy store (folder selection) ────────────────────────────────────
-  const { clearSelection } = useFolderStore();
+
 
   // ── Detail panel ───────────────────────────────────────────────────────
   const detailDoc = useMemo(() => {
@@ -201,9 +201,17 @@ export const DocumentsHub = ({
       const docId = typeof doc.id === "string" ? parseInt(doc.id) : doc.id;
       setDetailDocId(docId);
       setDetailPanelOpen(true);
-      onDocumentClick?.(doc);
+      // Single click: open detail panel ONLY, do NOT navigate
     },
-    [onDocumentClick]
+    []
+  );
+
+  // Double-click → navigate to full document viewer
+  const handleDocDoubleClick = useCallback(
+    (doc: EnhancedDocument) => {
+      navigate(`/documents/${doc.id}`);
+    },
+    [navigate]
   );
 
   const handleDocClickById = useCallback(
@@ -276,39 +284,12 @@ export const DocumentsHub = ({
     }
   }, []);
 
-  const toggleSidebar = () => {
-    const newState = !sidebarCollapsed;
-    setSidebarCollapsed(newState);
-    localStorage.setItem("documentsSidebarCollapsed", JSON.stringify(newState));
-  };
-
+  // ── Top toolbar sort handler ───────────────────────────────────────────
   const handleDisplayModeChange = useCallback((mode: DisplayMode) => {
     setDisplayMode(mode);
     localStorage.setItem("dmsDisplayMode", mode);
   }, []);
 
-  const handleGlobalContextMenu = (e: React.MouseEvent) => {
-    e.preventDefault();
-    setGlobalMenuPos({ x: e.clientX, y: e.clientY });
-  };
-
-  // ── Batch handlers (legacy bridge) ─────────────────────────────────────
-  const handleBatchDownload = (ids: string[]) => {
-    toast.info(`Downloading ${ids.length} items...`);
-    clearSelection();
-  };
-  const handleBatchDelete = (ids: string[]) => {
-    toast.error(`Deleting ${ids.length} items...`);
-    clearSelection();
-  };
-  const handleBatchFavorite = (ids: string[]) => {
-    toast.success(`Favorited ${ids.length} items`);
-    clearSelection();
-  };
-  const handleBatchArchive = (ids: string[]) => {
-    toast.info(`Archived ${ids.length} items`);
-    clearSelection();
-  };
 
   // ── Table data ─────────────────────────────────────────────────────────
   const tableDocuments = useMemo(
@@ -352,96 +333,74 @@ export const DocumentsHub = ({
     <div className="fixed inset-0 min-h-screen flex flex-col pt-16 bg-[#050505]">
       <div className="flex flex-1 overflow-hidden">
         {/* ═══════════════════════════════════════════════════════════════ */}
-        {/* Desktop Sidebar */}
+        {/* DMS Sidebar (Paperless-ngx style) */}
         {/* ═══════════════════════════════════════════════════════════════ */}
-        <div
-          className={cn(
-            "hidden lg:block transition-all duration-300 ease-in-out relative z-10 py-4 pl-3",
-            sidebarCollapsed ? "w-0 p-0" : "w-[17rem]"
-          )}
-        >
-          <DocumentsSidebar
-            activeSector={activeFilter}
-            onSectorChange={onFilterChange}
-            totalDocuments={documents.length}
-            onUpload={onUpload}
-            className="w-full h-full rounded-2xl"
-            isCollapsed={sidebarCollapsed}
-            onFolderSelect={(folder) => folder && onFolderClick?.(folder)}
-          />
-        </div>
-
-        {/* Mobile Sidebar (Drawer) */}
-        <Sheet open={mobileSidebarOpen} onOpenChange={setMobileSidebarOpen}>
-          <SheetContent
-            side="left"
-            className="w-64 p-0 border-none [&>button]:hidden bg-[#050505]/95 backdrop-blur-xl"
-          >
-            <DocumentsSidebar
-              activeSector={activeFilter}
-              onSectorChange={onFilterChange}
-              totalDocuments={documents.length}
-              onUpload={onUpload}
-              className="w-64"
-              onFolderSelect={(folder) => {
-                if (folder) onFolderClick?.(folder);
-                setMobileSidebarOpen(false);
-              }}
-            />
-          </SheetContent>
-        </Sheet>
+        <DMSSidebar
+          collapsed={sidebarCollapsed}
+          onCollapsedChange={setSidebarCollapsed}
+          onUpload={onUpload}
+          className="hidden lg:flex"
+        />
 
         {/* ═══════════════════════════════════════════════════════════════ */}
         {/* Main Content Area */}
         {/* ═══════════════════════════════════════════════════════════════ */}
         <div
           className="flex-1 flex flex-col overflow-hidden relative z-0"
-          onContextMenu={handleGlobalContextMenu}
         >
-          {/* Sidebar toggle buttons */}
-          <div className="absolute top-4 left-4 z-50 flex items-center gap-2 pointer-events-none">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={toggleSidebar}
-              className="hidden lg:flex pointer-events-auto hover:bg-white/10 text-slate-400 hover:text-white rounded-xl transition-colors"
-            >
-              <PanelLeftIcon className="size-5" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setMobileSidebarOpen(true)}
-              className="lg:hidden pointer-events-auto hover:bg-white/10 text-slate-400 hover:text-white rounded-xl transition-colors"
-            >
-              <MenuIcon className="size-5" />
-            </Button>
-          </div>
 
           {/* ─── DMS Filter Toolbar ─────────────────────────────────── */}
           <div className="shrink-0 px-8 pt-6 pb-2 pl-16 lg:pl-8">
             <div className="max-w-[1600px] mx-auto space-y-3">
               {/* Title row with view controls */}
-              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center justify-between gap-4">
                 <div>
                   <h1 className="text-2xl font-bold text-white tracking-tight">
-                    {activeFilter === "All" ? "Documents" : activeFilter}
+                    Documents
                   </h1>
                   <p className="text-xs text-slate-500 mt-0.5">
                     {documents.length} document{documents.length !== 1 ? "s" : ""}
-                    {filterRules.length > 0 && ` · ${filterRules.length} filter${filterRules.length !== 1 ? "s" : ""} active`}
+                    {filterRules.length > 0 && " (filtered)"}
+                    {filterRules.length > 0 && (
+                      <button
+                        onClick={() => setFilterRules([])}
+                        className="ml-2 text-emerald-400 hover:text-emerald-300 transition-colors"
+                      >
+                        ×Reset filters
+                      </button>
+                    )}
                   </p>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  {/* Save view button */}
+                <div className="flex items-center gap-1.5">
+                  {/* Select buttons */}
+                  <span className="text-xs text-slate-500 mr-1">Select:</span>
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setSaveViewOpen(true)}
-                    className="text-xs"
+                    onClick={selectAll}
+                    className="text-xs h-7 px-2 border-emerald-800/40 text-slate-300 hover:bg-emerald-900/20"
                   >
-                    Save view
+                    Page
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={selectAll}
+                    className="text-xs h-7 px-2 border-emerald-800/40 text-slate-300 hover:bg-emerald-900/20"
+                  >
+                    All
+                  </Button>
+
+                  <div className="w-px h-5 bg-white/10 mx-1" />
+
+                  {/* Show dropdown */}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-xs h-7 px-2 border-emerald-800/40 text-slate-300 hover:bg-emerald-900/20 gap-1"
+                  >
+                    Show <ChevronDown size={12} />
                   </Button>
 
                   {/* Display mode toggle */}
@@ -449,6 +408,26 @@ export const DocumentsHub = ({
                     mode={displayMode}
                     onChange={handleDisplayModeChange}
                   />
+
+                  {/* Sort dropdown */}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleSort(sortField)}
+                    className="text-xs h-7 px-2 border-emerald-800/40 text-slate-300 hover:bg-emerald-900/20 gap-1"
+                  >
+                    Sort <ChevronDown size={12} />
+                  </Button>
+
+                  {/* Views dropdown */}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setSaveViewOpen(true)}
+                    className="text-xs h-7 px-2 border-emerald-800/40 text-slate-300 hover:bg-emerald-900/20 gap-1"
+                  >
+                    Views <ChevronDown size={12} />
+                  </Button>
 
                   {/* Column picker (table mode only) */}
                   {displayMode === DisplayMode.TABLE && (
@@ -464,12 +443,12 @@ export const DocumentsHub = ({
                     size="sm"
                     onClick={() => setDetailPanelOpen(!detailPanelOpen)}
                     className={cn(
-                      "h-8 w-8 p-0",
-                      detailPanelOpen && "bg-cyan-500/10 text-cyan-400"
+                      "h-7 w-7 p-0",
+                      detailPanelOpen && "bg-emerald-500/10 text-emerald-400"
                     )}
                     title="Toggle detail panel"
                   >
-                    <PanelRightIcon size={16} />
+                    <PanelRightIcon size={14} />
                   </Button>
                 </div>
               </div>
@@ -483,13 +462,49 @@ export const DocumentsHub = ({
                   documentTypes={docTypes}
                   tags={tags}
                   storagePaths={storagePaths}
-                  onSetCorrespondent={(_id) => toast.info("Bulk set correspondent — TODO")}
-                  onSetDocumentType={(_id) => toast.info("Bulk set type — TODO")}
-                  onAddTags={(_ids) => toast.info("Bulk add tags — TODO")}
-                  onRemoveTags={(_ids) => toast.info("Bulk remove tags — TODO")}
-                  onSetStoragePath={(_id) => toast.info("Bulk set path — TODO")}
-                  onDelete={() => toast.info("Bulk delete — TODO")}
+                  onSetCorrespondent={(id) => {
+                    bulkEdit.mutate(
+                      { documents: [...selectedIds], method: "set_correspondent", parameters: { correspondent: id } },
+                      { onSuccess: () => toast.success(id ? "Correspondent set" : "Correspondent removed"), onError: (e: Error) => toast.error(e.message) }
+                    );
+                  }}
+                  onSetDocumentType={(id) => {
+                    bulkEdit.mutate(
+                      { documents: [...selectedIds], method: "set_document_type", parameters: { document_type: id } },
+                      { onSuccess: () => toast.success(id ? "Type set" : "Type removed"), onError: (e: Error) => toast.error(e.message) }
+                    );
+                  }}
+                  onAddTags={(ids) => {
+                    bulkEdit.mutate(
+                      { documents: [...selectedIds], method: "add_tag", parameters: { tag: ids[0] } },
+                      { onSuccess: () => toast.success(`${ids.length} tag(s) added`), onError: (e: Error) => toast.error(e.message) }
+                    );
+                  }}
+                  onRemoveTags={(ids) => {
+                    bulkEdit.mutate(
+                      { documents: [...selectedIds], method: "remove_tag", parameters: { tag: ids[0] } },
+                      { onSuccess: () => toast.success(`${ids.length} tag(s) removed`), onError: (e: Error) => toast.error(e.message) }
+                    );
+                  }}
+                  onSetStoragePath={(id) => {
+                    bulkEdit.mutate(
+                      { documents: [...selectedIds], method: "set_storage_path", parameters: { storage_path: id } },
+                      { onSuccess: () => toast.success(id ? "Path set" : "Path removed"), onError: (e: Error) => toast.error(e.message) }
+                    );
+                  }}
+                  onDelete={() => {
+                    bulkEdit.mutate(
+                      { documents: [...selectedIds], method: "delete", parameters: {} },
+                      { onSuccess: () => { toast.success(`${selectedIds.size} document(s) deleted`); selectNone(); }, onError: (e: Error) => toast.error(e.message) }
+                    );
+                  }}
                   onDownload={() => toast.info("Bulk download — TODO")}
+                  onMerge={selectedIds.size > 1 ? () => {
+                    bulkEdit.mutate(
+                      { documents: [...selectedIds], method: "merge", parameters: {} },
+                      { onSuccess: () => { toast.success("Documents merged"); selectNone(); }, onError: (e: Error) => toast.error(e.message) }
+                    );
+                  } : undefined}
                 />
               ) : (
                 <FilterEditor
@@ -520,7 +535,7 @@ export const DocumentsHub = ({
                           ? "space-y-2"
                           : "grid gap-4",
                         displayMode === DisplayMode.LARGE_CARDS &&
-                          "grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5",
+                          "grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6",
                         displayMode === DisplayMode.SMALL_CARDS &&
                           "grid-cols-1 md:grid-cols-2 lg:grid-cols-3"
                       )}
@@ -530,7 +545,7 @@ export const DocumentsHub = ({
                           key={i}
                           className={cn(
                             "rounded-xl bg-white/5 animate-pulse",
-                            displayMode === DisplayMode.LARGE_CARDS && "h-[320px]",
+                            displayMode === DisplayMode.LARGE_CARDS && "h-[250px]",
                             displayMode === DisplayMode.SMALL_CARDS && "h-16",
                             displayMode === DisplayMode.TABLE && "h-12"
                           )}
@@ -570,7 +585,7 @@ export const DocumentsHub = ({
 
                       {/* ── Large Cards Mode ──────────────────────── */}
                       {displayMode === DisplayMode.LARGE_CARDS && (
-                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3">
                           {documents.map((doc) => {
                             const docId = typeof doc.id === "string" ? parseInt(doc.id) : doc.id;
                             const tDoc = toTableDoc(doc, correspondents, docTypes, tags);
@@ -590,6 +605,7 @@ export const DocumentsHub = ({
                                 selected={selectedIds.has(docId)}
                                 onSelect={toggleSelect}
                                 onClick={() => handleDocClick(doc)}
+                                onDoubleClick={() => handleDocDoubleClick(doc)}
                                 onCorrespondentClick={addCorrespondentFilter}
                                 onDocumentTypeClick={addDocTypeFilter}
                                 onTagClick={addTagFilter}
@@ -621,6 +637,7 @@ export const DocumentsHub = ({
                                 selected={selectedIds.has(docId)}
                                 onSelect={toggleSelect}
                                 onClick={() => handleDocClick(doc)}
+                                onDoubleClick={() => handleDocDoubleClick(doc)}
                                 onCorrespondentClick={addCorrespondentFilter}
                                 onDocumentTypeClick={addDocTypeFilter}
                                 onTagClick={addTagFilter}
@@ -638,7 +655,7 @@ export const DocumentsHub = ({
                       className="mt-20"
                     >
                       <EmptyState
-                        icon={FolderOpen}
+                        icon={FileText}
                         title="No documents found"
                         description={
                           filterRules.length > 0
@@ -708,53 +725,6 @@ export const DocumentsHub = ({
         </div>
       </div>
 
-      {/* ═══════════════════════════════════════════════════════════════ */}
-      {/* Floating Dock (keep for batch actions + upload) */}
-      {/* ═══════════════════════════════════════════════════════════════ */}
-      <DocumentsDock
-        viewMode={displayMode === DisplayMode.TABLE ? "list" : "grid"}
-        onViewChange={() => {}}
-        searchQuery={searchQuery}
-        onSearchChange={onSearchChange}
-        activeFilter={activeFilter}
-        onFilterChange={onFilterChange}
-        onUpload={onUpload}
-        onCreateFolder={onCreateFolder}
-        onBatchDownload={handleBatchDownload}
-        onBatchDelete={handleBatchDelete}
-        onBatchFavorite={handleBatchFavorite}
-        onBatchArchive={handleBatchArchive}
-      />
-
-      {/* Global Context Menu */}
-      <AnimatePresence>
-        {globalMenuPos && (
-          <GlobalContextMenu
-            position={globalMenuPos}
-            onClose={() => setGlobalMenuPos(null)}
-            onNewFolder={() => {
-              onCreateFolder?.();
-              setGlobalMenuPos(null);
-            }}
-            onUpload={() => {
-              onUpload();
-              setGlobalMenuPos(null);
-            }}
-            onRefresh={() => {
-              onRefresh();
-              setGlobalMenuPos(null);
-            }}
-            onSelectAll={() => {
-              onSelectAll();
-              setGlobalMenuPos(null);
-            }}
-            viewMode={displayMode === DisplayMode.TABLE ? "list" : "grid"}
-            onViewChange={() => {}}
-            onPaste={onPaste}
-            canPaste={canPaste}
-          />
-        )}
-      </AnimatePresence>
 
       {/* Save View Dialog */}
       <SaveViewDialog

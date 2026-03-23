@@ -4,14 +4,14 @@
  * Exact port of Paperless-ngx document-notes.component.ts (121 lines):
  *   - Add note with textarea + Ctrl+Enter submit (L115-118)
  *   - Delete note per entry (L86-98)
- *   - Author display via user lookup (L100-113)
+ *   - Author display via username field (L100-113)
  *   - Form validation — empty note error (L66-69)
  *   - Network state tracking (L39, L71, L76)
  *
- * API contract:
- *   GET    /api/documents/{docId}/notes/   → DocumentNote[]
- *   POST   /api/documents/{docId}/notes/   → { note: string } → DocumentNote[]
- *   DELETE /api/documents/{docId}/notes/{noteId}/ → DocumentNote[]
+ * API contract (via generated DocumentsService):
+ *   GET    /api/v1/documents/{docId}/notes   → DocumentNoteResponse[]
+ *   POST   /api/v1/documents/{docId}/notes   → DocumentNoteResponse
+ *   DELETE /api/v1/documents/{docId}/notes/{noteId} → MessageResponse
  */
 
 import { useState, useRef, KeyboardEvent } from "react";
@@ -25,18 +25,12 @@ import {
   Loader2,
   User as UserIcon,
 } from "lucide-react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-
-// ============================================================================
-// Types (matching Paperless DocumentNote)
-// ============================================================================
-
-export interface DocumentNote {
-  id: number;
-  note: string;
-  created: string;
-  user: number | { id: number; username: string; first_name?: string; last_name?: string };
-}
+import {
+  useDocumentNotes,
+  useAddDocumentNote,
+  useDeleteDocumentNote,
+} from "@/api/hooks/useDocumentNotes";
+import type { DocumentNoteResponse } from "@/api/generated";
 
 // ============================================================================
 // Props
@@ -48,77 +42,11 @@ interface DocumentNotesProps {
 }
 
 // ============================================================================
-// Hooks
-// ============================================================================
-
-function useDocumentNotes(documentId: number) {
-  return useQuery<DocumentNote[]>({
-    queryKey: ["documentNotes", documentId],
-    queryFn: async () => {
-      const res = await fetch(`/api/documents/${documentId}/notes/`, {
-        credentials: "include",
-      });
-      if (!res.ok) throw new Error(`Failed to fetch notes (${res.status})`);
-      return res.json();
-    },
-    staleTime: 30_000,
-  });
-}
-
-function useAddNote(documentId: number) {
-  const qc = useQueryClient();
-  return useMutation<DocumentNote[], Error, string>({
-    mutationFn: async (note) => {
-      const res = await fetch(`/api/documents/${documentId}/notes/`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ note }),
-      });
-      if (!res.ok) throw new Error(`Failed to add note (${res.status})`);
-      return res.json();
-    },
-    onSuccess: (data) => {
-      qc.setQueryData(["documentNotes", documentId], data);
-    },
-  });
-}
-
-function useDeleteNote(documentId: number) {
-  const qc = useQueryClient();
-  return useMutation<DocumentNote[], Error, number>({
-    mutationFn: async (noteId) => {
-      const res = await fetch(`/api/documents/${documentId}/notes/${noteId}/`, {
-        method: "DELETE",
-        credentials: "include",
-      });
-      if (!res.ok) throw new Error(`Failed to delete note (${res.status})`);
-      return res.json();
-    },
-    onSuccess: (data) => {
-      qc.setQueryData(["documentNotes", documentId], data);
-    },
-  });
-}
-
-// ============================================================================
 // Helper — matching Paperless displayName (L100-113)
 // ============================================================================
 
-function displayName(note: DocumentNote): string {
-  if (!note.user) return "";
-  if (typeof note.user === "object") {
-    const u = note.user;
-    const parts: string[] = [];
-    if (u.first_name) parts.push(u.first_name);
-    if (u.last_name) parts.push(u.last_name);
-    if (u.username) {
-      if (parts.length > 0) parts.push(`(${u.username})`);
-      else parts.push(u.username);
-    }
-    return parts.join(" ");
-  }
-  return `User #${note.user}`;
+function displayName(note: DocumentNoteResponse): string {
+  return note.username ?? `User #${note.user_id}`;
 }
 
 // ============================================================================
@@ -131,8 +59,8 @@ export function DocumentNotes({ documentId, disabled = false }: DocumentNotesPro
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const { data: notes = [], isLoading } = useDocumentNotes(documentId);
-  const addMutation = useAddNote(documentId);
-  const deleteMutation = useDeleteNote(documentId);
+  const addMutation = useAddDocumentNote(documentId);
+  const deleteMutation = useDeleteDocumentNote(documentId);
 
   // Paperless addNote (L64-83)
   const handleAdd = async () => {
@@ -191,7 +119,7 @@ export function DocumentNotes({ documentId, disabled = false }: DocumentNotesPro
                     </span>
                     <span className="text-[10px] text-slate-600">·</span>
                     <span className="text-[10px] text-slate-500">
-                      {new Date(note.created).toLocaleString()}
+                      {new Date(note.created_at).toLocaleString()}
                     </span>
                   </div>
                 </div>

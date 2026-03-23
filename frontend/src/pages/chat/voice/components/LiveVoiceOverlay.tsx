@@ -143,13 +143,13 @@ export const LiveVoiceOverlay: React.FC<LiveVoiceOverlayProps> = ({
                 exit={{ opacity: 0 }}
                 className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm"
             >
-                {/* Background gradient */}
-                <div className="absolute inset-0 bg-gradient-to-b from-purple-900/20 via-transparent to-blue-900/20" />
+                {/* Background gradient — pointer-events-none so clicks pass through */}
+                <div className="absolute inset-0 bg-gradient-to-b from-purple-900/20 via-transparent to-blue-900/20 pointer-events-none" />
 
                 {/* Close button */}
                 <button
                     onClick={handleClose}
-                    className="absolute top-6 right-6 p-3 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+                    className="absolute top-6 right-6 z-20 p-3 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
                 >
                     <X className="w-6 h-6 text-white" />
                 </button>
@@ -224,7 +224,7 @@ export const LiveVoiceOverlay: React.FC<LiveVoiceOverlayProps> = ({
                     )}
 
                     {/* Controls */}
-                    <div className="flex items-center gap-4 mt-4">
+                    <div className="flex items-center gap-4 mt-4 relative z-10">
                         {/* Mute button */}
                         <button
                             onClick={() => setIsMuted(!isMuted)}

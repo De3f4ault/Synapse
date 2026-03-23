@@ -66,6 +66,9 @@ from .workflow import (
 # DMS Permissions (Phase 6)
 from .document_permission import DocumentPermission, ShareLink, PermissionLevel
 
+# DMS Document Notes (Phase 8 — Sprint 8)
+from .document_note import DocumentNote
+
 __all__ = [
     "Base",
     "User",
@@ -132,4 +135,6 @@ __all__ = [
     "DocumentPermission",
     "ShareLink",
     "PermissionLevel",
+    # DMS Document Notes (Phase 8)
+    "DocumentNote",
 ]

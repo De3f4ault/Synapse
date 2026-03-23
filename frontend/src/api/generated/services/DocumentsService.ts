@@ -4,12 +4,18 @@
 /* eslint-disable */
 import type { Body_replace_document_api_v1_documents__document_id__replace_put } from '../models/Body_replace_document_api_v1_documents__document_id__replace_put';
 import type { Body_upload_document_api_v1_documents_upload_post } from '../models/Body_upload_document_api_v1_documents_upload_post';
+import type { BulkEditRequest } from '../models/BulkEditRequest';
 import type { DocumentChunkResponse } from '../models/DocumentChunkResponse';
+import type { DocumentMetadataResponse } from '../models/DocumentMetadataResponse';
+import type { DocumentNoteCreate } from '../models/DocumentNoteCreate';
+import type { DocumentNoteResponse } from '../models/DocumentNoteResponse';
 import type { DocumentResponse } from '../models/DocumentResponse';
 import type { DocumentUpdateRequest } from '../models/DocumentUpdateRequest';
 import type { MessageResponse } from '../models/MessageResponse';
 import type { MoveDocumentRequest } from '../models/MoveDocumentRequest';
 import type { ProcessingStatusResponse } from '../models/ProcessingStatusResponse';
+import type { RecentActivityItem } from '../models/RecentActivityItem';
+import type { StorageBreakdownItem } from '../models/StorageBreakdownItem';
 import type { SummaryResponse } from '../models/SummaryResponse';
 import type { CancelablePromise } from '../core/CancelablePromise';
 import { OpenAPI } from '../core/OpenAPI';
@@ -41,30 +47,117 @@ export class DocumentsService {
         });
     }
     /**
-     * Replace Document
-     * Replace an existing document's file while preserving its ID.
+     * Get storage breakdown
+     * Per-category storage usage (Images, Videos, Documents, etc.)
+     * @param token Auth token for image/file requests
+     * @returns StorageBreakdownItem Successful Response
+     * @throws ApiError
+     */
+    public static getStorageBreakdownApiV1DocumentsStorageBreakdownGet(
+        token?: (string | null),
+    ): CancelablePromise<Array<StorageBreakdownItem>> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/documents/storage-breakdown',
+            query: {
+                'token': token,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Get recent activity
+     * Recent user actions (uploaded, modified, favorited)
+     * @param limit Max number of items
+     * @param token Auth token for image/file requests
+     * @returns RecentActivityItem Successful Response
+     * @throws ApiError
+     */
+    public static getRecentActivityApiV1DocumentsRecentActivityGet(
+        limit: number = 15,
+        token?: (string | null),
+    ): CancelablePromise<Array<RecentActivityItem>> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/documents/recent-activity',
+            query: {
+                'limit': limit,
+                'token': token,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Get DMS statistics
+     * Dashboard statistics: document/correspondent/type/tag totals, inbox count, storage.
+     * @param token Auth token for image/file requests
+     * @returns any Successful Response
+     * @throws ApiError
+     */
+    public static getStatisticsApiV1DocumentsStatisticsGet(
+        token?: (string | null),
+    ): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/documents/statistics',
+            query: {
+                'token': token,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Bulk edit documents
+     * Apply an operation to multiple documents at once.
+     * @param requestBody
+     * @param token Auth token for image/file requests
+     * @returns MessageResponse Successful Response
+     * @throws ApiError
+     */
+    public static bulkEditApiV1DocumentsBulkEditPost(
+        requestBody: BulkEditRequest,
+        token?: (string | null),
+    ): CancelablePromise<MessageResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/documents/bulk_edit',
+            query: {
+                'token': token,
+            },
+            body: requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Toggle favorite
+     * Toggle is_favorite flag on a document
      * @param documentId
-     * @param formData
      * @param token Auth token for image/file requests
      * @returns DocumentResponse Successful Response
      * @throws ApiError
      */
-    public static replaceDocumentApiV1DocumentsDocumentIdReplacePut(
+    public static toggleFavoriteApiV1DocumentsDocumentIdFavoritePatch(
         documentId: number,
-        formData: Body_replace_document_api_v1_documents__document_id__replace_put,
         token?: (string | null),
     ): CancelablePromise<DocumentResponse> {
         return __request(OpenAPI, {
-            method: 'PUT',
-            url: '/api/v1/documents/{document_id}/replace',
+            method: 'PATCH',
+            url: '/api/v1/documents/{document_id}/favorite',
             path: {
                 'document_id': documentId,
             },
             query: {
                 'token': token,
             },
-            formData: formData,
-            mediaType: 'multipart/form-data',
             errors: {
                 422: `Validation Error`,
             },
@@ -201,6 +294,36 @@ export class DocumentsService {
         });
     }
     /**
+     * Replace document
+     * Replace an existing document's file while preserving its ID and metadata
+     * @param documentId
+     * @param formData
+     * @param token Auth token for image/file requests
+     * @returns DocumentResponse Successful Response
+     * @throws ApiError
+     */
+    public static replaceDocumentApiV1DocumentsDocumentIdReplacePut(
+        documentId: number,
+        formData: Body_replace_document_api_v1_documents__document_id__replace_put,
+        token?: (string | null),
+    ): CancelablePromise<DocumentResponse> {
+        return __request(OpenAPI, {
+            method: 'PUT',
+            url: '/api/v1/documents/{document_id}/replace',
+            path: {
+                'document_id': documentId,
+            },
+            query: {
+                'token': token,
+            },
+            formData: formData,
+            mediaType: 'multipart/form-data',
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
      * Get Document Chunks
      * Get all chunks for a document.
      * @param documentId
@@ -273,6 +396,117 @@ export class DocumentsService {
         return __request(OpenAPI, {
             method: 'POST',
             url: '/api/v1/documents/{document_id}/process',
+            path: {
+                'document_id': documentId,
+            },
+            query: {
+                'token': token,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * List document notes
+     * List all notes for a document.
+     * @param documentId
+     * @param token Auth token for image/file requests
+     * @returns DocumentNoteResponse Successful Response
+     * @throws ApiError
+     */
+    public static listDocumentNotesApiV1DocumentsDocumentIdNotesGet(
+        documentId: number,
+        token?: (string | null),
+    ): CancelablePromise<Array<DocumentNoteResponse>> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/documents/{document_id}/notes',
+            path: {
+                'document_id': documentId,
+            },
+            query: {
+                'token': token,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Add a note to a document
+     * Create a note on a document. Matching Paperless POST /documents/{id}/notes/.
+     * @param documentId
+     * @param requestBody
+     * @param token Auth token for image/file requests
+     * @returns DocumentNoteResponse Successful Response
+     * @throws ApiError
+     */
+    public static createDocumentNoteApiV1DocumentsDocumentIdNotesPost(
+        documentId: number,
+        requestBody: DocumentNoteCreate,
+        token?: (string | null),
+    ): CancelablePromise<DocumentNoteResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/documents/{document_id}/notes',
+            path: {
+                'document_id': documentId,
+            },
+            query: {
+                'token': token,
+            },
+            body: requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Delete a document note
+     * Delete a note. Only the author or document owner can delete.
+     * @param documentId
+     * @param noteId
+     * @param token Auth token for image/file requests
+     * @returns MessageResponse Successful Response
+     * @throws ApiError
+     */
+    public static deleteDocumentNoteApiV1DocumentsDocumentIdNotesNoteIdDelete(
+        documentId: number,
+        noteId: number,
+        token?: (string | null),
+    ): CancelablePromise<MessageResponse> {
+        return __request(OpenAPI, {
+            method: 'DELETE',
+            url: '/api/v1/documents/{document_id}/notes/{note_id}',
+            path: {
+                'document_id': documentId,
+                'note_id': noteId,
+            },
+            query: {
+                'token': token,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Get document metadata
+     * Technical metadata: checksums, MIME type, archive info.
+     * @param documentId
+     * @param token Auth token for image/file requests
+     * @returns DocumentMetadataResponse Successful Response
+     * @throws ApiError
+     */
+    public static getDocumentMetadataApiV1DocumentsDocumentIdMetadataGet(
+        documentId: number,
+        token?: (string | null),
+    ): CancelablePromise<DocumentMetadataResponse> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/documents/{document_id}/metadata',
             path: {
                 'document_id': documentId,
             },

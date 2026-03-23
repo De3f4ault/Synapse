@@ -135,6 +135,36 @@ export class SearchService {
         });
     }
     /**
+     * Search Autocomplete
+     * Multi-entity autocomplete for the global search command palette.
+     *
+     * Returns matching documents, correspondents, tags, and document types
+     * in a single response — matching Paperless-ngx global search behavior.
+     * @param query Search query
+     * @param limit Max results per entity type
+     * @param token Auth token for image/file requests
+     * @returns any Successful Response
+     * @throws ApiError
+     */
+    public static searchAutocompleteApiV1SearchAutocompleteGet(
+        query: string,
+        limit: number = 10,
+        token?: (string | null),
+    ): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/search/autocomplete',
+            query: {
+                'query': query,
+                'limit': limit,
+                'token': token,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
      * Unified Search
      * Execute search across all engines based on intent.
      * @param requestBody

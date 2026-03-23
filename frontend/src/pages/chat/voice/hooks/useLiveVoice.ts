@@ -11,9 +11,20 @@
  * - Setup AudioContext, AudioWorklet, and media streams
  * - Route audio events to store actions
  * - Provide stable API for voice UI components
+ *
+ * Audio Architecture (modeled on Google's live-api-web-console reference):
+ * - Input:  16kHz AudioContext → PCM worklet → base64 → WebSocket → Gemini
+ * - Output: Gemini → WebSocket → PCM16 decode → scheduled playback via 24kHz AudioContext
+ * - Two separate AudioContexts prevent sample-rate conflicts
+ * - Scheduled playback with lookahead eliminates inter-chunk gaps (clicks/pops)
+ *
+ * STABILITY INVARIANT:
+ * All public functions (startSession, endSession, interrupt, sendText) use [] deps
+ * and access mutable state through refs. This prevents render loops when used in
+ * useEffect dependencies or passed to child components.
  */
 
-import { useRef, useCallback } from 'react';
+import { useRef, useCallback, useEffect } from 'react';
 import { getAuthToken } from '@/api/client';
 import { WS_BASE_URL } from '@/lib/constants';
 import { useVoiceStore } from '../state/voiceStore';
@@ -23,43 +34,68 @@ import {
     useInputTranscript,
     useOutputTranscript,
     useInputAudioLevel,
+    useTranscriptHistory,
 } from '../state/voiceSelectors';
 
 // ==================== TYPES ====================
 
 export interface UseLiveVoiceOptions {
+    sessionId?: number;
     onTranscript?: (text: string, isFinal: boolean, isInput: boolean) => void;
     onGrounding?: (metadata: Record<string, unknown>) => void;
     onError?: (error: string) => void;
     onStateChange?: (state: string) => void;
+    onMessagesSaved?: (messageIds: number[]) => void;
     systemInstruction?: string;
     enableSearch?: boolean;
 }
 
-// Audio constants
-const SAMPLE_RATE_OUT = 24000;
+// ==================== AUDIO CONSTANTS ====================
 
-// AudioWorklet processor code
+/** Gemini expects 16kHz PCM input */
+const SAMPLE_RATE_IN = 16000;
+/** Gemini outputs 24kHz PCM */
+const SAMPLE_RATE_OUT = 24000;
+/** Buffer size for chunking output audio (matches Google's reference: 7680 samples = 320ms at 24kHz) */
+const PLAYBACK_BUFFER_SIZE = 7680;
+/** Schedule audio this far ahead to prevent gaps (200ms) */
+const SCHEDULE_AHEAD_TIME = 0.2;
+/** Initial buffer before first playback (100ms) */
+const INITIAL_BUFFER_TIME = 0.1;
+/** Poll interval for checking new audio in queue (ms) */
+const QUEUE_POLL_INTERVAL = 100;
+
+// ==================== AUDIO WORKLET ====================
+
 const AUDIO_WORKLET_CODE = `
 class PCMProcessor extends AudioWorkletProcessor {
   constructor() {
     super();
-    this.buffer = [];
+    this.buffer = new Int16Array(2048);
+    this.bufferWriteIndex = 0;
+  }
+
+  sendAndClearBuffer() {
+    this.port.postMessage({
+      data: {
+        int16arrayBuffer: this.buffer.slice(0, this.bufferWriteIndex).buffer,
+      },
+    });
+    this.bufferWriteIndex = 0;
   }
 
   process(inputs) {
     const input = inputs[0];
     if (input && input[0]) {
-      const samples = input[0];
-      for (let i = 0; i < samples.length; i += 3) {
-        const sample = Math.max(-1, Math.min(1, samples[i]));
-        const int16 = sample < 0 ? sample * 0x8000 : sample * 0x7FFF;
-        this.buffer.push(int16);
+      const channel0 = input[0];
+      for (let i = 0; i < channel0.length; i++) {
+        this.buffer[this.bufferWriteIndex++] = channel0[i] * 32768;
+        if (this.bufferWriteIndex >= this.buffer.length) {
+          this.sendAndClearBuffer();
+        }
       }
-      
-      if (this.buffer.length >= 512) {
-        const chunk = new Int16Array(this.buffer.splice(0, 512));
-        this.port.postMessage(chunk.buffer, [chunk.buffer]);
+      if (this.bufferWriteIndex >= this.buffer.length) {
+        this.sendAndClearBuffer();
       }
     }
     return true;
@@ -72,16 +108,10 @@ registerProcessor('pcm-processor', PCMProcessor);
 // ==================== HOOK ====================
 
 export function useLiveVoice(options: UseLiveVoiceOptions = {}) {
-    const {
-        onTranscript,
-        onGrounding,
-        onError,
-        onStateChange,
-        systemInstruction,
-        enableSearch = true,
-    } = options;
 
-    const store = useVoiceStore();
+    // ---- Stable refs for options (so callbacks can have [] deps) ----
+    const optionsRef = useRef(options);
+    optionsRef.current = options;
 
     // Subscriptions (fine-grained from selectors)
     const state = useVoiceState();
@@ -89,17 +119,29 @@ export function useLiveVoice(options: UseLiveVoiceOptions = {}) {
     const inputTranscript = useInputTranscript();
     const outputTranscript = useOutputTranscript();
     const audioLevel = useInputAudioLevel();
+    const transcriptHistory = useTranscriptHistory();
 
-    // Refs for audio/WebSocket (not in store - implementation detail)
+    // ---- Refs for audio/WebSocket (mutable, no-render) ----
     const wsRef = useRef<WebSocket | null>(null);
-    const audioContextRef = useRef<AudioContext | null>(null);
+    const inputContextRef = useRef<AudioContext | null>(null);
+    const playbackContextRef = useRef<AudioContext | null>(null);
+    const playbackGainRef = useRef<GainNode | null>(null);
     const workletNodeRef = useRef<AudioWorkletNode | null>(null);
     const mediaStreamRef = useRef<MediaStream | null>(null);
     const analyserRef = useRef<AnalyserNode | null>(null);
+    const levelIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+    // Scheduled playback state
     const audioQueueRef = useRef<Float32Array[]>([]);
     const isPlayingRef = useRef(false);
+    const scheduledTimeRef = useRef(0);
+    const checkIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-    // ==================== CALLBACKS ====================
+    // Guard: prevents ws.onclose from re-triggering store.endSession()
+    // after an intentional close via endSession()
+    const closingRef = useRef(false);
+
+    // ==================== AUDIO LEVEL MONITORING ====================
 
     const updateAudioLevel = useCallback(() => {
         if (!analyserRef.current) return;
@@ -111,48 +153,151 @@ export function useLiveVoice(options: UseLiveVoiceOptions = {}) {
         const avg = sum / dataArray.length;
         const normalized = Math.min(1, avg / 128);
 
-        store.setInputAudioLevel(normalized);
-    }, [store]);
+        // Access store directly, not through component state
+        useVoiceStore.getState().setInputAudioLevel(normalized);
+    }, []);
+
+    // ==================== AUDIO PLAYBACK (Scheduled) ====================
+
+    const queueAudioForPlayback = useCallback((audioData: Uint8Array) => {
+        const dataView = new DataView(audioData.buffer, audioData.byteOffset, audioData.byteLength);
+        const float32Array = new Float32Array(audioData.length / 2);
+        for (let i = 0; i < audioData.length / 2; i++) {
+            const int16 = dataView.getInt16(i * 2, true);
+            float32Array[i] = int16 / 32768;
+        }
+
+        let offset = 0;
+        while (offset < float32Array.length) {
+            const end = Math.min(offset + PLAYBACK_BUFFER_SIZE, float32Array.length);
+            audioQueueRef.current.push(float32Array.slice(offset, end));
+            offset = end;
+        }
+
+        if (!isPlayingRef.current) {
+            isPlayingRef.current = true;
+            const ctx = playbackContextRef.current;
+            if (ctx) {
+                scheduledTimeRef.current = ctx.currentTime + INITIAL_BUFFER_TIME;
+            }
+            scheduleNextBuffer();
+        }
+    }, []);
+
+    const scheduleNextBuffer = useCallback(() => {
+        const ctx = playbackContextRef.current;
+        const gainNode = playbackGainRef.current;
+        if (!ctx || !gainNode) return;
+
+        while (
+            audioQueueRef.current.length > 0 &&
+            scheduledTimeRef.current < ctx.currentTime + SCHEDULE_AHEAD_TIME
+        ) {
+            const audioData = audioQueueRef.current.shift()!;
+            const audioBuffer = ctx.createBuffer(1, audioData.length, SAMPLE_RATE_OUT);
+            audioBuffer.getChannelData(0).set(audioData);
+
+            const source = ctx.createBufferSource();
+            source.buffer = audioBuffer;
+            source.connect(gainNode);
+
+            const startTime = Math.max(scheduledTimeRef.current, ctx.currentTime);
+            source.start(startTime);
+            scheduledTimeRef.current = startTime + audioBuffer.duration;
+        }
+
+        if (audioQueueRef.current.length === 0) {
+            if (!checkIntervalRef.current) {
+                checkIntervalRef.current = setInterval(() => {
+                    if (audioQueueRef.current.length > 0) {
+                        scheduleNextBuffer();
+                    }
+                }, QUEUE_POLL_INTERVAL);
+            }
+        } else {
+            const nextCheckTime =
+                (scheduledTimeRef.current - ctx.currentTime) * 1000;
+            setTimeout(
+                () => scheduleNextBuffer(),
+                Math.max(0, nextCheckTime - 50)
+            );
+        }
+    }, []);
+
+    const stopPlayback = useCallback(() => {
+        const ctx = playbackContextRef.current;
+        const gainNode = playbackGainRef.current;
+
+        audioQueueRef.current = [];
+        isPlayingRef.current = false;
+        if (checkIntervalRef.current) {
+            clearInterval(checkIntervalRef.current);
+            checkIntervalRef.current = null;
+        }
+
+        if (ctx && gainNode) {
+            gainNode.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.1);
+            scheduledTimeRef.current = ctx.currentTime;
+
+            setTimeout(() => {
+                if (playbackContextRef.current && playbackGainRef.current) {
+                    playbackGainRef.current.disconnect();
+                    const newGain = playbackContextRef.current.createGain();
+                    newGain.connect(playbackContextRef.current.destination);
+                    playbackGainRef.current = newGain;
+                }
+            }, 200);
+        }
+    }, []);
 
     // ==================== MESSAGE HANDLER ====================
+    // Uses useVoiceStore.getState() instead of component-level store
+    // so the callback has [] deps and doesn't trigger re-renders.
 
     const handleMessage = useCallback(
         (event: MessageEvent) => {
             try {
                 const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
                 const msgType = data.type;
+                const store = useVoiceStore.getState();
+                const opts = optionsRef.current;
 
                 switch (msgType) {
                     case 'input_transcript':
-                        store.setInputTranscript(data.text || '');
-                        onTranscript?.(data.text || '', data.is_final || false, true);
-                        if (data.is_final) {
-                            store.commitTranscript({
-                                id: `input-${Date.now()}`,
-                                text: data.text || '',
-                                isInput: true,
-                                isFinal: true,
-                                timestamp: Date.now(),
-                            });
+                        // ECHO PREVENTION: During 'speaking' state, the mic picks up
+                        // the AI's audio from the speakers. Gemini transcribes this echo
+                        // as 'input_transcription', polluting the user's transcript bubble.
+                        // Only accumulate input transcripts when actually listening.
+                        if (store.state !== 'speaking') {
+                            store.appendInputTranscript(data.text || '');
+                            opts.onTranscript?.(data.text || '', false, true);
                         }
                         break;
 
                     case 'output_transcript':
-                        store.setOutputTranscript(data.text || '');
-                        onTranscript?.(data.text || '', data.is_final || false, false);
-                        if (data.is_final) {
-                            store.commitTranscript({
-                                id: `output-${Date.now()}`,
-                                text: data.text || '',
-                                isInput: false,
-                                isFinal: true,
-                                timestamp: Date.now(),
-                            });
-                        }
+                        store.appendOutputTranscript(data.text || '');
+                        opts.onTranscript?.(data.text || '', false, false);
                         break;
 
                     case 'audio':
                         if (data.data) {
+                            // On first audio chunk of a new AI turn, commit the user's
+                            // input transcript and clear it for a fresh display.
+                            if (store.state !== 'speaking') {
+                                const currentInput = store.inputTranscript;
+                                if (currentInput) {
+                                    store.commitTranscript({
+                                        id: `input-${Date.now()}`,
+                                        text: currentInput,
+                                        isInput: true,
+                                        isFinal: true,
+                                        timestamp: Date.now(),
+                                    });
+                                }
+                                // Clear input transcript display (AI's turn now)
+                                store.setInputTranscript('');
+                            }
+
                             const audioData = Uint8Array.from(atob(data.data), (c) => c.charCodeAt(0));
                             queueAudioForPlayback(audioData);
                             store.setState('speaking');
@@ -161,83 +306,76 @@ export function useLiveVoice(options: UseLiveVoiceOptions = {}) {
 
                     case 'grounding':
                         store.setGroundingSources(data.sources || []);
-                        onGrounding?.(data.metadata || {});
+                        opts.onGrounding?.(data.metadata || {});
                         break;
 
-                    case 'turn_complete':
+                    case 'turn_complete': {
+                        // Reset playback state so mic unmutes for next user turn
+                        isPlayingRef.current = false;
+                        if (checkIntervalRef.current) {
+                            clearInterval(checkIntervalRef.current);
+                            checkIntervalRef.current = null;
+                        }
+
+                        // Commit final output transcript
+                        const currentOutput = store.outputTranscript;
+                        if (currentOutput) {
+                            store.commitTranscript({
+                                id: `output-${Date.now()}`,
+                                text: currentOutput,
+                                isInput: false,
+                                isFinal: true,
+                                timestamp: Date.now(),
+                            });
+                        }
+
+                        // Clear both transcript displays for the next exchange
+                        store.setInputTranscript('');
+                        store.setOutputTranscript('');
+
                         store.setState('listening');
                         break;
+                    }
 
                     case 'interrupted':
-                        // Clear audio queue on interrupt
-                        audioQueueRef.current = [];
+                        stopPlayback();
                         store.setState('listening');
+                        break;
+
+                    case 'messages_saved':
+                        // Backend saved the turn to the database — notify caller
+                        // so it can invalidate React Query message cache
+                        opts.onMessagesSaved?.(data.message_ids || []);
                         break;
 
                     case 'error':
                         store.setError(data.message || 'Unknown error');
-                        onError?.(data.message || 'Unknown error');
+                        opts.onError?.(data.message || 'Unknown error');
                         break;
                 }
             } catch (err) {
                 console.error('[Voice] Failed to parse message:', err);
             }
         },
-        [store, onTranscript, onGrounding, onError]
+        [] // STABLE: accesses store via getState(), options via ref
     );
 
-    // ==================== AUDIO PLAYBACK ====================
-
-    const queueAudioForPlayback = useCallback((audioData: Uint8Array) => {
-        // Convert PCM16 to Float32
-        const int16View = new Int16Array(audioData.buffer, audioData.byteOffset, audioData.length / 2);
-        const float32 = new Float32Array(int16View.length);
-        for (let i = 0; i < int16View.length; i++) {
-            const sample = int16View[i];
-            float32[i] = sample !== undefined ? sample / 32768 : 0;
-        }
-        audioQueueRef.current.push(float32);
-
-        if (!isPlayingRef.current) {
-            playNextChunk();
-        }
-    }, []);
-
-    const playNextChunk = useCallback(() => {
-        if (!audioContextRef.current || audioQueueRef.current.length === 0) {
-            isPlayingRef.current = false;
-            return;
-        }
-
-        isPlayingRef.current = true;
-        const chunk = audioQueueRef.current.shift();
-        if (!chunk) {
-            isPlayingRef.current = false;
-            return;
-        }
-        const buffer = audioContextRef.current.createBuffer(1, chunk.length, SAMPLE_RATE_OUT);
-        const channelData = new Float32Array(chunk);
-        buffer.copyToChannel(channelData, 0);
-
-        const source = audioContextRef.current.createBufferSource();
-        source.buffer = buffer;
-        source.connect(audioContextRef.current.destination);
-        source.onended = () => playNextChunk();
-        source.start();
-    }, []);
-
     // ==================== SESSION CONTROL ====================
+    // ALL session functions have [] deps for stability.
+    // They access mutable state through refs and useVoiceStore.getState().
 
     const startSession = useCallback(async () => {
         console.log('[Voice] Starting session...');
+        const store = useVoiceStore.getState();
+        const opts = optionsRef.current;
+
+        closingRef.current = false;  // Reset closing guard
         store.startSession();
-        onStateChange?.('connecting');
+        opts.onStateChange?.('connecting');
 
         try {
-            // Get microphone access
             const stream = await navigator.mediaDevices.getUserMedia({
                 audio: {
-                    sampleRate: 48000,
                     channelCount: 1,
                     echoCancellation: true,
                     noiseSuppression: true,
@@ -245,51 +383,72 @@ export function useLiveVoice(options: UseLiveVoiceOptions = {}) {
             });
             mediaStreamRef.current = stream;
 
-            // Setup audio context
-            const audioContext = new AudioContext({ sampleRate: 48000 });
-            audioContextRef.current = audioContext;
+            // ---- INPUT: 16kHz AudioContext for mic capture ----
+            const inputContext = new AudioContext({ sampleRate: SAMPLE_RATE_IN });
+            inputContextRef.current = inputContext;
 
-            // Setup analyser for audio levels
-            const analyser = audioContext.createAnalyser();
+            const analyser = inputContext.createAnalyser();
             analyser.fftSize = 256;
             analyserRef.current = analyser;
 
-            const source = audioContext.createMediaStreamSource(stream);
-            source.connect(analyser);
+            const micSource = inputContext.createMediaStreamSource(stream);
+            micSource.connect(analyser);
 
-            // Setup AudioWorklet for PCM encoding
             const blob = new Blob([AUDIO_WORKLET_CODE], { type: 'application/javascript' });
             const workletUrl = URL.createObjectURL(blob);
-            await audioContext.audioWorklet.addModule(workletUrl);
+            await inputContext.audioWorklet.addModule(workletUrl);
+            URL.revokeObjectURL(workletUrl);
 
-            const workletNode = new AudioWorkletNode(audioContext, 'pcm-processor');
+            const workletNode = new AudioWorkletNode(inputContext, 'pcm-processor');
             workletNodeRef.current = workletNode;
-            source.connect(workletNode);
+            micSource.connect(workletNode);
 
             workletNode.port.onmessage = (e) => {
-                if (wsRef.current?.readyState === WebSocket.OPEN) {
-                    const base64 = btoa(String.fromCharCode(...new Uint8Array(e.data)));
-                    wsRef.current.send(JSON.stringify({ type: 'audio', data: base64 }));
+                // ECHO PREVENTION: Don't send mic audio while AI is playing back.
+                // The mic captures the AI's speech from speakers, and Gemini interprets
+                // this echo as user speech — causing self-interruptions (pausing) and
+                // false input transcriptions (transcript mixing).
+                if (wsRef.current?.readyState === WebSocket.OPEN && !isPlayingRef.current) {
+                    const arrayBuffer = e.data?.data?.int16arrayBuffer;
+                    if (arrayBuffer) {
+                        const bytes = new Uint8Array(arrayBuffer);
+                        let binary = '';
+                        for (let i = 0; i < bytes.length; i++) {
+                            binary += String.fromCharCode(bytes[i]);
+                        }
+                        const base64 = btoa(binary);
+                        wsRef.current.send(JSON.stringify({ type: 'audio', data: base64 }));
+                    }
                 }
             };
 
-            // Connect WebSocket
+            // ---- OUTPUT: 24kHz AudioContext for Gemini playback ----
+            const playbackContext = new AudioContext({ sampleRate: SAMPLE_RATE_OUT });
+            playbackContextRef.current = playbackContext;
+
+            const gainNode = playbackContext.createGain();
+            gainNode.connect(playbackContext.destination);
+            playbackGainRef.current = gainNode;
+
+            // Connect WebSocket — include session_id for session binding
             const token = getAuthToken();
-            const wsUrl = `${WS_BASE_URL}/ws/live?token=${token}`;
+            const sessionId = optionsRef.current.sessionId;
+            const wsUrl = `${WS_BASE_URL}/ws/live?token=${token}${sessionId ? `&session_id=${sessionId}` : ''}`;
             const ws = new WebSocket(wsUrl);
             wsRef.current = ws;
 
             ws.onopen = () => {
                 console.log('[Voice] WebSocket connected');
-                store.setState('listening');
-                onStateChange?.('listening');
+                const s = useVoiceStore.getState();
+                const o = optionsRef.current;
+                s.setState('listening');
+                o.onStateChange?.('listening');
 
-                // Send config
                 ws.send(
                     JSON.stringify({
                         type: 'config',
-                        system_instruction: systemInstruction,
-                        enable_search: enableSearch,
+                        system_instruction: optionsRef.current.systemInstruction,
+                        enable_search: optionsRef.current.enableSearch ?? true,
                     })
                 );
             };
@@ -298,32 +457,52 @@ export function useLiveVoice(options: UseLiveVoiceOptions = {}) {
 
             ws.onerror = (err) => {
                 console.error('[Voice] WebSocket error:', err);
-                store.setError('Connection error');
-                onError?.('Connection error');
+                const s = useVoiceStore.getState();
+                const o = optionsRef.current;
+                s.setError('Connection error');
+                o.onError?.('Connection error');
             };
 
             ws.onclose = () => {
                 console.log('[Voice] WebSocket closed');
-                store.endSession();
-                onStateChange?.('idle');
+                // Only reset store if this was NOT an intentional close via endSession().
+                // endSession() already handles store.endSession() synchronously.
+                if (!closingRef.current) {
+                    const s = useVoiceStore.getState();
+                    const o = optionsRef.current;
+                    s.endSession();
+                    o.onStateChange?.('idle');
+                }
             };
 
-            // Start audio level monitoring
-            const levelInterval = setInterval(updateAudioLevel, 50);
-
-            // Store cleanup function for later
-            wsRef.current.addEventListener('close', () => {
-                clearInterval(levelInterval);
-            });
+            // Start audio level monitoring — store in ref for cleanup
+            levelIntervalRef.current = setInterval(updateAudioLevel, 50);
         } catch (err) {
             console.error('[Voice] Failed to start session:', err);
-            store.setError('Failed to access microphone');
-            onError?.('Failed to access microphone');
+            const s = useVoiceStore.getState();
+            const o = optionsRef.current;
+            s.setError('Failed to access microphone');
+            o.onError?.('Failed to access microphone');
         }
-    }, [store, systemInstruction, enableSearch, handleMessage, onStateChange, onError, updateAudioLevel]);
+    }, []); // STABLE: no deps, accesses everything through refs + getState()
 
     const endSession = useCallback(() => {
+        // Idempotency guard — prevent the infinite loop
+        if (!wsRef.current && !mediaStreamRef.current && !inputContextRef.current && !playbackContextRef.current) {
+            return; // Already cleaned up, nothing to do
+        }
+
         console.log('[Voice] Ending session...');
+        closingRef.current = true;  // Prevent ws.onclose from re-triggering
+
+        // Stop playback gracefully
+        stopPlayback();
+
+        // Clear audio level monitoring interval
+        if (levelIntervalRef.current) {
+            clearInterval(levelIntervalRef.current);
+            levelIntervalRef.current = null;
+        }
 
         // Close WebSocket
         if (wsRef.current) {
@@ -337,20 +516,25 @@ export function useLiveVoice(options: UseLiveVoiceOptions = {}) {
             mediaStreamRef.current = null;
         }
 
-        // Close audio context
-        if (audioContextRef.current) {
-            audioContextRef.current.close();
-            audioContextRef.current = null;
+        // Close input audio context
+        if (inputContextRef.current) {
+            inputContextRef.current.close();
+            inputContextRef.current = null;
+        }
+
+        // Close playback audio context
+        if (playbackContextRef.current) {
+            playbackContextRef.current.close();
+            playbackContextRef.current = null;
         }
 
         workletNodeRef.current = null;
         analyserRef.current = null;
-        audioQueueRef.current = [];
-        isPlayingRef.current = false;
+        playbackGainRef.current = null;
 
-        store.endSession();
-        onStateChange?.('idle');
-    }, [store, onStateChange]);
+        useVoiceStore.getState().endSession();
+        optionsRef.current.onStateChange?.('idle');
+    }, []); // STABLE: no deps, accesses everything through refs + getState()
 
     const sendText = useCallback((text: string) => {
         if (wsRef.current?.readyState === WebSocket.OPEN) {
@@ -359,17 +543,22 @@ export function useLiveVoice(options: UseLiveVoiceOptions = {}) {
     }, []);
 
     const interrupt = useCallback(() => {
-        audioQueueRef.current = [];
+        stopPlayback();
         if (wsRef.current?.readyState === WebSocket.OPEN) {
             wsRef.current.send(JSON.stringify({ type: 'interrupt' }));
         }
-        store.setState('listening');
-    }, [store]);
+        useVoiceStore.getState().setState('listening');
+    }, []); // STABLE: no deps
 
     // ==================== CLEANUP ====================
-    // NOTE: Cleanup is handled imperatively via endSession() call,
-    // not via useEffect cleanup which would cause infinite re-renders
-    // due to endSession being recreated on each render.
+    // endSession is now STABLE ([] deps) so this useEffect cleanup
+    // is safe — it only fires on actual component unmount, never on re-renders.
+    useEffect(() => {
+        return () => {
+            console.log('[Voice] Component unmounting — forcing cleanup');
+            endSession();
+        };
+    }, [endSession]); // endSession has [] deps, so this is equivalent to []
 
     // ==================== RETURN ====================
 
@@ -380,8 +569,9 @@ export function useLiveVoice(options: UseLiveVoiceOptions = {}) {
         inputTranscript,
         outputTranscript,
         audioLevel,
+        transcriptHistory,
 
-        // Methods
+        // Methods (all stable references)
         startSession,
         endSession,
         sendText,

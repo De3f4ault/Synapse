@@ -2,6 +2,8 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { XIcon, Search } from "lucide-react";
+import type { VoiceState, TranscriptEntry } from "../../voice/engine/types";
+import { MarkdownRenderer } from "@/shared/rendering";
 import { ChatMessage } from "./ChatMessage";
 import { ChatInputBox } from "./ChatInputBox";
 import { ThreadButton } from "./ThreadButton";
@@ -37,6 +39,15 @@ interface ChatConversationViewProps {
   streamingContent?: string;
   streamingThinking?: string;
   sessionTitle?: string;
+  // Voice mode props (Gemini Live-style inline)
+  voiceActive?: boolean;
+  voiceState?: VoiceState;
+  voiceInputTranscript?: string;
+  voiceOutputTranscript?: string;
+  voiceAudioLevel?: number;
+  voiceTranscriptHistory?: TranscriptEntry[];
+  onVoiceInterrupt?: () => void;
+  onVoiceEndSession?: () => void;
 }
 
 export function ChatConversationView({
@@ -52,6 +63,15 @@ export function ChatConversationView({
   isStreaming = false,
   streamingContent = "",
   streamingThinking = "",
+  // Voice mode
+  voiceActive = false,
+  voiceState,
+  voiceInputTranscript = "",
+  voiceOutputTranscript = "",
+  voiceAudioLevel = 0,
+  voiceTranscriptHistory = [],
+  onVoiceInterrupt,
+  onVoiceEndSession,
   // sessionTitle, // Unused
 }: ChatConversationViewProps) {
 
@@ -270,6 +290,52 @@ export function ChatConversationView({
               currentOccurrenceId={null}
             />
           )}
+
+          {/* Voice Mode: Committed transcripts (persistent — survive across turns) */}
+          {voiceActive && voiceTranscriptHistory.map((entry) => (
+            <div
+              key={entry.id}
+              className={`flex ${entry.isInput ? 'justify-end' : 'justify-start'}`}
+            >
+              <div
+                className={`max-w-[80%] rounded-2xl px-4 py-2.5 ${
+                  entry.isInput
+                    ? 'rounded-br-md bg-cyan-600/20 border border-cyan-500/20'
+                    : 'rounded-bl-md bg-white/5 border border-white/10'
+                }`}
+              >
+                <div className={`text-sm ${
+                  entry.isInput ? 'text-cyan-100/90' : 'text-zinc-200'
+                }`}>
+                  <MarkdownRenderer content={entry.text} />
+                </div>
+              </div>
+            </div>
+          ))}
+
+          {/* Voice Mode: Live in-progress user speech (ephemeral) */}
+          {voiceActive && voiceInputTranscript && (
+            <div className="flex justify-end animate-in fade-in duration-200">
+              <div className="max-w-[80%] rounded-2xl rounded-br-md px-4 py-2.5 bg-cyan-600/20 border border-cyan-500/20">
+                <p className="text-sm text-cyan-100/90">{voiceInputTranscript}</p>
+                <span className="text-[10px] text-cyan-400/60 mt-1 block">Speaking...</span>
+              </div>
+            </div>
+          )}
+
+          {/* Voice Mode: Live in-progress AI response (ephemeral) */}
+          {voiceActive && voiceOutputTranscript && (
+            <div className="flex justify-start animate-in fade-in duration-200">
+              <div className="max-w-[80%] rounded-2xl rounded-bl-md px-4 py-2.5 bg-white/5 border border-white/10">
+                <div className="text-sm text-zinc-200">
+                  <MarkdownRenderer content={voiceOutputTranscript} />
+                </div>
+                <span className="text-[10px] text-purple-400/60 mt-1 block">
+                  {voiceState === 'speaking' ? '🔊 Speaking...' : 'AI'}
+                </span>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Comparison Panel — rendered OUTSIDE max-w-4xl so it can be wider */}
@@ -316,8 +382,13 @@ export function ChatConversationView({
             onStop={onStop}
             onVoiceClick={onVoiceClick}
             isStreaming={isStreaming}
-            placeholder="Continue the conversation..."
-            disabled={isSending}
+            placeholder={voiceActive ? "Type to ask..." : "Continue the conversation..."}
+            disabled={isSending && !voiceActive}
+            voiceActive={voiceActive}
+            voiceState={voiceState}
+            voiceAudioLevel={voiceAudioLevel}
+            onVoiceInterrupt={onVoiceInterrupt}
+            onVoiceEndSession={onVoiceEndSession}
           />
         </div>
       </div>

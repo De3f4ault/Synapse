@@ -3,6 +3,9 @@
  *
  * Provides hooks for correspondents, document types, tags, and storage paths.
  * All hooks follow the same pattern: list + create + update + delete.
+ *
+ * Uses Bearer token auth (getAuthToken) and no trailing slashes to
+ * avoid FastAPI 307 redirects that strip auth credentials.
  */
 
 import {
@@ -10,6 +13,7 @@ import {
   useMutation,
   useQueryClient,
 } from "@tanstack/react-query";
+import { getAuthToken } from "@/api/client";
 import type {
   Correspondent,
   CorrespondentCreate,
@@ -22,13 +26,28 @@ import type {
 } from "../core/types/dms";
 
 // ============================================================================
+// Auth helpers
+// ============================================================================
+
+function authHeaders(): Record<string, string> {
+  const token = getAuthToken();
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+  return headers;
+}
+
+// ============================================================================
 // Generic CRUD factory
 // ============================================================================
 
 interface CrudOptions {
   /** Query key prefix */
   key: string;
-  /** API endpoint base path */
+  /** API endpoint base path (no trailing slash) */
   endpoint: string;
 }
 
@@ -41,7 +60,9 @@ function useCrudHooks<T extends { id: number }, TCreate>({
   const listQuery = useQuery<T[]>({
     queryKey: [key],
     queryFn: async () => {
-      const res = await fetch(`/api/${endpoint}/`, { credentials: "include" });
+      const res = await fetch(`/api/v1/${endpoint}`, {
+        headers: authHeaders(),
+      });
       if (!res.ok) throw new Error(`Failed to fetch ${key}`);
       const data = await res.json();
       // API may return { results: [...] } or just [...]
@@ -52,10 +73,9 @@ function useCrudHooks<T extends { id: number }, TCreate>({
 
   const createMutation = useMutation<T, Error, TCreate>({
     mutationFn: async (payload) => {
-      const res = await fetch(`/api/${endpoint}/`, {
+      const res = await fetch(`/api/v1/${endpoint}`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
+        headers: authHeaders(),
         body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error(`Failed to create ${key}`);
@@ -72,10 +92,9 @@ function useCrudHooks<T extends { id: number }, TCreate>({
     { id: number; data: Partial<TCreate> }
   >({
     mutationFn: async ({ id, data }) => {
-      const res = await fetch(`/api/${endpoint}/${id}/`, {
+      const res = await fetch(`/api/v1/${endpoint}/${id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
+        headers: authHeaders(),
         body: JSON.stringify(data),
       });
       if (!res.ok) throw new Error(`Failed to update ${key}`);
@@ -88,9 +107,9 @@ function useCrudHooks<T extends { id: number }, TCreate>({
 
   const deleteMutation = useMutation<void, Error, number>({
     mutationFn: async (id) => {
-      const res = await fetch(`/api/${endpoint}/${id}/`, {
+      const res = await fetch(`/api/v1/${endpoint}/${id}`, {
         method: "DELETE",
-        credentials: "include",
+        headers: authHeaders(),
       });
       if (!res.ok) throw new Error(`Failed to delete ${key}`);
     },

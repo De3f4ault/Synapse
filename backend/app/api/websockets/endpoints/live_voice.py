@@ -22,11 +22,12 @@ Protocol (Client <-> Backend):
 - Server sends: {"type": "interrupted"}
 """
 
-from fastapi import WebSocket, WebSocketDisconnect, Query
-from typing import Optional
+from fastapi import WebSocket, WebSocketDisconnect
+from typing import Optional, List
 import structlog
 import asyncio
 import base64
+from sqlalchemy import select
 from app.core.config import settings
 from app.db.session import AsyncSessionLocal
 
@@ -108,35 +109,139 @@ class LiveVoiceSession:
     Manages a single live voice session between client and Gemini.
 
     Handles:
-    - Gemini Live API connection
+    - Gemini Live API connection bound to an existing chat session
     - Bidirectional audio forwarding
+    - Per-turn message persistence to the chat session
     - Tool execution (search grounding)
     - Graceful disconnection
     """
 
-    def __init__(self, user_id: int, websocket: WebSocket):
+    def __init__(self, user_id: int, websocket: WebSocket, session_id: int):
         self.user_id = user_id
         self.websocket = websocket
-        self.logger = logger.bind(user_id=user_id)
+        self.session_id = session_id
+        self.logger = logger.bind(user_id=user_id, session_id=session_id)
         self.gemini_session = None
         self.running = False
         self._receive_task: Optional[asyncio.Task] = None
-        # Transcript accumulation for saving conversations
+        # Per-turn transcript accumulation (cleared after each turn_complete)
         self._input_transcripts: list[str] = []
         self._output_transcripts: list[str] = []
+
+    async def _load_history(self) -> str:
+        """
+        Load existing conversation history from the database and format it
+        as context for Gemini's system instruction.
+        """
+        try:
+            async with AsyncSessionLocal() as db:
+                result = await db.execute(
+                    select(ChatMessage)
+                    .where(
+                        ChatMessage.session_id == self.session_id,
+                        ChatMessage.thread_id.is_(None),
+                        ChatMessage.is_active.is_(True),
+                    )
+                    .order_by(ChatMessage.created_at)
+                    .limit(50)  # Limit to last 50 messages for context window
+                )
+                messages = result.scalars().all()
+
+                if not messages:
+                    return ""
+
+                # Format as conversation history
+                history_lines = ["\n\n--- Previous Conversation History ---"]
+                for msg in messages:
+                    role = "User" if msg.role == MessageRole.USER else "Assistant"
+                    # Truncate very long messages
+                    content = msg.content[:500] + "..." if len(msg.content) > 500 else msg.content
+                    history_lines.append(f"{role}: {content}")
+                history_lines.append("--- End of History ---\n")
+
+                return "\n".join(history_lines)
+
+        except Exception as e:
+            self.logger.error("load_history_error", error=str(e))
+            return ""
+
+    async def _save_turn(self, user_text: str, ai_text: str):
+        """
+        Save a single conversational turn (user message + AI response) to the database.
+        Called on each turn_complete.
+        """
+        try:
+            async with AsyncSessionLocal() as db:
+                saved_ids = []
+
+                if user_text:
+                    user_msg = ChatMessage(
+                        session_id=self.session_id,
+                        role=MessageRole.USER,
+                        content=user_text,
+                        model_used="voice-input",
+                    )
+                    db.add(user_msg)
+                    await db.flush()
+                    saved_ids.append(user_msg.id)
+
+                if ai_text:
+                    ai_msg = ChatMessage(
+                        session_id=self.session_id,
+                        role=MessageRole.ASSISTANT,
+                        content=ai_text,
+                        model_used=LIVE_MODEL,
+                    )
+                    db.add(ai_msg)
+                    await db.flush()
+                    saved_ids.append(ai_msg.id)
+
+                # Update session updated_at timestamp
+                session = await db.get(ChatSession, self.session_id)
+                if session:
+                    from datetime import datetime, timezone
+                    session.updated_at = datetime.now(timezone.utc)
+
+                await db.commit()
+
+                self.logger.info(
+                    "voice_turn_saved",
+                    message_ids=saved_ids,
+                    user_len=len(user_text),
+                    ai_len=len(ai_text),
+                )
+
+                # Notify client so it can refresh its message cache
+                await self._send_to_client({
+                    "type": "messages_saved",
+                    "message_ids": saved_ids,
+                })
+
+        except Exception as e:
+            self.logger.error("save_turn_error", error=str(e))
 
     async def start(self, system_instruction: Optional[str] = None, enable_search: bool = True):
         """
         Start the live voice session.
 
-        Connects to Gemini Live API and begins bidirectional streaming.
+        Loads conversation history, connects to Gemini Live API,
+        and begins bidirectional streaming.
         """
         try:
+            # Load conversation history for context continuity
+            history_context = await self._load_history()
+
             # Initialize Gemini client
             client = genai.Client(api_key=settings.GEMINI_API_KEY)
 
-            # Get session config
-            config = get_live_config(system_instruction, enable_search)
+            # Build system instruction with history
+            full_instruction = system_instruction or ""
+            if history_context:
+                full_instruction += history_context
+                self.logger.info("history_loaded", chars=len(history_context))
+
+            # Get session config with the enriched instruction
+            config = get_live_config(full_instruction or None, enable_search)
 
             self.logger.info("gemini_live_connecting", model=LIVE_MODEL)
 
@@ -295,9 +400,18 @@ class LiveVoiceSession:
                                     }
                                 )
 
-                            # Turn complete
+                            # Turn complete — save the turn to the database
                             if sc.turn_complete:
                                 self.logger.info("gemini_turn_complete")
+
+                                # Commit accumulated transcripts as messages
+                                user_text = "".join(self._input_transcripts).strip()
+                                ai_text = "".join(self._output_transcripts).strip()
+                                if user_text or ai_text:
+                                    await self._save_turn(user_text, ai_text)
+                                self._input_transcripts.clear()
+                                self._output_transcripts.clear()
+
                                 await self._send_to_client({"type": "turn_complete"})
 
                         # Handle tool calls
@@ -377,73 +491,30 @@ class LiveVoiceSession:
             self.logger.error("client_send_error", error=str(e))
             self.running = False
 
-    async def save_conversation(self):
-        """Save accumulated transcripts to database as a chat session."""
-        # Combine transcripts
-        user_text = " ".join(self._input_transcripts).strip()
-        ai_text = " ".join(self._output_transcripts).strip()
-
-        # Only save if there was actual conversation
-        if not user_text and not ai_text:
-            self.logger.info("no_transcripts_to_save")
-            return
-
-        try:
-            async with AsyncSessionLocal() as db:
-                # Create chat session
-                title = (
-                    (user_text[:50] + "...")
-                    if len(user_text) > 50
-                    else (user_text or "Voice conversation")
-                )
-                session = ChatSession(
-                    user_id=self.user_id,
-                    title=title,
-                )
-                db.add(session)
-                await db.flush()  # Get session ID
-
-                # Add user message if any
-                if user_text:
-                    user_msg = ChatMessage(
-                        session_id=session.id,
-                        role=MessageRole.USER,
-                        content=user_text,
-                        model_used="voice-input",
-                    )
-                    db.add(user_msg)
-
-                # Add AI response if any
-                if ai_text:
-                    ai_msg = ChatMessage(
-                        session_id=session.id,
-                        role=MessageRole.ASSISTANT,
-                        content=ai_text,
-                        model_used="gemini-live",
-                    )
-                    db.add(ai_msg)
-
-                await db.commit()
-                self.logger.info("voice_conversation_saved", session_id=session.id)
-
-        except Exception as e:
-            self.logger.error("save_conversation_error", error=str(e))
-
     async def stop(self):
-        """Stop the session gracefully and save conversation."""
+        """Stop the session gracefully. Per-turn saves already committed."""
         self.running = False
-        # Save conversation to database
-        await self.save_conversation()
+        # Save any remaining uncommitted transcripts
+        user_text = "".join(self._input_transcripts).strip()
+        ai_text = "".join(self._output_transcripts).strip()
+        if user_text or ai_text:
+            await self._save_turn(user_text, ai_text)
+            self._input_transcripts.clear()
+            self._output_transcripts.clear()
+        self.logger.info("voice_session_stopped")
 
 
 async def live_voice_websocket_endpoint(
-    websocket: WebSocket, token: str = Query(..., description="JWT authentication token")
+    websocket: WebSocket,
+    token: str,
+    session_id: int,
 ):
     """
     Live Voice WebSocket — bidirectional audio streaming with Gemini Live API.
+    Bound to an existing chat session for seamless conversation continuity.
 
     Protocol:
-        audio/text/interrupt/end_session → audio/transcript/grounding/turn_complete
+        audio/text/interrupt/end_session → audio/transcript/grounding/turn_complete/messages_saved
     """
     from app.api.websockets.core.auth import get_user_from_token
 
@@ -453,6 +524,18 @@ async def live_voice_websocket_endpoint(
         return
 
     user_id = user.id
+
+    # Verify session ownership
+    try:
+        async with AsyncSessionLocal() as db:
+            chat_session = await db.get(ChatSession, session_id)
+            if not chat_session or chat_session.user_id != user_id:
+                await websocket.close(code=1008, reason="Session not found or unauthorized")
+                return
+    except Exception as e:
+        logger.error("session_verification_error", error=str(e))
+        await websocket.close(code=1011, reason="Internal error")
+        return
 
     # Check if Live API is available
     if not LIVE_API_AVAILABLE:
@@ -471,10 +554,10 @@ async def live_voice_websocket_endpoint(
     # Accept WebSocket connection
     await websocket.accept()
 
-    logger.info("live_voice_session_starting", user_id=user_id)
+    logger.info("live_voice_session_starting", user_id=user_id, session_id=session_id)
 
-    # Create and run session
-    session = LiveVoiceSession(user_id, websocket)
+    # Create session bound to the existing chat session
+    session = LiveVoiceSession(user_id, websocket, session_id)
 
     try:
         # Wait for initial configuration from client (optional)
@@ -483,7 +566,6 @@ async def live_voice_websocket_endpoint(
             system_instruction = init_data.get("system_instruction")
             enable_search = init_data.get("enable_search", True)
         except asyncio.TimeoutError:
-            # Use defaults if no init message
             system_instruction = None
             enable_search = True
         except Exception:
@@ -507,4 +589,4 @@ async def live_voice_websocket_endpoint(
             await websocket.close()
         except:
             pass
-        logger.info("live_voice_session_ended", user_id=user_id)
+        logger.info("live_voice_session_ended", user_id=user_id, session_id=session_id)

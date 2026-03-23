@@ -5,7 +5,6 @@ import type {
   DocumentResponse,
   DocumentChunkResponse,
   ProcessingStatusResponse,
-  ProcessingStatus,
   Body_upload_document_api_v1_documents_upload_post,
 } from "../generated";
 
@@ -22,18 +21,24 @@ const DOC_KEYS = {
  */
 export const useDocuments = (params?: {
   folderId?: number | null;
-  includeAll?: boolean;
-  statusFilter?: ProcessingStatus;
+  smartView?: string | null;
+  statusFilter?: string | null;
+  search?: string | null;
+  sortBy?: string | null;
+  sortOrder?: string | null;
   page?: number;
   pageSize?: number;
 }) => {
   return useQuery<DocumentResponse[]>({
-    queryKey: [...DOC_KEYS.list(), { folderId: params?.folderId, includeAll: params?.includeAll }],
+    queryKey: [...DOC_KEYS.list(), { folderId: params?.folderId, smartView: params?.smartView }],
     queryFn: () =>
       DocumentsService.listDocumentsApiV1DocumentsGet(
         params?.folderId ?? undefined,
-        params?.includeAll ?? false,
-        params?.statusFilter,
+        params?.smartView ?? undefined,
+        params?.statusFilter ?? undefined,
+        params?.search ?? undefined,
+        params?.sortBy ?? undefined,
+        params?.sortOrder ?? undefined,
         params?.page,
         params?.pageSize,
       ),

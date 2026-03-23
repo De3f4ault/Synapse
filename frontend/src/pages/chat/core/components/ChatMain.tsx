@@ -1,20 +1,20 @@
 /**
  * ChatMain - Main chat orchestrator component
- * Manages state and switches between welcome/conversation views
- * Integrated with Synapse backend APIs
+ * Manages state and switches between welcome/conversation view
+ * Integrates voice mode inline (Gemini Live-style)
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { ChatWelcomeScreen } from "./ChatWelcomeScreen";
 import { ChatConversationView } from "./ChatConversationView";
 import { ThreadPanel } from "./ThreadPanel";
-import { LiveVoiceOverlay } from "../../voice/components/LiveVoiceOverlay";
-import { useChatMessages } from "../hooks/useChatMessages";
+import { useChatMessages, useInvalidateMessages } from "../hooks/useChatMessages";
 import { useChatStreaming } from "../hooks/useChatStreaming";
 import { useImplicitFeedback } from "@/modules/chat/hooks/useImplicitFeedback";
 import { useAuthStore } from "@/stores/authStore";
 import { useTTSAutoRead } from "@/platform/audio/hooks/useTTSAutoRead";
 import { useThreadStore } from "../state/threadStore";
+import { useLiveVoice } from "../../voice/hooks/useLiveVoice";
 
 interface ChatMainProps {
   sessionId: number;
@@ -23,7 +23,6 @@ interface ChatMainProps {
 
 export function ChatMain({ sessionId, sessionTitle }: ChatMainProps) {
   const [message, setMessage] = useState("");
-  const [isVoiceOpen, setIsVoiceOpen] = useState(false);
   const [threadPanelWidth, setThreadPanelWidth] = useState(384);
 
   // Get user ID for telemetry
@@ -38,6 +37,7 @@ export function ChatMain({ sessionId, sessionTitle }: ChatMainProps) {
 
   // Fetch messages for this session
   const { data: messages = [], isLoading } = useChatMessages(sessionId);
+  const invalidateMessages = useInvalidateMessages(sessionId);
 
   // Wire up implicit feedback loop for telemetry
   useImplicitFeedback(sessionId, messages, userId);
@@ -56,17 +56,46 @@ export function ChatMain({ sessionId, sessionTitle }: ChatMainProps) {
   });
 
   // Audio Integration: Read AI responses aloud when streaming completes
-  // TODO: Get ttsEnabled from user settings store
   useTTSAutoRead({
-    enabled: true, // Replace with userSettings.ttsEnabled when available
+    enabled: true,
     content: streamingContent,
     isStreaming,
   });
+
+  // ==================== INLINE VOICE MODE ====================
+  // Gemini Live-style: voice controls replace the text input toolbar,
+  // transcripts appear as chat messages in the same conversation view.
+
+  const voice = useLiveVoice({
+    sessionId,
+    systemInstruction: "You are Synapse, a helpful AI learning assistant.",
+    enableSearch: true,
+    onMessagesSaved: () => {
+      // Backend saved a turn — refresh the message list
+      invalidateMessages();
+    },
+  });
+
+  const handleVoiceToggle = useCallback(() => {
+    if (voice.isActive) {
+      voice.endSession();
+    } else {
+      voice.startSession();
+    }
+  }, [voice.isActive, voice.endSession, voice.startSession]);
 
   const isConversationStarted = messages.length > 0;
 
   const handleSend = () => {
     if (!message.trim()) return;
+
+    if (voice.isActive) {
+      // In voice mode, send text via voice WebSocket
+      voice.sendText(message);
+      setMessage("");
+      return;
+    }
+
     if (!isConnected) {
       console.error("[ChatMain] Cannot send - WebSocket not connected");
       return;
@@ -81,17 +110,15 @@ export function ChatMain({ sessionId, sessionTitle }: ChatMainProps) {
   };
 
   const handleReset = () => {
-    // Navigate to new session or clear current
-    // For now, just clear the input
     setMessage("");
   };
 
   const handleStop = () => {
-    stopGeneration();
-  };
-
-  const handleVoiceClick = () => {
-    setIsVoiceOpen(true);
+    if (voice.isActive) {
+      voice.endSession();
+    } else {
+      stopGeneration();
+    }
   };
 
   if (isLoading) {
@@ -105,7 +132,7 @@ export function ChatMain({ sessionId, sessionTitle }: ChatMainProps) {
   return (
     <div className="h-full flex flex-row">
       <div className="flex-1 flex flex-col min-w-0">
-      {isConversationStarted ? (
+      {isConversationStarted || voice.isActive ? (
         <ChatConversationView
           messages={messages}
           message={message}
@@ -115,18 +142,27 @@ export function ChatMain({ sessionId, sessionTitle }: ChatMainProps) {
           onSend={handleSend}
           onReset={handleReset}
           onStop={handleStop}
-          onVoiceClick={handleVoiceClick}
+          onVoiceClick={handleVoiceToggle}
           isSending={isStreaming}
           isStreaming={isStreaming}
           streamingContent={streamingContent}
           streamingThinking={streamingThinking}
+          // Voice mode props
+          voiceActive={voice.isActive}
+          voiceState={voice.state}
+          voiceInputTranscript={voice.inputTranscript}
+          voiceOutputTranscript={voice.outputTranscript}
+          voiceAudioLevel={voice.audioLevel}
+          voiceTranscriptHistory={voice.transcriptHistory}
+          onVoiceInterrupt={voice.interrupt}
+          onVoiceEndSession={voice.endSession}
         />
       ) : (
         <ChatWelcomeScreen
           message={message}
           onMessageChange={setMessage}
           onSend={handleSend}
-          onVoiceClick={handleVoiceClick}
+          onVoiceClick={handleVoiceToggle}
         />
       )}
       </div>
@@ -136,14 +172,6 @@ export function ChatMain({ sessionId, sessionTitle }: ChatMainProps) {
         sessionId={sessionId}
         panelWidth={threadPanelWidth}
         onResize={setThreadPanelWidth}
-      />
-
-      {/* Voice Mode Overlay */}
-      <LiveVoiceOverlay
-        isOpen={isVoiceOpen}
-        onClose={() => setIsVoiceOpen(false)}
-        systemInstruction="You are Synapse, a helpful AI learning assistant."
-        enableSearch={true}
       />
     </div>
   );

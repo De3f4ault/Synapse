@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Router } from "./router";
 import { Toaster } from "@/components/ui/toaster";
+import { Toaster as SonnerToaster } from "sonner";
 import { WebSocketProvider } from "@/api/websocket/context/WebSocketProvider";
 import { useNotificationEvents } from "@/hooks/useNotificationEvents";
 import { AuthGuard } from "@/lib/authGuard";
@@ -48,6 +49,7 @@ function App() {
       <WebSocketProvider>
         <AppContent />
         <Toaster />
+        <SonnerToaster theme="dark" richColors position="bottom-right" />
       </WebSocketProvider>
     </QueryClientProvider>
   );

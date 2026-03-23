@@ -11,7 +11,7 @@
 import { 
   PaperclipIcon, 
   SendIcon, 
-  Mic, 
+  Mic,
   Square, 
   Plus, 
   ChevronDown,
@@ -23,6 +23,8 @@ import {
   Search,
   Cpu,
   Cloud,
+  Volume2,
+  Hand,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -35,6 +37,7 @@ import { useChatMode, useSetChatMode, useSelectedModel, useSetSelectedModel } fr
 import { useChatStore } from "../state/chatStore";
 import { useModels } from "../hooks/useModels";
 import { motion, AnimatePresence } from "framer-motion";
+import type { VoiceState } from "../../voice/engine/types";
 
 // Mode definitions
 interface Mode {
@@ -379,6 +382,12 @@ interface ChatInputBoxProps {
   /** Independent mode state (overrides global store) */
   mode?: string;
   onModeChange?: (mode: string) => void;
+  /** Voice mode controls (Gemini Live-style inline) */
+  voiceActive?: boolean;
+  voiceState?: VoiceState;
+  voiceAudioLevel?: number;
+  onVoiceInterrupt?: () => void;
+  onVoiceEndSession?: () => void;
 }
 
 export function ChatInputBox({
@@ -394,6 +403,12 @@ export function ChatInputBox({
   minimal = false,
   mode,
   onModeChange,
+  // Voice mode
+  voiceActive = false,
+  voiceState,
+  voiceAudioLevel = 0,
+  onVoiceInterrupt,
+  onVoiceEndSession,
 }: ChatInputBoxProps) {
   const [isFocused, setIsFocused] = useState(false);
 
@@ -549,126 +564,201 @@ export function ChatInputBox({
 
         {/* Bottom Toolbar */}
         <div className="flex items-center justify-between px-2 pb-2">
-          {/* Left: Tools (hidden in minimal mode) */}
+          {/* Left: Tools */}
           <div className="flex items-center gap-1">
-            {!minimal && (
+            {voiceActive ? (
+              /* Voice mode controls */
               <>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 rounded-lg text-zinc-400 hover:text-white hover:bg-white/5 gap-1.5 px-2"
-                  type="button"
-                  disabled={disabled}
-                >
-                  <Plus className="size-4" />
-                </Button>
+                {/* Audio level indicator */}
+                <div className="flex items-center gap-2 px-2">
+                  <Volume2 className="size-4 text-purple-400" />
+                  <div className="w-16 h-1.5 bg-white/10 rounded-full overflow-hidden">
+                    <motion.div
+                      className="h-full bg-gradient-to-r from-purple-500 to-cyan-400 rounded-full"
+                      animate={{ width: `${Math.min(voiceAudioLevel * 100, 100)}%` }}
+                      transition={{ duration: 0.1 }}
+                    />
+                  </div>
+                </div>
 
-                {/* Search Toggle */}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setSearchEnabled(!searchEnabled)}
-                  className={cn(
-                    "h-8 rounded-lg gap-1.5 px-2.5 transition-all",
-                    searchEnabled
-                      ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
-                      : "text-zinc-400 hover:text-white hover:bg-white/5"
-                  )}
-                  type="button"
-                  disabled={disabled}
-                >
-                  <Search className="size-3.5" />
-                  <span className="text-xs">Search</span>
-                </Button>
-
-                {/* Thinking Toggle */}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={toggleThinking}
-                  className={cn(
-                    "h-8 rounded-lg gap-1.5 px-2.5 transition-all",
-                    showThinking
-                      ? "bg-purple-500/20 text-purple-400 border border-purple-500/30"
-                      : "text-zinc-400 hover:text-white hover:bg-white/5"
-                  )}
-                  type="button"
-                  disabled={disabled}
-                  title="Toggle thinking visibility"
-                >
-                  <Brain className="size-3.5" />
-                  <span className="text-xs">Thinking</span>
-                </Button>
+                {/* Voice state indicator */}
+                <span className={cn(
+                  "text-[10px] px-2 py-0.5 rounded-full",
+                  voiceState === 'listening' && "bg-emerald-500/20 text-emerald-400",
+                  voiceState === 'speaking' && "bg-purple-500/20 text-purple-400",
+                  voiceState === 'connecting' && "bg-amber-500/20 text-amber-400",
+                )}>
+                  {voiceState === 'listening' ? '● Listening' :
+                   voiceState === 'speaking' ? '◉ AI Speaking' :
+                   voiceState === 'connecting' ? '○ Connecting...' : ''}
+                </span>
               </>
+            ) : (
+              /* Normal mode tools */
+              !minimal && (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 rounded-lg text-zinc-400 hover:text-white hover:bg-white/5 gap-1.5 px-2"
+                    type="button"
+                    disabled={disabled}
+                  >
+                    <Plus className="size-4" />
+                  </Button>
+
+                  {/* Search Toggle */}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSearchEnabled(!searchEnabled)}
+                    className={cn(
+                      "h-8 rounded-lg gap-1.5 px-2.5 transition-all",
+                      searchEnabled
+                        ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                        : "text-zinc-400 hover:text-white hover:bg-white/5"
+                    )}
+                    type="button"
+                    disabled={disabled}
+                  >
+                    <Search className="size-3.5" />
+                    <span className="text-xs">Search</span>
+                  </Button>
+
+                  {/* Thinking Toggle */}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={toggleThinking}
+                    className={cn(
+                      "h-8 rounded-lg gap-1.5 px-2.5 transition-all",
+                      showThinking
+                        ? "bg-purple-500/20 text-purple-400 border border-purple-500/30"
+                        : "text-zinc-400 hover:text-white hover:bg-white/5"
+                    )}
+                    type="button"
+                    disabled={disabled}
+                    title="Toggle thinking visibility"
+                  >
+                    <Brain className="size-3.5" />
+                    <span className="text-xs">Thinking</span>
+                  </Button>
+                </>
+              )
             )}
           </div>
 
           {/* Right: Model + Mode + Actions */}
           <div className="flex items-center gap-1">
-            {/* Model Selector (hidden in minimal mode) */}
-            {!minimal && <ModelSelector />}
-
-            <ModeSelector mode={mode} onModeChange={onModeChange} />
-
-            {!minimal && (
+            {voiceActive ? (
+              /* Voice mode right controls */
               <>
-                <div className="w-px h-4 bg-white/10 mx-1" />
-
+                {/* Interrupt button */}
                 <Button
                   variant="ghost"
-                  size="icon"
-                  className="size-8 rounded-lg text-zinc-400 hover:text-white hover:bg-white/5"
+                  size="sm"
+                  onClick={onVoiceInterrupt}
+                  disabled={voiceState !== 'speaking'}
+                  className={cn(
+                    "h-8 rounded-lg gap-1.5 px-2.5 transition-all",
+                    voiceState === 'speaking'
+                      ? "text-amber-400 hover:bg-amber-500/20"
+                      : "text-zinc-600"
+                  )}
                   type="button"
-                  disabled={disabled}
+                  title="Interrupt AI"
                 >
-                  <PaperclipIcon className="size-4" />
+                  <Hand className="size-3.5" />
+                  <span className="text-xs">Tap to interrupt</span>
                 </Button>
 
-                {onVoiceClick && (
+                <div className="w-px h-4 bg-white/10 mx-1" />
+
+                {/* End Session / Stop button */}
+                <Button
+                  size="sm"
+                  onClick={onVoiceEndSession}
+                  className={cn(
+                    "h-8 rounded-lg transition-all duration-200 gap-1.5",
+                    "bg-red-500/20 text-red-400 hover:bg-red-500/30",
+                    "border border-red-500/30"
+                  )}
+                  type="button"
+                  title="End voice session"
+                >
+                  <Square className="size-3" fill="currentColor" />
+                  <span className="text-xs">Stop</span>
+                </Button>
+              </>
+            ) : (
+              /* Normal mode right controls */
+              <>
+                {/* Model Selector (hidden in minimal mode) */}
+                {!minimal && <ModelSelector />}
+
+                <ModeSelector mode={mode} onModeChange={onModeChange} />
+
+                {!minimal && (
+                  <>
+                    <div className="w-px h-4 bg-white/10 mx-1" />
+
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-8 rounded-lg text-zinc-400 hover:text-white hover:bg-white/5"
+                      type="button"
+                      disabled={disabled}
+                    >
+                      <PaperclipIcon className="size-4" />
+                    </Button>
+
+                    {onVoiceClick && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={onVoiceClick}
+                        className="size-8 rounded-lg text-zinc-400 hover:text-white hover:bg-white/5"
+                        type="button"
+                        disabled={disabled || isStreaming}
+                      >
+                        <Mic className="size-4" />
+                      </Button>
+                    )}
+                  </>
+                )}
+
+                {/* Stop/Send Button */}
+                {isStreaming ? (
                   <Button
-                    variant="ghost"
                     size="icon"
-                    onClick={onVoiceClick}
-                    className="size-8 rounded-lg text-zinc-400 hover:text-white hover:bg-white/5"
+                    onClick={onStop}
+                    className={cn(
+                      "size-8 rounded-lg transition-all duration-200",
+                      "bg-red-500/20 text-red-400 hover:bg-red-500/30",
+                      "border border-red-500/30"
+                    )}
                     type="button"
-                    disabled={disabled || isStreaming}
+                    title="Stop generating"
                   >
-                    <Mic className="size-4" />
+                    <Square className="size-3.5" fill="currentColor" />
+                  </Button>
+                ) : (
+                  <Button
+                    size="icon"
+                    onClick={onSend}
+                    disabled={!message.trim() || disabled}
+                    className={cn(
+                      "size-8 rounded-lg transition-all duration-300",
+                      message.trim() && !disabled
+                        ? "bg-cyan-500 text-white hover:bg-cyan-400 shadow-lg shadow-cyan-500/20"
+                        : "bg-zinc-800 text-zinc-500 hover:bg-zinc-700/80"
+                    )}
+                    type="button"
+                  >
+                    <SendIcon className="size-4" />
                   </Button>
                 )}
               </>
-            )}
-
-            {/* Stop/Send Button */}
-            {isStreaming ? (
-              <Button
-                size="icon"
-                onClick={onStop}
-                className={cn(
-                  "size-8 rounded-lg transition-all duration-200",
-                  "bg-red-500/20 text-red-400 hover:bg-red-500/30",
-                  "border border-red-500/30"
-                )}
-                type="button"
-                title="Stop generating"
-              >
-                <Square className="size-3.5" fill="currentColor" />
-              </Button>
-            ) : (
-              <Button
-                size="icon"
-                onClick={onSend}
-                disabled={!message.trim() || disabled}
-                className={cn(
-                  "size-8 rounded-lg transition-all duration-300",
-                  message.trim() && !disabled
-                    ? "bg-cyan-500 text-white hover:bg-cyan-400 shadow-lg shadow-cyan-500/20"
-                    : "bg-zinc-800 text-zinc-500 hover:bg-zinc-700/80"
-                )}
-                type="button"
-              >
-                <SendIcon className="size-4" />
-              </Button>
             )}
           </div>
         </div>

@@ -47,7 +47,9 @@ def register_websocket_routes(app: FastAPI):
 
     @app.websocket("/ws/live")
     async def live_voice_ws(
-        websocket: WebSocket, token: str = Query(..., description="JWT token"),
+        websocket: WebSocket,
+        token: str = Query(..., description="JWT token"),
+        session_id: int = Query(..., description="Chat session ID"),
     ):
         """Live Voice — bidirectional audio with Gemini Live API."""
-        await live_voice_websocket_endpoint(websocket, token)
+        await live_voice_websocket_endpoint(websocket, token, session_id)
