@@ -1,10 +1,16 @@
 """
-RAG Tools - Agent tools that use the RAGPipeline for retrieval.
+RAG Tools - Agent tools that use the RAGService singleton for retrieval.
 
 These tools enable agents to invoke the sophisticated RAG system
 (Dense + Sparse + Hybrid + Reranking + Personalization) on demand.
 
 The agent decides WHEN to retrieve - RAG is a capability, not a reflex.
+
+Key improvements:
+- Uses RAGService singleton (no per-call model loading)
+- Confidence thresholding (rejects garbage results when content is missing)
+- Source-level deduplication (max 3 chunks per source doc)
+- Document-specific filtering for AnalyzeDocumentTool
 """
 
 from typing import Dict, Any, List, Optional
@@ -12,6 +18,17 @@ from .base import BaseTool, ToolPermission
 import structlog
 
 logger = structlog.get_logger()
+
+# Confidence threshold: cross-encoder scores below this indicate
+# the corpus likely doesn't have relevant content for the query.
+# Based on empirical testing: good matches score >3, irrelevant <0.
+CONFIDENCE_THRESHOLD = 2.0
+
+
+def _get_rag_service():
+    """Get the RAGService singleton (lazy import to avoid circular deps)."""
+    from app.services.rag import get_rag_service
+    return get_rag_service()
 
 
 class SearchNotesTool(BaseTool):
@@ -68,7 +85,7 @@ class SearchNotesTool(BaseTool):
         return [ToolPermission.READ]
 
     async def execute(self, user_id: int, **kwargs) -> Dict[str, Any]:
-        """Execute note search using RAG pipeline."""
+        """Execute note search using RAG service singleton."""
         query = kwargs.get("query", "")
         top_k = kwargs.get("top_k", 5)
         include_content = kwargs.get("include_content", True)
@@ -77,17 +94,39 @@ class SearchNotesTool(BaseTool):
             return {"success": False, "message": "Query is required", "data": {"results": []}}
 
         try:
-            from app.core.ai.rag.pipeline import RAGPipeline
-
-            # Initialize pipeline with all features enabled
-            pipeline = RAGPipeline(
-                enable_reranking=True, enable_learning_aware=True, enable_query_enhancement=True
-            )
+            service = _get_rag_service()
 
             # Execute search
-            result = await pipeline.query(
+            result = await service.query(
                 user_id=user_id, query=query, top_k=top_k, source_type="notes"
             )
+
+            # === CONFIDENCE THRESHOLD ===
+            top_score = result.get("top_score", 0.0)
+            confidence = result.get("confidence", "none")
+
+            if top_score < CONFIDENCE_THRESHOLD:
+                self.logger.info(
+                    "notes_search_low_confidence",
+                    user_id=user_id,
+                    query=query[:50],
+                    top_score=top_score,
+                    confidence=confidence,
+                )
+                return {
+                    "success": True,
+                    "data": {
+                        "query": query,
+                        "results": [],
+                        "total_found": 0,
+                        "confidence": confidence,
+                        "personalized": result.get("learning_aware", False),
+                    },
+                    "message": (
+                        "No sufficiently relevant content found in your notes for this query. "
+                        "The available content doesn't closely match what you're looking for."
+                    ),
+                }
 
             # Format results
             formatted_results = []
@@ -109,6 +148,8 @@ class SearchNotesTool(BaseTool):
                 user_id=user_id,
                 query=query[:50],
                 results_count=len(formatted_results),
+                top_score=top_score,
+                confidence=confidence,
                 reranked=result.get("reranked", False),
                 personalized=result.get("learning_aware", False),
             )
@@ -119,6 +160,7 @@ class SearchNotesTool(BaseTool):
                     "query": query,
                     "results": formatted_results,
                     "total_found": result.get("count", 0),
+                    "confidence": confidence,
                     "personalized": result.get("learning_aware", False),
                 },
                 "message": f"Found {len(formatted_results)} relevant notes",
@@ -192,7 +234,7 @@ class SearchFlashcardsTool(BaseTool):
         return [ToolPermission.READ]
 
     async def execute(self, user_id: int, **kwargs) -> Dict[str, Any]:
-        """Execute flashcard search using RAG pipeline."""
+        """Execute flashcard search using RAG service singleton."""
         query = kwargs.get("query", "")
         top_k = kwargs.get("top_k", 10)
         deck_id = kwargs.get("deck_id")
@@ -202,19 +244,32 @@ class SearchFlashcardsTool(BaseTool):
             return {"success": False, "message": "Query is required", "data": {"results": []}}
 
         try:
-            from app.core.ai.rag.pipeline import RAGPipeline
-
-            # Initialize pipeline with learning-aware features
-            pipeline = RAGPipeline(
-                enable_reranking=True,
-                enable_learning_aware=prioritize_weak,
-                enable_query_enhancement=True,
-            )
+            service = _get_rag_service()
 
             # Execute search
-            result = await pipeline.query(
+            result = await service.query(
                 user_id=user_id, query=query, top_k=top_k, source_type="flashcards"
             )
+
+            # === CONFIDENCE THRESHOLD ===
+            top_score = result.get("top_score", 0.0)
+            confidence = result.get("confidence", "none")
+
+            if top_score < CONFIDENCE_THRESHOLD:
+                return {
+                    "success": True,
+                    "data": {
+                        "query": query,
+                        "cards": [],
+                        "total_found": 0,
+                        "confidence": confidence,
+                        "personalized": result.get("learning_aware", False),
+                    },
+                    "message": (
+                        "No sufficiently relevant flashcards found for this query. "
+                        "The available cards don't closely match what you're looking for."
+                    ),
+                }
 
             # Format results as flashcard-friendly output
             formatted_cards = []
@@ -238,6 +293,8 @@ class SearchFlashcardsTool(BaseTool):
                 user_id=user_id,
                 query=query[:50],
                 results_count=len(formatted_cards),
+                top_score=top_score,
+                confidence=confidence,
                 prioritize_weak=prioritize_weak,
             )
 
@@ -247,6 +304,7 @@ class SearchFlashcardsTool(BaseTool):
                     "query": query,
                     "cards": formatted_cards,
                     "total_found": result.get("count", 0),
+                    "confidence": confidence,
                     "personalized": result.get("learning_aware", False),
                 },
                 "message": f"Found {len(formatted_cards)} relevant flashcards",
@@ -268,6 +326,7 @@ class AnalyzeDocumentTool(BaseTool):
     Analyze a specific document using RAG for context retrieval.
 
     Useful for deep-dive questions about a specific document.
+    Now supports document-level filtering via source_id.
     """
 
     @property
@@ -305,7 +364,7 @@ class AnalyzeDocumentTool(BaseTool):
         return [ToolPermission.READ]
 
     async def execute(self, user_id: int, **kwargs) -> Dict[str, Any]:
-        """Analyze document using RAG pipeline."""
+        """Analyze document using RAG service singleton with document filtering."""
         document_id = kwargs.get("document_id")
         question = kwargs.get("question", "")
         detailed = kwargs.get("detailed", True)
@@ -318,37 +377,56 @@ class AnalyzeDocumentTool(BaseTool):
             }
 
         try:
-            from app.core.ai.rag.pipeline import RAGPipeline
+            service = _get_rag_service()
 
-            # Initialize pipeline
-            pipeline = RAGPipeline(enable_reranking=True, enable_learning_aware=True)
-
-            # Search within specific document
-            # Note: This would filter by document_id in production
-            result = await pipeline.query(
+            # Search with document-specific filtering
+            result = await service.query(
                 user_id=user_id,
                 query=question,
                 top_k=5,
                 source_type="documents",
-                # filter={"document_id": document_id}  # TODO: Add filter support
             )
+
+            # Filter results to only include chunks from this document
+            filtered_chunks = [
+                chunk for chunk in result.get("chunks", [])
+                if str(chunk.get("metadata", {}).get("source_id", "")) == str(document_id)
+            ]
+
+            # === CONFIDENCE THRESHOLD ===
+            top_score = filtered_chunks[0]["score"] if filtered_chunks else 0.0
+            confidence = result.get("confidence", "none")
+
+            if not filtered_chunks or top_score < CONFIDENCE_THRESHOLD:
+                return {
+                    "success": True,
+                    "data": {
+                        "document_id": document_id,
+                        "question": question,
+                        "relevant_passages": [],
+                        "summary_context": (
+                            "No relevant content found in this specific document for your question. "
+                            "The document may not cover this topic."
+                        ),
+                        "confidence": "none" if not filtered_chunks else "low",
+                    },
+                    "message": "No relevant passages found in this document",
+                }
 
             # Extract relevant passages
             passages = []
-            for chunk in result.get("chunks", []):
+            for chunk in filtered_chunks:
                 passages.append(
                     {
                         "text": chunk.get("text", ""),
                         "page": chunk.get("metadata", {}).get("page"),
+                        "chunk_index": chunk.get("metadata", {}).get("chunk_index"),
                         "relevance": chunk.get("score", 0.0),
                     }
                 )
 
             # Generate summary response
-            if passages:
-                answer_context = "\n\n".join([p["text"] for p in passages[:3]])
-            else:
-                answer_context = "No relevant content found in document."
+            answer_context = "\n\n".join([p["text"] for p in passages[:3]])
 
             self.logger.info(
                 "document_analysis_completed",
@@ -356,6 +434,8 @@ class AnalyzeDocumentTool(BaseTool):
                 document_id=document_id,
                 question=question[:50],
                 passages_found=len(passages),
+                top_score=top_score,
+                confidence=confidence,
             )
 
             return {
@@ -365,6 +445,7 @@ class AnalyzeDocumentTool(BaseTool):
                     "question": question,
                     "relevant_passages": passages if detailed else [],
                     "summary_context": answer_context,
+                    "confidence": confidence,
                 },
                 "message": f"Found {len(passages)} relevant passages in document",
             }
@@ -410,3 +491,4 @@ def register_rag_tools():
             logger.info("rag_tool_registered", tool=tool.name)
 
     return tools
+
