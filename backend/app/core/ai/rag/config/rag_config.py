@@ -1,7 +1,7 @@
 """Main RAG configuration."""
 
 from pydantic_settings import BaseSettings
-from typing import Optional
+from typing import List, Optional
 
 
 class RAGConfig(BaseSettings):
@@ -12,9 +12,14 @@ class RAGConfig(BaseSettings):
     """
     
     # Retrieval Settings
-    retrieval_top_k: int = 50  # Candidates for reranking
+    retrieval_top_k: int = 15  # Candidates for reranking (reduced from 20: Nomic 768d + contextual = better recall)
     reranking_top_k: int = 5   # Final results after reranking
-    use_hybrid: bool = False    # Enable hybrid retrieval (Phase 1)
+    use_hybrid: bool = True     # Enable hybrid retrieval (dense + sparse BM25)
+    
+    # Hybrid Search Settings
+    hybrid_adaptive: bool = False    # Per-query-type toggle (False = always hybrid)
+    hybrid_query_types: List[str] = ["comparative"]  # Types that trigger hybrid when adaptive=True
+    sparse_model: str = "Qdrant/bm25"  # fastembed sparse model name
     
     # Chunking Settings
     chunk_size: int = 512

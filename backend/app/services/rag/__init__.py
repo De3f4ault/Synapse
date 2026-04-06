@@ -140,7 +140,9 @@ class RAGService:
         top_k: int = 5,
         source_type: str = "documents",
         enable_llm_enhancement: bool = True,
-        llm_strategy: str = "rewrite"
+        llm_strategy: str = "rewrite",
+        filters: dict = None,
+        max_chunks_per_source: int = 3,
     ) -> Dict:
         """
         Query RAG system with all enhancements.
@@ -152,9 +154,11 @@ class RAGService:
             source_type: Source to search
             enable_llm_enhancement: Enable LLM enhancement
             llm_strategy: LLM enhancement strategy
+            filters: Optional Qdrant filters
+            max_chunks_per_source: Max chunks per source doc (0 = no limit)
         
         Returns:
-            Dict with {query, chunks, count, ...}
+            Dict with {query, chunks, count, top_score, confidence, ...}
         
         Raises:
             ValueError: If validation fails
@@ -165,7 +169,7 @@ class RAGService:
             user_id=user_id,
             query=query[:100],
             top_k=top_k,
-llm_enhancement=enable_llm_enhancement,
+            llm_enhancement=enable_llm_enhancement,
             llm_strategy=llm_strategy
         )
         
@@ -188,7 +192,9 @@ llm_enhancement=enable_llm_enhancement,
                     user_id=user_id,
                     query=query,
                     top_k=top_k,
-                    source_type=source_type
+                    source_type=source_type,
+                    filters=filters,
+                    max_chunks_per_source=max_chunks_per_source,
                 )
                 
                 # Add performance metrics
