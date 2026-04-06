@@ -1,7 +1,11 @@
 """Chunking strategies package initialization."""
 
-from app.core.ai.rag.chunking.strategies.semantic_chunker import SemanticChunker
+from app.core.ai.rag.chunking.strategies.advanced_semantic_chunker import (
+    AdvancedSemanticChunker,
+    get_semantic_chunker,
+)
 
 __all__ = [
-    "SemanticChunker",
+    "AdvancedSemanticChunker",
+    "get_semantic_chunker",
 ]
