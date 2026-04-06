@@ -73,9 +73,9 @@ class PgCacheClient:
             await session.execute(
                 text("""
                     INSERT INTO kv_store (key, value, expires_at)
-                    VALUES (:key, :value::jsonb, :expires_at)
+                    VALUES (:key, CAST(:value AS jsonb), :expires_at)
                     ON CONFLICT (key) DO UPDATE
-                    SET value = :value::jsonb, expires_at = :expires_at
+                    SET value = CAST(:value AS jsonb), expires_at = :expires_at
                 """),
                 {"key": key, "value": json_value, "expires_at": expires},
             )
@@ -118,9 +118,9 @@ class PgCacheClient:
             result = await session.execute(
                 text("""
                     INSERT INTO kv_store (key, value, expires_at)
-                    VALUES (:key, to_jsonb(:amount::int), NULL)
+                    VALUES (:key, to_jsonb(CAST(:amount AS int)), NULL)
                     ON CONFLICT (key) DO UPDATE
-                    SET value = to_jsonb((kv_store.value::text::int + :amount))
+                    SET value = to_jsonb((kv_store.value::text::int + CAST(:amount AS int)))
                     RETURNING (value::text::int)
                 """),
                 {"key": key, "amount": amount},
