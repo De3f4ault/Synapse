@@ -65,9 +65,16 @@ class UnifiedSearchService:
             from app.core.ai.rag.pipeline.rag_pipeline import RAGPipeline
 
             self._rag_pipeline = RAGPipeline(
+                # Phase 1: Reranking
+                enable_reranking=True,
+                # Phase 2: Personalization
+                enable_learning_aware=True,
+                enable_query_enhancement=True,
+                # Phase 3: Advanced features
                 enable_llm_enhancement=True,
+                enable_feedback_loops=True,
                 llm_provider="gemini",
-                llm_enhancement_strategy="rewrite",  # Options: rewrite, hyde, multi_query, decompose
+                llm_enhancement_strategy="rewrite",
             )
         return self._rag_pipeline
 
