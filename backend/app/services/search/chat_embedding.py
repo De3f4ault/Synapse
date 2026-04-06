@@ -92,14 +92,16 @@ async def embed_assistant_message(
             is_assistant=True,
         )
 
+        dim = len(embedding)
+
         # Format embedding for PostgreSQL vector type
         embedding_str = "[" + ",".join(map(str, embedding)) + "]"
 
         # Update the message with embedding
         await db_session.execute(
-            text("""
+            text(f"""
                 UPDATE developer_schema.chat_messages 
-                SET embedding = CAST(:embedding AS vector(384))
+                SET embedding = CAST(:embedding AS vector({dim}))
                 WHERE id = :message_id
             """),
             {"embedding": embedding_str, "message_id": message_id},
