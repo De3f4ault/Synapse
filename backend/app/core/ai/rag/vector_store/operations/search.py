@@ -15,7 +15,10 @@ class VectorSearch:
     """
     Vector similarity search operations for Qdrant.
 
-    Provides efficient HNSW-based search with filtering.
+    Provides:
+    - search(): Dense-only on v2 collections (unnamed vector)
+    - dense_search_named(): Dense-only on v3 collections (named "dense" vector)
+    - hybrid_search(): Dense + sparse (BM25) with server-side RRF fusion
     """
 
     def __init__(self, client: QdrantClient):
@@ -36,7 +39,7 @@ class VectorSearch:
         filters: Optional[Dict[str, Any]] = None,
     ) -> List[models.ScoredPoint]:
         """
-        Perform vector similarity search.
+        Dense-only search on v2 collections (unnamed vector).
 
         Args:
             collection_name: Collection to search
@@ -90,6 +93,103 @@ class VectorSearch:
 
         return results
 
+    async def dense_search_named(
+        self,
+        collection_name: str,
+        query_vector: List[float],
+        limit: int = 20,
+        filters: Optional[Dict[str, Any]] = None,
+    ) -> List[models.ScoredPoint]:
+        """
+        Dense-only search on v3 collections (named "dense" vector).
+
+        Uses query_points with explicit vector name.
+
+        Args:
+            collection_name: Collection to search
+            query_vector: Dense query embedding (list of floats)
+            limit: Maximum results
+            filters: Metadata filters
+
+        Returns:
+            List of scored points
+        """
+        query_filter = self._build_filter(filters) if filters else None
+
+        result = self.client.query_points(
+            collection_name=collection_name,
+            query=query_vector,
+            using="dense",
+            limit=limit,
+            query_filter=query_filter,
+            with_payload=True,
+        )
+
+        logger.debug(
+            "dense_named_search_complete",
+            collection=collection_name,
+            results=len(result.points),
+        )
+
+        return result.points
+
+    async def hybrid_search(
+        self,
+        collection_name: str,
+        dense_vector: List[float],
+        sparse_vector: models.SparseVector,
+        limit: int = 20,
+        filters: Optional[Dict[str, Any]] = None,
+    ) -> List[models.ScoredPoint]:
+        """
+        Server-side hybrid search: dense + sparse (BM25) with RRF fusion.
+
+        Uses Qdrant's Universal Query API with Prefetch to run two
+        independent sub-queries (dense + sparse) and fuse results
+        using Reciprocal Rank Fusion on the server (~5-10ms overhead).
+
+        Args:
+            collection_name: Collection with named 'dense' and 'bm25' vectors
+            dense_vector: Dense query embedding
+            sparse_vector: Sparse BM25 query vector (from fastembed)
+            limit: Maximum fused results
+            filters: Metadata filters
+
+        Returns:
+            List of scored points (RRF-fused)
+        """
+        query_filter = self._build_filter(filters) if filters else None
+
+        result = self.client.query_points(
+            collection_name=collection_name,
+            prefetch=[
+                models.Prefetch(
+                    query=dense_vector,
+                    using="dense",
+                    limit=limit,
+                    filter=query_filter,
+                ),
+                models.Prefetch(
+                    query=sparse_vector,
+                    using="bm25",
+                    limit=limit,
+                    filter=query_filter,
+                ),
+            ],
+            query=models.FusionQuery(fusion=models.Fusion.RRF),
+            limit=limit,
+            with_payload=True,
+        )
+
+        logger.info(
+            "hybrid_search_complete",
+            collection=collection_name,
+            fused_results=len(result.points),
+            limit=limit,
+        )
+
+        return result.points
+
     def _build_filter(self, filters: Dict[str, Any]) -> models.Filter:
         """
         Build Qdrant filter from dict.
@@ -106,3 +206,4 @@ class VectorSearch:
             conditions.append(models.FieldCondition(key=key, match=models.MatchValue(value=value)))
 
         return models.Filter(must=conditions)
+
