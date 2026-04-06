@@ -97,7 +97,13 @@ class QueryEngine:
         """Lazy-load the RAG pipeline."""
         if self._pipeline is None:
             from app.core.ai.rag.pipeline.rag_pipeline import RAGPipeline
-            self._pipeline = RAGPipeline()
+            self._pipeline = RAGPipeline(
+                enable_reranking=True,
+                enable_learning_aware=True,
+                enable_query_enhancement=True,
+                enable_llm_enhancement=True,
+                enable_feedback_loops=True,
+            )
         return self._pipeline
     
     async def query(self, query_str: str) -> QueryResponse:
