@@ -25,7 +25,7 @@ class CrossEncoderNodeReranker(BaseNodePostprocessor):
     """
 
     top_k: int = Field(default=5, description="Number of top results to return")
-    _reranker: Any = PrivateAttr()
+    _reranker: Any = PrivateAttr(default=None)
 
     def __init__(self, top_k: int = 5, config: Optional[ModelConfig] = None, **kwargs):
         """
@@ -38,10 +38,11 @@ class CrossEncoderNodeReranker(BaseNodePostprocessor):
         """
         super().__init__(top_k=top_k, **kwargs)
 
-        # Initialize cross-encoder
+        # Initialize cross-encoder — use object.__setattr__ to bypass
+        # pydantic v1's __setattr__ which rejects private attrs
         from app.core.ai.rag.reranking.models.cross_encoder import get_cross_encoder_reranker
 
-        self._reranker = get_cross_encoder_reranker(config=config)
+        object.__setattr__(self, "_reranker", get_cross_encoder_reranker(config=config))
 
         logger.info("cross_encoder_node_reranker_initialized", top_k=top_k)
 

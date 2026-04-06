@@ -60,7 +60,10 @@ class LearningAwareReranker(BaseNodePostprocessor):
             **kwargs,
         )
 
-        # Private attrs are already initialized by PrivateAttr(default=...)
+        # Initialize private attrs — use object.__setattr__ to bypass
+        # pydantic v1's __setattr__ which rejects private attr assignments
+        object.__setattr__(self, "_synapse", None)
+        object.__setattr__(self, "_context_cache", {})
 
         logger.info(
             "learning_aware_reranker_initialized",
@@ -76,6 +79,22 @@ class LearningAwareReranker(BaseNodePostprocessor):
 
             self._synapse = SynapseContextBridge()
         return self._synapse
+
+    def set_prefetched_context(self, user_id: int, context: Dict) -> None:
+        """
+        Inject pre-fetched user context from the pipeline's async layer.
+
+        This avoids the async-in-sync problem where _get_context_sync()
+        detects a running event loop and returns empty context.
+
+        Called by RAGPipeline.query() before postprocess_nodes().
+        """
+        # Use object.__setattr__ for pydantic v1 compat with PrivateAttr
+        cache = object.__getattribute__(self, "_context_cache")
+        cache[user_id] = context
+        logger.debug("prefetched_context_injected", user_id=user_id,
+                     weak_areas=len(context.get("weak_areas", [])),
+                     mastery_scores=len(context.get("mastery_scores", {})))
 
     async def _get_context_async(self, user_id: int) -> Dict:
         """Get user context asynchronously."""
@@ -131,10 +150,22 @@ class LearningAwareReranker(BaseNodePostprocessor):
             logger.warning("no_query_or_nodes_for_learning_reranking")
             return nodes
 
-        # Extract user_id from query metadata
+        # Extract user_id — prefer context cache (set by pipeline), then node metadata
         user_id = None
-        if hasattr(query_bundle, "custom_embedding_strs") and query_bundle.custom_embedding_strs:
-            user_id = query_bundle.custom_embedding_strs.get("user_id")
+
+        # Check if we have any user in the prefetched context cache
+        cache = object.__getattribute__(self, "_context_cache")
+        if cache:
+            # Pipeline always calls set_prefetched_context before postprocess_nodes
+            user_id = next(iter(cache), None)
+
+        # Fallback: try to get user_id from node metadata
+        if user_id is None and nodes:
+            for node in nodes:
+                uid = node.node.metadata.get("user_id")
+                if uid is not None:
+                    user_id = int(uid) if isinstance(uid, str) else uid
+                    break
 
         if not user_id:
             logger.warning("no_user_id_for_learning_reranking")
@@ -144,8 +175,16 @@ class LearningAwareReranker(BaseNodePostprocessor):
 
         logger.info("learning_reranking_start", user_id=user_id, candidates=len(nodes))
 
-        # Get user learning context (sync wrapper)
-        context = self._get_context_sync(user_id)
+        # Get user learning context
+        # Prefer pre-fetched context (injected by pipeline) over broken sync wrapper
+        if user_id in self._context_cache:
+            context = self._context_cache[user_id]
+            logger.debug("using_prefetched_context", user_id=user_id)
+        else:
+            # Fallback to sync wrapper (will return empty in async context)
+            context = self._get_context_sync(user_id)
+            logger.warning("using_sync_context_fallback", user_id=user_id,
+                           note="Context may be empty if running in async event loop")
 
         weak_topics = set(
             topic.lower()
