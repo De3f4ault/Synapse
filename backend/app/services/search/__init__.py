@@ -7,7 +7,7 @@ PUBLIC API:
 - Result types: HybridSearchResult, FlashcardSearchResult, ChatMessageSearchResult
 
 INTERNAL (not exported):
-- adapters, contract, ranking, fulltext, unified_retrieval
+- adapters, contract, ranking, fulltext
 """
 
 # === PUBLIC: Canonical search entry point ===
@@ -25,7 +25,6 @@ from .contract import enforce_contract, ContractViolationError
 # === INTERNAL exports for backward compatibility ===
 from .fulltext import FullTextSearchService
 from .ranking import HybridRankingService
-from .unified_retrieval import UnifiedRetrievalService, ContentType, RetrievalResult
 from .adapters import (
     adapt_hybrid_note_results,
     adapt_hybrid_flashcard_results,
@@ -52,9 +51,6 @@ __all__ = [
     # Internal utilities (exported for backward compat)
     "FullTextSearchService",
     "HybridRankingService",
-    "UnifiedRetrievalService",
-    "ContentType",
-    "RetrievalResult",
     "adapt_hybrid_note_results",
     "adapt_hybrid_flashcard_results",
     "adapt_chat_message_results",
@@ -62,3 +58,4 @@ __all__ = [
     "adapt_gie_concepts",
     "adapt_weak_areas",
 ]
+
