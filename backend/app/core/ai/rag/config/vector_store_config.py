@@ -19,8 +19,8 @@ class VectorStoreConfig(BaseSettings):
     prefer_grpc: bool = False
     
     # Collection Settings
-    collection_prefix: str = "synapse_v2"
-    vector_size: int = 384  # Must match embedding_dim
+    collection_prefix: str = "synapse_v4"  # v4: nomic 768d dense + sparse (BM25) + contextual retrieval
+    vector_size: int = 768  # Must match embedding_dim (nomic-embed-text-v1.5)
     distance_metric: str = "Cosine"  # Cosine, Euclid, Dot
     
     # HNSW Index Configuration

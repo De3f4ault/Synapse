@@ -11,9 +11,12 @@ class ModelConfig(BaseSettings):
     Optimized for CPU-only inference.
     """
     
-    # Embedding Model (all-MiniLM-L6-v2)
-    embedding_model_name: str = "sentence-transformers/all-MiniLM-L6-v2"
-    embedding_dim: int = 384
+    # Embedding Model
+    # Provider selected via EMBEDDING_PROVIDER env var (see config.py)
+    # "gemini" → gemini-embedding-001 (cloud API, 768d)
+    # "local"  → nomic-ai/nomic-embed-text-v1.5 (on-device, 768d)
+    embedding_model_name: str = "gemini-embedding-001"
+    embedding_dim: int = 768
     embedding_batch_size: int = 32
     embedding_device: str = "cpu"
     embedding_normalize: bool = True
@@ -29,7 +32,7 @@ class ModelConfig(BaseSettings):
     force_download: bool = False
     
     # Performance
-    num_threads: int = 4  # For CPU inference
+    num_threads: int = 8  # For CPU inference (matches i5-8365U hyperthreading)
     
     class Config:
         env_prefix = "SYNAPSE_MODEL_"

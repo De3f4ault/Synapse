@@ -36,6 +36,12 @@ class Settings(BaseSettings):
     # Gemini API
     GEMINI_API_KEY: str = Field(..., description="Google Gemini API key")
 
+    # Embedding Provider: "gemini" (cloud API) or "local" (Nomic on-device)
+    EMBEDDING_PROVIDER: str = Field(
+        default="local",
+        description="Embedding provider: 'gemini' (cloud, fast) or 'local' (Nomic, offline)",
+    )
+
     # Ollama (Cognitive Router)
     OLLAMA_BASE_URL: str = Field(
         default="http://localhost:11434",

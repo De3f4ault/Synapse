@@ -33,9 +33,9 @@ logger = structlog.get_logger(__name__)
 # VERSION CONSTANTS
 # =============================================================================
 
-EMBEDDING_MODEL_NAME = "all-MiniLM-L6-v2"
-EMBEDDING_DIM = 384
-EMBEDDING_VERSION_NUMBER = 1
+EMBEDDING_MODEL_NAME = "gemini-embedding-001"
+EMBEDDING_DIM = 768
+EMBEDDING_VERSION_NUMBER = 3
 EMBEDDING_VERSION = f"{EMBEDDING_MODEL_NAME}@{EMBEDDING_DIM}@v{EMBEDDING_VERSION_NUMBER}"
 
 # Text limits
@@ -133,15 +133,32 @@ _embedder_lock = Lock()
 
 
 def get_embedder():
-    """Get or create embedder instance (cached singleton)."""
+    """
+    Get or create embedder instance (cached singleton).
+
+    Provider selection via EMBEDDING_PROVIDER env var:
+      - "gemini": Gemini API (cloud, fast, no local model)
+      - "local":  Nomic embed-text-v1.5 (on-device, offline capable)
+    """
     global _embedder
     if _embedder is None:
         with _embedder_lock:
             if _embedder is None:
-                from app.core.ai.rag.embeddings.models.all_minilm import AllMiniLMEmbedder
+                from app.core.config import settings
 
-                logger.info("initializing_embedder_singleton")
-                _embedder = AllMiniLMEmbedder()
+                provider = getattr(settings, "EMBEDDING_PROVIDER", "gemini")
+                logger.info("initializing_embedder_singleton", provider=provider)
+
+                if provider == "local":
+                    from app.core.ai.rag.embeddings.models.nomic_embedder import NomicEmbedder
+                    _embedder = NomicEmbedder()
+                else:
+                    # Default: Gemini API (cloud)
+                    from app.core.ai.rag.embeddings.models.gemini_embedder import GeminiEmbedder
+                    _embedder = GeminiEmbedder(
+                        model_name=EMBEDDING_MODEL_NAME,
+                        embedding_dim=EMBEDDING_DIM,
+                    )
     return _embedder
 
 
@@ -206,6 +223,10 @@ class _LlamaIndexEmbeddingAdapter:
                     return embedder.encode(texts, normalize=True).tolist()
 
                 def _get_query_embedding(self, query: str) -> list[float]:
+                    embedder = get_embedder()
+                    # Use query prefix ("search_query:") for Nomic
+                    if hasattr(embedder, 'encode_query'):
+                        return embedder.encode_query(query).tolist()
                     return self._get_text_embedding(query)
 
                 async def _aget_query_embedding(self, query: str) -> list[float]:
