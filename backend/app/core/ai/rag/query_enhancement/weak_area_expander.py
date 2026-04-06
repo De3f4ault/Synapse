@@ -65,7 +65,7 @@ class WeakAreaQueryExpander:
             "preferences": {},
         }
 
-    def expand_query(self, query: str, user_id: int, max_expansions: int = 3) -> str:
+    def expand_query(self, query: str, user_id: int, max_expansions: int = 3, context: Optional[Dict] = None) -> str:
         """
         Expand query with weak area terms.
 
@@ -73,14 +73,16 @@ class WeakAreaQueryExpander:
             query: Original query
             user_id: User ID
             max_expansions: Maximum number of weak area terms to add
+            context: Pre-fetched user context (avoids async-in-sync bug)
 
         Returns:
             Expanded query
         """
         logger.debug("expanding_query", query=query[:50], user_id=user_id)
 
-        # Get user context
-        context = self._get_context_sync(user_id)
+        # Use pre-fetched context if available, otherwise fall back to sync wrapper
+        if context is None:
+            context = self._get_context_sync(user_id)
 
         # Get weak areas sorted by mastery (weakest first)
         weak_areas = sorted(context.get("weak_areas", []), key=lambda x: x.get("mastery_score", 0))[

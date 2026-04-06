@@ -120,27 +120,42 @@ class QueryAnalyzer:
         return keywords[:5]  # Top 5 keywords
     
     def _get_suggestions(self, query_type: QueryType, intent: QueryIntent) -> Dict:
-        """Get retrieval strategy suggestions"""
+        """Get retrieval strategy suggestions based on query classification.
+        
+        Adaptive retrieve_k values:
+        - Default: 20 (fast, sufficient for most queries)
+        - Conceptual: 35 (broader search for explanatory content)
+        - Factual: 20 (precise, speed-optimized)
+        - Comparative: 30 (needs diversity across concepts)
+        - Procedural: 25 (moderate breadth for how-to content)
+        """
         suggestions = {
-            "retrieval_top_k": 50,  # Default
+            "retrieval_top_k": 20,  # Default (matches config)
             "context_window": "normal",
             "expand_query": False
         }
         
         # Adjust based on type
         if query_type == QueryType.CONCEPTUAL:
-            suggestions["retrieval_top_k"] = 50  # Broader retrieval
+            suggestions["retrieval_top_k"] = 35  # Broader retrieval
             suggestions["context_window"] = "large"
             suggestions["expand_query"] = True
         elif query_type == QueryType.FACTUAL:
             suggestions["retrieval_top_k"] = 20  # Precise retrieval
             suggestions["context_window"] = "small"
+        elif query_type == QueryType.COMPARATIVE:
+            suggestions["retrieval_top_k"] = 30  # Need diversity for both sides
+            suggestions["context_window"] = "large"
+            suggestions["expand_query"] = True
+        elif query_type == QueryType.PROCEDURAL:
+            suggestions["retrieval_top_k"] = 25  # Moderate breadth
+            suggestions["context_window"] = "normal"
         
         # Adjust based on intent
         if intent == QueryIntent.REINFORCE:
             suggestions["prioritize_recent"] = True
         elif intent == QueryIntent.CLARIFY:
             suggestions["expand_query"] = True
-            suggestions["retrieval_top_k"] = 30
+            suggestions["retrieval_top_k"] = max(suggestions["retrieval_top_k"], 30)
         
         return suggestions
