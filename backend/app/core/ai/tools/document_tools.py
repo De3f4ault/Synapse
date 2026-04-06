@@ -57,34 +57,33 @@ class SearchDocumentsTool(BaseTool):
     async def execute(self, user_id: int, **kwargs) -> Dict[str, Any]:
         """Execute document search."""
         try:
-            from app.core.ai.rag.synapse_bridge import SynapseBridge
-            from app.db.session import get_db
+            from app.services.rag import get_rag_service
 
-            async with get_db() as db:
-                bridge = SynapseBridge()
-                results = await bridge.query_with_synapse_context(
-                    user_id=user_id,
-                    query=kwargs["query"],
-                    focus="documents"
-                )
+            service = get_rag_service()
 
-            # Filter by document if specified
+            # Build filters for document-specific search
+            filters = None
             if kwargs.get("document_id"):
-                filtered_chunks = [
-                    chunk for chunk in results.get("retrieved_chunks", [])
-                    if chunk.get("metadata", {}).get("document_id") == kwargs["document_id"]
-                ]
-            else:
-                filtered_chunks = results.get("retrieved_chunks", [])[:kwargs.get("limit", 5)]
+                filters = {"source_id": str(kwargs["document_id"])}
+
+            result = await service.query(
+                user_id=user_id,
+                query=kwargs["query"],
+                top_k=kwargs.get("limit", 5),
+                source_type="documents",
+                filters=filters,
+            )
+
+            chunks = result.get("chunks", [])
 
             return {
                 "success": True,
                 "data": {
-                    "results": filtered_chunks,
-                    "count": len(filtered_chunks),
-                    "sources": results.get("sources", [])
+                    "results": chunks,
+                    "count": len(chunks),
+                    "sources": list({c.get("metadata", {}).get("title", "") for c in chunks}),
                 },
-                "message": f"Found {len(filtered_chunks)} relevant passages"
+                "message": f"Found {len(chunks)} relevant passages"
             }
 
         except Exception as e:

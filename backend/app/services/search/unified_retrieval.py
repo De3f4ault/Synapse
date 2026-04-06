@@ -236,32 +236,33 @@ class UnifiedRetrievalService:
         query_embedding: Optional[List[float]],
         limit: int,
     ) -> List[RetrievalResult]:
-        """Retrieve from Qdrant using existing RAG pipeline."""
+        """Retrieve from Qdrant using the RAG pipeline."""
         results: List[RetrievalResult] = []
 
         try:
-            from app.core.ai.rag.synapse_bridge import SynapseBridge
+            from app.services.rag import get_rag_service
 
-            bridge = SynapseBridge()
-            qdrant_data = await bridge.query_with_synapse_context(
+            service = get_rag_service()
+            rag_result = await service.query(
                 user_id=user_id,
                 query=query,
                 top_k=limit,
+                source_type="documents",
             )
 
-            for chunk in qdrant_data.get("retrieved_chunks", []):
+            for chunk in rag_result.get("chunks", []):
                 metadata = chunk.get("metadata", {})
                 results.append(
                     RetrievalResult(
                         id=metadata.get("source_id", 0),
                         content_type=ContentType.DOCUMENT,
                         title=metadata.get("title", "Document Chunk"),
-                        content=chunk.get("content", "")[:500],
+                        content=chunk.get("text", "")[:500],
                         score=chunk.get("score", 0.0),
                         metadata={
-                            "chunk_id": metadata.get("chunk_id"),
+                            "chunk_index": metadata.get("chunk_index"),
                             "source_type": metadata.get("source_type"),
-                            "document_id": metadata.get("document_id"),
+                            "source_id": metadata.get("source_id"),
                         },
                         source="qdrant",
                     )

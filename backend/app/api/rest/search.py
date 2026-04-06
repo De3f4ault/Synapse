@@ -106,25 +106,26 @@ async def search_all(
 
     # === Semantic Search ===
     if search_type in ["semantic", "hybrid"]:
-        from app.core.ai.rag.synapse_bridge import SynapseBridge
-
         try:
-            bridge = SynapseBridge()
-            semantic_data = await bridge.query_with_synapse_context(
+            from app.services.rag import get_rag_service
+
+            rag = get_rag_service()
+            rag_result = await rag.query(
                 user_id=current_user.id,
                 query=query,
                 top_k=limit,
+                source_type="documents",
             )
 
             semantic_results = []
-            for chunk in semantic_data.get("retrieved_chunks", []):
+            for chunk in rag_result.get("chunks", []):
                 metadata = chunk.get("metadata", {})
                 semantic_results.append(
                     {
                         "type": metadata.get("source_type", "document_chunk"),
                         "id": metadata.get("source_id", 0),
                         "title": metadata.get("title", "Untitled"),
-                        "content": chunk.get("content", "")[:200],
+                        "content": chunk.get("text", "")[:200],
                         "similarity_score": chunk.get("score", 0),
                         "metadata": metadata,
                     }
