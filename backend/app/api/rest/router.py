@@ -99,6 +99,11 @@ api_router.include_router(threads.router, prefix="/chat", tags=["Chat Threads"])
 
 api_router.include_router(branches.router, prefix="/chat", tags=["Chat Branches"])
 
+# Chat attachments (image/file uploads for chat messages)
+from app.api.rest import chat_attachments
+
+api_router.include_router(chat_attachments.router, prefix="/chat/attachments", tags=["Chat Attachments"])
+
 api_router.include_router(study.router, prefix="/study", tags=["Study"])
 
 api_router.include_router(search.router, prefix="/search", tags=["Search"])
