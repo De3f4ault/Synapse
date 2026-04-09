@@ -20,6 +20,7 @@ Usage:
     entity.embedding_status = EmbeddingStatus.READY
 """
 
+import os
 import time
 import structlog
 from typing import List, Optional, Tuple
@@ -33,7 +34,19 @@ logger = structlog.get_logger(__name__)
 # VERSION CONSTANTS
 # =============================================================================
 
-EMBEDDING_MODEL_NAME = "gemini-embedding-001"
+# Provider-specific model names
+_MODEL_NAMES = {
+    "local": "nomic-embed-text-v1.5",
+    "gemini": "gemini-embedding-001",
+}
+
+# Resolve from env at import time.
+# load_dotenv() ensures .env values are available in os.environ
+# (Pydantic loads them into settings objects but not into os.environ).
+from dotenv import load_dotenv
+load_dotenv()
+_provider = os.environ.get("EMBEDDING_PROVIDER", "gemini")
+EMBEDDING_MODEL_NAME = _MODEL_NAMES.get(_provider, _MODEL_NAMES["gemini"])
 EMBEDDING_DIM = 768
 EMBEDDING_VERSION_NUMBER = 3
 EMBEDDING_VERSION = f"{EMBEDDING_MODEL_NAME}@{EMBEDDING_DIM}@v{EMBEDDING_VERSION_NUMBER}"
