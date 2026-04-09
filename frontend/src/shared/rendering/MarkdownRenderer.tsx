@@ -9,6 +9,7 @@
  * - Tables with Claude-style clean rendering (compact inline code in cells)
  * - LaTeX/math rendering via KaTeX
  * - GFM (GitHub Flavored Markdown) support
+ * - [Source N] → CitationBadge inline rendering (via rehype-raw)
  */
 
 import React, { useMemo } from 'react';
@@ -16,16 +17,21 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
+import rehypeRaw from 'rehype-raw';
 import 'katex/dist/katex.min.css';
 import { CodeBlock } from './components/CodeBlock';
 import { cn } from '@/lib/utils';
 import { ChatFlashcardSet } from '@/pages/chat/core/components/ChatFlashcardSet';
+import { CitationBadge } from '@/pages/chat/core/components/CitationBadge';
+import type { GroundingSource } from '@/pages/chat/core/engine/types';
 
 // ==================== TYPES ====================
 
 interface MarkdownRendererProps {
     content: string;
     className?: string;
+    /** Grounding sources for rendering [Source N] as CitationBadge */
+    sources?: GroundingSource[];
     // Plugin hooks for extensibility
     onCodeBlock?: (language: string, content: string) => React.ReactNode;
     onLink?: (href: string, children: React.ReactNode) => React.ReactNode;
@@ -54,16 +60,49 @@ const InlineCode: React.FC<{ children: React.ReactNode; isInTable?: boolean }> =
     </code>
 );
 
+// ==================== CITATION PRE-PROCESSING ====================
+
+/**
+ * Pre-process markdown to replace [Source N] with <cite> HTML tags.
+ * rehype-raw then passes them through, and our custom `cite` component renders CitationBadge.
+ */
+function preprocessCitations(content: string): string {
+    return content.replace(
+        /\[Source (\d+)\]/g,
+        (_match, num) => `<sup data-citation="${num}">[${num}]</sup>`
+    );
+}
+
 // ==================== MAIN COMPONENT ====================
 
 export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
     content,
     className,
+    sources,
     onCodeBlock,
     onLink,
 }) => {
+    // Pre-process content: replace [Source N] with <cite> HTML tags
+    // Always run — old messages have [Source N] text but may lack grounding_sources
+    const processedContent = useMemo(() => {
+        if (!content) return '';
+        return preprocessCitations(content);
+    }, [content]);
+
     // Build components config based on plugins
     const components = useMemo(() => ({
+        // Citation superscripts — rendered from <sup data-citation="N"> tags
+        sup({ node, children, ...props }: any) {
+            const citationIndex = node?.properties?.dataCitation;
+            if (citationIndex) {
+                const sourceIdx = parseInt(citationIndex, 10);
+                const source = sources?.[sourceIdx - 1];
+                return <CitationBadge index={sourceIdx} source={source} />;
+            }
+            // Normal superscript (e.g. math exponents)
+            return <sup {...props}>{children}</sup>;
+        },
+
         // Code blocks with syntax highlighting
         code({ className: codeClassName, children }: any) {
             const isInsideTable = React.useContext(TableContext);
@@ -77,11 +116,8 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
             const isLongContent = codeContent.length > 80;
             const isBlock = hasLanguage || isMultiLine || isLongContent;
 
-            // Inside tables: ALWAYS render as inline code (Claude-style) unless it's a very large block
+            // Inside tables: ALWAYS render as inline code (Claude-style)
             if (isInsideTable) {
-                // Even multi-line code in tables should often be compact, but if it has a language, 
-                // we might still want syntax highlighting? Claude uses simple text for code in tables usually.
-                // Let's stick to the inline style for consistency with the request "inner code within the table"
                 return <InlineCode isInTable={true}>{children}</InlineCode>;
             }
 
@@ -106,7 +142,6 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
             }
 
             // ========== STUDY BLOCKS: FLASHCARDS & QUIZZES ==========
-            // Detect synapse-flashcards, json, or any code block that looks like flashcard JSON
             const mightBeFlashcardJson = 
                 language === 'synapse-flashcards' || 
                 language === 'json' ||
@@ -115,7 +150,6 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
             if (mightBeFlashcardJson) {
                 try {
                     const data = JSON.parse(codeContent);
-                    // Check if it's a flashcard set (has cards array with front/back)
                     if (data.cards && Array.isArray(data.cards) && data.cards.length > 0) {
                         const firstCard = data.cards[0];
                         if (firstCard && (firstCard.front || firstCard.question)) {
@@ -127,7 +161,6 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
                                         back: c.back || c.answer || ''
                                     }))}
                                     onSave={(cards) => {
-                                        // TODO: Integrate with flashcard API to save to deck
                                         console.log('Save flashcards:', cards);
                                     }}
                                 />
@@ -149,8 +182,6 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
 
         // Pre wrapper - handled by code block
         pre({ children }: any) {
-            // In tables, pre should not wrap code blocks in extra div logic if we can avoid it, 
-            // but since we handle 'code' above, this mostly just passes children.
             return <>{children}</>;
         },
 
@@ -174,7 +205,7 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
             );
         },
 
-        // Tables - Phase 4: Hybrid Premium (DeepSeek/Claude inspired)
+        // Tables - Hybrid Premium (DeepSeek/Claude inspired)
         table({ children, ...props }: any) {
             return (
                 <TableContext.Provider value={true}>
@@ -230,7 +261,6 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
             );
         },
 
-        // Table cells - simplified with proper text handling
         td({ children, ...props }: any) {
             return (
                 <td
@@ -347,16 +377,16 @@ export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
                 </em>
             );
         },
-    }), [onCodeBlock, onLink]);
+    }), [onCodeBlock, onLink, sources]);
 
     return (
         <div className={cn('prose prose-invert prose-zinc max-w-none', className)}>
             <ReactMarkdown
                 remarkPlugins={[remarkGfm, remarkMath]}
-                rehypePlugins={[rehypeKatex]}
+                rehypePlugins={[rehypeRaw, rehypeKatex]}
                 components={components}
             >
-                {content || ''}
+                {processedContent}
             </ReactMarkdown>
         </div>
     );
