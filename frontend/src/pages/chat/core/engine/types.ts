@@ -25,12 +25,14 @@ export interface StreamingState {
 }
 
 /**
- * Grounding source from search
+ * Grounding source from RAG search
  */
 export interface GroundingSource {
+    id?: string;
     title: string;
-    url: string;
+    url?: string;
     snippet?: string;
+    confidence?: number;  // 0..1 from backend
 }
 
 /**
