@@ -18,6 +18,7 @@ from enum import Enum
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.ai.embeddings.boundary import EMBEDDING_DIM
 from app.services.search.result_types import (
     HybridSearchResult,
     FlashcardSearchResult,
@@ -75,7 +76,7 @@ class HybridSearchServiceV2:
             user_id: User ID to filter by
             query: Text search query
             db: Database session
-            query_embedding: Optional 384-dim vector for semantic search
+            query_embedding: Optional embedding vector for semantic search
             limit: Maximum results (default 20)
             search_mode: bm25|semantic|hybrid (default hybrid)
             bm25_weight: Weight for BM25 results in RRF (default 1.0)
@@ -107,11 +108,11 @@ class HybridSearchServiceV2:
                 embedding_param = f"[{','.join(map(str, query_embedding))}]"
 
             result = await db.execute(
-                text("""
+                text(f"""
                     SELECT * FROM developer_schema.hybrid_search_notes(
                         :user_id, 
                         :query, 
-                        :embedding::vector(384),
+                        :embedding\:\:vector({EMBEDDING_DIM}),
                         :limit, 
                         :k, 
                         :search_mode,
@@ -158,6 +159,10 @@ class HybridSearchServiceV2:
 
         except Exception as e:
             logger.error(f"Hybrid search error: {e}", exc_info=True)
+            try:
+                await db.rollback()
+            except Exception:
+                pass
             return []
 
     @staticmethod
@@ -281,6 +286,10 @@ class HybridSearchServiceV2:
 
         except Exception as e:
             logger.error(f"Flashcard search error: {e}", exc_info=True)
+            try:
+                await db.rollback()
+            except Exception:
+                pass
             return []
 
     @staticmethod
@@ -400,6 +409,10 @@ class HybridSearchServiceV2:
 
         except Exception as e:
             logger.error(f"Chat search error: {e}", exc_info=True)
+            try:
+                await db.rollback()
+            except Exception:
+                pass
             return []
 
     # =========================================================================
