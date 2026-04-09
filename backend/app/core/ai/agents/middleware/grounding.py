@@ -51,7 +51,7 @@ class GroundingMiddleware:
         self,
         max_chunks: int = 5,
         min_confidence: float = 0.3,
-        max_latency_ms: int = 250,
+        max_latency_ms: int = 15000,
         surface: str = "chat",
     ):
         """
@@ -128,6 +128,19 @@ class GroundingMiddleware:
             # Inject into context
             context["grounding"] = result
 
+            # Pre-populate grounding_sources in state metadata so they
+            # survive even if after_execution fails. after_execution
+            # will update with citation-tracking enrichment.
+            if result.has_grounding:
+                state.metadata["grounding_sources"] = [
+                    {
+                        "id": e.id,
+                        "title": e.title,
+                        "confidence": e.confidence,
+                    }
+                    for e in result.evidence
+                ]
+
             logger.info(
                 "grounding_middleware_complete",
                 user_id=user_id,
@@ -167,6 +180,8 @@ class GroundingMiddleware:
         Run after agent execution.
 
         Records evidence usage for feedback tracking.
+        Enriches grounding_sources metadata (already set in before_execution)
+        with citation analysis from the LLM output.
 
         Args:
             agent: The agent instance
@@ -174,9 +189,12 @@ class GroundingMiddleware:
             context: Execution context
             user_id: User ID
         """
-        grounding: GroundingResult = context.get("grounding")
+        try:
+            grounding: GroundingResult = context.get("grounding")
 
-        if grounding and grounding.has_grounding:
+            if not grounding or not grounding.has_grounding:
+                return
+
             # 1. Analyze output for citations (Heuristic: look for "Source X")
             # This turns "available" evidence into "used" evidence
             output = ""
@@ -204,7 +222,7 @@ class GroundingMiddleware:
             # Update usage signal
             grounding.evidence_usage.used_evidence_ids = list(set(used_ids))
 
-            # Store evidence usage in state metadata for later analysis
+            # Update grounding_sources with enriched data (already set in before_execution)
             state.metadata["grounding_sources"] = [
                 {
                     "id": e.id,
@@ -215,8 +233,16 @@ class GroundingMiddleware:
             ]
             state.metadata["evidence_usage"] = grounding.evidence_usage.model_dump()
 
-            logger.debug(
+            logger.info(
                 "grounding_usage_recorded",
                 user_id=user_id,
                 evidence_count=grounding.source_count,
+                cited_count=len(used_ids),
+            )
+        except Exception as e:
+            logger.error(
+                "grounding_after_execution_failed",
+                user_id=user_id,
+                error=str(e),
+                exc_info=True,
             )

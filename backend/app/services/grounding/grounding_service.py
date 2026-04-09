@@ -160,12 +160,26 @@ def select_evidence(
             logger.warning("grounding_orphan_chunk_filtered", id=str(result.id.id))
             continue
 
-        # Compute confidence
+        # Compute confidence — cross-encoder returns raw logits (e.g. 6.71),
+        # but EvidenceChunk requires 0-1. Use sigmoid for logit normalization.
         confidence = result.confidence if result.confidence is not None else 0.5
+        if confidence > 1.0:
+            import math
+            confidence = 1.0 / (1.0 + math.exp(-confidence))  # sigmoid
 
         # Filter by minimum confidence
         if confidence < min_confidence:
             continue
+
+        # Normalize similarity score the same way
+        similarity = (
+            result.scores.get("similarity", 0.0)
+            or result.scores.get("vector", 0.0)
+            or 0.0
+        )
+        if similarity > 1.0:
+            import math
+            similarity = 1.0 / (1.0 + math.exp(-similarity))
 
         # Transform to EvidenceChunk
         chunk = EvidenceChunk(
@@ -175,9 +189,7 @@ def select_evidence(
             parent_id=str(result.id.parent_id) if result.id.parent_id else None,
             root_id=str(result.id.root_id) if result.id.root_id else None,
             confidence=confidence,
-            similarity=result.scores.get("similarity", 0.0)
-            or result.scores.get("vector", 0.0)
-            or 0.0,
+            similarity=similarity,
         )
         evidence.append(chunk)
 
@@ -254,7 +266,7 @@ class GroundingService:
         surface: str = "chat",
         max_chunks: int = 5,
         min_confidence: float = 0.3,
-        max_latency_ms: int = 250,
+        max_latency_ms: int = 15000,
     ) -> GroundingResult:
         """
         Retrieve and format evidence for LLM grounding.
