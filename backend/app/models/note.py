@@ -17,6 +17,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from .base import Base
 from .mixins import TimestampMixin, SoftDeleteMixin, UserOwnedMixin
 from app.db.types import Vector
+from app.core.ai.embeddings.boundary import EMBEDDING_DIM
 
 
 class NoteFormat(str, enum.Enum):
@@ -83,10 +84,10 @@ class Note(Base, TimestampMixin, SoftDeleteMixin, UserOwnedMixin):
 
     # Vector Embedding (pgvector - for hybrid search)
     embedding: Mapped[Optional[list[float]]] = mapped_column(
-        Vector(384),  # MiniLM-L6-v2 dimension
+        Vector(EMBEDDING_DIM),
         nullable=True,
         default=None,
-        doc="Vector embedding for semantic search (384 dim for all-MiniLM-L6-v2)",
+        doc="Vector embedding for semantic search (dimension from boundary.EMBEDDING_DIM)",
     )
 
     # Embedding versioning (for model upgrades and failure tracking)

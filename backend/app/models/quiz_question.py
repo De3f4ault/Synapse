@@ -14,6 +14,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from .base import Base
 from .mixins import TimestampMixin
 from app.db.types import Vector
+from app.core.ai.embeddings.boundary import EMBEDDING_DIM
 
 
 class QuestionType(str, enum.Enum):
@@ -87,7 +88,7 @@ class QuizQuestion(Base, TimestampMixin):
     # Used for: attention routing, cross-entity surfacing, priority biasing.
     # Never for: interval modification, ease adjustment, mastery claims.
     prompt_embedding: Mapped[Optional[list[float]]] = mapped_column(
-        Vector(384),  # all-MiniLM-L6-v2 dimension
+        Vector(EMBEDDING_DIM),
         nullable=True,
         default=None,
         doc="Vector embedding of question_text for semantic neighborhood routing",

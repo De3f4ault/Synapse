@@ -28,6 +28,7 @@ from sqlalchemy.orm import relationship
 
 from app.models.base import Base
 from app.db.types import Vector
+from app.core.ai.embeddings.boundary import EMBEDDING_DIM
 
 
 # =============================================================================
@@ -113,7 +114,7 @@ class Artifact(Base):
     view_count = Column(Integer, default=0, nullable=False)
 
     # Semantic search embedding (pgvector)
-    embedding = Column(Vector(384), nullable=True)
+    embedding = Column(Vector(EMBEDDING_DIM), nullable=True)
 
     # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)

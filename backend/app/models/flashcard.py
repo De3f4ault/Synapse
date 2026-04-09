@@ -24,6 +24,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from .base import Base
 from .mixins import TimestampMixin, SoftDeleteMixin
 from app.db.types import Vector
+from app.core.ai.embeddings.boundary import EMBEDDING_DIM
 
 
 class LearningState(str, enum.Enum):
@@ -134,7 +135,7 @@ class Flashcard(Base, TimestampMixin, SoftDeleteMixin):
 
     # Vector Embedding (pgvector - for hybrid search)
     content_embedding: Mapped[Optional[list[float]]] = mapped_column(
-        Vector(384),  # MiniLM-L6-v2 dimension
+        Vector(EMBEDDING_DIM),
         nullable=True,
         default=None,
         doc="Vector embedding for semantic search (front_text + back_text combined)",
