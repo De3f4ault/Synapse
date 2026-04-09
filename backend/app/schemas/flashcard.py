@@ -5,7 +5,7 @@ Flashcard schemas — single source of truth for flashcard, deck, and review API
 from datetime import datetime
 from decimal import Decimal
 from typing import List, Optional
-from pydantic import BaseModel, Field, computed_field
+from pydantic import BaseModel, Field, computed_field, field_validator
 
 
 # Deck Schemas
@@ -15,8 +15,14 @@ class DeckBase(BaseModel):
 
     name: str = Field(min_length=1, max_length=255, description="Deck name")
     description: Optional[str] = Field(default=None, description="Deck description")
-    tags: List[str] = Field(default_factory=list, description="Deck tags")
+    tags: Optional[List[str]] = Field(default_factory=list, description="Deck tags")
     is_public: bool = Field(default=False, description="Whether deck is public")
+
+    @field_validator("tags", mode="before")
+    @classmethod
+    def coerce_tags(cls, v):
+        """Coerce NULL/None tags from DB to an empty list."""
+        return v if v is not None else []
 
 
 class DeckCreate(DeckBase):
