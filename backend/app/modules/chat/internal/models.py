@@ -30,6 +30,7 @@ from sqlalchemy import Enum as SQLEnum
 from app.models.base import Base
 from app.models.mixins import TimestampMixin, SoftDeleteMixin, UserOwnedMixin
 from app.db.types import Vector
+from app.core.ai.embeddings.boundary import EMBEDDING_DIM
 
 
 # =============================================================================
@@ -200,10 +201,10 @@ class ChatMessage(Base):
 
     # Embedding for hybrid search (Q+A pair embedding for assistant messages)
     embedding: Mapped[Optional[List[float]]] = mapped_column(
-        Vector(384),  # MiniLM-L6-v2 dimension
+        Vector(EMBEDDING_DIM),
         nullable=True,
         default=None,
-        doc="Vector embedding (384-dim) for semantic search",
+        doc="Vector embedding for semantic search (dimension from boundary.EMBEDDING_DIM)",
     )
 
     # AI Metadata (for assistant messages)
@@ -224,6 +225,14 @@ class ChatMessage(Base):
 
     grounding_sources: Mapped[Optional[dict]] = mapped_column(
         JSON, nullable=True, default=None, doc="Grounding sources used (if grounding enabled)"
+    )
+
+    # Attachments (images, documents uploaded in chat)
+    attachments: Mapped[Optional[list]] = mapped_column(
+        JSON,
+        nullable=True,
+        default=None,
+        doc="Attached files [{document_id, filename, content_type, size_bytes}]",
     )
 
     # Timestamp

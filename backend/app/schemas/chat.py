@@ -66,10 +66,17 @@ class ChatMessageCreate(BaseModel):
 
     session_id: int = Field(description="Session ID")
     content: str = Field(min_length=1, max_length=50000, description="Message content")
+    attachment_ids: Optional[List[int]] = Field(
+        default=None, description="Document IDs of attached files"
+    )
 
     class Config:
         json_schema_extra = {
-            "example": {"session_id": 1, "content": "Can you explain photosynthesis?"}
+            "example": {
+                "session_id": 1,
+                "content": "Can you explain this diagram?",
+                "attachment_ids": [42],
+            }
         }
 
 
@@ -100,6 +107,9 @@ class ChatMessageResponse(BaseModel):
     )
     grounding_sources: Optional[Dict[str, Any]] = Field(
         default=None, description="Grounding sources"
+    )
+    attachments: Optional[List[Dict[str, Any]]] = Field(
+        default=None, description="Attached files [{document_id, filename, content_type, size_bytes}]"
     )
     created_at: datetime = Field(description="Message time")
 
@@ -245,12 +255,16 @@ class WSChatMessage(BaseModel):
     )
     content: str = Field(min_length=1, max_length=50000, description="Message content")
     context: Optional[Dict[str, Any]] = Field(default=None, description="Context configuration")
+    attachment_ids: Optional[List[int]] = Field(
+        default=None, description="Document IDs of attached files"
+    )
 
     class Config:
         json_schema_extra = {
             "example": {
                 "type": "message",
-                "content": "Explain mitochondria",
+                "content": "What does this diagram show?",
+                "attachment_ids": [42],
                 "context": {"modules": ["flashcards", "notes"], "focus": "weak_areas"},
             }
         }
