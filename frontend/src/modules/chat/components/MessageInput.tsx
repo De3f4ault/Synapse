@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect, KeyboardEvent } from "react";
+import { useState, useRef, useCallback, useEffect, KeyboardEvent, DragEvent, ClipboardEvent } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { 
@@ -13,8 +13,11 @@ import {
   Zap,
   GraduationCap,
   Sparkles,
-  X
+  X,
+  FileText,
+  Paperclip,
 } from "lucide-react";
+import { useFileUpload } from "../hooks/useFileUpload";
 
 /**
  * Unified MessageInput Component
@@ -77,7 +80,7 @@ export const MODES: Mode[] = [
 ];
 
 interface MessageInputProps {
-  onSend: (content: string, options?: { mode: string; enableSearch?: boolean }) => void;
+  onSend: (content: string, options?: { mode: string; enableSearch?: boolean; attachmentIds?: number[] }) => void;
   disabled?: boolean;
   isLoading?: boolean;
   placeholder?: string;
@@ -85,6 +88,7 @@ interface MessageInputProps {
   maxLength?: number;
   initialMode?: string;
   onModeChange?: (mode: string) => void;
+  sessionId?: number;
 }
 
 export function MessageInput({
@@ -96,6 +100,7 @@ export function MessageInput({
   maxLength = 4000,
   initialMode = "tutor",
   onModeChange,
+  sessionId,
 }: MessageInputProps) {
   const [message, setMessage] = useState("");
   const [isFocused, setIsFocused] = useState(false);
@@ -103,9 +108,23 @@ export function MessageInput({
   const [showModeDropdown, setShowModeDropdown] = useState(false);
   const [searchEnabled, setSearchEnabled] = useState(false);
   const [showToolsPanel, setShowToolsPanel] = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
   
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // File upload hook
+  const {
+    pendingFiles,
+    uploadFiles,
+    removeFile,
+    clearAll: clearFiles,
+    documentIds,
+    hasFiles,
+    isUploading,
+    canAttachMore,
+  } = useFileUpload(sessionId);
 
   // Always have a valid mode - fallback to tutor (MODES[1]) if not found
   const currentMode = MODES.find(m => m.id === selectedMode) ?? MODES[1]!;
@@ -143,15 +162,20 @@ export function MessageInput({
 
   const handleSend = useCallback(() => {
     const trimmed = message.trim();
-    if (!trimmed || disabled || isLoading) return;
+    if ((!trimmed && !hasFiles) || disabled || isLoading || isUploading) return;
 
-    onSend(trimmed, { mode: selectedMode, enableSearch: searchEnabled });
+    onSend(trimmed || "What is this?", {
+      mode: selectedMode,
+      enableSearch: searchEnabled,
+      attachmentIds: documentIds.length > 0 ? documentIds : undefined,
+    });
     setMessage("");
+    clearFiles();
 
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
     }
-  }, [message, disabled, isLoading, onSend, selectedMode, searchEnabled]);
+  }, [message, disabled, isLoading, isUploading, onSend, selectedMode, searchEnabled, documentIds, hasFiles, clearFiles]);
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -171,8 +195,77 @@ export function MessageInput({
     }
   }, []);
 
+  // ==================== FILE HANDLING ====================
+
+  const handleFileSelect = useCallback(() => {
+    if (canAttachMore) {
+      fileInputRef.current?.click();
+    }
+  }, [canAttachMore]);
+
+  const handleFileInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (e.target.files) {
+        uploadFiles(e.target.files);
+        e.target.value = ""; // Reset so same file can be re-uploaded
+      }
+    },
+    [uploadFiles],
+  );
+
+  const handlePaste = useCallback(
+    (e: ClipboardEvent<HTMLTextAreaElement>) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+
+      const files: File[] = [];
+      for (const item of items) {
+        if (item.kind === "file") {
+          const file = item.getAsFile();
+          if (file) files.push(file);
+        }
+      }
+
+      if (files.length > 0) {
+        e.preventDefault();
+        uploadFiles(files);
+      }
+    },
+    [uploadFiles],
+  );
+
+  const handleDragOver = useCallback((e: DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+  }, []);
+
+  const handleDrop = useCallback(
+    (e: DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setIsDragOver(false);
+
+      if (e.dataTransfer?.files) {
+        uploadFiles(e.dataTransfer.files);
+      }
+    },
+    [uploadFiles],
+  );
+
   const isOverLimit = message.length > maxLength;
-  const canSend = message.trim().length > 0 && !isOverLimit && !disabled && !isLoading;
+  const canSend =
+    (message.trim().length > 0 || hasFiles) &&
+    !isOverLimit &&
+    !disabled &&
+    !isLoading &&
+    !isUploading;
 
   return (
     <div className={cn("w-full space-y-2", className)}>
@@ -193,13 +286,121 @@ export function MessageInput({
 
       {/* Main Input Container */}
       <div
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
         className={cn(
           "relative rounded-2xl border transition-all duration-200 bg-[#0d0d0d]",
           isFocused
             ? "border-white/20 shadow-[0_4px_24px_rgba(0,0,0,0.4)]"
             : "border-white/10 hover:border-white/15",
+          isDragOver && "border-cyan-500/50 bg-cyan-500/5 shadow-[0_0_20px_rgba(6,182,212,0.1)]",
         )}
       >
+        {/* Drag overlay */}
+        <AnimatePresence>
+          {isDragOver && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-cyan-500/10 border-2 border-dashed border-cyan-500/40"
+            >
+              <div className="flex items-center gap-2 text-cyan-400">
+                <Paperclip className="h-5 w-5" />
+                <span className="text-sm font-medium">Drop files here</span>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Hidden file input */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          accept="image/png,image/jpeg,image/webp,image/gif,.pdf"
+          onChange={handleFileInputChange}
+          className="hidden"
+        />
+
+        {/* Attachment Preview Chips */}
+        <AnimatePresence>
+          {hasFiles && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="overflow-hidden"
+            >
+              <div className="flex flex-wrap gap-2 px-3 pt-3">
+                {pendingFiles.map((pf) => (
+                  <motion.div
+                    key={pf.id}
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    className={cn(
+                      "relative group flex items-center gap-2 px-2 py-1.5 rounded-lg border text-xs",
+                      pf.status === "error"
+                        ? "border-red-500/30 bg-red-500/10"
+                        : pf.status === "uploaded"
+                          ? "border-emerald-500/30 bg-emerald-500/10"
+                          : "border-white/10 bg-white/5",
+                    )}
+                  >
+                    {/* Thumbnail or icon */}
+                    {pf.preview ? (
+                      <img
+                        src={pf.preview}
+                        alt={pf.file.name}
+                        className="h-8 w-8 rounded object-cover"
+                      />
+                    ) : (
+                      <FileText className="h-4 w-4 text-white/50" />
+                    )}
+
+                    {/* Filename */}
+                    <span className="max-w-[120px] truncate text-white/70">
+                      {pf.file.name}
+                    </span>
+
+                    {/* Progress bar */}
+                    {pf.status === "uploading" && (
+                      <div className="absolute bottom-0 left-0 right-0 h-0.5 rounded-b-lg overflow-hidden">
+                        <motion.div
+                          className="h-full bg-cyan-500"
+                          initial={{ width: "0%" }}
+                          animate={{ width: `${pf.progress}%` }}
+                          transition={{ duration: 0.2 }}
+                        />
+                      </div>
+                    )}
+
+                    {/* Status indicator */}
+                    {pf.status === "uploading" && (
+                      <Loader2 className="h-3 w-3 animate-spin text-cyan-400" />
+                    )}
+                    {pf.status === "error" && (
+                      <span className="text-red-400 text-[10px]" title={pf.error}>
+                        ✕
+                      </span>
+                    )}
+
+                    {/* Remove button */}
+                    <button
+                      onClick={() => removeFile(pf.id)}
+                      className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-white/10 text-white/40 hover:text-white transition-all"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Textarea Row */}
         <div className="flex items-end">
           {/* Attachment Button */}
@@ -207,8 +408,16 @@ export function MessageInput({
             <motion.button
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              className="p-2 rounded-xl bg-white/5 text-white/40 hover:text-white hover:bg-white/10 transition-all"
-              title="Attach file"
+              onClick={handleFileSelect}
+              disabled={!canAttachMore}
+              className={cn(
+                "p-2 rounded-xl transition-all",
+                canAttachMore
+                  ? "bg-white/5 text-white/40 hover:text-white hover:bg-white/10"
+                  : "bg-white/5 text-white/15 cursor-not-allowed",
+                hasFiles && "text-cyan-400 bg-cyan-500/10",
+              )}
+              title={canAttachMore ? "Attach file" : "Max 5 files"}
             >
               <Plus className="h-5 w-5" />
             </motion.button>
@@ -223,7 +432,8 @@ export function MessageInput({
             onInput={handleInput}
             onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
-            placeholder={placeholder}
+            onPaste={handlePaste}
+            placeholder={hasFiles && !message ? "Add a message or send with files..." : placeholder}
             disabled={disabled || isLoading}
             rows={1}
             maxLength={maxLength}

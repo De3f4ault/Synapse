@@ -25,11 +25,14 @@ import {
   Cloud,
   Volume2,
   Hand,
+  X,
+  FileText,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback, type DragEvent, type ClipboardEvent } from "react";
 import { useMentionController, EntityPicker } from "@/shared/platform/mentions";
 import { useEntitySearch } from "@/shared/platform/hooks/useEntitySearch";
 import type { EntitySearchResult } from "@/shared/platform/types";
@@ -38,6 +41,7 @@ import { useChatStore } from "../state/chatStore";
 import { useModels } from "../hooks/useModels";
 import { motion, AnimatePresence } from "framer-motion";
 import type { VoiceState } from "../../voice/engine/types";
+import { useFileUpload } from "@/modules/chat/hooks/useFileUpload";
 
 // Mode definitions
 interface Mode {
@@ -370,7 +374,7 @@ function ModelSelector() {
 interface ChatInputBoxProps {
   message: string;
   onMessageChange: (value: string) => void;
-  onSend: () => void;
+  onSend: (attachmentIds?: number[]) => void;
   onVoiceClick?: () => void;
   onStop?: () => void;
   isStreaming?: boolean;
@@ -382,6 +386,8 @@ interface ChatInputBoxProps {
   /** Independent mode state (overrides global store) */
   mode?: string;
   onModeChange?: (mode: string) => void;
+  /** Session ID for file uploads */
+  sessionId?: number;
   /** Voice mode controls (Gemini Live-style inline) */
   voiceActive?: boolean;
   voiceState?: VoiceState;
@@ -403,6 +409,7 @@ export function ChatInputBox({
   minimal = false,
   mode,
   onModeChange,
+  sessionId,
   // Voice mode
   voiceActive = false,
   voiceState,
@@ -411,11 +418,25 @@ export function ChatInputBox({
   onVoiceEndSession,
 }: ChatInputBoxProps) {
   const [isFocused, setIsFocused] = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
 
   const [searchEnabled, setSearchEnabled] = useState(false);
   const showThinking = useChatStore((s) => s.showThinking);
   const toggleThinking = useChatStore((s) => s.toggleThinking);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // File upload hook
+  const {
+    pendingFiles,
+    uploadFiles,
+    removeFile,
+    clearAll: clearFiles,
+    documentIds,
+    hasFiles,
+    isUploading,
+    canAttachMore,
+  } = useFileUpload(sessionId);
 
   // Auto-resize textarea when message changes
   useEffect(() => {
@@ -479,11 +500,69 @@ export function ChatInputBox({
 
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      if (message.trim() && !disabled && !isStreaming) {
-        onSend();
+      if ((message.trim() || hasFiles) && !disabled && !isStreaming && !isUploading) {
+        onSend(documentIds.length > 0 ? documentIds : undefined);
+        clearFiles();
       }
     }
   };
+
+  // ==================== FILE HANDLING ====================
+
+  const handleFileSelect = useCallback(() => {
+    if (canAttachMore) fileInputRef.current?.click();
+  }, [canAttachMore]);
+
+  const handleFileInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (e.target.files) {
+        uploadFiles(e.target.files);
+        e.target.value = "";
+      }
+    },
+    [uploadFiles],
+  );
+
+  const handlePaste = useCallback(
+    (e: ClipboardEvent<HTMLTextAreaElement>) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      const files: File[] = [];
+      for (const item of items) {
+        if (item.kind === "file") {
+          const file = item.getAsFile();
+          if (file) files.push(file);
+        }
+      }
+      if (files.length > 0) {
+        e.preventDefault();
+        uploadFiles(files);
+      }
+    },
+    [uploadFiles],
+  );
+
+  const handleDragOver = useCallback((e: DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+  }, []);
+
+  const handleDrop = useCallback(
+    (e: DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setIsDragOver(false);
+      if (e.dataTransfer?.files) uploadFiles(e.dataTransfer.files);
+    },
+    [uploadFiles],
+  );
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newValue = e.target.value;
@@ -510,6 +589,9 @@ export function ChatInputBox({
 
       {/* Main Input Container */}
       <div
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
         className={cn(
           "relative transition-all duration-300 ease-out",
           "rounded-2xl",
@@ -518,8 +600,36 @@ export function ChatInputBox({
           isFocused 
             ? "shadow-lg shadow-black/20 border-white/[0.15] ring-1 ring-white/[0.05]" 
             : "shadow-sm",
+          isDragOver && "border-cyan-500/50 bg-cyan-500/5",
         )}
       >
+        {/* Drag overlay */}
+        <AnimatePresence>
+          {isDragOver && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-cyan-500/10 border-2 border-dashed border-cyan-500/40"
+            >
+              <div className="flex items-center gap-2 text-cyan-400">
+                <PaperclipIcon className="size-5" />
+                <span className="text-sm font-medium">Drop files here</span>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Hidden file input */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          accept="image/png,image/jpeg,image/webp,image/gif,.pdf"
+          onChange={handleFileInputChange}
+          className="hidden"
+        />
+
         {/* Entity Picker Floating */}
         {showPicker && (
           <div className="absolute bottom-full left-4 mb-2 z-50">
@@ -532,16 +642,76 @@ export function ChatInputBox({
           </div>
         )}
 
+        {/* Attachment Preview Chips */}
+        <AnimatePresence>
+          {hasFiles && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="overflow-hidden"
+            >
+              <div className="flex flex-wrap gap-2 px-4 pt-3">
+                {pendingFiles.map((pf) => (
+                  <motion.div
+                    key={pf.id}
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    className={cn(
+                      "relative group flex items-center gap-2 px-2 py-1.5 rounded-lg border text-xs",
+                      pf.status === "error"
+                        ? "border-red-500/30 bg-red-500/10"
+                        : pf.status === "uploaded"
+                          ? "border-emerald-500/30 bg-emerald-500/10"
+                          : "border-white/10 bg-white/5",
+                    )}
+                  >
+                    {pf.preview ? (
+                      <img src={pf.preview} alt={pf.file.name} className="h-8 w-8 rounded object-cover" />
+                    ) : (
+                      <FileText className="size-4 text-white/50" />
+                    )}
+                    <span className="max-w-[120px] truncate text-white/70">{pf.file.name}</span>
+                    {pf.status === "uploading" && (
+                      <>
+                        <Loader2 className="size-3 animate-spin text-cyan-400" />
+                        <div className="absolute bottom-0 left-0 right-0 h-0.5 rounded-b-lg overflow-hidden">
+                          <motion.div
+                            className="h-full bg-cyan-500"
+                            initial={{ width: "0%" }}
+                            animate={{ width: `${pf.progress}%` }}
+                          />
+                        </div>
+                      </>
+                    )}
+                    {pf.status === "error" && (
+                      <span className="text-red-400 text-[10px]" title={pf.error}>✕</span>
+                    )}
+                    <button
+                      onClick={() => removeFile(pf.id)}
+                      className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-white/10 text-white/40 hover:text-white transition-all"
+                    >
+                      <X className="size-3" />
+                    </button>
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Main Input Area */}
         <div className="px-4 pt-3 pb-2">
           <Textarea
             ref={textareaRef}
-            placeholder={placeholder}
+            placeholder={hasFiles && !message ? "Add a message or send with files..." : placeholder}
             value={message}
             onChange={handleChange}
             onKeyDown={handleKeyDown}
             onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
+            onPaste={handlePaste}
             disabled={disabled || isStreaming}
             className={cn(
               "min-h-[24px] max-h-[200px] resize-none w-full",
@@ -600,9 +770,17 @@ export function ChatInputBox({
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-8 rounded-lg text-zinc-400 hover:text-white hover:bg-white/5 gap-1.5 px-2"
+                    className={cn(
+                      "h-8 rounded-lg gap-1.5 px-2",
+                      hasFiles
+                        ? "text-cyan-400 bg-cyan-500/10 hover:bg-cyan-500/20"
+                        : "text-zinc-400 hover:text-white hover:bg-white/5",
+                      !canAttachMore && "opacity-50 cursor-not-allowed",
+                    )}
                     type="button"
-                    disabled={disabled}
+                    disabled={disabled || !canAttachMore}
+                    onClick={handleFileSelect}
+                    title={canAttachMore ? "Attach image or file" : "Max 5 files"}
                   >
                     <Plus className="size-4" />
                   </Button>
@@ -745,17 +923,23 @@ export function ChatInputBox({
                 ) : (
                   <Button
                     size="icon"
-                    onClick={onSend}
-                    disabled={!message.trim() || disabled}
+                    onClick={() => {
+                      onSend(documentIds.length > 0 ? documentIds : undefined);
+                      clearFiles();
+                    }}
+                    disabled={(!message.trim() && !hasFiles) || disabled || isUploading}
                     className={cn(
                       "size-8 rounded-lg transition-all duration-300",
-                      message.trim() && !disabled
+                      (message.trim() || hasFiles) && !disabled && !isUploading
                         ? "bg-cyan-500 text-white hover:bg-cyan-400 shadow-lg shadow-cyan-500/20"
                         : "bg-zinc-800 text-zinc-500 hover:bg-zinc-700/80"
                     )}
                     type="button"
                   >
-                    <SendIcon className="size-4" />
+                    {isUploading
+                      ? <Loader2 className="size-4 animate-spin" />
+                      : <SendIcon className="size-4" />
+                    }
                   </Button>
                 )}
               </>
