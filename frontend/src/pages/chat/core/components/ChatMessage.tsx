@@ -1,11 +1,15 @@
-import { memo, useState } from "react";
+import { memo, useState, useMemo } from "react";
+import { useAuthStore } from "@/stores/authStore";
 import { cn } from "@/lib/utils";
-import { Copy, Check, RefreshCw, MessageSquarePlus, GitBranch } from "lucide-react";
+import { Copy, Check, RefreshCw, MessageSquarePlus, GitBranch, X } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
 import { ThinkingBlock } from "./ThinkingBlock";
 import { ComparisonPanel } from "./ComparisonPanel";
 import { toast } from "sonner";
 import { HighlightedText } from "../../search/components/HighlightedText";
 import { MarkdownRenderer } from "@/shared/rendering";
+import { SourcesFooter } from "./SourcesFooter";
+import type { GroundingSource } from "../engine/types";
 import { MermaidBlock } from "@/shared/rendering/components/MermaidBlock";
 import { parseOutput } from "../engine/parseOutput";
 import { ChatEntityPreview } from "./ChatEntityPreview";
@@ -47,6 +51,24 @@ const ChatMessageComponent = ({
   const [copied, setCopied] = useState(false);
   const [savingFlashcards, setSavingFlashcards] = useState(false);
   const [savingQuiz, setSavingQuiz] = useState(false);
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+
+  // Attachment helpers
+  const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+  const authToken = useAuthStore((s) => s.token);
+  const attachments = message.attachments || [];
+  const imageAttachments = attachments.filter(
+    (a: any) => a.content_type?.startsWith("image/"),
+  );
+
+  // Build authenticated attachment URLs (img tags can't send Authorization headers)
+  const attachUrl = useMemo(() => {
+    const suffix = authToken ? `?token=${encodeURIComponent(authToken)}` : "";
+    return {
+      file: (docId: number) => `${API_BASE}/api/v1/chat/attachments/${docId}/file${suffix}`,
+      thumb: (docId: number) => `${API_BASE}/api/v1/chat/attachments/thumbnail/${docId}${suffix}`,
+    };
+  }, [API_BASE, authToken]);
 
   // Branch navigation for assistant messages
   // INVARIANT: Only show for assistant messages, never for thread messages
@@ -260,7 +282,7 @@ const ChatMessageComponent = ({
               );
 
             case 'markdown':
-              return <MarkdownRenderer key={key} content={block.content} className="break-words" />;
+              return <MarkdownRenderer key={key} content={block.content} className="break-words" sources={message.grounding_sources as GroundingSource[] | undefined} />;
 
             case 'flashcard_set':
               return (
@@ -382,7 +404,57 @@ const ChatMessageComponent = ({
           )}
           style={isUser ? { backgroundColor: GROK_USER_BUBBLE } : undefined}
         >
+          {/* Gemini-style: User image thumbnails ABOVE text */}
+          {isUser && imageAttachments.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mb-2">
+              {imageAttachments.map((att: any, idx: number) => (
+                <button
+                  key={att.document_id || idx}
+                  onClick={() => setLightboxSrc(attachUrl.file(att.document_id))}
+                  className="relative group rounded-xl overflow-hidden ring-1 ring-white/10 hover:ring-cyan-400/50 transition-all hover:scale-[1.03] active:scale-95"
+                >
+                  <img
+                    src={attachUrl.thumb(att.document_id)}
+                    alt={att.filename || "attachment"}
+                    className="w-[80px] h-[80px] object-cover"
+                    loading="lazy"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = attachUrl.file(att.document_id);
+                    }}
+                  />
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors rounded-xl" />
+                </button>
+              ))}
+            </div>
+          )}
+
           {renderContent()}
+
+          {/* Grounding Sources Footer — NotebookLM style */}
+          {!isUser && !isStreaming && message.grounding_sources && (message.grounding_sources as GroundingSource[]).length > 0 && (
+            <SourcesFooter sources={message.grounding_sources as GroundingSource[]} />
+          )}
+
+          {/* Assistant: Larger image previews BELOW text */}
+          {!isUser && imageAttachments.length > 0 && (
+            <div className="flex flex-wrap gap-2 mt-3">
+              {imageAttachments.map((att: any, idx: number) => (
+                <button
+                  key={att.document_id || idx}
+                  onClick={() => setLightboxSrc(attachUrl.file(att.document_id))}
+                  className="relative group rounded-lg overflow-hidden border border-white/10 hover:border-cyan-500/40 transition-all"
+                >
+                  <img
+                    src={attachUrl.file(att.document_id)}
+                    alt={att.filename || "attachment"}
+                    className="max-w-[240px] max-h-[180px] object-cover rounded-lg"
+                    loading="lazy"
+                  />
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
+                </button>
+              ))}
+            </div>
+          )}
 
           {/* Referenced Entities */}
           {message.entities && message.entities.length > 0 && (
@@ -469,6 +541,35 @@ const ChatMessageComponent = ({
           )}
         </div>
       </div>
+
+      {/* Lightbox overlay */}
+      <AnimatePresence>
+        {lightboxSrc && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm"
+            onClick={() => setLightboxSrc(null)}
+          >
+            <button
+              onClick={() => setLightboxSrc(null)}
+              className="absolute top-4 right-4 p-2 rounded-xl bg-white/10 text-white hover:bg-white/20 transition-colors z-10"
+            >
+              <X className="size-5" />
+            </button>
+            <motion.img
+              initial={{ scale: 0.9 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.9 }}
+              src={lightboxSrc ?? undefined}
+              alt="Full size"
+              className="max-w-[90vw] max-h-[85vh] object-contain rounded-xl shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

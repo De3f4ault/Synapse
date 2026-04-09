@@ -86,8 +86,8 @@ export function ChatMain({ sessionId, sessionTitle }: ChatMainProps) {
 
   const isConversationStarted = messages.length > 0;
 
-  const handleSend = () => {
-    if (!message.trim()) return;
+  const handleSend = (attachmentIds?: number[]) => {
+    if (!message.trim() && !(attachmentIds && attachmentIds.length > 0)) return;
 
     if (voice.isActive) {
       // In voice mode, send text via voice WebSocket
@@ -102,7 +102,7 @@ export function ChatMain({ sessionId, sessionTitle }: ChatMainProps) {
     }
 
     try {
-      sendStreamingMessage(message);
+      sendStreamingMessage(message || "What is this?", { attachmentIds });
       setMessage("");
     } catch (error) {
       console.error("[ChatMain] Failed to send message:", error);

@@ -30,7 +30,7 @@ interface ChatConversationViewProps {
   message: string;
   sessionId: number;
   onMessageChange: (value: string) => void;
-  onSend: () => void;
+  onSend: (attachmentIds?: number[]) => void;
   onReset: () => void;
   onStop?: () => void;
   onVoiceClick?: () => void;
@@ -384,6 +384,7 @@ export function ChatConversationView({
             isStreaming={isStreaming}
             placeholder={voiceActive ? "Type to ask..." : "Continue the conversation..."}
             disabled={isSending && !voiceActive}
+            sessionId={sessionId}
             voiceActive={voiceActive}
             voiceState={voiceState}
             voiceAudioLevel={voiceAudioLevel}
