@@ -1,6 +1,6 @@
 .PHONY: help dev dev-frontend dev-backend \
 	prod-start prod-stop prod-status \
-	health install setup mac-setup clean logs
+	health install setup mac-setup linux-setup clean logs
 
 # ============================================================================
 # HELP
@@ -19,6 +19,7 @@ help: ## Show this help message
 	@echo '  make prod-start       Start production (Supervisor)'
 	@echo '  make health           Check health of all services'
 	@echo '  make mac-setup        Set up infra on macOS (Homebrew)'
+	@echo '  make linux-setup      Set up infra on Linux (Debian/Arch)'
 	@echo ''
 	@echo 'Available targets:'
 	@echo ''
@@ -115,11 +116,14 @@ setup: ## Complete initial project setup
 	@echo ""
 
 # ============================================================================
-# macOS SETUP (Homebrew)
+# PLATFORM SETUP
 # ============================================================================
 
 mac-setup: ## Set up macOS infrastructure (PG, extensions, Qdrant, Redis)
 	@./scripts/mac-setup.sh
+
+linux-setup: ## Set up Linux infrastructure (Debian/Arch — PG, extensions, Qdrant, Redis)
+	@./scripts/linux-setup.sh
 
 # ============================================================================
 # UTILITIES
