@@ -39,6 +39,10 @@ export type ChatMessageResponse = {
      */
     grounding_sources?: (Record<string, any> | null);
     /**
+     * Attached files [{document_id, filename, content_type, size_bytes}]
+     */
+    attachments?: null;
+    /**
      * Message time
      */
     created_at: string;

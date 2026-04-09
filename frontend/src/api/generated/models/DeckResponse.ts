@@ -17,7 +17,7 @@ export type DeckResponse = {
     /**
      * Deck tags
      */
-    tags?: Array<string>;
+    tags?: (Array<string> | null);
     /**
      * Whether deck is public
      */

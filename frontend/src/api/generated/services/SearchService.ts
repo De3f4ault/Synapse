@@ -2,8 +2,6 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-import type { app__schemas__search__SearchResponse } from '../models/app__schemas__search__SearchResponse';
-import type { HybridSearchResponse } from '../models/HybridSearchResponse';
 import type { SearchClickRequest } from '../models/SearchClickRequest';
 import type { SearchClickResponse } from '../models/SearchClickResponse';
 import type { SearchIntent } from '../models/SearchIntent';
@@ -13,98 +11,6 @@ import type { CancelablePromise } from '../core/CancelablePromise';
 import { OpenAPI } from '../core/OpenAPI';
 import { request as __request } from '../core/request';
 export class SearchService {
-    /**
-     * Search All
-     * Advanced cross-module search (now using pg_search BM25).
-     *
-     * Search Types:
-     * - fts: PostgreSQL pg_search BM25 (keyword matching)
-     * - semantic: Vector similarity search (meaning matching)
-     * - hybrid: Combined BM25 + semantic (recommended)
-     *
-     * Modules:
-     * - flashcards: Search flashcard content
-     * - notes: Search note titles and content
-     * - documents: Search document filenames
-     * @param query Search query
-     * @param modules Comma-separated modules to search
-     * @param searchType Search strategy: fts, semantic, or hybrid
-     * @param limit Maximum results
-     * @param token Auth token for image/file requests
-     * @returns app__schemas__search__SearchResponse Successful Response
-     * @throws ApiError
-     */
-    public static searchAllApiV1SearchGet(
-        query: string,
-        modules?: (string | null),
-        searchType: string = 'hybrid',
-        limit: number = 20,
-        token?: (string | null),
-    ): CancelablePromise<app__schemas__search__SearchResponse> {
-        return __request(OpenAPI, {
-            method: 'GET',
-            url: '/api/v1/search',
-            query: {
-                'query': query,
-                'modules': modules,
-                'search_type': searchType,
-                'limit': limit,
-                'token': token,
-            },
-            errors: {
-                422: `Validation Error`,
-            },
-        });
-    }
-    /**
-     * Search Hybrid
-     * Hybrid search using PostgreSQL-native pg_search BM25 + pgvector.
-     *
-     * This endpoint uses the new hybrid_search_notes SQL function with RRF.
-     *
-     * Search Modes:
-     * - bm25: BM25 full-text search only (pg_search)
-     * - semantic: Vector similarity search only (pgvector)
-     * - hybrid: Combined BM25 + semantic with RRF fusion
-     *
-     * Weight Parameters:
-     * - bm25_weight: How much to weight BM25 results (default 1.0)
-     * - semantic_weight: How much to weight semantic results (default 1.0)
-     *
-     * Higher weight = more influence on final ranking.
-     * @param query Search query
-     * @param searchMode Search mode: bm25, semantic, or hybrid
-     * @param bm25Weight BM25 weight in RRF
-     * @param semanticWeight Semantic weight in RRF
-     * @param limit Maximum results
-     * @param token Auth token for image/file requests
-     * @returns HybridSearchResponse Successful Response
-     * @throws ApiError
-     */
-    public static searchHybridApiV1SearchHybridGet(
-        query: string,
-        searchMode: string = 'hybrid',
-        bm25Weight: number = 1,
-        semanticWeight: number = 1,
-        limit: number = 20,
-        token?: (string | null),
-    ): CancelablePromise<HybridSearchResponse> {
-        return __request(OpenAPI, {
-            method: 'GET',
-            url: '/api/v1/search/hybrid',
-            query: {
-                'query': query,
-                'search_mode': searchMode,
-                'bm25_weight': bm25Weight,
-                'semantic_weight': semanticWeight,
-                'limit': limit,
-                'token': token,
-            },
-            errors: {
-                422: `Validation Error`,
-            },
-        });
-    }
     /**
      * Search Suggestions
      * Get search suggestions/autocomplete.

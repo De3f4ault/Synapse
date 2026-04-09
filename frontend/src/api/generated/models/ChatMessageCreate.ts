@@ -14,5 +14,9 @@ export type ChatMessageCreate = {
      * Message content
      */
     content: string;
+    /**
+     * Document IDs of attached files
+     */
+    attachment_ids?: (Array<number> | null);
 };
 

@@ -17,7 +17,7 @@ export type DeckCreate = {
     /**
      * Deck tags
      */
-    tags?: Array<string>;
+    tags?: (Array<string> | null);
     /**
      * Whether deck is public
      */
