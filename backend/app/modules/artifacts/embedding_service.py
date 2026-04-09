@@ -2,7 +2,7 @@
 Artifacts Module — Embedding Service.
 
 Provides embedding generation and semantic search for artifacts.
-Uses existing AllMiniLMEmbedder (384-dim) for consistency with other modules.
+Uses boundary embedder for consistency with all pgvector modules.
 """
 
 from typing import Optional, List, Tuple
@@ -11,7 +11,7 @@ import structlog
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.ai.embeddings.boundary import get_embedder
+from app.core.ai.embeddings.boundary import get_embedder, EMBEDDING_DIM
 
 logger = structlog.get_logger(__name__)
 
@@ -34,7 +34,7 @@ def generate_artifact_embedding(
         language: Programming language (if applicable)
 
     Returns:
-        List of embedding floats (384 dimensions)
+        List of embedding floats (dimension from boundary.EMBEDDING_DIM)
     """
     parts = [
         f"Title: {title}",
@@ -92,9 +92,9 @@ async def embed_artifact(
 
         # Update the artifact with embedding
         await db.execute(
-            text("""
+            text(f"""
                 UPDATE developer_schema.artifacts 
-                SET embedding = CAST(:embedding AS vector(384))
+                SET embedding = CAST(:embedding AS vector({EMBEDDING_DIM}))
                 WHERE id = :artifact_id
             """),
             {"embedding": embedding_str, "artifact_id": str(artifact_id)},
@@ -138,17 +138,17 @@ async def search_artifacts(
     embedding_str = "[" + ",".join(map(str, query_embedding.tolist())) + "]"
 
     result = await db.execute(
-        text("""
+        text(f"""
             SELECT 
                 id,
                 title,
                 type,
-                1.0 - (embedding <=> CAST(:embedding AS vector(384))) as similarity
+                1.0 - (embedding <=> CAST(:embedding AS vector({EMBEDDING_DIM}))) as similarity
             FROM developer_schema.artifacts
             WHERE user_id = :user_id
               AND embedding IS NOT NULL
-              AND 1.0 - (embedding <=> CAST(:embedding AS vector(384))) >= :min_sim
-            ORDER BY embedding <=> CAST(:embedding AS vector(384))
+              AND 1.0 - (embedding <=> CAST(:embedding AS vector({EMBEDDING_DIM}))) >= :min_sim
+            ORDER BY embedding <=> CAST(:embedding AS vector({EMBEDDING_DIM}))
             LIMIT :limit
         """),
         {
@@ -202,18 +202,18 @@ async def find_similar_artifacts(
 
     # Find similar artifacts (excluding self)
     result = await db.execute(
-        text("""
+        text(f"""
             SELECT 
                 id,
                 title,
                 type,
-                1.0 - (embedding <=> CAST(:embedding AS vector(384))) as similarity
+                1.0 - (embedding <=> CAST(:embedding AS vector({EMBEDDING_DIM}))) as similarity
             FROM developer_schema.artifacts
             WHERE user_id = :user_id
               AND id != :artifact_id
               AND embedding IS NOT NULL
-              AND 1.0 - (embedding <=> CAST(:embedding AS vector(384))) >= :min_sim
-            ORDER BY embedding <=> CAST(:embedding AS vector(384))
+              AND 1.0 - (embedding <=> CAST(:embedding AS vector({EMBEDDING_DIM}))) >= :min_sim
+            ORDER BY embedding <=> CAST(:embedding AS vector({EMBEDDING_DIM}))
             LIMIT :limit
         """),
         {

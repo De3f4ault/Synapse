@@ -5,7 +5,7 @@ Hybrid Architecture:
 - Notes/Flashcards → PostgreSQL (pgvector) for hybrid BM25+vector search
 - Documents → Qdrant (existing pipeline) for complex chunking
 
-Uses sentence-transformers/all-MiniLM-L6-v2 (384 dimensions).
+Uses embedding model defined in boundary.py (dimension from EMBEDDING_DIM).
 
 Memory Notes:
 - PyTorch + Sentence-Transformers requires ~950MB on import
@@ -19,7 +19,7 @@ from celery import group
 from sqlalchemy import text
 
 from app.services.background.celery_app import celery_app
-from app.core.ai.embeddings.boundary import get_embedder
+from app.core.ai.embeddings.boundary import get_embedder, EMBEDDING_DIM
 
 logger = structlog.get_logger(__name__)
 
@@ -82,9 +82,9 @@ def generate_note_embedding_task(
         with SessionLocal() as db:
             # Use CAST() instead of :: to avoid SQLAlchemy parameter parsing issues
             result = db.execute(
-                text("""
+                text(f"""
                     UPDATE developer_schema.notes 
-                    SET embedding = CAST(:embedding AS vector(384))
+                    SET embedding = CAST(:embedding AS vector({EMBEDDING_DIM}))
                     WHERE id = :note_id AND deleted_at IS NULL
                 """),
                 {"embedding": embedding_str, "note_id": note_id},
@@ -163,9 +163,9 @@ def generate_flashcard_embedding_task(
         with SessionLocal() as db:
             # Use CAST() instead of :: to avoid SQLAlchemy parameter parsing issues
             result = db.execute(
-                text("""
+                text(f"""
                     UPDATE developer_schema.flashcards 
-                    SET content_embedding = CAST(:embedding AS vector(384))
+                    SET content_embedding = CAST(:embedding AS vector({EMBEDDING_DIM}))
                     WHERE id = :flashcard_id AND deleted_at IS NULL
                 """),
                 {"embedding": embedding_str, "flashcard_id": flashcard_id},
