@@ -91,6 +91,7 @@ class AgentState:
         self.iterations: int = 0
         self.tool_calls: List[Dict] = []
         self.metadata: Dict[str, Any] = {}
+        self.output: str = ""  # Accumulated output for post-execution middleware
         self.start_time: float = time.time()
 
     def add_message(self, message: Any) -> None:
@@ -363,16 +364,43 @@ class BaseAgent(ABC):
         state = AgentState()
         context = context or {}
 
+        # Expose input to middleware (same as execute())
+        context["input"] = input
+
+        # Override model if orchestrator specified a model_key for multimodal upgrade
+        # Only apply when image data is present — otherwise trust the agent's own router
+        model_key_override = context.get("model_key")
+        has_images = bool(context.get("image_bytes"))
+        if model_key_override and has_images:
+            from app.core.ai.registry.models import MODEL_REGISTRY
+            from app.core.ai.providers.factory import get_provider as get_provider_by_name
+            descriptor = MODEL_REGISTRY.get(model_key_override)
+            if descriptor and descriptor.model_id != model_id:
+                self.logger.info(
+                    "agent_model_override",
+                    original_model=model_id,
+                    override_model=descriptor.model_id,
+                    override_key=model_key_override,
+                    reason="orchestrator model_key override",
+                )
+                model_id = descriptor.model_id
+                llm = get_provider_by_name(descriptor.provider)
+
         try:
             self.logger.info(
                 "agent_stream_started",
                 user_id=user_id,
                 input_length=len(input),
                 model=model_id,
-                provider=routing_decision.provider,
+                provider=type(llm).__name__,
             )
 
-            # Build system prompt
+            # ================================================================
+            # PRE-EXECUTION MIDDLEWARE (e.g., GroundingMiddleware retrieves evidence)
+            # ================================================================
+            await self._run_middleware_stage("pre", state, context, user_id)
+
+            # Build system prompt (now has context["grounding"] from middleware)
             system_prompt = await self._get_system_prompt(context)
             state.add_message(SystemMessage(content=system_prompt))
 
@@ -401,12 +429,25 @@ class BaseAgent(ABC):
                 iteration_text = ""
                 pending_tool_calls = []
 
+                # Build extra kwargs for provider (e.g., image_bytes for vision)
+                provider_kwargs = {}
+                image_bytes = context.get("image_bytes")
+                if image_bytes:
+                    provider_kwargs["image_bytes"] = image_bytes
+                    self.logger.info(
+                        "agent_image_passthrough",
+                        image_count=len(image_bytes),
+                        provider=type(llm).__name__,
+                        model=model_id,
+                    )
+
                 # Stream from LLM
                 async for chunk in llm.stream_with_tools(
                     prompt=prompt,
                     tools=tools,
                     model=model_id,  # Use routed model_id, not deprecated config.model
                     temperature=self.config.temperature,
+                    **provider_kwargs,
                 ):
                     chunk_type = chunk.get("type")
 
@@ -478,6 +519,16 @@ class BaseAgent(ABC):
                         )
                     )
 
+            # ================================================================
+            # POST-EXECUTION MIDDLEWARE (e.g., citation tracking)
+            # ================================================================
+            # Expose accumulated output for after_execution() analysis
+            state.output = iteration_text
+            await self._run_middleware_stage("post", state, context, user_id)
+
+            # Extract grounding sources from middleware metadata
+            grounding_sources = state.metadata.get("grounding_sources")
+
             # Final completion message
             yield {
                 "type": "complete",
@@ -487,6 +538,7 @@ class BaseAgent(ABC):
                 "total_tokens": self._count_tokens(state.messages),
                 "execution_time_ms": state.get_execution_time_ms(),
                 "model": self.config.model,
+                "grounding_sources": grounding_sources,
             }
 
             self.logger.info(
@@ -494,6 +546,7 @@ class BaseAgent(ABC):
                 user_id=user_id,
                 iterations=state.iterations,
                 tool_calls=len(state.tool_calls),
+                grounded=grounding_sources is not None,
             )
 
         except Exception as e:

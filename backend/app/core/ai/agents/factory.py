@@ -243,6 +243,13 @@ class AgentFactory:
                 "model": DEFAULT_CHAT_MODEL,  # Fast model for orchestration
                 "temperature": 0.4,  # Balanced creativity
                 "max_iterations": 12,  # Allow complex operations
+                "default_tools": [
+                    "search_notes",
+                    "search_flashcards",
+                ],
+                "default_middleware": [
+                    GroundingMiddleware(),  # Inject RAG evidence for grounding
+                ],
             },
             "general": {
                 "display_name": "AI Assistant",
@@ -280,7 +287,10 @@ class AgentFactory:
         for tool_name in tool_names:
             try:
                 tool = self.tool_registry.get_tool(tool_name)
-                tools.append(tool)
+                if tool is not None:
+                    tools.append(tool)
+                else:
+                    self.logger.warning("tool_not_found", tool=tool_name)
             except Exception as e:
                 self.logger.warning("tool_load_failed", tool=tool_name, error=str(e))
         return tools
