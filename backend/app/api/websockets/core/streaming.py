@@ -60,6 +60,7 @@ async def stream_and_broadcast(
     mode_id: str | None = None,
     model_override: str | None = None,
     extra_data: dict | None = None,
+    image_bytes: list[bytes] | None = None,
 ) -> StreamResult:
     """
     Stream orchestrator output to the client via channel broadcasts.
@@ -79,6 +80,7 @@ async def stream_and_broadcast(
         model_override: Optional model key override.
         extra_data: Extra fields merged into every broadcast
                      (e.g. {"thread_id": 5} or {"branch_parent_id": 10}).
+        image_bytes: Optional list of raw image bytes for vision models.
 
     Returns:
         StreamResult with accumulated content, metadata, and success flag.
@@ -99,6 +101,8 @@ async def stream_and_broadcast(
         stream_kwargs["mode_id"] = mode_id
     if model_override:
         stream_kwargs["model_override"] = model_override
+    if image_bytes:
+        stream_kwargs["image_bytes"] = image_bytes
 
     async for chunk in orchestrator.handle_message_stream(**stream_kwargs):
         chunk_type = chunk.get("type")
