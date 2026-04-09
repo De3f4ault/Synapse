@@ -933,6 +933,7 @@ class ChatService:
             grounding_sources=msg.grounding_sources
             if isinstance(msg.grounding_sources, dict)
             else None,
+            attachments=msg.attachments,
             created_at=msg.created_at,
             parent_message_id=msg.parent_message_id,
             version=msg.version,
@@ -974,6 +975,7 @@ class ChatService:
             grounding_sources=msg.grounding_sources
             if isinstance(msg.grounding_sources, dict)
             else None,
+            attachments=msg.attachments,
             created_at=msg.created_at,
         )
 

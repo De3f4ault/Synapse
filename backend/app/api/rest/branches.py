@@ -290,6 +290,7 @@ async def create_branch(
         model_used=branch_message.model_used,
         function_calls=None,
         grounding_sources=None,
+        attachments=branch_message.attachments,
         created_at=branch_message.created_at,
     )
 
@@ -471,6 +472,7 @@ async def get_active_path(
             grounding_sources=msg.grounding_sources
             if isinstance(msg.grounding_sources, dict)
             else None,
+            attachments=msg.attachments,
             created_at=msg.created_at,
         )
         for msg in messages

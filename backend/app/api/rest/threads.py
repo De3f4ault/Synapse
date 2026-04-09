@@ -312,6 +312,7 @@ async def get_thread_messages(
             grounding_sources=msg.grounding_sources
             if isinstance(msg.grounding_sources, dict)
             else None,
+            attachments=msg.attachments,
             created_at=msg.created_at,
         )
         for msg in messages
@@ -436,6 +437,7 @@ async def create_thread_message(
             model_used=assistant_message.model_used,
             function_calls=None,
             grounding_sources=None,
+            attachments=assistant_message.attachments,
             created_at=assistant_message.created_at,
         )
 
@@ -456,5 +458,6 @@ async def create_thread_message(
             model_used=message.model_used,
             function_calls=None,
             grounding_sources=None,
+            attachments=message.attachments,
             created_at=message.created_at,
         )
