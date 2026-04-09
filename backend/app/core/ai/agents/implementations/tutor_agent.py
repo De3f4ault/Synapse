@@ -74,7 +74,16 @@ class TutorAgent(BaseAgent):
                 and hasattr(grounding, "formatted_prompt_block")
                 and grounding.formatted_prompt_block
             ):
-                mode_prompt += f"\n\n**Relevant Context from Student's Notes:**\n{grounding.formatted_prompt_block}\n\nUse the evidence above when relevant. If evidence does not fully answer the question, say so explicitly and guide the student to discover the answer."
+                mode_prompt += (
+                    f"\n\n**Relevant Context from Student's Materials:**\n"
+                    f"{grounding.formatted_prompt_block}\n\n"
+                    "**Citation Instructions:** When you use information from the sources above, "
+                    "you MUST cite it inline using the format [Source N] where N is the source number "
+                    "(e.g. [Source 1], [Source 2]). Place the citation immediately after the sentence "
+                    "that uses the information. If a sentence draws on multiple sources, list all of them "
+                    "(e.g. [Source 1][Source 3]). If the evidence does not fully answer the question, "
+                    "say so explicitly and guide the student to discover the answer."
+                )
             return mode_prompt
 
         # Default Socratic tutor prompt
@@ -229,7 +238,16 @@ Now, let's help this student learn! 🎓"""
             and hasattr(grounding, "formatted_prompt_block")
             and grounding.formatted_prompt_block
         ):
-            prompt += f"\n\n**Relevant Context from Student's Notes:**\n{grounding.formatted_prompt_block}\n\nUse the evidence above when relevant. If evidence does not fully answer the question, say so explicitly and guide the student to discover the answer."
+            prompt += (
+                f"\n\n**Relevant Context from Student's Materials:**\n"
+                f"{grounding.formatted_prompt_block}\n\n"
+                "**Citation Instructions:** When you use information from the sources above, "
+                "you MUST cite it inline using the format [Source N] where N is the source number "
+                "(e.g. [Source 1], [Source 2]). Place the citation immediately after the sentence "
+                "that uses the information. If a sentence draws on multiple sources, list all of them "
+                "(e.g. [Source 1][Source 3]). If the evidence does not fully answer the question, "
+                "say so explicitly and guide the student to discover the answer."
+            )
 
         return prompt
 

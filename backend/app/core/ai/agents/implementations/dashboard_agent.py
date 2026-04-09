@@ -254,6 +254,24 @@ learning journey. Be their intelligent co-pilot, not a passive assistant.
 Let's help them learn smarter! 🚀
 """
 
+        # Inject grounding evidence if available
+        grounding = context.get("grounding")
+        if (
+            grounding
+            and hasattr(grounding, "formatted_prompt_block")
+            and grounding.formatted_prompt_block
+        ):
+            prompt += (
+                f"\n\n**Relevant Context from User's Knowledge Base:**\n"
+                f"{grounding.formatted_prompt_block}\n\n"
+                "**Citation Instructions:** When you use information from the sources above, "
+                "you MUST cite it inline using the format [Source N] where N is the source number "
+                "(e.g. [Source 1], [Source 2]). Place the citation immediately after the sentence "
+                "that uses the information. If a sentence uses multiple sources, list all "
+                "(e.g. [Source 1][Source 3]). If the context does not fully answer the question, "
+                "say so honestly and provide your best answer."
+            )
+
         return prompt
 
 

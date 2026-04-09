@@ -50,7 +50,16 @@ class GeneralAssistantAgent(BaseAgent):
                 and hasattr(grounding, "formatted_prompt_block")
                 and grounding.formatted_prompt_block
             ):
-                mode_prompt += f"\n\n**Relevant Context from User's Materials:**\n{grounding.formatted_prompt_block}\n\nUse this context when relevant to provide accurate, grounded answers."
+                mode_prompt += (
+                    f"\n\n**Relevant Context from User's Materials:**\n"
+                    f"{grounding.formatted_prompt_block}\n\n"
+                    "**Citation Instructions:** When you use information from the sources above, "
+                    "you MUST cite it inline using the format [Source N] where N is the source number "
+                    "(e.g. [Source 1], [Source 2]). Place the citation immediately after the sentence "
+                    "that uses the information. If a sentence uses multiple sources, list all "
+                    "(e.g. [Source 1][Source 3]). If the context does not fully answer the question, "
+                    "say so honestly and provide your best answer."
+                )
             return mode_prompt
 
         # Default general assistant prompt (used when no mode is selected)
@@ -145,7 +154,16 @@ When the topic warrants it, create inline study materials:
             and hasattr(grounding, "formatted_prompt_block")
             and grounding.formatted_prompt_block
         ):
-            prompt += f"\n\n**Relevant Context from User's Materials:**\n{grounding.formatted_prompt_block}\n\nUse this context when relevant to provide accurate, grounded answers."
+            prompt += (
+                f"\n\n**Relevant Context from User's Materials:**\n"
+                f"{grounding.formatted_prompt_block}\n\n"
+                "**Citation Instructions:** When you use information from the sources above, "
+                "you MUST cite it inline using the format [Source N] where N is the source number "
+                "(e.g. [Source 1], [Source 2]). Place the citation immediately after the sentence "
+                "that uses the information. If a sentence uses multiple sources, list all "
+                "(e.g. [Source 1][Source 3]). If the context does not fully answer the question, "
+                "say so honestly and provide your best answer."
+            )
 
         return prompt
 
