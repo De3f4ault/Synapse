@@ -137,6 +137,7 @@ async def handle_chat_message(
     compare: bool = False,
     models: list | None = None,
     mode: str = "socratic",
+    attachment_ids: list[int] | None = None,
 ):
     """Handle a new chat message — save, stream AI response, persist."""
     from app.modules.chat.interface import ChatSession, ChatMessage, MessageRole
@@ -166,11 +167,63 @@ async def handle_chat_message(
                 })
                 return
 
+            # Load attachment metadata from Document records
+            attachments_jsonb = None
+            image_bytes: list[bytes] = []
+
+            if attachment_ids:
+                from app.models.document import Document
+                import os
+
+                doc_result = await db.execute(
+                    select(Document).where(
+                        and_(
+                            Document.id.in_(attachment_ids),
+                            Document.user_id == user_id,
+                            Document.deleted_at.is_(None),
+                        )
+                    )
+                )
+                docs = doc_result.scalars().all()
+
+                attachments_jsonb = []
+                for doc in docs:
+                    attachments_jsonb.append({
+                        "document_id": doc.id,
+                        "filename": doc.filename,
+                        "content_type": doc.mime_type or doc.file_type,
+                        "size_bytes": doc.file_size,
+                    })
+
+                    # Load image bytes for vision models
+                    mime = (doc.mime_type or "").lower()
+                    if mime.startswith("image/"):
+                        file_path = doc.file_path
+                        if not os.path.isabs(file_path):
+                            file_path = os.path.join("data", file_path)
+                        try:
+                            with open(file_path, "rb") as f:
+                                image_bytes.append(f.read())
+                        except FileNotFoundError:
+                            logger.warning(
+                                "attachment_file_not_found",
+                                document_id=doc.id,
+                                path=file_path,
+                            )
+
+                logger.info(
+                    "attachments_loaded",
+                    session_id=session_id,
+                    count=len(attachments_jsonb),
+                    images=len(image_bytes),
+                )
+
             user_message = ChatMessage(
                 session_id=session_id,
                 role=MessageRole.USER,
                 content=content,
                 tokens=max(1, len(content) // 4),
+                attachments=attachments_jsonb,
             )
             db.add(user_message)
             await db.commit()
@@ -236,6 +289,15 @@ async def handle_chat_message(
             )
         else:
             orchestrator = get_orchestrator()
+            _ib = image_bytes if image_bytes else None
+            logger.info(
+                "stream_handoff",
+                session_id=session_id,
+                attachment_ids=attachment_ids,
+                image_bytes_count=len(image_bytes) if image_bytes else 0,
+                image_bytes_sizes=[len(b) for b in image_bytes] if image_bytes else [],
+                passing_images=_ib is not None,
+            )
             sr = await stream_and_broadcast(
                 orchestrator=orchestrator,
                 message=content,
@@ -245,6 +307,7 @@ async def handle_chat_message(
                 chat_history=chat_history,
                 context=context,
                 mode_id=mode,
+                image_bytes=_ib,
             )
 
         # ── 4. Persist assistant message ─────────────────────────────────

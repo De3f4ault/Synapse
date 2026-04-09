@@ -190,6 +190,7 @@ async def _dispatch_chat(user_id: int, data: dict, websocket: WebSocket):
             compare=data.get("compare", False),
             models=data.get("models"),
             mode=data.get("mode", "socratic"),
+            attachment_ids=data.get("attachment_ids"),
         )
     except Exception as e:
         logger.error("chat_dispatch_error", error=str(e))
