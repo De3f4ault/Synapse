@@ -41,7 +41,9 @@ interface ChatWSMessage {
     | 'stopped'
     | 'error'
     | 'tool_call'
-    | 'tool_result';
+    | 'tool_result'
+    | 'model_upgraded'
+    | 'warning';
     channel?: string;
     data?: any;
     event?: string;
@@ -140,7 +142,12 @@ export function useChatStreaming({
                     console.log('[Chat] Stream complete:', {
                         total_tokens: eventData.total_tokens,
                         model: eventData.model_used,
+                        grounding_sources: eventData.grounding_sources?.length ?? 0,
                     });
+                    // Capture grounding sources from complete event
+                    if (eventData.grounding_sources && eventData.grounding_sources.length > 0) {
+                        actions.setSources(eventData.grounding_sources);
+                    }
                     // Handle comparison mode: mark individual slot complete
                     if (eventData.model_slot && actions.isComparisonMode) {
                         actions.markSlotComplete(eventData.model_slot);
@@ -232,6 +239,16 @@ export function useChatStreaming({
                     });
                     break;
 
+                case 'model_upgraded':
+                    console.log('[Chat] Model upgraded for vision:', eventData.original_model, '→', eventData.upgraded_to);
+                    // Toast-style: log prominently, clear after streaming completes
+                    actions.setModel(eventData.upgraded_to || '');
+                    break;
+
+                case 'warning':
+                    console.warn('[Chat] Warning:', eventData.message);
+                    break;
+
                 default:
                     console.warn('[Chat] Unknown message type:', eventType);
             }
@@ -302,12 +319,13 @@ export function useChatStreaming({
     // ==================== SEND MESSAGE ====================
 
     const sendMessage = useCallback(
-        (content: string) => {
+        (content: string, options?: { attachmentIds?: number[] }) => {
             const state = useChatStore.getState();
             const chatMode = state.chatMode;
             const isComparisonMode = state.isComparisonMode;
             const selectedModels = state.selectedModels;
             const selectedModel = state.selectedModel;
+            const attachmentIds = options?.attachmentIds;
             
             console.log('[Chat] sendMessage:', {
                 contentLength: content.length,
@@ -318,6 +336,7 @@ export function useChatStreaming({
                 model: selectedModel,
                 compare: isComparisonMode,
                 models: isComparisonMode ? selectedModels : undefined,
+                attachments: attachmentIds?.length ?? 0,
             });
 
             if (!manager.isConnected()) {
@@ -350,6 +369,11 @@ export function useChatStreaming({
                     model_used: null,
                     function_calls: null,
                     grounding_sources: null,
+                    attachments: attachmentIds ? attachmentIds.map(id => ({
+                        document_id: id,
+                        filename: 'uploading...',
+                        content_type: 'image/*',
+                    })) : null,
                     created_at: new Date().toISOString(),
                 };
 
@@ -377,15 +401,19 @@ export function useChatStreaming({
                     message.compare = true;
                     message.models = selectedModels;
                 }
+
+                // Add attachment IDs for multimodal messages
+                if (attachmentIds && attachmentIds.length > 0) {
+                    message.attachment_ids = attachmentIds;
+                }
                 
                 manager.send(message);
-                console.log('[Chat] Message sent with mode:', chatMode, selectedModel ? `(model: ${selectedModel})` : '', isComparisonMode ? `(comparing: ${selectedModels.join(' vs ')})` : '');
+                console.log('[Chat] Message sent with mode:', chatMode, selectedModel ? `(model: ${selectedModel})` : '', isComparisonMode ? `(comparing: ${selectedModels.join(' vs ')})` : '', attachmentIds?.length ? `(attachments: ${attachmentIds.length})` : '');
 
 
                 // Clear any previous streaming state
-                const state = useChatStore.getState();
-                state.clearStreaming();
-                state.setIsStreaming(true);
+                useChatStore.getState().clearStreaming();
+                useChatStore.getState().setIsStreaming(true);
 
                 return true;
             } catch (error) {
