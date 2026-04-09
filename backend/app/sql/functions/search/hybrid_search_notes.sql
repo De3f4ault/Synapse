@@ -2,11 +2,15 @@
 -- Hybrid Search Function for Notes
 -- Combines BM25 (pg_search) and Semantic (pgvector) search using RRF
 -- Based on official ParadeDB documentation patterns
+--
+-- NOTE: Vector dimension (768) must match boundary.EMBEDDING_DIM.
+-- If the embedding model changes, update the parameter type here and
+-- run the corresponding Alembic migration to ALTER column types.
 -- =============================================================================
 CREATE OR REPLACE FUNCTION developer_schema.hybrid_search_notes(
         p_user_id INT,
         p_query TEXT,
-        p_query_embedding VECTOR(384) DEFAULT NULL,
+        p_query_embedding VECTOR(768) DEFAULT NULL,
         p_limit INT DEFAULT 20,
         p_k INT DEFAULT 60,
         p_search_mode TEXT DEFAULT 'hybrid',
@@ -33,8 +37,8 @@ v_do_bm25 := p_search_mode IN ('bm25', 'hybrid');
 v_do_semantic := p_search_mode IN ('semantic', 'hybrid')
 AND p_query_embedding IS NOT NULL;
 -- Convert embedding to string format for SQL
-IF p_query_embedding IS NOT NULL THEN v_embedding_str := '''' || p_query_embedding::TEXT || '''::vector(384)';
-ELSE v_embedding_str := 'NULL::vector(384)';
+IF p_query_embedding IS NOT NULL THEN v_embedding_str := '''' || p_query_embedding::TEXT || '''::vector(768)';
+ELSE v_embedding_str := 'NULL::vector(768)';
 END IF;
 -- Build BM25 CTE - use subquery to avoid RANK() OVER pdb.score() issue
 IF v_do_bm25 THEN v_bm25_sql := '
@@ -137,7 +141,7 @@ $func$;
 COMMENT ON FUNCTION developer_schema.hybrid_search_notes(
     INT,
     TEXT,
-    VECTOR(384),
+    VECTOR(768),
     INT,
     INT,
     TEXT,
@@ -148,7 +152,7 @@ Uses two-stage approach for BM25 to avoid pg_search RANK() OVER limitations.
 Parameters:
   - p_user_id: Filter results by user
   - p_query: Text search query  
-  - p_query_embedding: Vector embedding (for semantic search, optional)
+  - p_query_embedding: Vector embedding (768d, must match boundary.EMBEDDING_DIM)
   - p_limit: Maximum results to return (default 20)
   - p_k: RRF smoothing constant (default 60)
   - p_search_mode: bm25|semantic|hybrid (default hybrid)
