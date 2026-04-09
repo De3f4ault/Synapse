@@ -293,7 +293,23 @@ class OllamaProvider(AIProvider):
             client = self._get_client()
 
             # Build messages
-            messages = [{"role": "user", "content": prompt}]
+            user_message = {"role": "user", "content": prompt}
+
+            # Inject images for vision models (e.g., qwen3-vl)
+            image_bytes_list = kwargs.get("image_bytes")
+            if image_bytes_list:
+                import base64
+                user_message["images"] = [
+                    base64.b64encode(img).decode("utf-8")
+                    for img in image_bytes_list
+                ]
+                logger.info(
+                    "ollama_injecting_images",
+                    model=model_name,
+                    count=len(image_bytes_list),
+                )
+
+            messages = [user_message]
 
             # Stream response
             total_text = ""
@@ -353,4 +369,4 @@ class OllamaProvider(AIProvider):
         return True
 
     def supports_multimodal(self) -> bool:
-        return False  # Ollama multimodal support varies by model
+        return True  # VL models (qwen3-vl) support vision via images field

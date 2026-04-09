@@ -213,6 +213,7 @@ class AgentOrchestrator:
         mode_id: str = "socratic",
         tier_override: Optional[str] = None,
         model_override: Optional[str] = None,
+        image_bytes: Optional[List[bytes]] = None,
     ):
         """
         Handle incoming user message with streaming response.
@@ -268,6 +269,57 @@ class AgentOrchestrator:
                 tier_override=tier_override,
                 resolved_model=model_key,
             )
+
+            # 2.5. Multimodal intercept — auto-upgrade to vision model if needed
+            if image_bytes:
+                from app.core.ai.registry.models import get_model as get_model_desc
+
+                # Vision upgrade map: provider → best vision model
+                VISION_UPGRADES = {
+                    "ollama": "qwen3_vl",
+                    "google": "gemini_flash",
+                }
+
+                try:
+                    model_desc = get_model_desc(model_key)
+                    if model_override and not model_desc.supports_multimodal:
+                        # RULE 1: Explicit override is sacred — warn, don't override
+                        self.logger.info(
+                            "multimodal_override_warning",
+                            model=model_key,
+                            reason="User-selected model doesn't support vision",
+                        )
+                        yield {
+                            "type": "warning",
+                            "message": (
+                                f"{model_desc.model_id} doesn't support images. "
+                                f"Sending text only. Switch to a vision model for image analysis."
+                            ),
+                        }
+                        image_bytes = []  # Strip images, send text only
+
+                    elif not model_desc.supports_multimodal:
+                        # RULE 3: Auto-upgrade
+                        upgrade_key = VISION_UPGRADES.get(model_desc.provider, "qwen3_vl")
+                        self.logger.info(
+                            "multimodal_auto_upgrade",
+                            original=model_key,
+                            upgraded_to=upgrade_key,
+                        )
+                        yield {
+                            "type": "model_upgraded",
+                            "original_model": model_key,
+                            "upgraded_to": upgrade_key,
+                            "reason": "Image attachment detected",
+                        }
+                        model_key = upgrade_key
+
+                    # else: RULE 2 — model already supports vision, proceed
+                except KeyError:
+                    self.logger.warning(
+                        "multimodal_intercept_model_not_found",
+                        model_key=model_key,
+                    )
 
             # 3. Route to agent - conditionally use intent classification
             # If mode has explicit agent_name, use it directly (skip classifier)
@@ -341,6 +393,16 @@ class AgentOrchestrator:
                 "model_key": model_key,
                 "mode_system_prompt": mode_prompt,
             }
+
+            # Inject image bytes into context for vision models
+            if image_bytes:
+                enhanced_context["image_bytes"] = image_bytes
+                self.logger.info(
+                    "orchestrator_image_inject",
+                    image_count=len(image_bytes),
+                    image_sizes=[len(b) for b in image_bytes],
+                    model_key=model_key,
+                )
 
             # 8. Stream from agent with fallback support
             async def stream_with_fallback(model: str, retries: int = 1):

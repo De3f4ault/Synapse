@@ -543,9 +543,41 @@ class GeminiProvider(BaseProvider):
             total_text = ""
             tool_calls = []
 
+            # Build contents — multimodal if images provided
+            image_bytes_list = kwargs.get("image_bytes")
+            if image_bytes_list:
+                from google.genai import types
+                import imghdr
+
+                # MIME type detection from bytes
+                def _detect_mime(data: bytes) -> str:
+                    img_type = imghdr.what(None, h=data)
+                    mime_map = {
+                        "png": "image/png",
+                        "jpeg": "image/jpeg",
+                        "gif": "image/gif",
+                        "webp": "image/webp",
+                    }
+                    return mime_map.get(img_type, "image/png")
+
+                contents = [types.Part.from_text(text=prompt)]
+                for img_data in image_bytes_list:
+                    mime = _detect_mime(img_data)
+                    contents.append(
+                        types.Part.from_bytes(data=img_data, mime_type=mime)
+                    )
+
+                self.logger.info(
+                    "gemini_injecting_images",
+                    model=model_name,
+                    count=len(image_bytes_list),
+                )
+            else:
+                contents = prompt
+
             # Use async streaming (tools are in config)
             stream = await self.client.aio.models.generate_content_stream(
-                model=model_name, contents=prompt, config=gen_config
+                model=model_name, contents=contents, config=gen_config
             )
 
             async for chunk in stream:
