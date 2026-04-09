@@ -22,6 +22,8 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 import structlog
 
+from app.core.ai.embeddings.boundary import EMBEDDING_DIM
+
 logger = structlog.get_logger(__name__)
 
 
@@ -74,7 +76,7 @@ class SemanticNeighborService:
 
         Args:
             db: Database session
-            embedding: 384-dim embedding vector to search around
+            embedding: Embedding vector to search around
             user_id: User ID for data isolation
             entity_types: List of types to include ["flashcard", "note", "question"]
             limit: Max neighbors to return per type
@@ -96,19 +98,19 @@ class SemanticNeighborService:
         if "flashcard" in entity_types:
             try:
                 result = await db.execute(
-                    text("""
+                    text(f"""
                     SELECT 
                         f.id, 
                         'flashcard' as entity_type,
                         LEFT(f.front_text, 100) as content_preview,
-                        1.0 - (f.content_embedding <=> :embedding::vector(384)) as similarity
+                        1.0 - (f.content_embedding <=> :embedding::vector({EMBEDDING_DIM})) as similarity
                     FROM flashcards f
                     JOIN decks d ON d.id = f.deck_id
                     WHERE d.user_id = :user_id
                       AND f.content_embedding IS NOT NULL
                       AND f.deleted_at IS NULL
-                      AND 1.0 - (f.content_embedding <=> :embedding::vector(384)) >= :min_sim
-                    ORDER BY f.content_embedding <=> :embedding::vector(384)
+                      AND 1.0 - (f.content_embedding <=> :embedding::vector({EMBEDDING_DIM})) >= :min_sim
+                    ORDER BY f.content_embedding <=> :embedding::vector({EMBEDDING_DIM})
                     LIMIT :limit
                 """),
                     {
@@ -135,18 +137,18 @@ class SemanticNeighborService:
         if "note" in entity_types:
             try:
                 result = await db.execute(
-                    text("""
+                    text(f"""
                     SELECT 
                         n.id, 
                         'note' as entity_type,
                         LEFT(n.title, 100) as content_preview,
-                        1.0 - (n.embedding <=> :embedding::vector(384)) as similarity
+                        1.0 - (n.embedding <=> :embedding::vector({EMBEDDING_DIM})) as similarity
                     FROM notes n
                     WHERE n.user_id = :user_id
                       AND n.embedding IS NOT NULL
                       AND n.deleted_at IS NULL
-                      AND 1.0 - (n.embedding <=> :embedding::vector(384)) >= :min_sim
-                    ORDER BY n.embedding <=> :embedding::vector(384)
+                      AND 1.0 - (n.embedding <=> :embedding::vector({EMBEDDING_DIM})) >= :min_sim
+                    ORDER BY n.embedding <=> :embedding::vector({EMBEDDING_DIM})
                     LIMIT :limit
                 """),
                     {
@@ -173,18 +175,18 @@ class SemanticNeighborService:
         if "question" in entity_types:
             try:
                 result = await db.execute(
-                    text("""
+                    text(f"""
                     SELECT 
                         qq.id, 
                         'question' as entity_type,
                         LEFT(qq.question_text, 100) as content_preview,
-                        1.0 - (qq.prompt_embedding <=> :embedding::vector(384)) as similarity
+                        1.0 - (qq.prompt_embedding <=> :embedding::vector({EMBEDDING_DIM})) as similarity
                     FROM quiz_questions qq
                     JOIN quizzes q ON q.id = qq.quiz_id
                     WHERE q.user_id = :user_id
                       AND qq.prompt_embedding IS NOT NULL
-                      AND 1.0 - (qq.prompt_embedding <=> :embedding::vector(384)) >= :min_sim
-                    ORDER BY qq.prompt_embedding <=> :embedding::vector(384)
+                      AND 1.0 - (qq.prompt_embedding <=> :embedding::vector({EMBEDDING_DIM})) >= :min_sim
+                    ORDER BY qq.prompt_embedding <=> :embedding::vector({EMBEDDING_DIM})
                     LIMIT :limit
                 """),
                     {
