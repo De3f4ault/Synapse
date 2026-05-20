@@ -29,7 +29,7 @@ class QdrantVectorRetriever(BaseRetriever):
         self,
         qdrant_client: QdrantClientWrapper,
         collection_manager: CollectionManager,
-        top_k: int = 20,
+        top_k: int = get_rag_config().retrieval_top_k,  # default from config, not a magic number
         **kwargs,
     ):
         """
@@ -56,6 +56,10 @@ class QdrantVectorRetriever(BaseRetriever):
 
         # Lazy-loaded sparse embedder (only initialized if hybrid is used)
         self._sparse_embedder = None
+
+        # ColBERT availability — checked once at init, cached for lifetime of retriever.
+        # Never checked per-query to avoid per-request Qdrant metadata calls.
+        self._colbert_ready: Optional[bool] = None
 
         # Query context set by pipeline before each retrieve() call
         self._query_context = {}
@@ -86,19 +90,44 @@ class QdrantVectorRetriever(BaseRetriever):
     # ── LlamaIndex interface ────────────────────────────────────
 
     def _retrieve(self, query_bundle: QueryBundle) -> List[NodeWithScore]:
-        """Synchronous fallback for LlamaIndex's BaseRetriever contract."""
+        """Sync fallback for LlamaIndex's BaseRetriever contract.
+
+        The primary call path is aretrieve() via rag_pipeline.query() (async).
+        This fallback exists for any LlamaIndex-internal sync callers.
+
+        Uses run_coroutine_threadsafe when a loop is already running (FastAPI/uvicorn),
+        which is the correct pattern — unlike asyncio.run() which crashes inside a
+        running event loop.
+        """
         import asyncio
-        from concurrent.futures import ThreadPoolExecutor
 
         try:
-            asyncio.get_running_loop()
-            with ThreadPoolExecutor(max_workers=1) as pool:
-                return pool.submit(asyncio.run, self._aretrieve(query_bundle)).result()
+            loop = asyncio.get_running_loop()
+            # Submit to the RUNNING loop from the current thread and block for result.
+            future = asyncio.run_coroutine_threadsafe(
+                self._aretrieve(query_bundle), loop
+            )
+            return future.result(timeout=30)
         except RuntimeError:
+            # No running loop — safe to call asyncio.run() directly.
             return asyncio.run(self._aretrieve(query_bundle))
 
     async def _aretrieve(self, query_bundle: QueryBundle) -> List[NodeWithScore]:
         """Async retrieve — dispatches to hybrid or dense-only path."""
+        # ── Maintenance gate ─────────────────────────────────────────────────────
+        # Set SYNAPSE_RAG_MAINTENANCE=true in .env during reindexing.
+        # Returns immediately so the context engine can surface a clean message
+        # instead of attempting to query a partially-built or empty collection.
+        if self._config.rag_maintenance:
+            logger.warning(
+                "rag_maintenance_mode_active",
+                msg="RAG is temporarily unavailable during reindexing.",
+            )
+            raise RuntimeError(
+                "RAG is temporarily unavailable while the knowledge base is being rebuilt. "
+                "Please try again shortly."
+            )
+
         query = query_bundle.query_str
 
         # Read metadata from _query_context (set by pipeline before each call)
@@ -111,11 +140,23 @@ class QdrantVectorRetriever(BaseRetriever):
             logger.error("user_id_missing_in_query_context")
             return []
 
-        # Resolve collection
-        collection_name = self.collection_manager._get_collection_name(int(user_id), source_type)
+        # === SHARED COLLECTION: synapse_dense ===
+        # Sprint 2 migration complete — all text + image vectors are in synapse_dense.
+        # Tenant isolation is enforced via user_id payload filter (KEYWORD index, set in Sprint 1).
+        # Old per-user collection name: self.collection_manager._get_collection_name(int(user_id), source_type)
+        collection_name = "synapse_dense"
+
+        # Ensure synapse_dense exists (idempotent — safe to call every time)
         if not self.collection_manager.collection_exists(collection_name):
-            logger.warning("collection_not_found", collection=collection_name, user_id=user_id)
-            return []
+            logger.warning("synapse_dense_missing_recreating", collection=collection_name)
+            try:
+                self.collection_manager.create_shared_collection()
+            except Exception as create_err:
+                logger.error("synapse_dense_creation_failed", error=str(create_err))
+                return []
+
+        # Store user_id filter on context so search methods can apply it
+        ctx["user_id_filter"] = str(user_id)
 
         # Compute dense embedding with query prefix (Nomic uses "search_query:")
         embedder = get_embedder()
@@ -125,28 +166,100 @@ class QdrantVectorRetriever(BaseRetriever):
             embedding = embedder.encode(query)
             dense_vector = embedding[0].tolist() if embedding.ndim > 1 else embedding.tolist()
 
-        # Decide search mode
+        # Decide search mode — priority: ColBERT > hybrid > dense
+        use_colbert = self._config.colbert_enable and self._is_colbert_ready()
         use_hybrid = self._should_use_hybrid(query_type)
 
-        if use_hybrid:
+        # Build the user_id payload filter for multi-tenant isolation in synapse_dense.
+        # This is a KEYWORD index match — fast pre-filter before ANN.
+        user_id_filter = ctx.get("user_id_filter", str(user_id))
+        _tenant_filter = {"user_id": user_id_filter}
+
+        if use_colbert:
+            results = await self._colbert_retrieve(
+                collection_name, query, dense_vector, filters=_tenant_filter
+            )
+        elif use_hybrid:
             results = await self._hybrid_retrieve(
-                collection_name, query, dense_vector
+                collection_name, query, dense_vector, filters=_tenant_filter
             )
         else:
             results = await self._dense_retrieve(
-                collection_name, dense_vector
+                collection_name, dense_vector, filters=_tenant_filter
             )
 
         # Convert Qdrant ScoredPoints → LlamaIndex NodeWithScore
-        return self._to_nodes(results, use_hybrid)
+        mode = "colbert" if use_colbert else ("hybrid" if use_hybrid else "dense")
+        return self._to_nodes(results, mode=mode)
 
     # ── Search dispatch ─────────────────────────────────────────
+
+    def _is_colbert_ready(self) -> bool:
+        """Check whether synapse_dense has a 'colbert' vector schema AND populated data.
+
+        ColBERT vectors now live inside synapse_dense alongside dense+bm25.
+        Ready condition: the 'colbert' named vector exists in the schema AND
+        at least one point has been backfilled (points_count > 0 is a proxy —
+        the real check is that the colbert slot is populated for at least some points,
+        but Qdrant doesn't expose per-vector fill counts without a scroll).
+
+        Only caches True — False is never stored permanently so the check auto-detects
+        when the backfill finishes without requiring an API restart.
+        """
+        if not self._colbert_ready:
+            try:
+                from app.core.ai.rag.vector_store.qdrant.collection_manager import SHARED_DENSE_COLLECTION
+                info = self.collection_manager.client.get_collection(SHARED_DENSE_COLLECTION)
+                vectors = info.config.params.vectors or {}
+                if "colbert" in vectors and info.points_count and info.points_count > 0:
+                    self._colbert_ready = True   # cache only on confirmed-ready
+                # Otherwise: leave False → recheck next call
+            except Exception:
+                pass   # collection doesn't exist yet — don't cache False
+        return bool(self._colbert_ready)
+
+    async def _colbert_retrieve(
+        self,
+        collection_name: str,
+        query: str,
+        dense_vector: List[float],
+        filters: Optional[dict] = None,
+    ) -> list:
+        """3-stage ColBERT retrieval: Dense+BM25 prefetch → RRF → MaxSim rerank."""
+        from app.core.ai.rag.embeddings.models.colbert_embedder import get_colbert_embedder
+
+        sparse_embedder = self._get_sparse_embedder()
+        sparse_vector = sparse_embedder.encode_query(query)
+
+        colbert_embedder = get_colbert_embedder()
+        query_colbert_matrix = colbert_embedder.encode_query(query)
+
+        cfg = self._config
+        logger.info(
+            "colbert_retrieval_start",
+            query=query[:50],
+            top_k=self.top_k,
+            candidate_limit=cfg.colbert_candidate_limit,
+        )
+
+        return await self.searcher.hybrid_colbert_search(
+            collection_name=collection_name,
+            dense_vector=dense_vector,
+            sparse_vector=sparse_vector,
+            query_colbert_matrix=query_colbert_matrix,
+            # colbert_collection removed — colbert lives in synapse_dense (unified)
+            limit=self.top_k,
+            candidate_limit=cfg.colbert_candidate_limit,
+            prefetch_limit=cfg.colbert_prefetch_limit,
+            filters=filters,
+        )
 
     async def _hybrid_retrieve(
         self,
         collection_name: str,
         query: str,
         dense_vector: List[float],
+        filters: Optional[dict] = None,
     ) -> list:
         """Hybrid search: dense + sparse BM25, server-side RRF fusion."""
         sparse_embedder = self._get_sparse_embedder()
@@ -156,6 +269,7 @@ class QdrantVectorRetriever(BaseRetriever):
             "hybrid_retrieval_start",
             query=query[:50],
             top_k=self.top_k,
+            collection=collection_name,
         )
 
         return await self.searcher.hybrid_search(
@@ -163,37 +277,28 @@ class QdrantVectorRetriever(BaseRetriever):
             dense_vector=dense_vector,
             sparse_vector=sparse_vector,
             limit=self.top_k,
+            prefetch_limit=self._config.hybrid_prefetch_limit,
+            filters=filters,
         )
 
     async def _dense_retrieve(
         self,
         collection_name: str,
         dense_vector: List[float],
+        filters: Optional[dict] = None,
     ) -> list:
-        """Dense-only search (fallback / v2 collections)."""
-        logger.info(
-            "dense_retrieval_start",
-            top_k=self.top_k,
+        """Dense-only search using the named 'dense' vector."""
+        logger.info("dense_retrieval_start", top_k=self.top_k, collection=collection_name)
+        return await self.searcher.dense_search_named(
+            collection_name=collection_name,
+            query_vector=dense_vector,
+            limit=self.top_k,
+            filters=filters,
         )
-
-        # Try named-vector search first (v3), fall back to unnamed (v2)
-        try:
-            return await self.searcher.dense_search_named(
-                collection_name=collection_name,
-                query_vector=dense_vector,
-                limit=self.top_k,
-            )
-        except Exception:
-            # v2 collection with unnamed vector
-            return await self.searcher.search(
-                collection_name=collection_name,
-                query_vector=dense_vector,
-                limit=self.top_k,
-            )
 
     # ── Conversion ──────────────────────────────────────────────
 
-    def _to_nodes(self, results: list, hybrid: bool = False) -> List[NodeWithScore]:
+    def _to_nodes(self, results: list, mode: str = "dense") -> List[NodeWithScore]:
         """Convert Qdrant ScoredPoints to LlamaIndex NodeWithScore."""
         nodes_with_scores = []
         for result in results:
@@ -205,7 +310,13 @@ class QdrantVectorRetriever(BaseRetriever):
                     "title": result.payload.get("title", "Untitled"),
                     "chunk_index": result.payload.get("chunk_index", 0),
                     "user_id": result.payload.get("user_id"),
-                    "retrieval_mode": "hybrid" if hybrid else "dense",
+                    "retrieval_mode": mode,
+                    # pg_chunk_id: Postgres DocumentChunk.id — used by rag_pipeline.py
+                    # parent-child swap to widen 512-token child → 2048-token parent.
+                    "pg_chunk_id": result.payload.get("pg_chunk_id"),
+                    # content_type + storage_path: image routing in grounding middleware.
+                    "content_type": result.payload.get("content_type", "text"),
+                    "storage_path": result.payload.get("storage_path"),
                 },
                 id_=str(result.id),
             )
@@ -214,7 +325,7 @@ class QdrantVectorRetriever(BaseRetriever):
         logger.info(
             "retrieval_complete",
             results=len(nodes_with_scores),
-            mode="hybrid" if hybrid else "dense",
+            mode=mode,
             top_score=nodes_with_scores[0].score if nodes_with_scores else 0,
         )
 

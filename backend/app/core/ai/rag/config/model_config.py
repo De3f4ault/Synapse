@@ -1,5 +1,16 @@
 """Model-specific configuration."""
 
+import os
+
+# ---------------------------------------------------------------------------
+# GLOBAL HUGGINGFACE OFFLINE LOCK
+# Must be set BEFORE any huggingface_hub / transformers import so nothing
+# slips through — including LlamaIndex adapters and sentence-transformers.
+# ---------------------------------------------------------------------------
+os.environ.setdefault("HF_HUB_OFFLINE", "1")
+os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
+os.environ.setdefault("HF_DATASETS_OFFLINE", "1")
+
 from pydantic_settings import BaseSettings
 from typing import Optional
 
@@ -26,7 +37,22 @@ class ModelConfig(BaseSettings):
     reranker_batch_size: int = 10
     reranker_device: str = "cpu"
     reranker_max_length: int = 512
-    
+
+    # ColBERT Late-Interaction Model (answerai-colbert-small-v1)
+    # 33M params, 96D token vectors, CPU-friendly, no CUDA required.
+    # Set SYNAPSE_MODEL_OFFLINE_MODE=false and run `make download-models`
+    # once to populate .model_cache/ before enabling.
+    colbert_model_name: str = "answerdotai/answerai-colbert-small-v1"
+    colbert_device: str = "cpu"
+    colbert_max_seq_length: int = 299   # 512 - 1 CLS - 1 SEP - 211 query tokens (safe truncation guard)
+    colbert_dim: int = 96              # Official answerai output dim — NOT 128
+
+    # Offline Mode
+    # When True, model loaders will raise immediately on a cache miss instead
+    # of attempting a network download. Flipped to False only for intentional
+    # one-time model pre-caching (e.g. make download-models).
+    offline_mode: bool = True
+
     # Model Cache
     model_cache_dir: str = ".model_cache"
     force_download: bool = False

@@ -16,6 +16,7 @@ from app.core.ai.rag.synapse_integration.learning_aware_reranker import Learning
 from app.core.ai.rag.query_enhancement.query_analyzer import QueryAnalyzer
 from app.core.ai.rag.query_enhancement.weak_area_expander import WeakAreaQueryExpander
 from app.core.ai.rag.query_enhancement.llm_expander import get_llm_expander, EnhancementStrategy
+from app.core.ai.rag.query_enhancement.semantic_router import get_semantic_router
 from app.core.ai.rag.synapse_integration.real_context_engine import get_context_integration
 
 logger = structlog.get_logger(__name__)
@@ -324,7 +325,30 @@ class RAGPipeline:
 
         logger.info("query_start", user_id=user_id, query=query[:50])
 
-        # === CACHE CHECK ===
+        # === SEMANTIC CACHE CHECK ===
+        # Check pgvector-based semantic cache FIRST.
+        # Near-miss queries (cosine sim ≥ 0.92) return instantly without
+        # touching Qdrant, Gemini, or the cross-encoder.
+        if self.config.enable_caching:
+            try:
+                from app.core.ai.rag.caching import get_rag_cache
+                cache = get_rag_cache()
+                semantic_hit = await cache.get_semantic_query_result(
+                    user_id=user_id,
+                    query=query,
+                    source_type=source_type,
+                )
+                if semantic_hit:
+                    logger.info(
+                        "query_semantic_cache_hit",
+                        user_id=user_id,
+                        query=query[:50],
+                    )
+                    return semantic_hit
+            except Exception as e:
+                logger.warning("semantic_cache_check_failed", error=str(e))
+
+        # === EXACT-MATCH CACHE CHECK ===
         # Check PostgreSQL-backed cache before running the full pipeline.
         # Cache key is user-scoped: different users have different collections.
         if self.config.enable_caching:
@@ -367,17 +391,21 @@ class RAGPipeline:
             # === Wire analyzer suggestions into retrieval ===
             suggestions = analysis.get("suggestions", {})
 
-            # Adaptive retrieve_k: factual=20, conceptual=50, clarify=30
+            # Adaptive retrieve_k: factual=20, conceptual=50, clarify=30.
+            # SINGLETON-SAFETY: do NOT mutate self.retriever.top_k permanently here.
+            # We restore the original value in the finally block below.
             suggested_k = suggestions.get("retrieval_top_k")
             if suggested_k and suggested_k != self.retriever.top_k:
-                original_k = self.retriever.top_k
-                self.retriever.top_k = min(suggested_k, 50)
+                # Cap: allow a small boost above the configured base but never
+                # more than base + 5 so cross-encoder budget stays bounded.
+                _adaptive_k = min(suggested_k, self.config.retrieval_top_k + 5)
                 logger.debug(
                     "adaptive_retrieve_k",
                     query_type=analysis["type"],
-                    original_k=original_k,
-                    suggested_k=self.retriever.top_k,
+                    original_k=self.retriever.top_k,
+                    suggested_k=_adaptive_k,
                 )
+                self.retriever.top_k = _adaptive_k
 
             # Expand with weak areas — pass pre-fetched context
             query = self.query_expander.expand_query(query, user_id, context=user_context)
@@ -387,6 +415,17 @@ class RAGPipeline:
 
         # Phase 3: LLM query enhancement (adaptive — skip for factual queries)
         if self.enable_llm_enhancement and self.llm_expander:
+            # Semantic router override: the keyword classifier defaults to FACTUAL
+            # for any query without trigger keywords. The MiniLM semantic router
+            # detects conceptual intent with >= 0.55 confidence and upgrades
+            # query_type to "conceptual" so HyDE fires correctly.
+            # retrieval_top_k from the keyword analyzer is untouched.
+            try:
+                semantic_router = get_semantic_router()
+                query_type = semantic_router.should_use_hyde(original_query, query_type)
+            except Exception as _sr_err:
+                logger.warning("semantic_router_skipped", error=str(_sr_err))
+
             # Adaptive gating: factual queries ("where does X...", "when was Y...")
             # don't benefit from LLM rewriting — keywords already match well.
             # Only rewrite conceptual, comparative, and procedural queries.
@@ -462,8 +501,16 @@ class RAGPipeline:
         # produces out-of-distribution negative scores.
         rerank_bundle = QueryBundle(query_str=original_query)
 
-        # Retrieve (uses enhanced query)
-        nodes = self.retriever.retrieve(retrieval_bundle)
+        # Retrieve (uses enhanced query).
+        # aretrieve() is the async path — query() is already async so this
+        # is the correct call. The old sync retrieve() triggered a broken
+        # asyncio.run()-inside-running-loop error via the ThreadPoolExecutor
+        # workaround in _retrieve(). top_k is restored in the finally block.
+        _original_retriever_k = self.retriever.top_k
+        try:
+            nodes = await self.retriever.aretrieve(retrieval_bundle)
+        finally:
+            self.retriever.top_k = _original_retriever_k
 
         # Rerank if enabled (Phase 1) — uses ORIGINAL query
         if self.enable_reranking and self.reranker and nodes:
@@ -500,11 +547,99 @@ class RAGPipeline:
                 )
             nodes = deduped_nodes
 
-        # Format results
+        # === CONTEXT ASSEMBLY: best-last ordering + token budget ===
+        #
+        # Best-last: reranker returns nodes sorted best→worst (score descending).
+        # Reversing puts the most relevant chunk LAST — closest to the user question.
+        # LLMs attend more reliably to content at the end of the context window
+        # (recency bias, "lost in the middle" effect). Best chunk = most attended.
+        #
+        # Token budget: 3,500 tokens ≈ 14,000 chars at 4 chars/token.
+        # Iterate through reversed (best→last in context) nodes, accumulate chars,
+        # drop any chunk that would exceed the budget. Dropped chunks are always
+        # the lowest-scoring ones (they appear first in the reversed list).
+        _CONTEXT_BUDGET_CHARS = 14_000  # ~3,500 tokens
+
+        # Reverse: worst→best in iteration order, best ends up last in the list
+        candidate_nodes = list(reversed(nodes[:top_k]))
+        budget_chars = 0
+        budget_nodes = []
+        chunks_dropped = 0
+        for node in candidate_nodes:
+            text = node.node.get_content()
+            if budget_chars + len(text) <= _CONTEXT_BUDGET_CHARS:
+                budget_nodes.append(node)
+                budget_chars += len(text)
+            else:
+                chunks_dropped += 1
+
+        if chunks_dropped:
+            logger.debug(
+                "context_assembly_budget_applied",
+                budget_chars=_CONTEXT_BUDGET_CHARS,
+                used_chars=budget_chars,
+                chunks_kept=len(budget_nodes),
+                chunks_dropped=chunks_dropped,
+            )
+
+        # === PARENT-CHILD SWAP: widen context for LLM generation ===
+        # For child chunks that have a parent (is_parent=False, parent_chunk_id SET),
+        # replace the narrow 512-token text with the 2048-token parent window.
+        # This improves answer quality without burning cross-encoder budget.
+        # Old documents (no parent set) and image chunks are skipped silently.
+        try:
+            from app.db.session import AsyncSessionLocal
+            from app.services.rag.parent_chunk_store import ParentChunkStore
+
+            # Collect Postgres chunk IDs from LlamaIndex node metadata
+            child_pg_ids = []
+            for node in budget_nodes:
+                pg_id = node.node.metadata.get("pg_chunk_id") or node.node.metadata.get("chunk_id")
+                if pg_id and str(pg_id).isdigit():
+                    child_pg_ids.append(int(pg_id))
+
+            if child_pg_ids:
+                async with AsyncSessionLocal() as _swap_session:
+                    parent_map = await ParentChunkStore.load_parent_texts(
+                        _swap_session, child_pg_ids
+                    )
+
+                # Build node → parent text lookup by matching pg_id
+                _pg_id_to_parent: Dict[int, str] = parent_map  # {child_pg_id: parent_content}
+                _parents_swapped = 0
+
+                # Rebuild budget_nodes list with parent text injected into node content
+                for node in budget_nodes:
+                    pg_id_raw = node.node.metadata.get("pg_chunk_id") or node.node.metadata.get("chunk_id")
+                    if pg_id_raw and str(pg_id_raw).isdigit():
+                        parent_text = _pg_id_to_parent.get(int(pg_id_raw))
+                        if parent_text:
+                            node.node.set_content(parent_text)
+                            _parents_swapped += 1
+
+                if _parents_swapped:
+                    logger.debug(
+                        "parent_child_swap_applied",
+                        chunks_swapped=_parents_swapped,
+                        total_chunks=len(budget_nodes),
+                    )
+        except Exception as _swap_err:
+            # Non-fatal — fall back to child text for all chunks
+            logger.warning("parent_child_swap_failed", error=str(_swap_err))
+
+        # Build chunk dicts — include content_type + storage_path for image routing (Sprint 2)
         chunks = [
-            {"text": node.node.get_content(), "score": node.score, "metadata": node.node.metadata}
-            for node in nodes[:top_k]
+            {
+                "text": node.node.get_content(),
+                "score": node.score,
+                "metadata": node.node.metadata,
+                "content_type": node.node.metadata.get("content_type", "text"),
+                "storage_path": node.node.metadata.get("storage_path"),
+            }
+            for node in budget_nodes
         ]
+
+
 
         # === CONFIDENCE METADATA ===
         top_score = chunks[0]["score"] if chunks else 0.0
@@ -536,15 +671,22 @@ class RAGPipeline:
         }
 
         # === CACHE STORE ===
-        # Store result in PostgreSQL cache for repeat queries.
-        # TTL: 30 min (default in PgRagCacheManager).
+        # Store result in both caches for maximum future hit rate.
+        # - Exact-match: instant lookup for identical repeat queries.
+        # - Semantic:    near-miss lookup for paraphrased variants (cosine ≥ 0.92).
         if self.config.enable_caching:
             try:
                 from app.core.ai.rag.caching import get_rag_cache
                 cache = get_rag_cache()
-                cache_key = f"{user_id}:{source_type}:{original_query}"
-                await cache.set_query_result(cache_key, result)
-                logger.debug("query_cached", cache_key=cache_key[:60])
+                exact_key = f"{user_id}:{source_type}:{original_query}"
+                await cache.set_query_result(exact_key, result)
+                await cache.set_semantic_query_result(
+                    user_id=user_id,
+                    query=original_query,
+                    result=result,
+                    source_type=source_type,
+                )
+                logger.debug("query_cached_both", exact_key=exact_key[:60])
             except Exception as e:
                 logger.warning("cache_store_failed", error=str(e))
 
@@ -595,3 +737,74 @@ class RAGPipeline:
             logger.debug("feedback_processed_successfully")
         except Exception as e:
             logger.error("feedback_processing_failed", error=str(e))
+
+
+# =============================================================================
+# Process-Wide Singleton
+# =============================================================================
+
+_pipeline_singleton: Optional["RAGPipeline"] = None
+
+
+def get_rag_pipeline() -> "RAGPipeline":
+    """Return the process-wide RAGPipeline singleton.
+
+    The pipeline is built with all Phase 1-3 features enabled, matching the
+    configuration previously hard-coded in UnifiedSearchService.rag_pipeline.
+
+    Thread/async safety: construction is synchronous and Python's GIL ensures
+    only one thread initialises the module-global at a time.
+    """
+    global _pipeline_singleton
+    if _pipeline_singleton is None:
+        logger.info("rag_pipeline_singleton_init", reason="first_access")
+        _pipeline_singleton = RAGPipeline(
+            # Phase 1: Cross-encoder reranking
+            enable_reranking=True,
+            # Phase 2: Learning-aware personalisation
+            enable_learning_aware=True,
+            enable_query_enhancement=True,
+            # Phase 3: LLM query enhancement + feedback loops
+            enable_llm_enhancement=True,
+            enable_feedback_loops=True,
+            llm_provider="gemini",
+            llm_enhancement_strategy="rewrite",
+        )
+    return _pipeline_singleton
+
+
+async def pre_warm_pipeline() -> None:
+    """Pre-warm heavy models attached to the pipeline singleton.
+
+    Called once from _init_rag at application startup so that:
+    - The sparse BM25 embedder is loaded from disk.
+    - The cross-encoder model weights are in memory.
+    - The ColBERT token embedder is loaded (when enabled).
+    - The first real user request sees zero cold-start delay.
+
+    Failures are suppressed — warm-up is best-effort.
+    """
+    try:
+        pipeline = get_rag_pipeline()
+
+        # 1. Force the sparse embedder to load (Qdrant/bm25 reads from disk)
+        from app.core.ai.rag.embeddings.sparse_embedder import get_sparse_embedder
+        get_sparse_embedder()
+        logger.info("pre_warm_sparse_embedder_done")
+
+        # 2. Force the cross-encoder model to load via get_cross_encoder_reranker
+        from app.core.ai.rag.reranking.models.cross_encoder import get_cross_encoder_reranker
+        get_cross_encoder_reranker()
+        logger.info("pre_warm_cross_encoder_done")
+
+        # 3. Force ColBERT embedder to load (only when feature flag is enabled)
+        from app.core.ai.rag.config.rag_config import get_rag_config
+        if get_rag_config().colbert_enable:
+            from app.core.ai.rag.embeddings.models.colbert_embedder import get_colbert_embedder
+            get_colbert_embedder()
+            logger.info("pre_warm_colbert_embedder_done")
+
+        logger.info("rag_pipeline_pre_warm_complete")
+    except Exception as e:
+        logger.warning("rag_pipeline_pre_warm_failed", error=str(e)[:200])
+

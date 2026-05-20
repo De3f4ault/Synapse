@@ -26,7 +26,7 @@ class VectorUpsert:
         """
         self.client = client
     
-    async def upsert_batch(
+    def upsert_batch(
         self,
         collection_name: str,
         vectors: List[np.ndarray],
@@ -73,7 +73,7 @@ class VectorUpsert:
             wait=True  # Wait for indexing
         )
         
-        logger.info(
+        logger.debug(
             "vectors_upserted",
             collection=collection_name,
             count=len(points)
@@ -81,7 +81,7 @@ class VectorUpsert:
         
         return len(points)
 
-    async def upsert_hybrid_batch(
+    def upsert_hybrid_batch(
         self,
         collection_name: str,
         dense_vectors: List[List[float]],
@@ -141,8 +141,79 @@ class VectorUpsert:
             )
             total += len(points)
 
-        logger.info(
+        logger.debug(
             "hybrid_vectors_upserted",
+            collection=collection_name,
+            count=total,
+        )
+
+        return total
+
+    def upsert_unified_batch(
+        self,
+        collection_name: str,
+        dense_vectors: List[List[float]],
+        sparse_vectors: List[models.SparseVector],
+        colbert_multivectors: List[List[List[float]]],
+        payloads: List[Dict[str, Any]],
+        ids: List[str],
+        batch_size: int = 20,
+    ) -> int:
+        """
+        Unified upsert: dense + BM25 sparse + ColBERT multivector in one PUT.
+
+        Replaces the old two-step pattern (upsert_hybrid_batch → upsert_colbert_batch).
+        One HTTP request per batch instead of two. Points are atomic — no state
+        where dense exists but colbert is missing.
+
+        ColBERT matrices are large (~115KB/chunk at 300 tokens × 96D × float32).
+        Default batch_size=20 keeps each request under Qdrant's 64MB gRPC limit.
+
+        Args:
+            collection_name: Target collection (synapse_dense with unified schema).
+            dense_vectors: List of 768D dense embeddings.
+            sparse_vectors: List of SparseVector objects (from fastembed BM25).
+            colbert_multivectors: Per-chunk token matrices — List[num_tokens × 96].
+            payloads: Metadata dicts (user_id, source_id, chunk_index, etc.).
+            ids: Deterministic UUIDs — must be consistent across re-ingestion.
+            batch_size: Points per upsert call (smaller than dense — colbert adds ~115KB/point).
+
+        Returns:
+            Total number of points upserted.
+        """
+        n = len(ids)
+        if not (n == len(dense_vectors) == len(sparse_vectors) == len(colbert_multivectors) == len(payloads)):
+            raise ValueError(
+                f"Length mismatch: ids={n}, dense={len(dense_vectors)}, "
+                f"sparse={len(sparse_vectors)}, colbert={len(colbert_multivectors)}, "
+                f"payloads={len(payloads)}"
+            )
+
+        total = 0
+        for start in range(0, n, batch_size):
+            end = min(start + batch_size, n)
+            points = [
+                models.PointStruct(
+                    id=ids[i],
+                    vector={
+                        "dense":   dense_vectors[i].tolist() if isinstance(dense_vectors[i], __import__("numpy").ndarray) else dense_vectors[i],
+                        "bm25":    sparse_vectors[i],
+                        "colbert": colbert_multivectors[i],
+                    },
+                    payload=payloads[i],
+                )
+                for i in range(start, end)
+            ]
+
+            self.client.upsert(
+                collection_name=collection_name,
+                points=points,
+                wait=True,
+            )
+            total += len(points)
+
+        logger.debug(
+            "unified_vectors_upserted",
             collection=collection_name,
             count=total,
         )
