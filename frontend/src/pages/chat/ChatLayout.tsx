@@ -25,7 +25,7 @@ export function ChatLayout({ sidebar, main, overlay, className }: ChatLayoutProp
             )}
         >
             {/* Sidebar */}
-            <aside className="w-72 shrink-0 border-r border-white/10">
+            <aside className="w-72 shrink-0 border-r border-border">
                 {sidebar}
             </aside>
 

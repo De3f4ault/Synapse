@@ -63,17 +63,17 @@ export function ChatQuizPreview({ title, questions, difficulty, onSave }: ChatQu
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                    <div className="p-1.5 rounded-lg bg-purple-500/10">
-                        <HelpCircle className="size-4 text-purple-400" />
+                    <div className="p-1.5 rounded-lg bg-accent/10">
+                        <HelpCircle className="size-4 text-accent" />
                     </div>
                     <div className="flex items-center gap-2">
                         <span className="font-medium text-sm">{title}</span>
                         {difficulty && (
                             <span className={cn(
                                 "text-[10px] px-2 py-0.5 rounded-full uppercase font-medium",
-                                difficulty === 'easy' && "bg-green-500/20 text-green-400",
+                                difficulty === 'easy' && "bg-accent-olive/20 text-accent-olive",
                                 difficulty === 'medium' && "bg-yellow-500/20 text-yellow-400",
-                                difficulty === 'hard' && "bg-red-500/20 text-red-400"
+                                difficulty === 'hard' && "bg-destructive/20 text-destructive"
                             )}>
                                 {difficulty}
                             </span>
@@ -85,7 +85,7 @@ export function ChatQuizPreview({ title, questions, difficulty, onSave }: ChatQu
                         variant="outline"
                         size="sm"
                         onClick={() => onSave({ title, questions, difficulty })}
-                        className="h-7 text-xs gap-1.5 border-purple-500/30 hover:bg-purple-500/10 hover:border-purple-500/50 transition-colors"
+                        className="h-7 text-xs gap-1.5 border-accent/30 hover:bg-accent/10 hover:border-accent/50 transition-colors"
                     >
                         <Save className="size-3" />
                         Save Quiz
@@ -116,11 +116,11 @@ export function ChatQuizPreview({ title, questions, difficulty, onSave }: ChatQu
                                             disabled={showResults}
                                             className={cn(
                                                 "w-full text-left px-3 py-2.5 rounded-lg text-sm transition-all",
-                                                "border border-white/10",
-                                                !showResults && "hover:border-white/20 hover:bg-white/5",
-                                                !showResults && isSelected && "border-purple-500/50 bg-purple-500/10",
-                                                showCorrect && "border-green-500/50 bg-green-500/10",
-                                                showWrong && "border-red-500/50 bg-red-500/10",
+                                                "border border-border",
+                                                !showResults && "hover:border-border hover:bg-muted/50",
+                                                !showResults && isSelected && "border-accent/50 bg-accent/10",
+                                                showCorrect && "border-green-500/50 bg-accent-olive/10",
+                                                showWrong && "border-destructive/50 bg-destructive/10",
                                                 showResults && "cursor-default"
                                             )}
                                         >
@@ -130,10 +130,10 @@ export function ChatQuizPreview({ title, questions, difficulty, onSave }: ChatQu
                                                 </span>
                                                 <span className="flex-1">{opt}</span>
                                                 {showResults && showCorrect && (
-                                                    <CheckCircle2 className="size-4 text-green-400 shrink-0" />
+                                                    <CheckCircle2 className="size-4 text-accent-olive shrink-0" />
                                                 )}
                                                 {showResults && showWrong && (
-                                                    <XCircle className="size-4 text-red-400 shrink-0" />
+                                                    <XCircle className="size-4 text-destructive shrink-0" />
                                                 )}
                                             </span>
                                         </button>
@@ -144,7 +144,7 @@ export function ChatQuizPreview({ title, questions, difficulty, onSave }: ChatQu
 
                         {showResults && q.explanation && (
                             <div className="flex gap-2 pl-4 pt-1">
-                                <span className="text-amber-400">💡</span>
+                                <span className="text-warning">💡</span>
                                 <p className="text-xs text-muted-foreground italic">
                                     {q.explanation}
                                 </p>
@@ -159,13 +159,13 @@ export function ChatQuizPreview({ title, questions, difficulty, onSave }: ChatQu
                 <Button
                     onClick={handleSubmit}
                     disabled={Object.keys(answers).length === 0}
-                    className="w-full bg-purple-600 hover:bg-purple-500"
+                    className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
                 >
                     Check Answers
                 </Button>
             ) : (
                 <div className="space-y-3">
-                    <div className="text-center py-3 rounded-lg bg-white/5">
+                    <div className="text-center py-3 rounded-lg bg-foreground/5">
                         <p className="text-2xl font-bold">
                             {getScore()} / {questions.length}
                         </p>

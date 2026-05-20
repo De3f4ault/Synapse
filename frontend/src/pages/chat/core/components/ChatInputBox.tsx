@@ -30,14 +30,13 @@ import {
   Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+import { MentionAwareTextarea } from "@/shared/platform/mentions/MentionAwareTextarea";
 import { cn } from "@/lib/utils";
 import { useState, useRef, useEffect, useCallback, type DragEvent, type ClipboardEvent } from "react";
 import { useMentionController, EntityPicker } from "@/shared/platform/mentions";
 import { useEntitySearch } from "@/shared/platform/hooks/useEntitySearch";
 import type { EntitySearchResult } from "@/shared/platform/types";
 import { useChatMode, useSetChatMode, useSelectedModel, useSetSelectedModel } from "../state/chatSelectors";
-import { useChatStore } from "../state/chatStore";
 import { useModels } from "../hooks/useModels";
 import { motion, AnimatePresence } from "framer-motion";
 import type { VoiceState } from "../../voice/engine/types";
@@ -59,21 +58,21 @@ const MODES: Mode[] = [
     name: "Direct",
     icon: <Zap className="size-4" />,
     description: "Fast, concise responses",
-    color: "text-amber-400",
+    color: "text-warning",
   },
   {
     id: "tutor",
     name: "Tutor",
     icon: <GraduationCap className="size-4" />,
     description: "Socratic learning guidance",
-    color: "text-blue-400",
+    color: "text-info",
   },
   {
     id: "deep_think",
     name: "Deep Think",
     icon: <Brain className="size-4" />,
     description: "Extended reasoning",
-    color: "text-purple-400",
+    color: "text-accent",
     hasThinking: true,
   },
   {
@@ -81,14 +80,14 @@ const MODES: Mode[] = [
     name: "Creative",
     icon: <Sparkles className="size-4" />,
     description: "Imaginative exploration",
-    color: "text-pink-400",
+    color: "text-accent-coral",
   },
   {
     id: "research",
     name: "Research",
     icon: <Search className="size-4" />,
     description: "In-depth analysis",
-    color: "text-emerald-400",
+    color: "text-accent-olive",
   },
 ];
 
@@ -140,7 +139,7 @@ function ModeSelector({
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
           "h-7 rounded-lg transition-all font-medium text-xs gap-1.5 px-2.5",
-          "hover:bg-white/10",
+          "hover:bg-muted",
           currentMode.color
         )}
         title={currentMode.description}
@@ -161,9 +160,9 @@ function ModeSelector({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 8, scale: 0.96 }}
             transition={{ duration: 0.15 }}
-            className="absolute bottom-full right-0 mb-2 w-56 rounded-xl border border-white/10 bg-zinc-900 p-1.5 shadow-2xl z-50"
+            className="absolute bottom-full right-0 mb-2 w-56 rounded-xl border border-border bg-popover p-1.5 shadow-2xl z-50"
           >
-            <div className="text-[10px] uppercase tracking-wider text-white/40 px-2 py-1.5 mb-1">
+            <div className="text-[10px] uppercase tracking-wider text-foreground/40 px-2 py-1.5 mb-1">
               Select Mode
             </div>
             {MODES.map((mode) => (
@@ -173,8 +172,8 @@ function ModeSelector({
                 className={cn(
                   "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all",
                   mode.id === chatMode
-                    ? "bg-white/10"
-                    : "hover:bg-white/5",
+                    ? "bg-foreground/10"
+                    : "hover:bg-muted/50",
                 )}
               >
                 <div className={cn("flex-shrink-0", mode.color)}>
@@ -182,21 +181,21 @@ function ModeSelector({
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-white">
+                    <span className="text-sm font-medium text-foreground">
                       {mode.name}
                     </span>
                     {mode.hasThinking && (
-                      <span className="text-[9px] px-1 py-0.5 rounded bg-purple-500/20 text-purple-300">
+                      <span className="text-[9px] px-1 py-0.5 rounded bg-accent/20 text-accent/80">
                         Thinking
                       </span>
                     )}
                   </div>
-                  <p className="text-[11px] text-white/50 truncate">
+                  <p className="text-[11px] text-foreground/50 truncate">
                     {mode.description}
                   </p>
                 </div>
                 {mode.id === chatMode && (
-                  <Check className="size-4 text-cyan-400 flex-shrink-0" />
+                  <Check className="size-4 text-primary flex-shrink-0" />
                 )}
               </button>
             ))}
@@ -251,8 +250,8 @@ function ModelSelector() {
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
           "h-7 rounded-lg transition-all font-medium text-xs gap-1.5 px-2.5",
-          "hover:bg-white/10",
-          selectedModel ? "text-cyan-400" : "text-zinc-400"
+          "hover:bg-muted",
+          selectedModel ? "text-primary" : "text-muted-foreground"
         )}
         title={`Model: ${displayName}`}
       >
@@ -271,10 +270,10 @@ function ModelSelector() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 8, scale: 0.96 }}
             transition={{ duration: 0.15 }}
-            className="absolute bottom-full right-0 mb-2 w-64 rounded-xl border border-white/10 bg-zinc-900 p-1.5 shadow-2xl z-50 max-h-80 overflow-y-auto custom-scrollbar"
+            className="absolute bottom-full right-0 mb-2 w-64 rounded-xl border border-border bg-popover p-1.5 shadow-2xl z-50 max-h-80 overflow-y-auto custom-scrollbar"
           >
             {isLoading ? (
-              <div className="text-xs text-zinc-500 px-3 py-4 text-center">Loading models…</div>
+              <div className="text-xs text-muted-foreground px-3 py-4 text-center">Loading models…</div>
             ) : (
               <>
                 {/* Auto detect option */}
@@ -282,21 +281,21 @@ function ModelSelector() {
                   onClick={() => handleSelect(null)}
                   className={cn(
                     "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all mb-1",
-                    !selectedModel ? "bg-white/10" : "hover:bg-white/5",
+                    !selectedModel ? "bg-foreground/10" : "hover:bg-muted/50",
                   )}
                 >
-                  <Sparkles className="size-4 text-cyan-400 flex-shrink-0" />
+                  <Sparkles className="size-4 text-primary flex-shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <span className="text-sm font-medium text-white">Auto</span>
-                    <p className="text-[11px] text-white/50">Best model for the task</p>
+                    <span className="text-sm font-medium text-foreground">Auto</span>
+                    <p className="text-[11px] text-foreground/50">Best model for the task</p>
                   </div>
-                  {!selectedModel && <Check className="size-4 text-cyan-400 flex-shrink-0" />}
+                  {!selectedModel && <Check className="size-4 text-primary flex-shrink-0" />}
                 </button>
 
                 {/* Local models */}
                 {localModels.length > 0 && (
                   <>
-                    <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-white/40 px-2 py-1.5 mt-1">
+                    <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-foreground/40 px-2 py-1.5 mt-1">
                       <Cpu className="size-3" />
                       Local Models
                     </div>
@@ -306,22 +305,22 @@ function ModelSelector() {
                         onClick={() => handleSelect(model.id)}
                         className={cn(
                           "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all",
-                          model.id === selectedModel ? "bg-white/10" : "hover:bg-white/5",
+                          model.id === selectedModel ? "bg-foreground/10" : "hover:bg-muted/50",
                         )}
                       >
-                        <Cpu className="size-4 text-emerald-400 flex-shrink-0" />
+                        <Cpu className="size-4 text-accent-olive flex-shrink-0" />
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium text-white truncate">{model.name}</span>
+                            <span className="text-sm font-medium text-foreground truncate">{model.name}</span>
                             {model.supportsThinking && (
-                              <span className="text-[9px] px-1 py-0.5 rounded bg-purple-500/20 text-purple-300 flex-shrink-0">
+                              <span className="text-[9px] px-1 py-0.5 rounded bg-accent/20 text-accent/80 flex-shrink-0">
                                 Think
                               </span>
                             )}
                           </div>
-                          <p className="text-[11px] text-white/50 truncate">{model.description}</p>
+                          <p className="text-[11px] text-foreground/50 truncate">{model.description}</p>
                         </div>
-                        {model.id === selectedModel && <Check className="size-4 text-cyan-400 flex-shrink-0" />}
+                        {model.id === selectedModel && <Check className="size-4 text-primary flex-shrink-0" />}
                       </button>
                     ))}
                   </>
@@ -330,7 +329,7 @@ function ModelSelector() {
                 {/* Cloud models */}
                 {cloudModels.length > 0 && (
                   <>
-                    <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-white/40 px-2 py-1.5 mt-1">
+                    <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-foreground/40 px-2 py-1.5 mt-1">
                       <Cloud className="size-3" />
                       Cloud Models
                     </div>
@@ -340,22 +339,22 @@ function ModelSelector() {
                         onClick={() => handleSelect(model.id)}
                         className={cn(
                           "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all",
-                          model.id === selectedModel ? "bg-white/10" : "hover:bg-white/5",
+                          model.id === selectedModel ? "bg-foreground/10" : "hover:bg-muted/50",
                         )}
                       >
-                        <Cloud className="size-4 text-blue-400 flex-shrink-0" />
+                        <Cloud className="size-4 text-info flex-shrink-0" />
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium text-white truncate">{model.name}</span>
+                            <span className="text-sm font-medium text-foreground truncate">{model.name}</span>
                             {model.supportsThinking && (
-                              <span className="text-[9px] px-1 py-0.5 rounded bg-purple-500/20 text-purple-300 flex-shrink-0">
+                              <span className="text-[9px] px-1 py-0.5 rounded bg-accent/20 text-accent/80 flex-shrink-0">
                                 Think
                               </span>
                             )}
                           </div>
-                          <p className="text-[11px] text-white/50 truncate">{model.description}</p>
+                          <p className="text-[11px] text-foreground/50 truncate">{model.description}</p>
                         </div>
-                        {model.id === selectedModel && <Check className="size-4 text-cyan-400 flex-shrink-0" />}
+                        {model.id === selectedModel && <Check className="size-4 text-primary flex-shrink-0" />}
                       </button>
                     ))}
                   </>
@@ -421,8 +420,6 @@ export function ChatInputBox({
   const [isDragOver, setIsDragOver] = useState(false);
 
   const [searchEnabled, setSearchEnabled] = useState(false);
-  const showThinking = useChatStore((s) => s.showThinking);
-  const toggleThinking = useChatStore((s) => s.toggleThinking);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -438,47 +435,54 @@ export function ChatInputBox({
     canAttachMore,
   } = useFileUpload(sessionId);
 
-  // Auto-resize textarea when message changes
+  // Auto-resize textarea when message changes without losing cursor position
   useEffect(() => {
     const textarea = textareaRef.current;
     if (textarea) {
-      textarea.style.height = 'auto';
+      // Save cursor position to prevent jumping during layout thrashing
+      const { selectionStart, selectionEnd } = textarea;
+      
+      textarea.style.height = '24px';
       const newHeight = Math.min(textarea.scrollHeight, 200);
       textarea.style.height = `${newHeight}px`;
       textarea.style.overflowY = textarea.scrollHeight > 200 ? 'auto' : 'hidden';
+      
+      // Restore cursor position if the textarea is focused
+      if (document.activeElement === textarea && textarea.selectionStart !== selectionStart) {
+        textarea.setSelectionRange(selectionStart, selectionEnd);
+      }
     }
   }, [message]);
 
-  // Mention System
-  const handleSelectEntity = (entity: EntitySearchResult) => {
-    if (!textareaRef.current) return;
+  const [mentionQueryState, setMentionQueryState] = useState("");
+  const [mentionPickerEnabled, setMentionPickerEnabled] = useState(false);
 
+  const { data: searchResults = [], isLoading: isSearching } = useEntitySearch(mentionQueryState, {
+    enabled: mentionPickerEnabled && mentionQueryState.length >= 1,
+    limit: 6,
+  });
+
+  // ── Single canonical insertion handler ────────────────────────────────────
+  // Both keyboard selection (useMentionController) and mouse click
+  // (EntityPicker mousedown) route through this one function.
+  const insertMention = useCallback((entity: EntitySearchResult) => {
+    if (!textareaRef.current) return;
     const input = textareaRef.current;
     const value = input.value;
     const selectionEnd = input.selectionEnd;
-
     const lastAtPos = value.lastIndexOf("@", selectionEnd - 1);
-    if (lastAtPos !== -1) {
-      const beforeAt = value.substring(0, lastAtPos);
-      const afterCursor = value.substring(selectionEnd);
-      const mentionText = `@[${entity.title}](entity:${entity.type}:${entity.id}) `;
-
-      const newValue = beforeAt + mentionText + afterCursor;
-      onMessageChange(newValue);
-
-      setTimeout(() => {
-        input.focus();
-        input.setSelectionRange(lastAtPos + mentionText.length, lastAtPos + mentionText.length);
-      }, 0);
-    }
-  };
-
-  const [mentionQueryState, setMentionQueryState] = useState("");
-
-  const { data: searchResults = [], isLoading: isSearching } = useEntitySearch(mentionQueryState, {
-    enabled: mentionQueryState.length > 0,
-    limit: 5,
-  });
+    if (lastAtPos === -1) return;
+    const beforeAt = value.substring(0, lastAtPos);
+    const afterCursor = value.substring(selectionEnd);
+    const mentionText = `@[${entity.title}](entity:${entity.type}:${entity.id}) `;
+    onMessageChange(beforeAt + mentionText + afterCursor);
+    setMentionQueryState("");
+    setMentionPickerEnabled(false);
+    setTimeout(() => {
+      input.focus();
+      input.setSelectionRange(lastAtPos + mentionText.length, lastAtPos + mentionText.length);
+    }, 0);
+  }, [onMessageChange]);
 
   const {
     isPickerOpen: showPicker,
@@ -488,9 +492,13 @@ export function ChatInputBox({
     setQuery: updateQuery,
     handleKeyDown: onPermissionKeyDown,
   } = useMentionController({
-    onSelect: handleSelectEntity,
-    onClose: () => setMentionQueryState(""),
+    onSelect: insertMention,
+    onClose: () => {
+      setMentionQueryState("");
+      setMentionPickerEnabled(false);
+    },
   }, searchResults);
+
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (showPicker) {
@@ -573,14 +581,19 @@ export function ChatInputBox({
 
     if (lastAt !== -1) {
       const fragment = newValue.substring(lastAt + 1, selectionEnd);
-      if (!fragment.includes("\n") && fragment.length < 50) {
+      // Only trigger if the fragment is a clean word-fragment (no newline, no space, short)
+      if (!fragment.includes("\n") && !fragment.includes(" ") && fragment.length < 50) {
         if (!showPicker) triggerPicker(fragment);
         updateQuery(fragment);
         setMentionQueryState(fragment);
+        setMentionPickerEnabled(true);
         return;
       }
     }
-    if (showPicker) dismissPicker();
+    if (showPicker) {
+      dismissPicker();
+      setMentionPickerEnabled(false);
+    }
   };
 
   return (
@@ -595,12 +608,12 @@ export function ChatInputBox({
         className={cn(
           "relative transition-all duration-300 ease-out",
           "rounded-2xl",
-          "bg-zinc-900/90 backdrop-blur-sm",
-          "border border-white/[0.08]",
+          "bg-card",
+          "border border-border",
           isFocused 
-            ? "shadow-lg shadow-black/20 border-white/[0.15] ring-1 ring-white/[0.05]" 
+            ? "shadow-lg shadow-lg border-border ring-1 ring-border" 
             : "shadow-sm",
-          isDragOver && "border-cyan-500/50 bg-cyan-500/5",
+          isDragOver && "border-primary/50 bg-primary/5",
         )}
       >
         {/* Drag overlay */}
@@ -610,9 +623,9 @@ export function ChatInputBox({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-cyan-500/10 border-2 border-dashed border-cyan-500/40"
+              className="absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-primary/10 border-2 border-dashed border-primary/40"
             >
-              <div className="flex items-center gap-2 text-cyan-400">
+              <div className="flex items-center gap-2 text-primary">
                 <PaperclipIcon className="size-5" />
                 <span className="text-sm font-medium">Drop files here</span>
               </div>
@@ -631,16 +644,19 @@ export function ChatInputBox({
         />
 
         {/* Entity Picker Floating */}
-        {showPicker && (
-          <div className="absolute bottom-full left-4 mb-2 z-50">
-            <EntityPicker
-              results={searchResults}
-              activeIndex={activeIdx}
-              onSelect={handleSelectEntity}
-              isLoading={isSearching}
-            />
-          </div>
-        )}
+        <AnimatePresence>
+          {showPicker && (
+            <div className="absolute bottom-full left-4 mb-2 z-50">
+              <EntityPicker
+                results={searchResults}
+                activeIndex={activeIdx}
+                onSelect={insertMention}
+                isLoading={isSearching}
+                query={mentionQueryState}
+              />
+            </div>
+          )}
+        </AnimatePresence>
 
         {/* Attachment Preview Chips */}
         <AnimatePresence>
@@ -661,24 +677,24 @@ export function ChatInputBox({
                     className={cn(
                       "relative group flex items-center gap-2 px-2 py-1.5 rounded-lg border text-xs",
                       pf.status === "error"
-                        ? "border-red-500/30 bg-red-500/10"
+                        ? "border-red-500/30 bg-destructive/10"
                         : pf.status === "uploaded"
-                          ? "border-emerald-500/30 bg-emerald-500/10"
-                          : "border-white/10 bg-white/5",
+                          ? "border-accent-olive/30 bg-accent-olive/10"
+                          : "border-border bg-foreground/5",
                     )}
                   >
                     {pf.preview ? (
                       <img src={pf.preview} alt={pf.file.name} className="h-8 w-8 rounded object-cover" />
                     ) : (
-                      <FileText className="size-4 text-white/50" />
+                      <FileText className="size-4 text-foreground/50" />
                     )}
-                    <span className="max-w-[120px] truncate text-white/70">{pf.file.name}</span>
+                    <span className="max-w-[120px] truncate text-foreground/70">{pf.file.name}</span>
                     {pf.status === "uploading" && (
                       <>
-                        <Loader2 className="size-3 animate-spin text-cyan-400" />
+                        <Loader2 className="size-3 animate-spin text-primary" />
                         <div className="absolute bottom-0 left-0 right-0 h-0.5 rounded-b-lg overflow-hidden">
                           <motion.div
-                            className="h-full bg-cyan-500"
+                            className="h-full bg-primary"
                             initial={{ width: "0%" }}
                             animate={{ width: `${pf.progress}%` }}
                           />
@@ -686,11 +702,11 @@ export function ChatInputBox({
                       </>
                     )}
                     {pf.status === "error" && (
-                      <span className="text-red-400 text-[10px]" title={pf.error}>✕</span>
+                      <span className="text-destructive text-[10px]" title={pf.error}>✕</span>
                     )}
                     <button
                       onClick={() => removeFile(pf.id)}
-                      className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-white/10 text-white/40 hover:text-white transition-all"
+                      className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-muted text-foreground/40 hover:text-foreground transition-all"
                     >
                       <X className="size-3" />
                     </button>
@@ -703,7 +719,7 @@ export function ChatInputBox({
 
         {/* Main Input Area */}
         <div className="px-4 pt-3 pb-2">
-          <Textarea
+          <MentionAwareTextarea
             ref={textareaRef}
             placeholder={hasFiles && !message ? "Add a message or send with files..." : placeholder}
             value={message}
@@ -716,19 +732,11 @@ export function ChatInputBox({
             className={cn(
               "min-h-[24px] max-h-[200px] resize-none w-full",
               "border-0 bg-transparent p-0",
-              "text-[15px] leading-relaxed placeholder:text-zinc-500",
+              "text-[15px] leading-relaxed placeholder:text-muted-foreground",
               "focus-visible:ring-0 focus-visible:ring-offset-0",
               "custom-scrollbar",
             )}
             rows={1}
-            style={{ height: '24px', overflowY: 'hidden' }}
-            onInput={(e) => {
-              const target = e.target as HTMLTextAreaElement;
-              target.style.height = '24px';
-              const newHeight = Math.min(target.scrollHeight, 200);
-              target.style.height = `${newHeight}px`;
-              target.style.overflowY = target.scrollHeight > 200 ? 'auto' : 'hidden';
-            }}
           />
         </div>
 
@@ -741,10 +749,10 @@ export function ChatInputBox({
               <>
                 {/* Audio level indicator */}
                 <div className="flex items-center gap-2 px-2">
-                  <Volume2 className="size-4 text-purple-400" />
-                  <div className="w-16 h-1.5 bg-white/10 rounded-full overflow-hidden">
+                  <Volume2 className="size-4 text-accent" />
+                  <div className="w-16 h-1.5 bg-foreground/10 rounded-full overflow-hidden">
                     <motion.div
-                      className="h-full bg-gradient-to-r from-purple-500 to-cyan-400 rounded-full"
+                      className="h-full bg-gradient-to-r from-primary to-accent rounded-full"
                       animate={{ width: `${Math.min(voiceAudioLevel * 100, 100)}%` }}
                       transition={{ duration: 0.1 }}
                     />
@@ -754,9 +762,9 @@ export function ChatInputBox({
                 {/* Voice state indicator */}
                 <span className={cn(
                   "text-[10px] px-2 py-0.5 rounded-full",
-                  voiceState === 'listening' && "bg-emerald-500/20 text-emerald-400",
-                  voiceState === 'speaking' && "bg-purple-500/20 text-purple-400",
-                  voiceState === 'connecting' && "bg-amber-500/20 text-amber-400",
+                  voiceState === 'listening' && "bg-accent-olive/20 text-accent-olive",
+                  voiceState === 'speaking' && "bg-accent/20 text-accent",
+                  voiceState === 'connecting' && "bg-warning/20 text-warning",
                 )}>
                   {voiceState === 'listening' ? '● Listening' :
                    voiceState === 'speaking' ? '◉ AI Speaking' :
@@ -773,8 +781,8 @@ export function ChatInputBox({
                     className={cn(
                       "h-8 rounded-lg gap-1.5 px-2",
                       hasFiles
-                        ? "text-cyan-400 bg-cyan-500/10 hover:bg-cyan-500/20"
-                        : "text-zinc-400 hover:text-white hover:bg-white/5",
+                        ? "text-primary bg-primary/10 hover:bg-primary/20"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
                       !canAttachMore && "opacity-50 cursor-not-allowed",
                     )}
                     type="button"
@@ -793,33 +801,14 @@ export function ChatInputBox({
                     className={cn(
                       "h-8 rounded-lg gap-1.5 px-2.5 transition-all",
                       searchEnabled
-                        ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
-                        : "text-zinc-400 hover:text-white hover:bg-white/5"
+                        ? "bg-accent-olive/20 text-accent-olive border border-accent-olive/30"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                     )}
                     type="button"
                     disabled={disabled}
                   >
                     <Search className="size-3.5" />
                     <span className="text-xs">Search</span>
-                  </Button>
-
-                  {/* Thinking Toggle */}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={toggleThinking}
-                    className={cn(
-                      "h-8 rounded-lg gap-1.5 px-2.5 transition-all",
-                      showThinking
-                        ? "bg-purple-500/20 text-purple-400 border border-purple-500/30"
-                        : "text-zinc-400 hover:text-white hover:bg-white/5"
-                    )}
-                    type="button"
-                    disabled={disabled}
-                    title="Toggle thinking visibility"
-                  >
-                    <Brain className="size-3.5" />
-                    <span className="text-xs">Thinking</span>
                   </Button>
                 </>
               )
@@ -840,8 +829,8 @@ export function ChatInputBox({
                   className={cn(
                     "h-8 rounded-lg gap-1.5 px-2.5 transition-all",
                     voiceState === 'speaking'
-                      ? "text-amber-400 hover:bg-amber-500/20"
-                      : "text-zinc-600"
+                      ? "text-warning hover:bg-warning/20"
+                      : "text-muted-foreground"
                   )}
                   type="button"
                   title="Interrupt AI"
@@ -850,7 +839,7 @@ export function ChatInputBox({
                   <span className="text-xs">Tap to interrupt</span>
                 </Button>
 
-                <div className="w-px h-4 bg-white/10 mx-1" />
+                <div className="w-px h-4 bg-foreground/10 mx-1" />
 
                 {/* End Session / Stop button */}
                 <Button
@@ -858,7 +847,7 @@ export function ChatInputBox({
                   onClick={onVoiceEndSession}
                   className={cn(
                     "h-8 rounded-lg transition-all duration-200 gap-1.5",
-                    "bg-red-500/20 text-red-400 hover:bg-red-500/30",
+                    "bg-destructive/20 text-destructive hover:bg-destructive/30",
                     "border border-red-500/30"
                   )}
                   type="button"
@@ -878,12 +867,12 @@ export function ChatInputBox({
 
                 {!minimal && (
                   <>
-                    <div className="w-px h-4 bg-white/10 mx-1" />
+                    <div className="w-px h-4 bg-foreground/10 mx-1" />
 
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="size-8 rounded-lg text-zinc-400 hover:text-white hover:bg-white/5"
+                      className="size-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50"
                       type="button"
                       disabled={disabled}
                     >
@@ -895,7 +884,7 @@ export function ChatInputBox({
                         variant="ghost"
                         size="icon"
                         onClick={onVoiceClick}
-                        className="size-8 rounded-lg text-zinc-400 hover:text-white hover:bg-white/5"
+                        className="size-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50"
                         type="button"
                         disabled={disabled || isStreaming}
                       >
@@ -912,7 +901,7 @@ export function ChatInputBox({
                     onClick={onStop}
                     className={cn(
                       "size-8 rounded-lg transition-all duration-200",
-                      "bg-red-500/20 text-red-400 hover:bg-red-500/30",
+                      "bg-destructive/20 text-destructive hover:bg-destructive/30",
                       "border border-red-500/30"
                     )}
                     type="button"
@@ -931,8 +920,8 @@ export function ChatInputBox({
                     className={cn(
                       "size-8 rounded-lg transition-all duration-300",
                       (message.trim() || hasFiles) && !disabled && !isUploading
-                        ? "bg-cyan-500 text-white hover:bg-cyan-400 shadow-lg shadow-cyan-500/20"
-                        : "bg-zinc-800 text-zinc-500 hover:bg-zinc-700/80"
+                        ? "bg-primary text-foreground hover:bg-primary shadow-lg "
+                        : "bg-muted text-muted-foreground hover:bg-muted/80"
                     )}
                     type="button"
                   >

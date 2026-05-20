@@ -102,8 +102,8 @@ function ArtifactCardComponent({ artifact, onExpand }: ArtifactCardProps) {
         <div 
             className={cn(
                 "flex items-center justify-between gap-3 px-4 py-3",
-                "rounded-xl border border-white/10 bg-[#1e1e1e]",
-                "hover:border-white/20 hover:bg-[#252525]",
+                "rounded-xl border border-border bg-card",
+                "hover:border-border hover:bg-muted",
                 "transition-all duration-150 cursor-pointer",
                 "min-w-[280px] max-w-[400px]"
             )}
@@ -111,14 +111,14 @@ function ArtifactCardComponent({ artifact, onExpand }: ArtifactCardProps) {
         >
             {/* Left: Icon + Title */}
             <div className="flex items-center gap-3 min-w-0 flex-1">
-                <div className="flex-shrink-0 p-2 rounded-lg bg-white/5">
-                    <Icon className="size-5 text-zinc-400" />
+                <div className="flex-shrink-0 p-2 rounded-lg bg-foreground/5">
+                    <Icon className="size-5 text-muted-foreground" />
                 </div>
                 <div className="flex flex-col min-w-0">
-                    <span className="text-sm font-medium text-zinc-200 truncate">
+                    <span className="text-sm font-medium text-foreground/70 truncate">
                         {artifact.title}
                     </span>
-                    <span className="text-xs text-zinc-500">
+                    <span className="text-xs text-muted-foreground">
                         {typeLabel} · {artifact.artifactType === 'text/markdown' ? 'MD' : artifact.language?.toUpperCase() || 'TXT'}
                     </span>
                 </div>
@@ -130,9 +130,9 @@ function ArtifactCardComponent({ artifact, onExpand }: ArtifactCardProps) {
                 disabled={isDownloading}
                 className={cn(
                     "flex-shrink-0 px-4 py-1.5 rounded-lg",
-                    "text-sm font-medium text-zinc-300",
-                    "border border-white/10 bg-white/5",
-                    "hover:bg-white/10 hover:text-white",
+                    "text-sm font-medium text-foreground/80",
+                    "border border-border bg-foreground/5",
+                    "hover:bg-muted hover:text-foreground",
                     "transition-colors duration-150",
                     isDownloading && "opacity-50"
                 )}

@@ -42,7 +42,7 @@ export function SuggestionChip({
             transition={{ duration: 0.2, ease: 'easeOut' }}
             className={cn(
                 'flex items-center gap-2 px-3 py-2 rounded-xl',
-                'bg-zinc-900/60 border border-white/5',
+                'bg-card/60 border border-border',
                 'backdrop-blur-sm shadow-lg',
                 'text-sm',
                 className
@@ -52,7 +52,7 @@ export function SuggestionChip({
             <Icon
                 className={cn(
                     'size-4 shrink-0',
-                    accentColor === 'cyan' ? 'text-cyan-400' : 'text-purple-400'
+                    accentColor === 'cyan' ? 'text-primary' : 'text-accent'
                 )}
             />
 
@@ -68,8 +68,8 @@ export function SuggestionChip({
                     'px-2.5 py-1 rounded-lg text-xs font-medium',
                     'transition-all duration-150',
                     accentColor === 'cyan'
-                        ? 'bg-cyan-500/20 text-cyan-300 hover:bg-cyan-500/30'
-                        : 'bg-purple-500/20 text-purple-300 hover:bg-purple-500/30'
+                        ? 'bg-primary/20 text-primary/80 hover:bg-primary/30'
+                        : 'bg-accent/20 text-accent/80 hover:bg-accent/30'
                 )}
             >
                 {actionLabel}
@@ -78,7 +78,7 @@ export function SuggestionChip({
             {/* Dismiss button */}
             <button
                 onClick={onDismiss}
-                className="p-1 rounded-full text-muted-foreground/40 hover:text-muted-foreground hover:bg-white/5 transition-colors"
+                className="p-1 rounded-full text-muted-foreground/40 hover:text-muted-foreground hover:bg-muted/50 transition-colors"
                 aria-label="Dismiss suggestion"
             >
                 <X className="size-3.5" />

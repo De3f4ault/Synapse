@@ -117,14 +117,14 @@ const MessageItem = React.memo(function MessageItem({
           className={cn(
             "rounded-xl px-5 py-3.5",
             isUser
-              ? "bg-white/8 text-white"
+              ? "bg-white/8 text-foreground"
               : "text-[var(--synapse-text-primary)]",
           )}
         >
           {/* Thinking Process (Enhanced) */}
           {message.model_used === "deepseek-reasoner" && (
-            <div className="mb-4 rounded-xl bg-black/30 border border-white/10 overflow-hidden">
-              <div className="flex items-center gap-2 px-3 py-2 bg-white/5 border-b border-white/5 text-[10px] text-[var(--synapse-cyan)] uppercase tracking-wider font-bold">
+            <div className="mb-4 rounded-xl bg-card/50 border border-border overflow-hidden">
+              <div className="flex items-center gap-2 px-3 py-2 bg-foreground/5 border-b border-border text-[10px] text-[var(--synapse-cyan)] uppercase tracking-wider font-bold">
                 <Brain className="h-3 w-3" />
                 <span>Neural Processing</span>
               </div>
@@ -173,7 +173,7 @@ const MessageItem = React.memo(function MessageItem({
                 onClick={handleCopy}
               >
                 {copied ? (
-                  <Check className="h-3 w-3 text-green-500" />
+                  <Check className="h-3 w-3 text-accent-olive" />
                 ) : (
                   <Copy className="h-3 w-3" />
                 )}
@@ -251,7 +251,7 @@ export function MessageList({
           >
             <div className="relative w-24 h-24 mx-auto mb-8">
               <div className="absolute inset-0 bg-[var(--synapse-cyan)]/20 blur-xl rounded-full animate-pulse" />
-              <div className="relative bg-black/40 border border-white/10 p-5 rounded-2xl shadow-2xl backdrop-blur-sm ring-1 ring-white/5">
+              <div className="relative bg-background/70 border border-border p-5 rounded-2xl shadow-2xl backdrop-blur-sm ring-1 ring-white/5">
                 <Bot
                   className="w-full h-full text-[var(--synapse-cyan)]"
                   strokeWidth={1.5}
@@ -259,10 +259,10 @@ export function MessageList({
               </div>
               {/* Decorative dots */}
               <div className="absolute -top-2 -right-2 w-3 h-3 bg-[var(--synapse-cyan)] rounded-full animate-bounce delay-100" />
-              <div className="absolute -bottom-1 -left-2 w-2 h-2 bg-emerald-500 rounded-full animate-bounce delay-300" />
+              <div className="absolute -bottom-1 -left-2 w-2 h-2 bg-accent-olive rounded-full animate-bounce delay-300" />
             </div>
 
-            <h3 className="text-2xl font-bold text-white mb-3 tracking-tight">
+            <h3 className="text-2xl font-bold text-foreground mb-3 tracking-tight">
               How can I help you learn?
             </h3>
             <p className="text-[var(--synapse-text-secondary)] leading-relaxed max-w-sm mx-auto mb-8">

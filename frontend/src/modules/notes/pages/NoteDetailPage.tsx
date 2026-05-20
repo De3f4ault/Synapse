@@ -5,8 +5,8 @@ import { Note } from "../domain/note.types";
 import { NotesRepository } from "../infrastructure/notes.repository";
 import { NoteDispatcher } from "../bridge/note-dispatcher";
 import { NoteShell } from "../ui/NoteShell";
-import { BlockNoteEditor } from "../features/text/editor/BlockNoteEditor";
-import { WhiteboardEditor } from "../features/whiteboard/editor/WhiteboardEditor";
+import { TiptapEditor } from "../features/text/editor/TiptapEditor";
+import { ExcalidrawEditor } from "../features/whiteboard/editor/ExcalidrawEditor";
 
 // Page level state - dumbest loading state possible
 type PageState = 
@@ -25,7 +25,7 @@ export function NoteDetailPage() {
     let mounted = true;
     setState({ status: 'loading' });
 
-    NotesRepository.getNote(noteId)
+    NotesRepository.getNote(Number(noteId))
       .then(note => {
         if (mounted) setState({ status: 'ready', note });
       })
@@ -38,10 +38,10 @@ export function NoteDetailPage() {
 
   // 2. Loading / Error States
   if (state.status === 'loading') {
-    return <div className="h-full flex items-center justify-center text-slate-500">Loading Note...</div>;
+    return <div className="h-full flex items-center justify-center text-muted-foreground">Loading Note...</div>;
   }
   if (state.status === 'error') {
-     return <div className="h-full flex items-center justify-center text-red-400">Error: {state.error}</div>;
+     return <div className="h-full flex items-center justify-center text-destructive">Error: {state.error}</div>;
   }
 
   const { note } = state;
@@ -54,7 +54,6 @@ export function NoteDetailPage() {
   
   const handleTitleChange = (newTitle: string) => {
      NotesRepository.updateNote(note.id, {
-        updatedAt: new Date().toISOString(),
         title: newTitle
      });
      // Optimistic update of local state if needed, 
@@ -63,8 +62,8 @@ export function NoteDetailPage() {
 
   return (
     <NoteShell note={note} onTitleChange={handleTitleChange}>
-       {editorType === 'text' && <BlockNoteEditor note={note} />}
-       {editorType === 'whiteboard' && <WhiteboardEditor note={note} />}
+       {editorType === 'text' && <TiptapEditor note={note} />}
+       {editorType === 'whiteboard' && <ExcalidrawEditor note={note} />}
     </NoteShell>
   );
 }

@@ -36,11 +36,11 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({
     if (versions.length === 0) {
         return (
             <div className="p-8 text-center">
-                <GitBranch className="w-12 h-12 text-slate-700 mx-auto mb-4" />
-                <p className="text-sm text-slate-500 font-mono">
+                <GitBranch className="w-12 h-12 text-foreground/70 mx-auto mb-4" />
+                <p className="text-sm text-muted-foreground font-mono">
                     No version history available
                 </p>
-                <p className="text-xs text-slate-600 mt-2">
+                <p className="text-xs text-muted-foreground mt-2">
                     Versions are created when you save changes
                 </p>
             </div>
@@ -49,10 +49,10 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({
 
     return (
         <div className="space-y-3">
-            <h3 className="text-sm font-mono text-cyan-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+            <h3 className="text-sm font-mono text-primary uppercase tracking-wider mb-4 flex items-center gap-2">
                 <GitBranch size={14} />
                 Version History
-                <span className="text-slate-600">({versions.length})</span>
+                <span className="text-muted-foreground">({versions.length})</span>
             </h3>
 
             {versions.map((version, index) => (
@@ -61,19 +61,19 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.05 }}
-                    className="group p-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg transition-all"
+                    className="group p-3 bg-foreground/5 hover:bg-muted border border-border rounded-lg transition-all"
                 >
                     <div className="flex items-start justify-between">
                         <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1">
-                                <span className="text-xs font-mono text-cyan-400 bg-cyan-400/10 px-2 py-0.5 rounded">
+                                <span className="text-xs font-mono text-primary bg-primary/10 px-2 py-0.5 rounded">
                                     v{version.version_number}
                                 </span>
-                                <span className="text-sm text-white truncate">
+                                <span className="text-sm text-foreground truncate">
                                     {version.title || "Untitled"}
                                 </span>
                             </div>
-                            <div className="flex items-center gap-2 text-xs text-slate-500">
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                 <Clock size={10} />
                                 {format(new Date(version.created_at), "MMM d, yyyy HH:mm")}
                             </div>
@@ -82,7 +82,7 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({
                         <button
                             onClick={() => onRestore?.(version.version_number)}
                             disabled={isRestoring || index === 0}
-                            className="opacity-0 group-hover:opacity-100 flex items-center gap-1 text-xs text-cyan-400 hover:text-cyan-300 disabled:text-slate-600 disabled:cursor-not-allowed transition-all px-2 py-1 bg-cyan-400/10 hover:bg-cyan-400/20 rounded"
+                            className="opacity-0 group-hover:opacity-100 flex items-center gap-1 text-xs text-primary hover:text-primary/80 disabled:text-muted-foreground disabled:cursor-not-allowed transition-all px-2 py-1 bg-primary/10 hover:bg-primary/20 rounded"
                             title={index === 0 ? "This is the current version" : "Restore this version"}
                         >
                             {isRestoring ? (

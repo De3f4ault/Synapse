@@ -134,8 +134,8 @@ function ActionItem({
       className={cn(
         "flex items-center gap-3 w-full px-4 py-2.5 text-left transition-colors rounded-lg",
         isSelected
-          ? "bg-cyan-500/10 text-cyan-400"
-          : "text-zinc-400 hover:bg-white/5 hover:text-zinc-200"
+          ? "bg-primary/10 text-primary"
+          : "text-muted-foreground hover:bg-muted/50 hover:text-foreground/70"
       )}
     >
       <Icon className="size-4 shrink-0" />
@@ -164,21 +164,21 @@ function ResultItem({
       className={cn(
         "flex items-center justify-between w-full px-4 h-10 text-left rounded-lg group",
         isSelected
-          ? "bg-cyan-500/10"
-          : "hover:bg-white/5"
+          ? "bg-primary/10"
+          : "hover:bg-muted/50"
       )}
     >
       <div className="min-w-0 flex-1">
           <span
             className={cn(
               "text-sm truncate block",
-              isSelected ? "text-cyan-100" : "text-zinc-300"
+              isSelected ? "text-primary-foreground" : "text-foreground/80"
             )}
           >
             {result.session_title}
           </span>
           {result.matched_snippet && result.match_type !== "title" && (
-            <p className="text-xs text-zinc-500 truncate mt-0.5">
+            <p className="text-xs text-muted-foreground truncate mt-0.5">
               {result.matched_snippet}
             </p>
           )}
@@ -189,13 +189,13 @@ function ResultItem({
           "flex items-center gap-1 transition-opacity",
           isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100"
         )}>
-          <span className="text-[10px] text-zinc-500 px-1.5 py-0.5 bg-zinc-800 rounded">
+          <span className="text-[10px] text-muted-foreground px-1.5 py-0.5 bg-muted rounded">
             Go <kbd className="ml-1">↵</kbd>
           </span>
           <Button
             variant="ghost"
             size="icon"
-            className="h-6 w-6 text-zinc-500 hover:text-red-400 hover:bg-red-500/10"
+            className="h-6 w-6 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
             onClick={(e) => {
               e.stopPropagation();
               onDelete();
@@ -204,7 +204,7 @@ function ResultItem({
             <Trash2 className="size-3" />
           </Button>
         </div>
-        <span className="text-xs text-zinc-500 w-[70px] text-right">
+        <span className="text-xs text-muted-foreground w-[70px] text-right">
           {formatDate(result.created_at)}
         </span>
       </div>
@@ -392,14 +392,14 @@ export function SearchCommandPalette({
     <div className="fixed inset-0 z-50 flex items-start justify-center pt-[15vh]">
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        className="absolute inset-0 bg-background/80 backdrop-blur-sm"
         onClick={onClose}
       />
 
       {/* Modal */}
       <div
         ref={containerRef}
-        className="relative w-full max-w-5xl bg-zinc-900/95 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl overflow-hidden flex h-[70vh]"
+        className="relative w-full max-w-5xl bg-popover backdrop-blur-xl border border-border rounded-xl shadow-2xl overflow-hidden flex h-[70vh]"
         onKeyDown={handleKeyDown}
       >
         {/* LEFT PANE: Search & Results */}
@@ -408,20 +408,20 @@ export function SearchCommandPalette({
           style={{ width: `${leftWidth}%` }}
         >
           {/* Search Input */}
-          <div className="flex items-center gap-3 px-4 py-3 border-b border-white/10 shrink-0">
-            <Search className="size-5 text-zinc-500" />
+          <div className="flex items-center gap-3 px-4 py-3 border-b border-border shrink-0">
+            <Search className="size-5 text-muted-foreground" />
             <Input
               ref={inputRef}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search conversations..."
-              className="flex-1 border-0 bg-transparent text-white placeholder:text-zinc-500 focus-visible:ring-0 text-base"
+              className="flex-1 border-0 bg-transparent text-foreground placeholder:text-muted-foreground focus-visible:ring-0 text-base"
             />
-            {isLoading && <Loader2 className="size-4 text-cyan-400 animate-spin" />}
+            {isLoading && <Loader2 className="size-4 text-primary animate-spin" />}
             <Button
               variant="ghost"
               size="icon"
-              className="h-6 w-6 text-zinc-500 hover:text-white"
+              className="h-6 w-6 text-muted-foreground hover:text-foreground"
               onClick={onClose}
             >
               <X className="size-4" />
@@ -433,7 +433,7 @@ export function SearchCommandPalette({
             {/* Actions Section */}
             <div className="mb-2">
               <div className="flex items-center justify-between px-4 py-1">
-                <span className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">
+                <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
                   Actions
                 </span>
               </div>
@@ -453,7 +453,7 @@ export function SearchCommandPalette({
             {timeGroups.map((group, groupIndex) => (
               <div key={group.label} className="mb-2">
                 <div className="px-4 py-1">
-                  <span className="text-[10px] font-medium text-zinc-500 uppercase tracking-wider">
+                  <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
                     {group.label}
                   </span>
                 </div>
@@ -484,9 +484,9 @@ export function SearchCommandPalette({
             {/* Empty State — only when actively searching with no results */}
             {query && searchResults.length === 0 && !isLoading && (
               <div className="text-center py-12">
-                <MessageCircle className="mx-auto size-8 text-zinc-600 mb-2" />
-                <p className="text-sm text-zinc-500">No conversations found</p>
-                <p className="text-xs text-zinc-600 mt-1">
+                <MessageCircle className="mx-auto size-8 text-muted-foreground mb-2" />
+                <p className="text-sm text-muted-foreground">No conversations found</p>
+                <p className="text-xs text-muted-foreground mt-1">
                   Try a different search term
                 </p>
               </div>
@@ -495,45 +495,45 @@ export function SearchCommandPalette({
             {/* No sessions at all */}
             {!query && adaptedRecent.length === 0 && (
                <div className="text-center py-24 opacity-30">
-                 <MessageCircle className="mx-auto size-12 text-zinc-600 mb-4" />
-                 <p className="text-sm text-zinc-400">No conversations yet</p>
+                 <MessageCircle className="mx-auto size-12 text-muted-foreground mb-4" />
+                 <p className="text-sm text-muted-foreground">No conversations yet</p>
                </div>
             )}
           </div>
 
           {/* Footer with shortcuts */}
-          <div className="flex items-center justify-between px-4 py-2 border-t border-white/10 text-[10px] text-zinc-500 shrink-0 bg-zinc-900/50">
+          <div className="flex items-center justify-between px-4 py-2 border-t border-border text-[10px] text-muted-foreground shrink-0 bg-card/50">
             <div className="flex items-center gap-3">
               <span className="flex items-center gap-1">
-                <kbd className="px-1.5 py-0.5 bg-zinc-800 rounded">↑↓</kbd>
+                <kbd className="px-1.5 py-0.5 bg-muted rounded">↑↓</kbd>
                 Navigate
               </span>
               <span className="flex items-center gap-1">
-                <kbd className="px-1.5 py-0.5 bg-zinc-800 rounded">↵</kbd>
+                <kbd className="px-1.5 py-0.5 bg-muted rounded">↵</kbd>
                 Open
               </span>
               <span className="flex items-center gap-1">
-                <kbd className="px-1.5 py-0.5 bg-zinc-800 rounded">Esc</kbd>
+                <kbd className="px-1.5 py-0.5 bg-muted rounded">Esc</kbd>
                 Close
               </span>
             </div>
             <span className="flex items-center gap-1">
               <Command className="size-3" />
-              <kbd className="px-1.5 py-0.5 bg-zinc-800 rounded">K</kbd>
+              <kbd className="px-1.5 py-0.5 bg-muted rounded">K</kbd>
             </span>
           </div>
         </div>
 
         {/* DRAG HANDLE */}
         <div
-          className="w-1.5 shrink-0 cursor-col-resize bg-white/5 hover:bg-cyan-500/30 active:bg-cyan-500/50 transition-colors flex items-center justify-center group"
+          className="w-1.5 shrink-0 cursor-col-resize bg-foreground/5 hover:bg-primary/30 active:bg-primary/50 transition-colors flex items-center justify-center group"
           onMouseDown={handleMouseDown}
         >
-          <GripVertical className="size-3 text-zinc-600 group-hover:text-cyan-400 transition-colors" />
+          <GripVertical className="size-3 text-muted-foreground group-hover:text-primary transition-colors" />
         </div>
 
         {/* RIGHT PANE: Preview */}
-        <div className="flex-1 bg-zinc-950/30 flex flex-col min-w-0 overflow-hidden">
+        <div className="flex-1 bg-card/30 flex flex-col min-w-0 overflow-hidden">
           <ConversationPreview
             sessionId={previewSessionId}
             highlightedQuery={debouncedQuery}

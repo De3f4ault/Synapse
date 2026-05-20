@@ -1,8 +1,7 @@
 
 import { Note } from '../../../domain/note.types';
 
-export interface WhiteboardEditorProps {
+export interface ExcalidrawEditorProps {
   note: Note;
-  onChange?: (content: unknown) => void;
   readOnly?: boolean;
 }

@@ -28,7 +28,7 @@ export class ChatWebSocketClient {
     this._sessionId = sessionId;
 
     // Get WebSocket URL from environment
-    const wsUrl = import.meta.env.VITE_WS_URL || "ws://localhost:8000";
+    const wsUrl = import.meta.env.VITE_WS_URL || (typeof window !== "undefined" ? `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}` : "ws://localhost:8000");
     const token = getAuthToken();
 
     // Chat uses session-specific endpoint

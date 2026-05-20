@@ -1,7 +1,16 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+/**
+ * ChatConversationView — Renders the conversation list and input.
+ *
+ * Pure Vercel architecture: receives UIMessage[] directly from SDK.
+ * No more synthetic streamingMessage construction or string-based content bridging.
+ * The SDK automatically includes the live streaming assistant message in `messages`.
+ */
+
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { XIcon, Search } from "lucide-react";
+import type { UIMessage } from "ai";
 import type { VoiceState, TranscriptEntry } from "../../voice/engine/types";
 import { MarkdownRenderer } from "@/shared/rendering";
 import { ChatMessage } from "./ChatMessage";
@@ -16,29 +25,26 @@ import { useCreateThread } from "../hooks/useThreads";
 import { useCreateBranch } from "../hooks/useBranches";
 import { useThreadStore } from "../state/threadStore";
 import { useChatStore } from "../state/chatStore";
-import { ThinkingIndicator } from "./ThinkingIndicator";
 import { ComparisonPanel } from "./ComparisonPanel";
 import { ComparisonToggle } from "./ComparisonToggle";
 import { toast } from "sonner";
-
-import type { ChatMessageResponse } from "@/api/generated";
 import type { SearchOccurrence } from "../../search/types";
 
+// ── Props ────────────────────────────────────────────────────────────────────
 
 interface ChatConversationViewProps {
-  messages: ChatMessageResponse[];
+  /** SDK UIMessage[] — single source of truth for all rendered messages */
+  messages: UIMessage[];
   message: string;
   sessionId: number;
+  sessionTitle?: string;
   onMessageChange: (value: string) => void;
   onSend: (attachmentIds?: number[]) => void;
   onReset: () => void;
   onStop?: () => void;
   onVoiceClick?: () => void;
-  isSending?: boolean;
+  /** True when SDK status is 'submitted' | 'streaming' */
   isStreaming?: boolean;
-  streamingContent?: string;
-  streamingThinking?: string;
-  sessionTitle?: string;
   // Voice mode props (Gemini Live-style inline)
   voiceActive?: boolean;
   voiceState?: VoiceState;
@@ -50,6 +56,8 @@ interface ChatConversationViewProps {
   onVoiceEndSession?: () => void;
 }
 
+// ── Component ────────────────────────────────────────────────────────────────
+
 export function ChatConversationView({
   messages,
   message,
@@ -59,11 +67,7 @@ export function ChatConversationView({
   onReset,
   onStop,
   onVoiceClick,
-  isSending = false,
   isStreaming = false,
-  streamingContent = "",
-  streamingThinking = "",
-  // Voice mode
   voiceActive = false,
   voiceState,
   voiceInputTranscript = "",
@@ -72,130 +76,106 @@ export function ChatConversationView({
   voiceTranscriptHistory = [],
   onVoiceInterrupt,
   onVoiceEndSession,
-  // sessionTitle, // Unused
 }: ChatConversationViewProps) {
-
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  
 
-
-  // Comparison mode state from chatStore
-  const { 
-    isComparisonMode, 
-    selectedModels, 
-    comparisonStreaming 
-  } = useChatStore();
+  // Comparison mode from store
+  const { isComparisonMode, selectedModels, comparisonStreaming } = useChatStore();
 
   const [searchParams, setSearchParams] = useSearchParams();
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const hasAutoActivated = useRef(false);
 
-  // IDE-style search
-  const search = useConversationSearch({ messages });
+  // IDE-style in-conversation search
+  // Cast to `any` because search hook expects ChatMessageResponse[] — search typing is a to-do
+  const search = useConversationSearch({ messages: messages as any });
 
-  // Auto-activate search from URL query param (?q=...)
+  // Auto-activate search from URL ?q= param
   useEffect(() => {
-    const queryFromUrl = searchParams.get('q');
-
-    // Only activate if we have a query, haven't done it yet, and messages are loaded
+    const queryFromUrl = searchParams.get("q");
     if (queryFromUrl && !hasAutoActivated.current && messages.length > 0) {
       hasAutoActivated.current = true;
       setIsSearchOpen(true);
       search.setQuery(queryFromUrl);
-
-      // Clean up URL (remove ?q param after reading)
       setSearchParams((prev) => {
         const next = new URLSearchParams(prev);
-        next.delete('q');
+        next.delete("q");
         return next;
       }, { replace: true });
     }
   }, [searchParams, messages.length, search, setSearchParams]);
 
-  // Auto-scroll to first occurrence when search results appear from auto-activation
+  // Auto-scroll to first search occurrence
   useEffect(() => {
     if (isSearchOpen && hasAutoActivated.current && search.state.totalCount > 0) {
-      // Small timeout to allow DOM to render highlights
       const timer = setTimeout(() => {
-        const firstOccurrence = search.state.occurrences[0];
-        if (firstOccurrence) {
-          scrollToOccurrence(firstOccurrence); // Pass full occurrence object
-        }
+        const first = search.state.occurrences[0];
+        if (first) scrollToOccurrence(first);
       }, 100);
       return () => clearTimeout(timer);
     }
-    return; // Explicit return for other code paths
+    return undefined;
   }, [isSearchOpen, search.state.totalCount, search.state.occurrences]);
 
-  // Get occurrences for a specific message
-  const getMessageOccurrences = useCallback((messageId: number): SearchOccurrence[] => {
-    return search.state.occurrences.filter(occ => occ.messageId === messageId);
-  }, [search.state.occurrences]);
+  // Get occurrences for a specific UIMessage (ID is string; search uses numeric)
+  const getMessageOccurrences = useCallback(
+    (messageId: string): SearchOccurrence[] => {
+      const numId = parseInt(messageId, 10);
+      if (isNaN(numId)) return [];
+      return search.state.occurrences.filter((occ) => occ.messageId === numId);
+    },
+    [search.state.occurrences],
+  );
 
-  // Get current occurrence ID (computed from match properties)
   const activeMatch = search.getActiveOccurrence();
   const currentOccurrenceId = activeMatch
     ? `${activeMatch.messageId}:${activeMatch.blockIndex}:${activeMatch.start}`
     : null;
 
-  // Auto-scroll to bottom when new messages arrive, streaming updates, or thinking starts
-  useEffect(() => {
-    if (!isSearchOpen) {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }
-  }, [messages, streamingContent, streamingThinking, isStreaming, isSearchOpen]);
-
-  // Scroll to occurrence when it changes
-  useEffect(() => {
-    const activeOccurrence = search.getActiveOccurrence();
-    if (activeOccurrence && isSearchOpen) {
-      scrollToOccurrence(activeOccurrence);
-    }
-  }, [search.state.currentIndex, isSearchOpen]);
-
-  // Keyboard shortcut to open search (Ctrl/Cmd + F)
+  // Keyboard shortcut Ctrl/Cmd+F
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+      if ((e.ctrlKey || e.metaKey) && e.key === "f") {
         e.preventDefault();
         setIsSearchOpen(true);
       }
     };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
+
+  // Scroll to active search occurrence
+  useEffect(() => {
+    const active = search.getActiveOccurrence();
+    if (active && isSearchOpen) scrollToOccurrence(active);
+  }, [search.state.currentIndex, isSearchOpen]);
 
   const handleCloseSearch = useCallback(() => {
     setIsSearchOpen(false);
     search.clearSearch();
   }, [search]);
 
-  // Derive "thinking" state: streaming started but no content yet
-  const isWaitingForResponse = isStreaming && !streamingContent && !streamingThinking;
+  // Auto-scroll to bottom when messages update or streaming ticks
+  useEffect(() => {
+    if (!isSearchOpen) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages, isStreaming, isSearchOpen]);
 
-  // Create temporary streaming message (only when we have content)
-  const streamingMessage: ChatMessageResponse | null =
-    isStreaming && (streamingContent || streamingThinking)
-      ? {
-        id: -1, // Temporary negative ID
-        session_id: messages[0]?.session_id || 0,
-        role: "assistant" as const,
-        content: streamingContent,
-        tokens: 0,
-        model_used: null,
-        function_calls: null,
-        grounding_sources: null,
-        created_at: new Date().toISOString(),
-      }
-      : null;
+  // Detect "waiting for first token" — SDK submitted but no text in last assistant msg yet
+  const isWaitingForResponse = useMemo(() => {
+    if (!isStreaming) return false;
+    const lastAssistant = [...messages].reverse().find((m) => m.role === "assistant");
+    if (!lastAssistant) return true;
+    return !lastAssistant.parts?.some((p) => p.type === "text" || p.type === "reasoning");
+  }, [isStreaming, messages]);
 
   return (
     <div className="flex flex-col h-full w-full">
-      {/* Search Bar - Fixed at top when open */}
+      {/* Search Bar — fixed at top when open */}
       {isSearchOpen && (
-        <div className="shrink-0 bg-background/50 backdrop-blur-md border-b border-white/5 z-20">
+        <div className="shrink-0 bg-background/50 backdrop-blur-md border-b border-border z-20">
           <div className="max-w-[1600px] mx-auto">
             <SearchBar
               state={search.state}
@@ -211,134 +191,131 @@ export function ChatConversationView({
         </div>
       )}
 
-      {/* Hub-Style Header */}
-      <div className="fixed top-0 left-0 right-0 z-10 bg-[#050505]/80 backdrop-blur-md border-b border-white/5">
+      {/* Header */}
+      <div className="fixed top-0 left-0 right-0 z-10 bg-background/80 backdrop-blur-md border-b border-border">
         <div className="max-w-[1600px] mx-auto w-full px-8 py-4 pl-12 lg:pl-8 flex items-center justify-end">
-           {/* Actions (Search / Reset / Threads) - Now right-aligned since title is gone */}
-           <div className="flex items-center gap-2">
-              {/* Threads Button */}
-              <ThreadButton />
-
-             {isSearchOpen ? (
-                <div className="flex items-center gap-2 bg-zinc-900/50 p-1 rounded-lg border border-white/10 animate-in fade-in slide-in-from-right-4 duration-200">
-                  <SearchBar
-                    state={search.state}
-                    occurrences={search.state.occurrences}
-                    onQueryChange={search.setQuery}
-                    onOptionsChange={search.setOptions}
-                    onNext={search.goToNext}
-                    onPrev={search.goToPrev}
-                    onClose={() => setIsSearchOpen(false)}
-                    onJumpTo={search.goToOccurrence}
-                  />
-                </div>
-             ) : (
-               <Button
-                 variant="ghost"
-                 size="icon"
-                 onClick={() => setIsSearchOpen(true)}
-                 className="text-zinc-500 hover:text-white hover:bg-white/10"
-                 title="Search in conversation"
-               >
-                 <Search className="size-4" />
-               </Button>
-             )}
-
-             <Button
-               variant="ghost"
-               size="icon"
-               onClick={onReset}
-               className="text-zinc-500 hover:text-white hover:bg-white/10"
-               title="New Chat / Reset"
-             >
-               <XIcon className="size-4" />
-             </Button>
-           </div>
+          <div className="flex items-center gap-2">
+            <ThreadButton />
+            {isSearchOpen ? (
+              <div className="flex items-center gap-2 bg-card/80 p-1 rounded-lg border border-border animate-in fade-in slide-in-from-right-4 duration-200">
+                <SearchBar
+                  state={search.state}
+                  occurrences={search.state.occurrences}
+                  onQueryChange={search.setQuery}
+                  onOptionsChange={search.setOptions}
+                  onNext={search.goToNext}
+                  onPrev={search.goToPrev}
+                  onClose={() => setIsSearchOpen(false)}
+                  onJumpTo={search.goToOccurrence}
+                />
+              </div>
+            ) : (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setIsSearchOpen(true)}
+                className="text-muted-foreground hover:text-foreground hover:bg-muted"
+                title="Search in conversation"
+              >
+                <Search className="size-4" />
+              </Button>
+            )}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onReset}
+              className="text-muted-foreground hover:text-foreground hover:bg-muted"
+              title="New Chat / Reset"
+            >
+              <XIcon className="size-4" />
+            </Button>
+          </div>
         </div>
       </div>
-      {/* Messages Area - Scrollable, takes remaining space */}
+
+      {/* Messages Area */}
       <div
         ref={scrollContainerRef}
         data-scroll-container="chat-messages"
         className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-hide px-4 md:px-8 pb-4 min-h-0"
       >
         <div className="max-w-4xl mx-auto space-y-6">
+          {/* All messages — SDK includes the live streaming message as last entry */}
+          {messages.map((msg, index) => {
+            const isLast = index === messages.length - 1;
+            const isStreamingMsg = isLast && isStreaming && msg.role === "assistant";
+            return (
+              <ChatMessage
+                key={msg.id}
+                message={msg}
+                isStreaming={isStreamingMsg}
+                occurrences={getMessageOccurrences(msg.id)}
+                currentOccurrenceId={currentOccurrenceId}
+              />
+            );
+          })}
 
-          {messages.map((msg) => (
-            <ChatMessage
-              key={msg.id}
-              message={msg}
-              occurrences={getMessageOccurrences(msg.id)}
-              currentOccurrenceId={currentOccurrenceId}
-            />
-          ))}
-
-          {/* Thinking Indicator - shows while waiting for first token */}
-          {isWaitingForResponse && (
-            <div className="animate-in fade-in duration-200">
-              <ThinkingIndicator />
+          {/* Loading indicator — shown after submit before first token arrives */}
+          {isWaitingForResponse && !isComparisonMode && (
+            <div className="flex items-start gap-3 animate-in fade-in duration-300">
+              <div className="size-7 rounded-full bg-muted flex items-center justify-center shrink-0 mt-0.5">
+                <span className="text-xs">✦</span>
+              </div>
+              <div className="flex items-center gap-1 pt-2">
+                {[0, 1, 2].map((i) => (
+                  <span
+                    key={i}
+                    className="inline-block size-1.5 rounded-full bg-muted-foreground/40 animate-bounce"
+                    style={{ animationDelay: `${i * 0.15}s` }}
+                  />
+                ))}
+              </div>
             </div>
           )}
 
-          {/* Streaming Message - shows once content starts arriving (normal mode) */}
-          {streamingMessage && !isComparisonMode && (
-            <ChatMessage
-              message={streamingMessage}
-              isStreaming={true}
-              thinking={streamingThinking}
-              occurrences={[]}
-              currentOccurrenceId={null}
-            />
-          )}
-
-          {/* Voice Mode: Committed transcripts (persistent — survive across turns) */}
+          {/* Voice Mode: committed transcript history */}
           {voiceActive && voiceTranscriptHistory.map((entry) => (
-            <div
-              key={entry.id}
-              className={`flex ${entry.isInput ? 'justify-end' : 'justify-start'}`}
-            >
+            <div key={entry.id} className={`flex ${entry.isInput ? "justify-end" : "justify-start"}`}>
               <div
                 className={`max-w-[80%] rounded-2xl px-4 py-2.5 ${
                   entry.isInput
-                    ? 'rounded-br-md bg-cyan-600/20 border border-cyan-500/20'
-                    : 'rounded-bl-md bg-white/5 border border-white/10'
+                    ? "rounded-br-md bg-primary/20 border border-primary/20"
+                    : "rounded-bl-md bg-foreground/5 border border-border"
                 }`}
               >
-                <div className={`text-sm ${
-                  entry.isInput ? 'text-cyan-100/90' : 'text-zinc-200'
-                }`}>
+                <div className={`text-sm ${entry.isInput ? "text-primary-foreground/90" : "text-foreground/70"}`}>
                   <MarkdownRenderer content={entry.text} />
                 </div>
               </div>
             </div>
           ))}
 
-          {/* Voice Mode: Live in-progress user speech (ephemeral) */}
+          {/* Voice Mode: live user speech (ephemeral) */}
           {voiceActive && voiceInputTranscript && (
             <div className="flex justify-end animate-in fade-in duration-200">
-              <div className="max-w-[80%] rounded-2xl rounded-br-md px-4 py-2.5 bg-cyan-600/20 border border-cyan-500/20">
-                <p className="text-sm text-cyan-100/90">{voiceInputTranscript}</p>
-                <span className="text-[10px] text-cyan-400/60 mt-1 block">Speaking...</span>
+              <div className="max-w-[80%] rounded-2xl rounded-br-md px-4 py-2.5 bg-primary/20 border border-primary/20">
+                <p className="text-sm text-primary-foreground/90">{voiceInputTranscript}</p>
+                <span className="text-[10px] text-primary/60 mt-1 block">Speaking...</span>
               </div>
             </div>
           )}
 
-          {/* Voice Mode: Live in-progress AI response (ephemeral) */}
+          {/* Voice Mode: live AI response (ephemeral) */}
           {voiceActive && voiceOutputTranscript && (
             <div className="flex justify-start animate-in fade-in duration-200">
-              <div className="max-w-[80%] rounded-2xl rounded-bl-md px-4 py-2.5 bg-white/5 border border-white/10">
-                <div className="text-sm text-zinc-200">
+              <div className="max-w-[80%] rounded-2xl rounded-bl-md px-4 py-2.5 bg-foreground/5 border border-border">
+                <div className="text-sm text-foreground/70">
                   <MarkdownRenderer content={voiceOutputTranscript} />
                 </div>
-                <span className="text-[10px] text-purple-400/60 mt-1 block">
-                  {voiceState === 'speaking' ? '🔊 Speaking...' : 'AI'}
+                <span className="text-[10px] text-accent/60 mt-1 block">
+                  {voiceState === "speaking" ? "🔊 Speaking..." : "AI"}
                 </span>
               </div>
             </div>
           )}
         </div>
 
-        {/* Comparison Panel — rendered OUTSIDE max-w-4xl so it can be wider */}
+        {/* Comparison Panel — wider than 4xl, rendered outside */}
         {(comparisonStreaming.A.content || comparisonStreaming.B.content) && (
           <div className="max-w-7xl mx-auto px-2 mt-6 animate-in fade-in duration-200">
             <ComparisonPanel
@@ -359,22 +336,13 @@ export function ChatConversationView({
         </div>
       </div>
 
-      {/* Input Area - Fixed at bottom */}
-      <div className="shrink-0 px-4 md:px-8 pb-6 pt-2 bg-gradient-to-t from-[#050505] via-[#050505]/80 to-transparent">
+      {/* Input Area */}
+      <div className="shrink-0 px-4 md:px-8 pb-6 pt-2 bg-gradient-to-t from-background via-background/80 to-transparent">
         <div className="max-w-4xl mx-auto space-y-3">
-          {/* AI Suggestions - Above input (hidden during streaming) */}
-          <SuggestionsArea
-            sessionId={sessionId}
-            messages={messages}
-            isStreaming={isStreaming}
-          />
-
-          {/* Comparison Mode Toggle */}
+          <SuggestionsArea sessionId={sessionId} messages={messages} isStreaming={isStreaming} />
           <div className="flex justify-end mb-2">
             <ComparisonToggle />
           </div>
-
-          {/* Chat Input with integrated Stop button */}
           <ChatInputBox
             message={message}
             onMessageChange={onMessageChange}
@@ -383,7 +351,7 @@ export function ChatConversationView({
             onVoiceClick={onVoiceClick}
             isStreaming={isStreaming}
             placeholder={voiceActive ? "Type to ask..." : "Continue the conversation..."}
-            disabled={isSending && !voiceActive}
+            disabled={isStreaming && !voiceActive}
             sessionId={sessionId}
             voiceActive={voiceActive}
             voiceState={voiceState}
@@ -393,26 +361,22 @@ export function ChatConversationView({
           />
         </div>
       </div>
-      
-
     </div>
   );
 }
 
-// ============================================================================
-// Sub-Component: Suggestions Area
-// ============================================================================
+// ── Sub-Component: Suggestions ────────────────────────────────────────────────
 
 interface SuggestionsAreaProps {
   sessionId: number;
-  messages: ChatMessageResponse[];
+  messages: UIMessage[];
   isStreaming: boolean;
 }
 
 function SuggestionsArea({ sessionId, messages, isStreaming }: SuggestionsAreaProps) {
   const { suggestions, dismiss } = useSuggestions({
     sessionId,
-    messages,
+    messages: messages as any, // useSuggestions only needs role + content
     enabled: !isStreaming && messages.length >= 2,
   });
 
@@ -421,51 +385,40 @@ function SuggestionsArea({ sessionId, messages, isStreaming }: SuggestionsAreaPr
   const { openPanel, switchToThread } = useThreadStore();
 
   const handleAccept = useCallback(async (suggestion: SuggestionSignal) => {
-    if (suggestion.type === 'START_THREAD') {
-      // Find the last user message content for thread title
-      const lastUser = [...messages].reverse().find(m => m.role === 'user');
-      const title = lastUser?.content?.slice(0, 50) || 'New Thread';
-
+    if (suggestion.type === "START_THREAD") {
+      const lastUser = [...messages].reverse().find((m) => m.role === "user");
+      const lastUserText =
+        lastUser?.parts?.find((p) => p.type === "text") &&
+        ((lastUser.parts.find((p) => p.type === "text") as any).text || "") ||
+        (lastUser as any)?.content || "";
+      const title = lastUserText.slice(0, 50) || "New Thread";
       try {
         const thread = await createThread.mutateAsync({
           sessionId,
           title,
           rootMessageId: suggestion.anchorMessageId,
         });
-        
-        // Switch to thread context
         switchToThread(thread.id, thread);
         openPanel();
-        toast.success('Thread created');
+        toast.success("Thread created");
       } catch {
-        toast.error('Failed to create thread');
+        toast.error("Failed to create thread");
       }
-    } else if (suggestion.type === 'CREATE_BRANCH') {
+    } else if (suggestion.type === "CREATE_BRANCH") {
       try {
-        await createBranch.mutateAsync({
-          messageId: suggestion.anchorMessageId,
-        });
-        toast.success('Branch created - use arrows to navigate');
+        await createBranch.mutateAsync({ messageId: suggestion.anchorMessageId });
+        toast.success("Branch created - use arrows to navigate");
       } catch {
-        toast.error('Failed to create branch');
+        toast.error("Failed to create branch");
       }
     }
-
-    // Dismiss after action
     dismiss(suggestion);
   }, [messages, sessionId, createThread, createBranch, switchToThread, openPanel, dismiss]);
 
-  const handleDismiss = useCallback((suggestion: SuggestionSignal) => {
-    dismiss(suggestion);
-  }, [dismiss]);
+  const handleDismiss = useCallback((s: SuggestionSignal) => dismiss(s), [dismiss]);
 
   if (suggestions.length === 0) return null;
-
   return (
-    <SuggestionChipList
-      suggestions={suggestions}
-      onAccept={handleAccept}
-      onDismiss={handleDismiss}
-    />
+    <SuggestionChipList suggestions={suggestions} onAccept={handleAccept} onDismiss={handleDismiss} />
   );
 }

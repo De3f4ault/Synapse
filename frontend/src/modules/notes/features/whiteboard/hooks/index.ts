@@ -1,3 +1,2 @@
 
-// Hooks export
-export * from './useWhiteboardNote';
+export * from './useExcalidrawNote';

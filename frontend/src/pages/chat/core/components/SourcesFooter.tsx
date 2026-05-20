@@ -42,7 +42,7 @@ export const SourcesFooter: React.FC<SourcesFooterProps> = ({
 
     return (
         <div className={cn(
-            'mt-4 rounded-lg border border-zinc-700/50 bg-zinc-900/50 overflow-hidden',
+            'mt-4 rounded-lg border border-border bg-card overflow-hidden',
             'transition-all duration-200',
             className
         )}>
@@ -52,13 +52,13 @@ export const SourcesFooter: React.FC<SourcesFooterProps> = ({
                 onClick={() => setIsExpanded(!isExpanded)}
                 className={cn(
                     'flex w-full items-center justify-between px-4 py-2.5',
-                    'text-xs font-medium text-zinc-400',
-                    'hover:bg-zinc-800/50 transition-colors',
-                    isExpanded && 'border-b border-zinc-700/50'
+                    'text-xs font-medium text-muted-foreground',
+                    'hover:bg-muted/50 transition-colors',
+                    isExpanded && 'border-b border-border'
                 )}
             >
                 <div className="flex items-center gap-2">
-                    <BookOpen className="size-3.5 text-cyan-500/70" />
+                    <BookOpen className="size-3.5 text-primary/70" />
                     <span>
                         {uniqueSources.length} source{uniqueSources.length !== 1 ? 's' : ''}
                     </span>
@@ -84,13 +84,13 @@ export const SourcesFooter: React.FC<SourcesFooterProps> = ({
                                 id={`grounding-source-${idx + 1}`}
                                 className={cn(
                                     'flex items-start gap-3 p-3 rounded-md',
-                                    'bg-zinc-800/40 border border-zinc-700/30',
-                                    'hover:bg-zinc-800/60 hover:border-zinc-700/50',
+                                    'bg-muted/40 border border-border',
+                                    'hover:bg-muted/60 hover:border-border',
                                     'transition-all duration-200'
                                 )}
                             >
                                 {/* Source number */}
-                                <span className="shrink-0 flex items-center justify-center w-6 h-6 rounded-full bg-cyan-500/15 text-cyan-400 text-[11px] font-mono font-bold mt-0.5">
+                                <span className="shrink-0 flex items-center justify-center w-6 h-6 rounded-full bg-primary/15 text-primary text-[11px] font-mono font-bold mt-0.5">
                                     {idx + 1}
                                 </span>
 
@@ -98,17 +98,17 @@ export const SourcesFooter: React.FC<SourcesFooterProps> = ({
                                 <div className="flex-1 min-w-0">
                                     <div className="flex items-start justify-between gap-2">
                                         <div className="flex items-center gap-1.5 min-w-0">
-                                            <FileText className="size-3 text-zinc-500 shrink-0" />
-                                            <h4 className="text-xs font-medium text-zinc-200 truncate">
+                                            <FileText className="size-3 text-muted-foreground shrink-0" />
+                                            <h4 className="text-xs font-medium text-foreground/70 truncate">
                                                 {source.title}
                                             </h4>
                                         </div>
                                         {confidence !== null && (
                                             <span className={cn(
                                                 'shrink-0 text-[10px] font-mono tabular-nums px-1.5 py-0.5 rounded',
-                                                confidence >= 90 ? 'text-emerald-400 bg-emerald-500/10' :
-                                                confidence >= 70 ? 'text-amber-400 bg-amber-500/10' :
-                                                'text-red-400 bg-red-500/10'
+                                                confidence >= 90 ? 'text-accent-olive bg-accent-olive/10' :
+                                                confidence >= 70 ? 'text-warning bg-warning/10' :
+                                                'text-destructive bg-destructive/10'
                                             )}>
                                                 {confidence}%
                                             </span>
@@ -117,13 +117,13 @@ export const SourcesFooter: React.FC<SourcesFooterProps> = ({
 
                                     {/* Confidence bar */}
                                     {confidence !== null && (
-                                        <div className="mt-1.5 h-0.5 rounded-full bg-zinc-700/60 overflow-hidden">
+                                        <div className="mt-1.5 h-0.5 rounded-full bg-muted overflow-hidden">
                                             <div
                                                 className={cn(
                                                     'h-full rounded-full transition-all duration-500',
-                                                    confidence >= 90 ? 'bg-emerald-400/70' :
+                                                    confidence >= 90 ? 'bg-accent-olive/70' :
                                                     confidence >= 70 ? 'bg-amber-400/70' :
-                                                    'bg-red-400/70'
+                                                    'bg-destructive/70'
                                                 )}
                                                 style={{ width: `${confidence}%` }}
                                             />
@@ -132,7 +132,7 @@ export const SourcesFooter: React.FC<SourcesFooterProps> = ({
 
                                     {/* Snippet */}
                                     {source.snippet && (
-                                        <p className="mt-1.5 text-[11px] text-zinc-400 leading-relaxed line-clamp-2">
+                                        <p className="mt-1.5 text-[11px] text-muted-foreground leading-relaxed line-clamp-2">
                                             {source.snippet}
                                         </p>
                                     )}

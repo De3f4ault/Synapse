@@ -23,7 +23,7 @@ export function NoteShell({
         - Just displays metadata
         - Status indicator
       */}
-      <header className="flex-none h-14 border-b border-white/5 flex items-center px-4 justify-between bg-slate-900/50 backdrop-blur-sm">
+      <header className="flex-none h-14 border-b border-border flex items-center px-4 justify-between bg-slate-900/50 backdrop-blur-sm">
         <div className="flex items-center gap-3">
            <NoteTypeBadge type={note.type} />
            <input 
@@ -32,13 +32,13 @@ export function NoteShell({
              // Using simple onBlur for title updates to keep shell simple
              // In real app maybe local state + debounce
              onBlur={(e) => onTitleChange?.(e.target.value)}
-             className="bg-transparent text-sm font-semibold text-slate-200 focus:outline-none focus:ring-1 focus:ring-cyan-500/50 rounded px-1"
+             className="bg-transparent text-sm font-semibold text-foreground/70 focus:outline-none focus:ring-1 focus:ring-primary/50 rounded px-1"
            />
         </div>
         
         {/* Status Area */}
         <div className="flex items-center gap-4 text-xs">
-           <span className={`text-slate-500 transition-colors ${isSaving ? 'text-cyan-400' : ''}`}>
+           <span className={`text-muted-foreground transition-colors ${isSaving ? 'text-primary' : ''}`}>
              {isSaving ? 'Saving...' : 'Saved'}
            </span>
         </div>

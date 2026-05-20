@@ -57,7 +57,7 @@ export function JumpToDropdown({
                 onClick={() => setIsOpen(!isOpen)}
                 className={cn(
                     "flex items-center gap-1 px-2 py-1 text-xs rounded-md",
-                    "bg-white/5 hover:bg-white/10 border border-white/10",
+                    "bg-foreground/5 hover:bg-muted border border-border",
                     "transition-colors"
                 )}
             >
@@ -73,10 +73,10 @@ export function JumpToDropdown({
                 <div className={cn(
                     "absolute top-full left-0 mt-1 z-50",
                     "w-64 max-h-64 overflow-y-auto",
-                    "bg-popover border border-white/10 rounded-lg shadow-xl",
+                    "bg-popover border border-border rounded-lg shadow-xl",
                     "py-1"
                 )}>
-                    <div className="px-2 py-1.5 text-[10px] text-muted-foreground uppercase tracking-wider border-b border-white/5">
+                    <div className="px-2 py-1.5 text-[10px] text-muted-foreground uppercase tracking-wider border-b border-border">
                         {occurrences.length} matches
                     </div>
 
@@ -97,7 +97,7 @@ export function JumpToDropdown({
                                     "text-left text-xs transition-colors",
                                     isActive
                                         ? "bg-primary/20 text-primary"
-                                        : "hover:bg-white/5 text-muted-foreground hover:text-foreground"
+                                        : "hover:bg-muted/50 text-muted-foreground hover:text-foreground"
                                 )}
                             >
                                 <Icon className="size-3 mt-0.5 shrink-0" />

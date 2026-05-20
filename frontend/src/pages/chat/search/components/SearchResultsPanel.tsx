@@ -78,11 +78,11 @@ const MATCH_PRIORITY: Record<string, number> = {
 };
 
 const MATCH_TYPE_CONFIG: Record<string, { icon: React.ElementType; color: string; label: string }> = {
-    exact: { icon: CheckCircle2, color: 'text-green-400 bg-green-500/20', label: 'Exact match' },
-    prefix: { icon: CheckCircle2, color: 'text-green-400 bg-green-500/20', label: 'Starts with' },
-    bm25: { icon: Search, color: 'text-blue-400 bg-blue-500/20', label: 'Full-word' },
+    exact: { icon: CheckCircle2, color: 'text-accent-olive bg-accent-olive/20', label: 'Exact match' },
+    prefix: { icon: CheckCircle2, color: 'text-accent-olive bg-accent-olive/20', label: 'Starts with' },
+    bm25: { icon: Search, color: 'text-info bg-blue-500/20', label: 'Full-word' },
     substring: { icon: Type, color: 'text-orange-400 bg-orange-500/20', label: 'Contains' },
-    fuzzy: { icon: Sparkles, color: 'text-purple-400 bg-purple-500/20', label: 'Similar' },
+    fuzzy: { icon: Sparkles, color: 'text-accent bg-accent/20', label: 'Similar' },
 };
 
 // ============================================================================
@@ -127,7 +127,7 @@ function formatContextBreakdown(ctx: ContextBreakdown): string {
 
 function SearchModeIndicator({ mode }: { mode: 'conversation' | 'global' }) {
     return (
-        <div className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-muted-foreground border-b border-white/5">
+        <div className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-muted-foreground border-b border-border">
             {mode === 'conversation' ? (
                 <>
                     <FileSearch className="size-3" />
@@ -158,8 +158,8 @@ function SessionResultItem({
             onClick={onClick}
             className={cn(
                 "w-full text-left px-3 py-2.5 rounded-lg transition-all",
-                "hover:bg-white/5 focus:bg-white/5 focus:outline-none",
-                "group border border-transparent hover:border-white/10"
+                "hover:bg-muted/50 focus:bg-foreground/5 focus:outline-none",
+                "group border border-transparent hover:border-border"
             )}
         >
             {/* Header: Title + Occurrence Count */}

@@ -112,7 +112,7 @@ export const ChatPage: React.FC = () => {
   // Pattern copied EXACTLY from DocumentsHub.tsx
   return (
     <ChatProviders sessionId={sessionId}>
-      <div className="fixed inset-0 min-h-screen flex flex-col pt-16 bg-[#050505]">
+      <div className="fixed inset-0 min-h-screen flex flex-col pt-16 bg-background">
         <div className="flex flex-1 overflow-hidden">
           {/* Desktop Sidebar - Expandable */}
           <div className="hidden lg:flex h-full">
@@ -123,7 +123,7 @@ export const ChatPage: React.FC = () => {
           <Sheet open={mobileSidebarOpen} onOpenChange={setMobileSidebarOpen}>
             <SheetContent
               side="left"
-              className="w-72 p-0 border-none [&>button]:hidden bg-[#050505]/95 backdrop-blur-xl"
+              className="w-72 p-0 border-none [&>button]:hidden bg-background/95 backdrop-blur-xl"
             >
               <ChatSidebar currentSessionId={sessionId} />
             </SheetContent>
@@ -139,7 +139,7 @@ export const ChatPage: React.FC = () => {
                   variant="ghost"
                   size="icon"
                   onClick={() => setMobileSidebarOpen(true)}
-                  className="hover:bg-white/10 text-slate-400 hover:text-white rounded-xl transition-colors"
+                  className="hover:bg-muted text-muted-foreground hover:text-foreground rounded-xl transition-colors"
                 >
                   <MenuIcon className="size-5" />
                 </Button>

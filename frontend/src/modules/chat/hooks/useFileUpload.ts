@@ -44,7 +44,7 @@ interface UploadResponse {
 
 // ==================== CONSTANTS ====================
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "";
 const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20MB
 const MAX_FILES = 5;
 

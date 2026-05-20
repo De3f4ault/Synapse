@@ -1,34 +1,7 @@
 // Chat Module - Public API
 // Only export through this barrel file to maintain module isolation
 
-// ==================== COMPONENTS ====================
-export { ChatInterface } from "./components/ChatInterface";
-export { ContextPanel } from "./components/ContextPanel";
-export { MessageInput } from "./components/MessageInput";
-export { MessageList } from "./components/MessageList";
-export {
-  StreamingMessage,
-  TypingIndicator,
-  MessageBubble,
-} from "./components/StreamingMessage";
-export { ChatMessage } from "./components/ChatMessage";
-
 // ==================== HOOKS ====================
-
-// WebSocket & Streaming
-export {
-  useChatWebSocket,
-  type WebSocketStatus,
-  type StreamingChunk,
-  type ChatWebSocketMessage,
-} from "./hooks/useChatWebSocket";
-
-export {
-  useStreamingMessage,
-  useTypingEffect,
-} from "./hooks/useStreamingMessage";
-
-export { useChatStreaming, type WebSocketState } from "./hooks/useChatStreaming";
 
 // Session Management
 export {
@@ -47,8 +20,14 @@ export {
   useUpdateMessage,
 } from "./hooks/useChatMessages";
 
+// Implicit feedback (used in ChatMain)
+export { useImplicitFeedback } from "./hooks/useImplicitFeedback";
+
 // Title Generation
 export { useTitleGeneration } from "./hooks/useTitleGeneration";
+
+// File Upload (used in ChatInputBox)
+export { useFileUpload } from "./hooks/useFileUpload";
 
 // Evidence Retrieval (Unified Search Integration)
 export {

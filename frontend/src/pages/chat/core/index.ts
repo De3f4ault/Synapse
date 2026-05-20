@@ -9,7 +9,7 @@
 export { ChatMain, ChatConversationView, ChatMessage, ChatInputBox, ChatWelcomeScreen } from './components';
 
 // Hooks
-export { useChatStreaming, useChatMessages, useAddMessage, useUpdateMessage, useInvalidateMessages } from './hooks';
+export { useSynapseChat, useChatMessages, useAddMessage, useUpdateMessage, useInvalidateMessages } from './hooks';
 
 // Re-export session hooks from sidebar for convenience (ChatPage uses these)
 export { useChatSessions, useChatSession, useCreateSession } from '../sidebar/hooks';

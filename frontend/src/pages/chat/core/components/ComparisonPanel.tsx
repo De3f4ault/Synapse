@@ -39,19 +39,19 @@ function ColumnHeader({
   const info = models.find((m) => m.id === modelId);
 
   return (
-    <header className="flex items-center justify-between px-4 py-2.5 border-b border-white/5">
+    <header className="flex items-center justify-between px-4 py-2.5 border-b border-border">
       <div className="flex items-center gap-2">
         <span
           className={cn(
             "text-[9px] w-4 h-4 flex items-center justify-center rounded font-bold",
             slot === "A"
-              ? "bg-cyan-500/20 text-cyan-400"
-              : "bg-amber-500/20 text-amber-400",
+              ? "bg-primary/20 text-primary"
+              : "bg-warning/20 text-warning",
           )}
         >
           {slot}
         </span>
-        <span className="text-[13px] font-semibold text-white">
+        <span className="text-[13px] font-semibold text-foreground">
           {info?.name || modelId}
         </span>
         {info?.provider && (
@@ -59,8 +59,8 @@ function ColumnHeader({
             className={cn(
               "text-[9px] px-1.5 py-0.5 rounded-full uppercase tracking-wide font-medium",
               info.provider === "ollama"
-                ? "bg-emerald-500/15 text-emerald-400"
-                : "bg-blue-500/15 text-blue-400",
+                ? "bg-accent-olive/15 text-accent-olive"
+                : "bg-blue-500/15 text-info",
             )}
           >
             {info.provider}
@@ -68,7 +68,7 @@ function ColumnHeader({
         )}
       </div>
       {isStreaming && (
-        <div className="flex items-center gap-1.5 text-cyan-400">
+        <div className="flex items-center gap-1.5 text-primary">
           <Loader2 className="size-3 animate-spin" />
           <span className="text-[11px]">Generating…</span>
         </div>
@@ -98,14 +98,14 @@ function InlineActions({ content }: { content: string }) {
     <div className="flex items-center gap-0.5 mt-3 pt-2">
       <button
         onClick={handleCopy}
-        className="flex items-center gap-1.5 px-2 py-1 rounded text-[11px] text-zinc-500 hover:text-zinc-200 hover:bg-white/5 transition-colors"
+        className="flex items-center gap-1.5 px-2 py-1 rounded text-[11px] text-muted-foreground hover:text-foreground/70 hover:bg-muted/50 transition-colors"
         title="Copy"
       >
-        {copied ? <Check className="size-3 text-emerald-400" /> : <Copy className="size-3" />}
+        {copied ? <Check className="size-3 text-accent-olive" /> : <Copy className="size-3" />}
         <span>{copied ? "Copied" : "Copy"}</span>
       </button>
       <button
-        className="flex items-center gap-1.5 px-2 py-1 rounded text-[11px] text-zinc-500 hover:text-zinc-200 hover:bg-white/5 transition-colors"
+        className="flex items-center gap-1.5 px-2 py-1 rounded text-[11px] text-muted-foreground hover:text-foreground/70 hover:bg-muted/50 transition-colors"
         title="Regenerate"
       >
         <RefreshCw className="size-3" />
@@ -129,7 +129,7 @@ function ResponseColumn({
   slot: "A" | "B";
 }) {
   return (
-    <div className="flex-1 min-w-0 flex flex-col rounded-2xl border border-white/6 bg-[#0a0a0c]/80 backdrop-blur-xl overflow-hidden">
+    <div className="flex-1 min-w-0 flex flex-col rounded-2xl border border-border bg-card/80 backdrop-blur-xl overflow-hidden">
       <ColumnHeader modelId={modelId} isStreaming={isStreaming} slot={slot} />
       <div className="p-4">
         {/* Thinking block */}
@@ -143,7 +143,7 @@ function ResponseColumn({
             <MarkdownRenderer content={content} />
           </div>
         ) : (
-          <div className="flex items-center justify-center min-h-[80px] text-zinc-500 text-sm">
+          <div className="flex items-center justify-center min-h-[80px] text-muted-foreground text-sm">
             {isStreaming ? "Waiting for response…" : "No response yet"}
           </div>
         )}
@@ -176,7 +176,7 @@ export function ComparisonPanel({
         thinking={thinkingA}
         slot="A"
       />
-      <div className="w-px bg-white/5 self-stretch shrink-0" />
+      <div className="w-px bg-foreground/5 self-stretch shrink-0" />
       <ResponseColumn
         modelId={modelB}
         content={contentB}

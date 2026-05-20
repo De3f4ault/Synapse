@@ -1,0 +1,202 @@
+/* ============================================================
+   Excalidraw AI Input — floating panel styles
+   Uses global tokens only.
+   ============================================================ */
+
+.excalidraw-ai-input {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 200;
+}
+
+/* ── Collapsed pill ───────────────────────────────────────── */
+.excalidraw-ai-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-strong);
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  font-size: var(--text-caption);
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: var(--shadow-whisper);
+  transition: border-color var(--duration-micro),
+              color var(--duration-micro),
+              background var(--duration-micro);
+}
+
+.excalidraw-ai-pill:hover {
+  border-color: var(--brand-primary);
+  color: var(--brand-primary);
+  background: var(--bg-surface);
+}
+
+/* ── Expanded panel ───────────────────────────────────────── */
+.excalidraw-ai-panel {
+  width: 300px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-large);
+  box-shadow: var(--shadow-whisper);
+  overflow: hidden;
+  animation: panel-in var(--duration-deliberate) var(--ease-enter);
+}
+
+@keyframes panel-in {
+  from { opacity: 0; transform: translateY(-6px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.excalidraw-ai-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px 8px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.excalidraw-ai-panel__title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--text-caption);
+  font-weight: 700;
+  color: var(--brand-primary);
+  letter-spacing: var(--tracking-label);
+}
+
+.excalidraw-ai-panel__collapse {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-subtle);
+  border: none;
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: background var(--duration-micro);
+}
+
+.excalidraw-ai-panel__collapse:hover {
+  background: var(--bg-surface-hover);
+  color: var(--text-primary);
+}
+
+/* Diagram type selector */
+.excalidraw-ai-panel__type-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.excalidraw-ai-panel__type-btn {
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-default);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--duration-micro);
+}
+
+.excalidraw-ai-panel__type-btn:hover {
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+}
+
+.excalidraw-ai-panel__type-btn.active {
+  background: rgba(201, 100, 66, 0.1);
+  border-color: var(--brand-primary);
+  color: var(--brand-primary);
+}
+
+/* Input row */
+.excalidraw-ai-panel__input-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px;
+}
+
+.excalidraw-ai-panel__input {
+  flex: 1;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-default);
+  padding: 7px 10px;
+  font-size: var(--text-caption);
+  color: var(--text-primary);
+  outline: none;
+  font-family: var(--font-sans);
+  transition: border-color var(--duration-micro);
+}
+
+.excalidraw-ai-panel__input:focus {
+  border-color: var(--brand-primary);
+}
+
+.excalidraw-ai-panel__input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.excalidraw-ai-panel__input:disabled {
+  opacity: 0.5;
+}
+
+.excalidraw-ai-panel__generate-btn {
+  padding: 7px 12px;
+  border-radius: var(--radius-default);
+  border: none;
+  background: var(--brand-primary);
+  color: #fff;
+  font-size: var(--text-caption);
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: opacity var(--duration-micro);
+}
+
+.excalidraw-ai-panel__generate-btn:hover {
+  opacity: 0.88;
+}
+
+.excalidraw-ai-panel__generate-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Status / error */
+.excalidraw-ai-panel__status,
+.excalidraw-ai-panel__error {
+  padding: 0 12px 10px;
+  font-size: 11px;
+  line-height: var(--leading-relaxed);
+}
+
+.excalidraw-ai-panel__status {
+  color: var(--text-tertiary);
+}
+
+.excalidraw-ai-panel__error {
+  color: var(--status-error);
+}
+
+/* Spinner */
+.excalidraw-ai-spin {
+  animation: spin var(--duration-deliberate) linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }

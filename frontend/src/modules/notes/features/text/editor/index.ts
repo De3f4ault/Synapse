@@ -1,3 +1,3 @@
 
-export * from './BlockNoteEditor';
-export * from './blocknote.schema';
+export * from './TiptapEditor';
+export * from './tiptap.extractor';

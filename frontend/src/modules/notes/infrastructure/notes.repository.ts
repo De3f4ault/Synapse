@@ -1,36 +1,50 @@
 
-import { Note, NoteCreateDTO, NoteUpdateDTO } from '../domain/note.types';
 import { NotesApi } from './notes.api';
-import { LocalPersistence } from './notes.persistence';
+import type { NoteCreateDTO, NoteUpdateDTO } from '../domain/note.types';
 
-// The Repository pattern acts as the single source of truth
-// It coordinates between API (remote) and Persistence (local/optimistic)
+/**
+ * Single entry point for all note operations.
+ * Delegates directly to the HTTP API — no local persistence layer.
+ */
 export const NotesRepository = {
-  getAllNotes: async () => {
-    return NotesApi.fetchAll();
-  },
+  // ── CRUD ──────────────────────────────────────────────────────────────────
+  getAllNotes: (params?: { is_favorite?: boolean; is_archived?: boolean; parent_id?: number }) =>
+    NotesApi.fetchAll(params),
 
-  getNote: async (id: string) => {
-    return NotesApi.fetchById(id);
-  },
+  getNote: (id: number) => NotesApi.fetchById(id),
 
-  createNote: async (dto: NoteCreateDTO) => {
-    const note = await NotesApi.create(dto);
-    await LocalPersistence.save(note);
-    return note;
-  },
+  createNote: (dto: NoteCreateDTO) => NotesApi.create(dto),
 
-  updateNote: async (id: string, updates: NoteUpdateDTO) => {
-    // 1. Optimistic update (maybe)
-    // 2. API call
-    const updated = await NotesApi.update(id, updates);
-    // 3. Sync local
-    await LocalPersistence.save(updated);
-    return updated;
-  },
+  updateNote: (id: number, dto: NoteUpdateDTO) =>
+    NotesApi.update(id, dto as Record<string, unknown>),
 
-  deleteNote: async (id: string) => {
-    await NotesApi.delete(id);
-    await LocalPersistence.delete(id);
-  }
+  checkpointNote: (id: number) => NotesApi.checkpoint(id),
+
+  deleteNote: (id: number) => NotesApi.delete(id),
+
+  archiveNote: (id: number, archive = true) =>
+    NotesApi.update(id, { is_archived: archive }),
+
+  favoriteNote: (id: number, favorite: boolean) =>
+    NotesApi.update(id, { is_favorite: favorite }),
+
+  // ── Discovery ─────────────────────────────────────────────────────────────
+  searchNotes: (query: string, limit?: number) => NotesApi.search(query, limit),
+
+  getNoteTree: () => NotesApi.getTree(),
+
+  // ── Journals ──────────────────────────────────────────────────────────────
+  getJournalDates: () => NotesApi.getJournalDates(),
+
+  getOrCreateJournal: (date: string) => NotesApi.getOrCreateJournal(date),
+
+  // ── Versions ──────────────────────────────────────────────────────────────
+  getNoteVersions: (id: number) => NotesApi.getVersions(id),
+
+  // ── AI ────────────────────────────────────────────────────────────────────
+  streamTransform: (params: Parameters<typeof NotesApi.streamTransform>[0]) =>
+    NotesApi.streamTransform(params),
+
+  visualize: (params: Parameters<typeof NotesApi.visualize>[0]) =>
+    NotesApi.visualize(params),
 };

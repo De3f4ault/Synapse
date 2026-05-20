@@ -7,8 +7,8 @@ export function NoteTypeBadge({ type }: { type: NoteType }) {
     <span className={`
       px-2 py-0.5 text-xs font-medium rounded-md border
       ${isText 
-        ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' 
-        : 'bg-purple-500/10 text-purple-400 border-purple-500/20'}
+        ? 'bg-info/10 text-info border-blue-500/20' 
+        : 'bg-accent/10 text-accent border-accent/20'}
     `}>
       {isText ? 'TEXT' : 'CANVAS'}
     </span>

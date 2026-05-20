@@ -107,19 +107,19 @@ export const LiveVoiceOverlay: React.FC<LiveVoiceOverlayProps> = ({
             case "listening":
                 return {
                     label: "Listening",
-                    color: "text-green-400",
+                    color: "text-accent-olive",
                     icon: <Mic className="w-5 h-5" />,
                 };
             case "speaking":
                 return {
                     label: "Speaking",
-                    color: "text-blue-400",
+                    color: "text-info",
                     icon: <Volume2 className="w-5 h-5" />,
                 };
             case "error":
                 return {
                     label: "Error",
-                    color: "text-red-400",
+                    color: "text-destructive",
                     icon: <X className="w-5 h-5" />,
                 };
             default:
@@ -149,9 +149,9 @@ export const LiveVoiceOverlay: React.FC<LiveVoiceOverlayProps> = ({
                 {/* Close button */}
                 <button
                     onClick={handleClose}
-                    className="absolute top-6 right-6 z-20 p-3 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+                    className="absolute top-6 right-6 z-20 p-3 rounded-full bg-foreground/10 hover:bg-foreground/15 transition-colors"
                 >
-                    <X className="w-6 h-6 text-white" />
+                    <X className="w-6 h-6 text-foreground" />
                 </button>
 
                 {/* Main content */}
@@ -176,10 +176,10 @@ export const LiveVoiceOverlay: React.FC<LiveVoiceOverlayProps> = ({
                             <motion.div
                                 initial={{ opacity: 0, y: 10 }}
                                 animate={{ opacity: 1, y: 0 }}
-                                className="p-4 rounded-lg bg-white/5 border border-white/10"
+                                className="p-4 rounded-lg bg-foreground/5 border border-border"
                             >
                                 <p className="text-sm text-gray-400 mb-1">You said:</p>
-                                <p className="text-white">{inputTranscript}</p>
+                                <p className="text-foreground">{inputTranscript}</p>
                             </motion.div>
                         )}
 
@@ -188,10 +188,10 @@ export const LiveVoiceOverlay: React.FC<LiveVoiceOverlayProps> = ({
                             <motion.div
                                 initial={{ opacity: 0, y: 10 }}
                                 animate={{ opacity: 1, y: 0 }}
-                                className="p-4 rounded-lg bg-blue-500/10 border border-blue-500/20"
+                                className="p-4 rounded-lg bg-info/10 border border-blue-500/20"
                             >
-                                <p className="text-sm text-blue-400 mb-1">AI:</p>
-                                <p className="text-white">{outputTranscript}</p>
+                                <p className="text-sm text-info mb-1">AI:</p>
+                                <p className="text-foreground">{outputTranscript}</p>
                             </motion.div>
                         )}
                     </div>
@@ -214,7 +214,7 @@ export const LiveVoiceOverlay: React.FC<LiveVoiceOverlayProps> = ({
                                         href={source.uri}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className="px-3 py-1 text-xs rounded-full bg-white/5 hover:bg-white/10 text-gray-300 transition-colors"
+                                        className="px-3 py-1 text-xs rounded-full bg-foreground/5 hover:bg-muted text-gray-300 transition-colors"
                                     >
                                         {source.title || source.uri || "Source"}
                                     </a>
@@ -231,8 +231,8 @@ export const LiveVoiceOverlay: React.FC<LiveVoiceOverlayProps> = ({
                             className={cn(
                                 "p-4 rounded-full transition-colors",
                                 isMuted
-                                    ? "bg-red-500/20 text-red-400"
-                                    : "bg-white/10 text-white hover:bg-white/20"
+                                    ? "bg-destructive/20 text-destructive"
+                                    : "bg-foreground/10 text-foreground hover:bg-foreground/15"
                             )}
                         >
                             {isMuted ? (
@@ -248,7 +248,7 @@ export const LiveVoiceOverlay: React.FC<LiveVoiceOverlayProps> = ({
                                 initial={{ opacity: 0, scale: 0.8 }}
                                 animate={{ opacity: 1, scale: 1 }}
                                 onClick={interrupt}
-                                className="px-6 py-3 rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors"
+                                className="px-6 py-3 rounded-full bg-foreground/10 text-foreground hover:bg-foreground/15 transition-colors"
                             >
                                 Tap to interrupt
                             </motion.button>
@@ -257,7 +257,7 @@ export const LiveVoiceOverlay: React.FC<LiveVoiceOverlayProps> = ({
                         {/* End session button */}
                         <button
                             onClick={handleClose}
-                            className="p-4 rounded-full bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors"
+                            className="p-4 rounded-full bg-destructive/20 text-destructive hover:bg-destructive/30 transition-colors"
                         >
                             <X className="w-6 h-6" />
                         </button>
