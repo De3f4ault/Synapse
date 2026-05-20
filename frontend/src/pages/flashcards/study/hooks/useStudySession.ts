@@ -5,7 +5,7 @@
  * Handles session lifecycle, card fetching, and review submission.
  */
 
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useStudyStore } from '../state';
 import {
@@ -42,10 +42,15 @@ interface UseStudySessionResult {
     submitReview: (rating: ReviewRating) => Promise<void>;
     getSessionStats: () => StudySessionStats;
     endSession: () => StudySessionStats | null;
+    /** Earliest next_review_date from API across all cards reviewed this session */
+    getEarliestNextReview: () => Date | null;
 }
 
 export function useStudySession({ deckId, limit = 20 }: UseStudySessionOptions): UseStudySessionResult {
     const queryClient = useQueryClient();
+
+    // Collect server-computed next_review_date per card during this session
+    const nextReviewDatesRef = useRef<string[]>([]);
 
     // Store selectors
     const store = useStudyStore();
@@ -136,11 +141,17 @@ export function useStudySession({ deckId, limit = 20 }: UseStudySessionOptions):
 
         // Submit to server
         try {
-            await reviewMutation.mutateAsync({
+            const result = await reviewMutation.mutateAsync({
                 cardId: currentCard.id,
                 quality: RATING_TO_API_QUALITY[rating],
                 timeTakenMs: progress.timeTakenMs,
             });
+
+            // Collect the server-computed next review date for this card
+            const nextDate = (result as any)?.next_review_date;
+            if (nextDate) {
+                nextReviewDatesRef.current.push(nextDate as string);
+            }
 
             // Move to next card or complete session
             const hasNext = store.nextCard();
@@ -151,6 +162,13 @@ export function useStudySession({ deckId, limit = 20 }: UseStudySessionOptions):
             store.setStudyError(error instanceof Error ? error.message : 'Failed to submit review');
         }
     }, [store, reviewMutation]);
+
+    // Earliest next review date across all cards reviewed this session
+    const getEarliestNextReview = useCallback((): Date | null => {
+        if (nextReviewDatesRef.current.length === 0) return null;
+        const earliest = nextReviewDatesRef.current.reduce((min, d) => (d < min ? d : min));
+        return new Date(earliest);
+    }, []);
 
     // Get stats without resetting the store
     const getSessionStats = useCallback(() => {
@@ -183,5 +201,6 @@ export function useStudySession({ deckId, limit = 20 }: UseStudySessionOptions):
         submitReview,
         getSessionStats,
         endSession,
+        getEarliestNextReview,
     };
 }

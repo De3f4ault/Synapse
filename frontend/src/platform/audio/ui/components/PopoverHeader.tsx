@@ -20,13 +20,13 @@ export function PopoverHeader({
   onClose,
 }: PopoverHeaderProps) {
   return (
-    <div className="p-4 border-b border-white/5 bg-white/5 flex items-center justify-between">
+    <div className="p-4 border-b border-border bg-foreground/5 flex items-center justify-between">
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-2">
-          <div className="h-2 w-2 rounded-full bg-cyan-500 animate-pulse" />
+          <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
           <span className="font-semibold text-sm tracking-wide">Neural Resonance</span>
         </div>
-        <span className="text-[10px] uppercase tracking-wider text-slate-500 bg-white/5 px-2 py-0.5 rounded">
+        <span className="text-[10px] uppercase tracking-wider text-muted-foreground bg-foreground/5 px-2 py-0.5 rounded">
           {context}
         </span>
       </div>
@@ -34,7 +34,7 @@ export function PopoverHeader({
         <Button
           size="icon"
           variant="ghost"
-          className={cn("h-6 w-6", synesthesiaEnabled && "text-cyan-400")}
+          className={cn("h-6 w-6", synesthesiaEnabled && "text-primary")}
           onClick={onToggleSynesthesia}
           title="Toggle Synesthesia (Visuals)"
         >

@@ -9,8 +9,8 @@
  * - ❌ No backdrop-filter / blur
  * - ❌ No opacity layers > 0.95
  * - ❌ No nested shadows
- * - ✅ Solid background: bg-[#0a0a0f]
- * - ✅ Single subtle border: border border-white/10
+ * - ✅ Solid background: bg-popover
+ * - ✅ Single subtle border: border border-border
  * - ✅ Minimal hover state (brightness shift only)
  */
 
@@ -39,11 +39,11 @@ export const DarkCard = forwardRef<HTMLDivElement, DarkCardProps>(
                 ref={ref}
                 className={cn(
                     // Base styles
-                    'bg-[#0a0a0f] border border-white/10 rounded-2xl',
+                    'bg-popover border border-border rounded-2xl',
                     // Padding
                     paddingClasses[padding],
                     // Hover state (optional)
-                    hoverable && 'transition-colors hover:border-white/20',
+                    hoverable && 'transition-colors hover:border-border',
                     // Custom classes
                     className
                 )}

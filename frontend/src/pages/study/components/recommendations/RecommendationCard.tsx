@@ -19,8 +19,8 @@ export function RecommendationCard({ item, onClick }: RecommendationCardProps) {
         <CardContent className="pt-6">
           <div className="space-y-3">
             <div className="flex items-start gap-3">
-              <div className="p-2 rounded-lg bg-purple-50 dark:bg-purple-950">
-                <Sparkles className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+              <div className="p-2 rounded-lg bg-accent/5 dark:bg-accent/10">
+                <Sparkles className="h-4 w-4 text-accent dark:text-accent" />
               </div>
               <div className="flex-1">
                 <h4 className="font-medium">{item.title}</h4>

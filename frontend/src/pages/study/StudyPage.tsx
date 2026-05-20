@@ -6,6 +6,7 @@ import { DueItems } from "./components/queue/DueItems";
 import { Recommendations } from "./components/recommendations/Recommendations";
 import { StudyStats } from "./components/shared/StudyStats";
 import { StreakIndicator } from "./components/shared/StreakIndicator";
+import { ResumeSessionBanner } from "./components/shared/ResumeSessionBanner";
 import { useDueItemsStats } from "./hooks/useDueItems";
 import { useRecommendations } from "./hooks/useRecommendations";
 import { useTodayStats } from "./hooks/useTodayStats";
@@ -54,33 +55,36 @@ export function StudyPage() {
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 shrink-0">
         <div>
-          <h1 className="text-3xl font-bold text-white mb-2 tracking-tight">
+          <h1 className="text-3xl font-bold text-foreground mb-2 tracking-tight">
             Study Hub
           </h1>
-          <p className="text-slate-400 font-mono text-xs tracking-wider uppercase">
+          <p className="text-muted-foreground font-mono text-xs tracking-wider uppercase">
             Master your knowledge
           </p>
         </div>
 
         {/* Streak - Small Layout */}
-        <div className="flex items-center gap-4 bg-white/5 border border-white/5 px-4 py-2 rounded-xl">
+        <div className="flex items-center gap-4 bg-foreground/5 border border-border px-4 py-2 rounded-xl">
           <div className="text-right">
-            <div className="text-xs text-slate-500 uppercase tracking-wider">
+            <div className="text-xs text-muted-foreground uppercase tracking-wider">
               Streak
             </div>
-            <div className="text-xl font-bold text-cyan-400 font-mono">
+            <div className="text-xl font-bold text-primary font-mono">
               {streak.current}{" "}
-              <span className="text-sm text-slate-500">days</span>
+              <span className="text-sm text-muted-foreground">days</span>
             </div>
           </div>
-          <div className="h-8 w-8 rounded-full bg-cyan-500/10 flex items-center justify-center border border-cyan-500/20">
-            <Sparkles size={16} className="text-cyan-400" />
+          <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20">
+            <Sparkles size={16} className="text-primary" />
           </div>
         </div>
       </div>
 
       {/* Main Content Content */}
       <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar space-y-8">
+        {/* Resume Session Banner — shown when an in-progress session exists */}
+        <ResumeSessionBanner />
+
         {/* Stats Overview */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
@@ -101,20 +105,20 @@ export function StudyPage() {
         {/* Tabs & Lists */}
         <div className="space-y-6">
           {/* Custom Tabs */}
-          <div className="flex border-b border-white/10">
+          <div className="flex border-b border-border">
             <button
               onClick={() => setActiveTab("due")}
               className={cn(
                 "px-6 py-3 text-sm font-bold uppercase tracking-wider border-b-2 transition-colors flex items-center gap-2",
                 activeTab === "due"
-                  ? "border-cyan-500 text-cyan-400 bg-cyan-500/5"
-                  : "border-transparent text-slate-500 hover:text-slate-300 hover:bg-white/5",
+                  ? "border-primary text-primary bg-primary/5"
+                  : "border-transparent text-muted-foreground hover:text-foreground/80 hover:bg-muted/50",
               )}
             >
               <Target size={16} />
               Due Items
               {dueStats.total > 0 && (
-                <span className="ml-2 px-1.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400 text-[10px]">
+                <span className="ml-2 px-1.5 py-0.5 rounded-full bg-primary/20 text-primary text-[10px]">
                   {dueStats.total}
                 </span>
               )}
@@ -124,8 +128,8 @@ export function StudyPage() {
               className={cn(
                 "px-6 py-3 text-sm font-bold uppercase tracking-wider border-b-2 transition-colors flex items-center gap-2",
                 activeTab === "recommendations"
-                  ? "border-purple-500 text-purple-400 bg-purple-500/5"
-                  : "border-transparent text-slate-500 hover:text-slate-300 hover:bg-white/5",
+                  ? "border-accent text-accent bg-accent/5"
+                  : "border-transparent text-muted-foreground hover:text-foreground/80 hover:bg-muted/50",
               )}
             >
               <Sparkles size={16} />

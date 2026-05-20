@@ -1,177 +1,378 @@
-import { Filter, Layers, Hash, Clock, Plus, Sparkles } from "lucide-react";
+import { useState, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  Filter,
+  Layers,
+  Plus,
+  Sparkles,
+  Folder,
+  FolderOpen,
+  Check,
+  X,
+  MoreHorizontal,
+  Pencil,
+  Trash2,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
-import { NeumorphicButton } from "@/components/neumorphic";
-import { GlassCard } from "@/shared/ui";
+import { SidebarShell } from "@/shared/ui";
+import { CollectionsService } from "@/api/generated";
+import { toast } from "sonner";
 
-interface FlashcardsSidebarProps {
-    className?: string;
-    activeFilter: string;
-    onFilterChange: (filter: string) => void;
-    totalDecks: number;
-    tags: string[];
-    onCreate?: () => void;
-    onAiGenerate?: () => void;
-    isCollapsed?: boolean;
+// ─── Types ────────────────────────────────────────────────
+
+interface Collection {
+  id: number;
+  name: string;
+  deck_count: number;
 }
 
-export const FlashcardsSidebar = ({
-    className,
-    activeFilter,
-    onFilterChange,
-    totalDecks,
-    tags,
-    onCreate,
-    onAiGenerate,
-    isCollapsed = false
-}: FlashcardsSidebarProps) => {
-    // Default filters
-    const displayTags = tags.length > 0 ? tags : ["All", "Learning", "Review", "Mastered"];
+interface FlashcardsSidebarProps {
+  className?: string;
+  activeFilter: string;
+  onFilterChange: (filter: string) => void;
+  /** null = all, number = filter by collection */
+  activeCollectionId: number | null;
+  onCollectionChange: (id: number | null) => void;
+  totalDecks: number;
+  tags: string[];
+  onCreate?: () => void;
+  onAiGenerate?: () => void;
+}
 
+// ─── Collections Section ──────────────────────────────────
+
+function CollectionsSection({
+  isCollapsed,
+  activeCollectionId,
+  onCollectionChange,
+}: {
+  isCollapsed: boolean;
+  activeCollectionId: number | null;
+  onCollectionChange: (id: number | null) => void;
+}) {
+  const qc = useQueryClient();
+  const [creating, setCreating]     = useState(false);
+  const [newName, setNewName]       = useState("");
+  const [editingId, setEditingId]   = useState<number | null>(null);
+  const [editName, setEditName]     = useState("");
+  const [menuId, setMenuId]         = useState<number | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const { data: collections = [] } = useQuery<Collection[]>({
+    queryKey: ["collections"],
+    queryFn:  () => CollectionsService.listCollectionsApiV1CollectionsGet() as Promise<Collection[]>,
+    staleTime: 60_000,
+  });
+
+  const invalidate = () => qc.invalidateQueries({ queryKey: ["collections"] });
+
+  const createMutation = useMutation({
+    mutationFn: (name: string) =>
+      CollectionsService.createCollectionApiV1CollectionsPost({ name }),
+    onSuccess: () => {
+      toast.success("Collection created");
+      invalidate();
+      setCreating(false);
+      setNewName("");
+    },
+    onError: () => toast.error("Failed to create collection"),
+  });
+
+  const renameMutation = useMutation({
+    mutationFn: ({ id, name }: { id: number; name: string }) =>
+      CollectionsService.updateCollectionApiV1CollectionsCollectionIdPatch(id, { name }),
+    onSuccess: () => { toast.success("Renamed"); invalidate(); setEditingId(null); },
+    onError: () => toast.error("Failed to rename"),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) =>
+      CollectionsService.deleteCollectionApiV1CollectionsCollectionIdDelete(id),
+    onSuccess: (_, id) => {
+      toast.success("Deleted · decks moved to Uncategorised");
+      if (activeCollectionId === id) onCollectionChange(null);
+      invalidate();
+    },
+    onError: () => toast.error("Failed to delete"),
+  });
+
+  const submit = () => {
+    const name = newName.trim();
+    if (name) createMutation.mutate(name);
+  };
+
+  if (isCollapsed) {
     return (
-        <GlassCard
-            className={cn(
-                "flex h-full w-full flex-col bg-zinc-950/40 backdrop-blur-3xl border-r border-white/10 rounded-none transition-all duration-300 ease-in-out",
-                className
-            )}
+      <div className="flex flex-col items-center gap-1">
+        <button
+          title="All Decks"
+          onClick={() => onCollectionChange(null)}
+          className={cn(
+            "p-2 rounded-lg transition-colors",
+            activeCollectionId === null
+              ? "bg-primary/10 text-primary"
+              : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
+          )}
         >
-            {/* Header / Actions */}
-            <div className="p-4 flex flex-col gap-4 shrink-0">
-                <div className={cn("flex items-center gap-2 transition-opacity duration-200", isCollapsed ? "justify-center" : "")}>
-                    <Layers className={cn("text-purple-400 transition-all", isCollapsed ? "w-8 h-8" : "w-5 h-5")} />
-                    {!isCollapsed && (
-                        <h2 className="text-xl font-bold text-white whitespace-nowrap">Flashcards</h2>
-                    )}
-                </div>
-
-                {!isCollapsed && (
-                    <div className="flex gap-4 text-xs text-slate-400 px-1">
-                        <span className="flex items-center gap-1">
-                            <span className="w-2 h-2 rounded-full bg-purple-400" />
-                            {totalDecks} Decks
-                        </span>
-                    </div>
-                )}
-
-                {/* Primary Actions */}
-                {/* Primary Actions */}
-                <div className="flex flex-col gap-2">
-                    <NeumorphicButton
-                        onClick={onCreate}
-                        className={cn(
-                            "w-full flex items-center justify-center gap-2 font-semibold text-white bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 border-none shadow-lg shadow-purple-900/20",
-                            isCollapsed ? "p-3 rounded-full aspect-square w-12" : "py-3 rounded-xl"
-                        )}
-                        title="Create Deck"
-                    >
-                        <Plus className="w-5 h-5" />
-                        {!isCollapsed && <span>Create Deck</span>}
-                    </NeumorphicButton>
-
-                    <NeumorphicButton
-                        onClick={onAiGenerate}
-                        className={cn(
-                            "w-full flex items-center justify-center gap-2 font-semibold text-purple-200 bg-white/5 hover:bg-white/10 border border-white/10",
-                            isCollapsed ? "p-3 rounded-full aspect-square w-12" : "py-3 rounded-xl"
-                        )}
-                        title="AI Generate"
-                    >
-                        <Sparkles className="w-5 h-5" />
-                        {!isCollapsed && <span>AI Generate</span>}
-                    </NeumorphicButton>
-                </div>
-            </div>
-
-            {/* Navigation / Filters */}
-            <div className="flex-1 overflow-y-auto overflow-x-hidden space-y-6 py-2 px-3 scrollbar-hide">
-
-                {/* Categories/Tags */}
-                <div className="space-y-2">
-                    {!isCollapsed && (
-                        <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-slate-500 font-bold px-3 mb-2">
-                            <Filter className="w-3 h-3" />
-                            <span>Categories</span>
-                        </div>
-                    )}
-
-                    {displayTags.map((tag) => {
-                        const isActive = activeFilter === tag;
-                        return (
-                            <div
-                                key={tag}
-                                onClick={() => onFilterChange(tag)}
-                                title={isCollapsed ? tag : undefined}
-                                className={cn(
-                                    "group flex items-center p-2 rounded-xl cursor-pointer transition-all duration-200",
-                                    isActive
-                                        ? "bg-purple-500/10 border border-purple-500/20 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05)]"
-                                        : "hover:bg-white/5 border border-transparent",
-                                    isCollapsed ? "justify-center" : "justify-between"
-                                )}
-                            >
-                                <div className="flex items-center gap-3">
-                                    <div className={cn(
-                                        "w-8 h-8 rounded-lg flex items-center justify-center transition-colors duration-200 shrink-0",
-                                        isActive ? "bg-purple-500/20 text-purple-400" : "bg-white/5 text-slate-500 group-hover:text-slate-300"
-                                    )}>
-                                        <Hash className="w-4 h-4" />
-                                    </div>
-                                    {!isCollapsed && (
-                                        <span className={cn(
-                                            "text-sm font-medium transition-colors truncate whitespace-nowrap",
-                                            isActive ? "text-purple-100" : "text-slate-400 group-hover:text-slate-200"
-                                        )}>
-                                            {tag}
-                                        </span>
-                                    )}
-                                </div>
-                                {!isCollapsed && isActive && (
-                                    <div className="w-1.5 h-1.5 rounded-full bg-purple-400 shadow-[0_0_8px_rgba(168,85,247,0.5)] shrink-0" />
-                                )}
-                            </div>
-                        );
-                    })}
-                </div>
-
-                {/* Smart Views */}
-                <div className={cn("space-y-2 pt-4 border-t border-white/5", isCollapsed && "border-none pt-2")}>
-                    {!isCollapsed && (
-                        <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-slate-500 font-bold px-3 mb-2">
-                            <Clock className="w-3 h-3" />
-                            <span>Study Queue</span>
-                        </div>
-                    )}
-
-                    {['Due Today', 'New', 'Buried'].map((view) => (
-                        <div
-                            key={view}
-                            title={isCollapsed ? view : undefined}
-                            className={cn(
-                                "group flex items-center gap-3 p-2 rounded-xl cursor-pointer hover:bg-white/5 border border-transparent transition-all duration-200",
-                                isCollapsed ? "justify-center" : ""
-                            )}
-                        >
-                            <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-white/5 text-slate-500 group-hover:text-slate-300 transition-colors shrink-0">
-                                <Clock className="w-4 h-4" />
-                            </div>
-                            {!isCollapsed && (
-                                <span className="text-sm font-medium text-slate-400 group-hover:text-slate-200 transition-colors">
-                                    {view}
-                                </span>
-                            )}
-                        </div>
-                    ))}
-                </div>
-
-            </div>
-
-            {/* Footer Hint */}
-            {!isCollapsed && (
-                <div className="p-4 mx-4 mb-4 rounded-xl bg-white/5 border border-white/5 shrink-0">
-                    <p className="text-xs text-slate-400 text-center leading-relaxed">
-                        Mastery requires consistency.
-                    </p>
-                </div>
+          <Layers className="w-4 h-4" />
+        </button>
+        {collections.map((col) => (
+          <button
+            key={col.id}
+            title={col.name}
+            onClick={() => onCollectionChange(activeCollectionId === col.id ? null : col.id)}
+            className={cn(
+              "p-2 rounded-lg transition-colors",
+              activeCollectionId === col.id
+                ? "bg-primary/10 text-primary"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted/50",
             )}
-        </GlassCard>
+          >
+            {activeCollectionId === col.id
+              ? <FolderOpen className="w-4 h-4" />
+              : <Folder className="w-4 h-4" />
+            }
+          </button>
+        ))}
+      </div>
     );
+  }
+
+  return (
+    <div className="mt-4 space-y-0.5">
+      {/* Section header */}
+      <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-muted-foreground font-medium px-3 mb-2">
+        <Folder className="w-3 h-3" />
+        <span>Collections</span>
+        <button
+          onClick={() => { setCreating(true); setTimeout(() => inputRef.current?.focus(), 50); }}
+          className="ml-auto p-0.5 rounded hover:bg-muted/60 text-muted-foreground hover:text-foreground transition-colors"
+          title="New collection"
+        >
+          <Plus className="w-3 h-3" />
+        </button>
+      </div>
+
+      {/* Inline create */}
+      <AnimatePresence>
+        {creating && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="overflow-hidden px-2 mb-1"
+          >
+            <div className="flex items-center gap-1">
+              <input
+                ref={inputRef}
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") submit();
+                  if (e.key === "Escape") { setCreating(false); setNewName(""); }
+                }}
+                placeholder="Name…"
+                className="flex-1 text-xs bg-muted/40 border border-border rounded-lg px-2 py-1.5 outline-none focus:border-primary/50"
+              />
+              <button
+                onClick={submit}
+                disabled={!newName.trim()}
+                className="p-1.5 rounded bg-primary text-primary-foreground disabled:opacity-40"
+              >
+                <Check className="w-3 h-3" />
+              </button>
+              <button
+                onClick={() => { setCreating(false); setNewName(""); }}
+                className="p-1.5 rounded text-muted-foreground hover:text-foreground"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* All decks */}
+      <div
+        onClick={() => onCollectionChange(null)}
+        className={cn(
+          "group flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer text-sm transition-colors",
+          activeCollectionId === null
+            ? "bg-muted border border-border text-foreground"
+            : "text-foreground/80 hover:text-foreground hover:bg-muted/50 border border-transparent",
+        )}
+      >
+        <Layers className={cn("w-4 h-4 shrink-0", activeCollectionId === null ? "text-primary" : "text-muted-foreground")} />
+        <span className="flex-1 truncate">All Decks</span>
+      </div>
+
+      {/* Per-collection rows */}
+      {collections.map((col) => (
+        <div key={col.id} className="relative group/col">
+          {editingId === col.id ? (
+            <div className="flex items-center gap-1 px-2 py-1">
+              <input
+                autoFocus
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") renameMutation.mutate({ id: col.id, name: editName });
+                  if (e.key === "Escape") setEditingId(null);
+                }}
+                className="flex-1 text-xs bg-muted/40 border border-border rounded-lg px-2 py-1 outline-none focus:border-primary/50"
+              />
+              <button onClick={() => renameMutation.mutate({ id: col.id, name: editName })} className="p-1 rounded bg-primary text-primary-foreground">
+                <Check className="w-3 h-3" />
+              </button>
+              <button onClick={() => setEditingId(null)} className="p-1 text-muted-foreground">
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          ) : (
+            <div
+              onClick={() => { setMenuId(null); onCollectionChange(activeCollectionId === col.id ? null : col.id); }}
+              className={cn(
+                "group/row flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer text-sm transition-colors",
+                activeCollectionId === col.id
+                  ? "bg-muted border border-border text-foreground"
+                  : "text-foreground/80 hover:text-foreground hover:bg-muted/50 border border-transparent",
+              )}
+            >
+              {activeCollectionId === col.id
+                ? <FolderOpen className="w-4 h-4 shrink-0 text-primary" />
+                : <Folder className="w-4 h-4 shrink-0 text-muted-foreground" />
+              }
+              <span className="flex-1 truncate">{col.name}</span>
+              <span className="text-[10px] text-muted-foreground tabular-nums">{col.deck_count}</span>
+            </div>
+          )}
+
+          {/* Ellipsis menu */}
+          <button
+            onClick={(e) => { e.stopPropagation(); setMenuId(menuId === col.id ? null : col.id); }}
+            className="absolute right-1 top-1/2 -translate-y-1/2 p-1 rounded opacity-0 group-hover/col:opacity-100 text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-all"
+          >
+            <MoreHorizontal className="w-3 h-3" />
+          </button>
+
+          <AnimatePresence>
+            {menuId === col.id && (
+              <>
+                <div className="fixed inset-0 z-30" onClick={() => setMenuId(null)} />
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95, y: -4 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.95, y: -4 }}
+                  className="absolute left-2 right-2 top-full mt-0.5 z-40 bg-popover border border-border rounded-xl shadow-xl py-1"
+                >
+                  <button
+                    onClick={() => { setEditingId(col.id); setEditName(col.name); setMenuId(null); }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-muted/50 text-foreground transition-colors"
+                  >
+                    <Pencil className="w-3 h-3" />
+                    Rename
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (confirm(`Delete "${col.name}"?\nDecks won't be deleted.`)) {
+                        deleteMutation.mutate(col.id);
+                      }
+                      setMenuId(null);
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-destructive/10 text-destructive transition-colors"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                    Delete
+                  </button>
+                </motion.div>
+              </>
+            )}
+          </AnimatePresence>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── Main Sidebar ─────────────────────────────────────────
+
+export const FlashcardsSidebar = ({
+  className,
+  activeFilter,
+  onFilterChange,
+  activeCollectionId,
+  onCollectionChange,
+  totalDecks,
+  tags,
+  onCreate,
+  onAiGenerate,
+}: FlashcardsSidebarProps) => {
+  const displayTags = ["All", ...tags];
+
+  return (
+    <SidebarShell
+      storageKey="flashcardsSidebarCollapsed"
+      title="Flashcards"
+      titleIcon={Layers}
+      primaryAction={{
+        label: "Create Deck",
+        icon: Plus,
+        onClick: () => onCreate?.(),
+      }}
+      secondaryAction={
+        onAiGenerate
+          ? { label: "AI Generate", icon: Sparkles, onClick: onAiGenerate }
+          : undefined
+      }
+      statsLine={
+        <span className="flex items-center gap-1">
+          <span className="w-2 h-2 rounded-full bg-primary" />
+          {totalDecks} Decks
+        </span>
+      }
+      footerHint="Mastery requires consistency."
+      className={className}
+    >
+      {(isCollapsed) => (
+        <>
+          {/* Tag Filters */}
+          <div className="space-y-1">
+            {!isCollapsed && (
+              <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-muted-foreground font-medium px-3 mb-2">
+                <Filter className="w-3 h-3" />
+                <span>Filter by Tag</span>
+              </div>
+            )}
+
+            {displayTags.map((tag) => {
+              const isActive = activeFilter === tag;
+              return (
+                <div
+                  key={tag}
+                  onClick={() => onFilterChange(tag)}
+                  className={cn(
+                    "group flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer text-sm transition-colors",
+                    isActive
+                      ? "bg-muted border border-border text-foreground"
+                      : "text-foreground/80 hover:text-foreground hover:bg-muted/50 border border-transparent",
+                  )}
+                >
+                  <Layers className={cn("w-4 h-4 shrink-0", isActive ? "text-primary" : "text-muted-foreground")} />
+                  {!isCollapsed && <span className="truncate">{tag}</span>}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Collections Section */}
+          <CollectionsSection
+            isCollapsed={isCollapsed}
+            activeCollectionId={activeCollectionId}
+            onCollectionChange={onCollectionChange}
+          />
+        </>
+      )}
+    </SidebarShell>
+  );
 };

@@ -143,13 +143,13 @@ export function ImportModal({ isOpen, onClose, deckId: initialDeckId, onImportSu
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                className="bg-[#0a0a0f] border border-white/10 rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl"
+                className="bg-popover border border-border rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl"
             >
                 {/* Header */}
-                <div className="flex items-center justify-between p-6 border-b border-white/5">
-                    <h2 className="text-xl font-bold text-white">Import Flashcards</h2>
-                    <button onClick={onClose} className="p-2 hover:bg-white/5 rounded-full transition-colors">
-                        <X size={20} className="text-slate-400" />
+                <div className="flex items-center justify-between p-6 border-b border-border">
+                    <h2 className="text-xl font-bold text-foreground">Import Flashcards</h2>
+                    <button onClick={onClose} className="p-2 hover:bg-muted/50 rounded-full transition-colors">
+                        <X size={20} className="text-muted-foreground" />
                     </button>
                 </div>
 
@@ -158,14 +158,14 @@ export function ImportModal({ isOpen, onClose, deckId: initialDeckId, onImportSu
                     {/* Deck Selector - only show if no initial deck provided */}
                     {!initialDeckId && (
                         <div>
-                            <label className="block text-sm font-medium text-slate-400 mb-2">
+                            <label className="block text-sm font-medium text-muted-foreground mb-2">
                                 Select Target Deck
                             </label>
                             <div className="relative">
                                 <select
                                     value={selectedDeckId || ''}
                                     onChange={(e) => setSelectedDeckId(e.target.value ? Number(e.target.value) : null)}
-                                    className="w-full h-12 bg-[#0f0f14] border border-white/10 rounded-xl pl-4 pr-10 text-white appearance-none focus:outline-none focus:border-cyan-500/50 transition-colors"
+                                    className="w-full h-12 bg-card border border-border rounded-xl pl-4 pr-10 text-foreground appearance-none focus:outline-none focus:border-primary/50 transition-colors"
                                 >
                                     <option value="">Choose a deck...</option>
                                     {decks.map((deck) => (
@@ -174,7 +174,7 @@ export function ImportModal({ isOpen, onClose, deckId: initialDeckId, onImportSu
                                         </option>
                                     ))}
                                 </select>
-                                <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                                <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
                             </div>
                         </div>
                     )}
@@ -184,38 +184,38 @@ export function ImportModal({ isOpen, onClose, deckId: initialDeckId, onImportSu
                             {...getRootProps()}
                             className={`
 border - 2 border - dashed rounded - xl p - 12 text - center cursor - pointer transition - colors
-                ${isDragActive ? 'border-cyan-500 bg-cyan-500/5' : 'border-white/10 hover:border-white/20 hover:bg-white/5'}
+                ${isDragActive ? 'border-primary bg-primary/5' : 'border-border hover:border-border hover:bg-muted/50'}
 `}
                         >
                             <input {...getInputProps()} />
                             <div className="flex justify-center mb-4">
-                                <Upload size={48} className="text-slate-500" />
+                                <Upload size={48} className="text-muted-foreground" />
                             </div>
-                            <p className="text-lg font-medium text-slate-300">
+                            <p className="text-lg font-medium text-foreground/80">
                                 {isDragActive ? 'Drop your CSV here' : 'Drag & drop a CSV file, or click to select'}
                             </p>
-                            <p className="text-sm text-slate-500 mt-2">
+                            <p className="text-sm text-muted-foreground mt-2">
                                 Supported format: .csv, .txt (First column: Front, Second column: Back)
                             </p>
                         </div>
                     ) : (
                         <div className="space-y-4">
                             {/* File Info */}
-                            <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/10">
+                            <div className="flex items-center justify-between p-4 bg-foreground/5 rounded-xl border border-border">
                                 <div className="flex items-center gap-3">
-                                    <div className="p-2 bg-emerald-500/10 rounded-lg">
-                                        <FileText size={24} className="text-emerald-400" />
+                                    <div className="p-2 bg-accent-olive/10 rounded-lg">
+                                        <FileText size={24} className="text-accent-olive" />
                                     </div>
                                     <div>
-                                        <div className="font-medium text-white">{file.name}</div>
-                                        <div className="text-xs text-slate-400">
+                                        <div className="font-medium text-foreground">{file.name}</div>
+                                        <div className="text-xs text-muted-foreground">
                                             {(file.size / 1024).toFixed(1)} KB • {preview.length} cards found
                                         </div>
                                     </div>
                                 </div>
                                 <button
                                     onClick={() => { setFile(null); setPreview([]); setError(null); }}
-                                    className="text-xs text-red-400 hover:text-red-300 font-medium"
+                                    className="text-xs text-destructive hover:text-red-300 font-medium"
                                 >
                                     Change File
                                 </button>
@@ -223,7 +223,7 @@ border - 2 border - dashed rounded - xl p - 12 text - center cursor - pointer tr
 
                             {/* Error */}
                             {error && (
-                                <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-3 text-red-400">
+                                <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-xl flex items-center gap-3 text-destructive">
                                     <AlertCircle size={20} />
                                     <span className="text-sm">{error}</span>
                                 </div>
@@ -231,9 +231,9 @@ border - 2 border - dashed rounded - xl p - 12 text - center cursor - pointer tr
 
                             {/* Preview Table */}
                             {preview.length > 0 && (
-                                <div className="border border-white/10 rounded-xl overflow-hidden max-h-[300px] overflow-y-auto">
+                                <div className="border border-border rounded-xl overflow-hidden max-h-[300px] overflow-y-auto">
                                     <table className="w-full text-sm text-left">
-                                        <thead className="bg-white/5 text-slate-400 font-medium text-xs uppercase tracking-wider sticky top-0">
+                                        <thead className="bg-foreground/5 text-muted-foreground font-medium text-xs uppercase tracking-wider sticky top-0">
                                             <tr>
                                                 <th className="px-4 py-3">Front (Column 1)</th>
                                                 <th className="px-4 py-3">Back (Column 2)</th>
@@ -241,15 +241,15 @@ border - 2 border - dashed rounded - xl p - 12 text - center cursor - pointer tr
                                         </thead>
                                         <tbody className="divide-y divide-white/5">
                                             {preview.slice(0, 50).map((card, i) => (
-                                                <tr key={i} className="hover:bg-white/5 transition-colors">
-                                                    <td className="px-4 py-3 text-slate-300 font-mono truncate max-w-[200px]">{card.front}</td>
-                                                    <td className="px-4 py-3 text-slate-300 font-mono truncate max-w-[200px]">{card.back}</td>
+                                                <tr key={i} className="hover:bg-muted/50 transition-colors">
+                                                    <td className="px-4 py-3 text-foreground/80 font-mono truncate max-w-[200px]">{card.front}</td>
+                                                    <td className="px-4 py-3 text-foreground/80 font-mono truncate max-w-[200px]">{card.back}</td>
                                                 </tr>
                                             ))}
                                         </tbody>
                                     </table>
                                     {preview.length > 50 && (
-                                        <div className="p-3 text-center text-xs text-slate-500 border-t border-white/5">
+                                        <div className="p-3 text-center text-xs text-muted-foreground border-t border-border">
                                             And {preview.length - 50} more...
                                         </div>
                                     )}
@@ -260,10 +260,10 @@ border - 2 border - dashed rounded - xl p - 12 text - center cursor - pointer tr
                 </div>
 
                 {/* Footer */}
-                <div className="p-6 border-t border-white/5 flex justify-end gap-3">
+                <div className="p-6 border-t border-border flex justify-end gap-3">
                     <button
                         onClick={onClose}
-                        className="px-4 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition-colors"
+                        className="px-4 py-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
                     >
                         Cancel
                     </button>
@@ -273,8 +273,8 @@ border - 2 border - dashed rounded - xl p - 12 text - center cursor - pointer tr
                         className={`
 px - 6 py - 2 rounded - lg font - medium flex items - center gap - 2
               ${!file || preview.length === 0 || isImporting
-                                ? 'bg-slate-800 text-slate-500 cursor-not-allowed'
-                                : 'bg-emerald-500 text-black hover:bg-emerald-400 shadow-lg shadow-emerald-500/20'
+                                ? 'bg-slate-800 text-muted-foreground cursor-not-allowed'
+                                : 'bg-accent-olive text-black hover:bg-accent-olive shadow-lg '
                             }
 transition - all duration - 200
     `}

@@ -140,7 +140,7 @@ export function AudioPlayerPopover({ onClose }: AudioPlayerPopoverProps) {
       initial={{ opacity: 0, y: 10, scale: 0.95 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: 10, scale: 0.95 }}
-      className="absolute top-14 right-0 w-[320px] bg-[#0a0a0f]/95 border border-white/10 rounded-xl shadow-2xl backdrop-blur-3xl z-50 overflow-hidden flex flex-col max-h-[80vh]"
+      className="absolute top-14 right-0 w-[320px] bg-popover border border-border rounded-xl shadow-2xl backdrop-blur-xl z-50 overflow-hidden flex flex-col max-h-[80vh]"
       onDrop={handleDrop}
       onDragOver={handleDragOver}
     >

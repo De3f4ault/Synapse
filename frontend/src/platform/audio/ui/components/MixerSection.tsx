@@ -56,8 +56,8 @@ export function MixerSection({
   const activeAmbience = AMBIENCE_PRESETS.find(p => p.id === activeAmbienceId);
 
   return (
-    <div className="space-y-4 pt-4 border-t border-white/5">
-      <div className="flex items-center gap-2 text-xs font-medium text-slate-400">
+    <div className="space-y-4 pt-4 border-t border-border">
+      <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
         <Sliders className="h-3 w-3" />
         <span>Mixer</span>
       </div>
@@ -71,7 +71,7 @@ export function MixerSection({
               variant="ghost"
               className={cn(
                 "h-6 w-6",
-                isMusicPlaying ? "text-purple-400" : "text-slate-500"
+                isMusicPlaying ? "text-accent" : "text-muted-foreground"
               )}
               onClick={() => {
                 if (isMusicPlaying) {
@@ -91,12 +91,12 @@ export function MixerSection({
             </Button>
             <button
               onClick={() => setShowMusicPresets(!showMusicPresets)}
-              className="text-xs text-slate-400 hover:text-slate-300 transition-colors"
+              className="text-xs text-muted-foreground hover:text-foreground/80 transition-colors"
             >
               {activeMusic?.name ?? "Select Track"}
             </button>
           </div>
-          <span className="text-[10px] text-slate-600 tabular-nums">
+          <span className="text-[10px] text-muted-foreground tabular-nums">
             {Math.round(musicLevel * 100)}%
           </span>
         </div>
@@ -106,12 +106,12 @@ export function MixerSection({
           max={1}
           step={0.01}
           onValueChange={(val) => onMusicChange(val[0] ?? 0)}
-          className="[&_.absolute]:bg-purple-500"
+          className="[&_.absolute]:bg-accent"
         />
 
         {/* Music Presets Dropdown */}
         {showMusicPresets && (
-          <div className="grid grid-cols-3 gap-1 p-2 bg-white/5 rounded-lg">
+          <div className="grid grid-cols-3 gap-1 p-2 bg-foreground/5 rounded-lg">
             {MUSIC_PRESETS.map((preset) => (
               <button
                 key={preset.id}
@@ -122,8 +122,8 @@ export function MixerSection({
                 className={cn(
                   "flex flex-col items-center gap-1 p-2 rounded text-[10px] transition-colors",
                   activeMusicId === preset.id
-                    ? "bg-purple-500/20 text-purple-400"
-                    : "hover:bg-white/5 text-slate-400"
+                    ? "bg-accent/20 text-accent"
+                    : "hover:bg-muted/50 text-muted-foreground"
                 )}
               >
                 <Music className="h-4 w-4" />
@@ -143,7 +143,7 @@ export function MixerSection({
               variant="ghost"
               className={cn(
                 "h-6 w-6",
-                isAmbiencePlaying ? "text-blue-400" : "text-slate-500"
+                isAmbiencePlaying ? "text-info" : "text-muted-foreground"
               )}
               onClick={() => {
                 if (isAmbiencePlaying) {
@@ -163,12 +163,12 @@ export function MixerSection({
             </Button>
             <button
               onClick={() => setShowAmbiencePresets(!showAmbiencePresets)}
-              className="text-xs text-slate-400 hover:text-slate-300 transition-colors"
+              className="text-xs text-muted-foreground hover:text-foreground/80 transition-colors"
             >
               {activeAmbience?.name ?? "Select Ambience"}
             </button>
           </div>
-          <span className="text-[10px] text-slate-600 tabular-nums">
+          <span className="text-[10px] text-muted-foreground tabular-nums">
             {Math.round(ambienceLevel * 100)}%
           </span>
         </div>
@@ -183,7 +183,7 @@ export function MixerSection({
 
         {/* Ambience Presets Dropdown */}
         {showAmbiencePresets && (
-          <div className="grid grid-cols-4 gap-1 p-2 bg-white/5 rounded-lg">
+          <div className="grid grid-cols-4 gap-1 p-2 bg-foreground/5 rounded-lg">
             {AMBIENCE_PRESETS.map((preset) => {
               const Icon = ambienceIcons[preset.icon];
               return (
@@ -196,8 +196,8 @@ export function MixerSection({
                   className={cn(
                     "flex flex-col items-center gap-1 p-2 rounded text-[10px] transition-colors",
                     activeAmbienceId === preset.id
-                      ? "bg-blue-500/20 text-blue-400"
-                      : "hover:bg-white/5 text-slate-400"
+                      ? "bg-blue-500/20 text-info"
+                      : "hover:bg-muted/50 text-muted-foreground"
                   )}
                 >
                   <Icon className="h-4 w-4" />

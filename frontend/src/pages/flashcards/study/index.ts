@@ -16,10 +16,13 @@ export type { Flashcard, ReviewRating, StudySessionStats } from "../core";
 export * from "./components/FlashcardView";
 export * from "./components/RatingControls";
 export * from "./components/AnswerReveal";
+export * from "./components/CardTutorPanel";
 
 // Hooks
 export * from "./hooks/useStudySession";
 export * from "./hooks/useStudyShortcuts";
+export * from "./hooks/useCardTutorChat";
+export * from "./hooks/useCuratedSession";
 
 // State
 export * from "./state";

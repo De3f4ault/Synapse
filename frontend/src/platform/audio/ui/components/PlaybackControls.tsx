@@ -28,8 +28,8 @@ export function PlaybackControls({
           className={cn(
             "w-16 h-16 rounded-full flex items-center justify-center transition-all duration-300 shadow-[0_0_20px_rgba(0,0,0,0.5)]",
             playIntent
-              ? "bg-cyan-500 text-white shadow-[0_0_30px_rgba(6,182,212,0.4)]"
-              : "bg-white/10 text-white hover:bg-white/20"
+              ? "bg-primary text-foreground shadow-[0_0_30px_rgba(6,182,212,0.4)]"
+              : "bg-foreground/10 text-foreground hover:bg-foreground/15"
           )}
         >
           {playIntent ? (
@@ -51,7 +51,7 @@ export function PlaybackControls({
           max={1}
           step={0.01}
           onValueChange={(val) => onVolumeChange(val[0] ?? 0)}
-          className="[&_.relative]:bg-white/10 [&_.absolute]:bg-cyan-500"
+          className="[&_.relative]:bg-foreground/10 [&_.absolute]:bg-primary"
         />
       </div>
     </div>

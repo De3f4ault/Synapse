@@ -1,7 +1,5 @@
 /**
  * CreateCardPage - Card Creation
- * 
- * REFACTORED: Uses premium AuroraBackground and GlassCard.
  */
 
 import { useState } from 'react';
@@ -59,18 +57,18 @@ export function CreateCardPage() {
     };
 
     return (
-        <div className="fixed inset-0 min-h-screen flex flex-col nm-bg nm-constellation-bg pt-16">
+        <div className="fixed inset-0 min-h-screen flex flex-col bg-background text-foreground pt-16">
             {/* Top Bar */}
-            <div className="flex-none h-16 border-b border-white/5 bg-black/20 backdrop-blur-xl z-20 px-8 flex items-center gap-4">
+            <div className="flex-none h-16 border-b border-border bg-background/50 backdrop-blur-xl z-20 px-8 flex items-center gap-4">
                 <button
                     onClick={() => navigate(`/flashcards/${id}`)}
-                    className="p-2 rounded-full bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+                    className="p-2 rounded-full bg-foreground/5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                 >
                     <ArrowLeft className="h-5 w-5" />
                 </button>
                 <div>
-                    <h1 className="text-sm font-bold text-white leading-none mb-1">Create New Card</h1>
-                    <span className="text-[10px] font-mono text-slate-500 uppercase tracking-wider">Editor</span>
+                    <h1 className="text-sm font-bold text-foreground leading-none mb-1">Create New Card</h1>
+                    <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">Editor</span>
                 </div>
             </div>
 
@@ -87,10 +85,10 @@ export function CreateCardPage() {
                                 {/* Front Text */}
                                 <div className="space-y-3">
                                     <div className="flex items-center justify-between">
-                                        <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                                            Front (Question) <span className="text-cyan-500">*</span>
+                                        <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                                            Front (Question) <span className="text-primary">*</span>
                                         </Label>
-                                        <span className="text-[10px] text-slate-600 bg-white/5 px-2 py-0.5 rounded">Markdown Supported</span>
+                                        <span className="text-[10px] text-muted-foreground bg-foreground/5 px-2 py-0.5 rounded">Markdown Supported</span>
                                     </div>
                                     <Textarea
                                         value={frontText}
@@ -99,20 +97,20 @@ export function CreateCardPage() {
                                         rows={4}
                                         className={cn(
                                             'w-full min-h-[140px] resize-y px-5 py-4 rounded-xl',
-                                            'bg-black/30 border border-white/10 text-white backdrop-blur-sm',
-                                            'placeholder:text-slate-600 focus:outline-none focus:border-cyan-500/50 transition-colors',
+                                            'bg-card/50 border border-border text-foreground backdrop-blur-sm',
+                                            'placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 transition-colors',
                                             'text-lg font-medium'
                                         )}
                                     />
                                 </div>
 
-                                <div className="h-px bg-white/5 w-full" />
+                                <div className="h-px bg-foreground/5 w-full" />
 
                                 {/* Back Text */}
                                 <div className="space-y-3">
                                     <div className="flex items-center justify-between">
-                                        <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                                            Back (Answer) <span className="text-purple-500">*</span>
+                                        <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                                            Back (Answer) <span className="text-accent">*</span>
                                         </Label>
                                     </div>
                                     <Textarea
@@ -122,26 +120,26 @@ export function CreateCardPage() {
                                         rows={6}
                                         className={cn(
                                             'w-full min-h-[180px] resize-y px-5 py-4 rounded-xl',
-                                            'bg-black/30 border border-white/10 text-white backdrop-blur-sm',
-                                            'placeholder:text-slate-600 focus:outline-none focus:border-purple-500/50 transition-colors',
+                                            'bg-card/50 border border-border text-foreground backdrop-blur-sm',
+                                            'placeholder:text-muted-foreground focus:outline-none focus:border-accent/50 transition-colors',
                                             'text-base leading-relaxed'
                                         )}
                                     />
                                 </div>
 
                                 {/* Actions */}
-                                <div className="flex gap-4 pt-6 border-t border-white/5">
+                                <div className="flex gap-4 pt-6 border-t border-border">
                                     <button
                                         type="button"
                                         onClick={() => navigate(`/flashcards/${id}`)}
-                                        className="flex-1 py-3.5 rounded-xl bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 transition-colors font-medium border border-transparent hover:border-white/10"
+                                        className="flex-1 py-3.5 rounded-xl bg-foreground/5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors font-medium border border-transparent hover:border-border"
                                     >
                                         Cancel
                                     </button>
                                     <button
                                         type="submit"
                                         disabled={isPending || !frontText.trim() || !backText.trim()}
-                                        className="flex-1 py-3.5 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 text-white font-bold flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:from-cyan-500 hover:to-blue-500 transition-all shadow-lg shadow-cyan-500/20"
+                                        className="flex-1 py-3.5 rounded-xl bg-primary text-primary-foreground font-bold flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary/90 transition-all"
                                     >
                                         {isPending ? (
                                             <>

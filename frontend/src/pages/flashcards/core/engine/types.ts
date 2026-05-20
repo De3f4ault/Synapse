@@ -74,14 +74,27 @@ export const QUALITY_TO_RATING: Record<ReviewQuality, ReviewRating> = {
 };
 
 /**
- * API-compatible quality values (legacy SM-2 scale)
+ * API-compatible quality values (maps 4-button UI to SM-2 0-5 scale)
+ *
+ * Mirrors: backend/app/sql/functions/flashcards/calculate_sm2.sql
+ *   IF p_quality >= 3 THEN  -- correct
+ *   ELSE                    -- incorrect (reset)
  */
 export const RATING_TO_API_QUALITY: Record<ReviewRating, number> = {
-    0: 0,  // Again
-    1: 1,  // Hard
-    2: 3,  // Good
-    3: 5,  // Easy
+    0: 0,  // Again  → SM-2 "complete blackout" (fail, reset)
+    1: 3,  // Hard   → SM-2 "correct with serious difficulty" (pass, short interval)
+    2: 4,  // Good   → SM-2 "correct after hesitation" (pass, normal interval)
+    3: 5,  // Easy   → SM-2 "perfect response" (pass, long interval)
 };
+
+/**
+ * SM-2 correct/incorrect threshold.
+ * Mirrors: calculate_sm2.sql line 59 → `IF p_quality >= 3 THEN`
+ *
+ * Any mapped API quality >= this value is "correct recall."
+ * Below this value = "failure" (card resets to interval 1).
+ */
+export const SM2_CORRECT_THRESHOLD = 3;
 
 export interface ReviewProgress {
     cardId: number;
@@ -91,7 +104,7 @@ export interface ReviewProgress {
 }
 
 export interface ReviewSubmission {
-    quality: number; // API quality value (0, 1, 3, 5)
+    quality: number; // API quality value (0, 3, 4, 5)
     time_taken_ms: number;
 }
 
@@ -111,6 +124,17 @@ export interface StudySessionStats {
     incorrect: number;
     accuracy: number;
     durationMs: number;
+    /** Rating breakdown (mirrors SM-2 quality buckets) */
+    ratingBreakdown: {
+        again: number;   // 0 - complete failure
+        hard: number;    // 1 - recalled with difficulty
+        good: number;    // 2 - correct with hesitation
+        easy: number;    // 3 - perfect recall
+    };
+    /** Average milliseconds spent per card */
+    avgTimePerCardMs: number;
+    /** Cards reviewed per minute */
+    cardsPerMinute: number;
 }
 
 // ==================== FORM INPUTS ====================

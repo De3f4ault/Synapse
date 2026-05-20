@@ -67,25 +67,25 @@ export function DeckCreator({ onClose, onSuccess }: DeckCreatorProps) {
                 initial={{ scale: 0.95, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.95, opacity: 0 }}
-                className="bg-[#0a0a0f] border border-white/10 rounded-2xl max-w-lg w-full p-10 text-center space-y-6 relative"
+                className="bg-popover border border-border rounded-2xl max-w-lg w-full p-10 text-center space-y-6 relative"
             >
                 {/* Close Button */}
                 <button
                     onClick={onClose}
-                    className="absolute top-4 right-4 text-slate-500 hover:text-white transition-colors"
+                    className="absolute top-4 right-4 text-muted-foreground hover:text-foreground transition-colors"
                 >
                     <X size={20} />
                 </button>
 
                 {/* Header */}
                 <div>
-                    <div className="w-16 h-16 mx-auto bg-purple-500/10 rounded-full flex items-center justify-center border border-purple-500/20 mb-6">
-                        <Wand2 size={28} className="text-purple-400" />
+                    <div className="w-16 h-16 mx-auto bg-accent/10 rounded-full flex items-center justify-center border border-accent/20 mb-6">
+                        <Wand2 size={28} className="text-accent" />
                     </div>
-                    <h2 className="text-3xl font-bold text-white mb-2 tracking-tight">
+                    <h2 className="text-3xl font-bold text-foreground mb-2 tracking-tight">
                         Generate Flashcards
                     </h2>
-                    <p className="text-slate-400 text-sm">
+                    <p className="text-muted-foreground text-sm">
                         Enter a topic and AI will create flashcards for you.
                     </p>
                 </div>
@@ -98,7 +98,7 @@ export function DeckCreator({ onClose, onSuccess }: DeckCreatorProps) {
                         onChange={(e) => setTopic(e.target.value)}
                         onKeyDown={handleKeyPress}
                         placeholder="e.g. Spanish Vocabulary, React Hooks..."
-                        className="w-full text-center text-lg py-3 px-4 text-white bg-[#0f0f16] border border-white/10 rounded-xl focus:border-purple-500 focus:ring-1 focus:ring-purple-500 outline-none transition-colors placeholder:text-slate-500"
+                        className="w-full text-center text-lg py-3 px-4 text-foreground bg-card border border-border rounded-xl focus:border-accent focus:ring-1 focus:ring-accent outline-none transition-colors placeholder:text-muted-foreground"
                         disabled={isGenerating}
                         autoFocus
                     />
@@ -112,11 +112,11 @@ export function DeckCreator({ onClose, onSuccess }: DeckCreatorProps) {
                                 disabled={isGenerating}
                                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${difficulty === d
                                         ? d === 'easy'
-                                            ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50'
+                                            ? 'bg-accent-olive/20 text-accent-olive border border-emerald-500/50'
                                             : d === 'medium'
-                                                ? 'bg-amber-500/20 text-amber-400 border border-amber-500/50'
-                                                : 'bg-red-500/20 text-red-400 border border-red-500/50'
-                                        : 'bg-[#0f0f16] text-slate-400 border border-white/10 hover:border-white/20'
+                                                ? 'bg-warning/20 text-warning border border-amber-500/50'
+                                                : 'bg-destructive/20 text-destructive border border-destructive/50'
+                                        : 'bg-card text-muted-foreground border border-border hover:border-border'
                                     }`}
                             >
                                 {d.charAt(0).toUpperCase() + d.slice(1)}
@@ -126,22 +126,22 @@ export function DeckCreator({ onClose, onSuccess }: DeckCreatorProps) {
 
                     {/* Card Count */}
                     <div className="flex items-center justify-center gap-4">
-                        <span className="text-slate-400 text-sm">Cards:</span>
+                        <span className="text-muted-foreground text-sm">Cards:</span>
                         <div className="flex items-center gap-2">
                             <button
                                 onClick={() => setNumCards(Math.max(MIN_CARDS, numCards - 5))}
                                 disabled={isGenerating || numCards <= MIN_CARDS}
-                                className="w-8 h-8 rounded bg-[#0f0f16] border border-white/10 text-slate-300 hover:bg-white/5 disabled:opacity-50 transition-colors"
+                                className="w-8 h-8 rounded bg-card border border-border text-foreground/80 hover:bg-muted/50 disabled:opacity-50 transition-colors"
                             >
                                 -
                             </button>
-                            <span className="text-white font-medium w-8 text-center">
+                            <span className="text-foreground font-medium w-8 text-center">
                                 {numCards}
                             </span>
                             <button
                                 onClick={() => setNumCards(Math.min(MAX_CARDS, numCards + 5))}
                                 disabled={isGenerating || numCards >= MAX_CARDS}
-                                className="w-8 h-8 rounded bg-[#0f0f16] border border-white/10 text-slate-300 hover:bg-white/5 disabled:opacity-50 transition-colors"
+                                className="w-8 h-8 rounded bg-card border border-border text-foreground/80 hover:bg-muted/50 disabled:opacity-50 transition-colors"
                             >
                                 +
                             </button>
@@ -153,7 +153,7 @@ export function DeckCreator({ onClose, onSuccess }: DeckCreatorProps) {
                 <div className="flex gap-3 justify-center pt-2">
                     <button
                         onClick={onClose}
-                        className="px-6 py-2.5 rounded-xl text-slate-400 hover:text-white bg-white/5 hover:bg-white/10 transition-colors"
+                        className="px-6 py-2.5 rounded-xl text-muted-foreground hover:text-foreground bg-foreground/5 hover:bg-muted transition-colors"
                         disabled={isGenerating}
                     >
                         Cancel
@@ -161,7 +161,7 @@ export function DeckCreator({ onClose, onSuccess }: DeckCreatorProps) {
                     <button
                         onClick={handleGenerate}
                         disabled={isGenerating || !topic.trim()}
-                        className="px-8 py-2.5 rounded-xl bg-purple-600 text-white font-medium flex items-center gap-2 hover:bg-purple-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        className="px-8 py-2.5 rounded-xl bg-primary text-primary-foreground font-medium flex items-center gap-2 hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                         {isGenerating ? (
                             <>

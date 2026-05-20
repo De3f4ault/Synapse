@@ -65,7 +65,7 @@ export function Recommendations({
       <PriorityActions limit={3} />
 
       {/* Divider */}
-      <div className="border-t border-white/10" />
+      <div className="border-t border-border" />
 
       {/* Existing Tabs */}
       <Tabs defaultValue="items" className="space-y-6">

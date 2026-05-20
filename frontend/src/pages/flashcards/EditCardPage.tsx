@@ -73,10 +73,10 @@ export function EditCardPage() {
   // Loading state
   if (isLoading) {
     return (
-      <div className="min-h-screen nm-bg flex items-center justify-center">
+      <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
-          <Loader2 className="h-8 w-8 animate-spin text-cyan-500" />
-          <p className="text-slate-400">Loading card...</p>
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-muted-foreground">Loading card...</p>
         </div>
       </div>
     );
@@ -85,7 +85,7 @@ export function EditCardPage() {
   // Error state
   if (error || !typedCard) {
     return (
-      <div className="min-h-screen nm-bg p-6 flex items-center justify-center">
+      <div className="min-h-screen bg-background text-foreground p-6 flex items-center justify-center">
         <EmptyState
           icon={<Brain className="h-12 w-12" />}
           title="Card Not Found"
@@ -101,7 +101,7 @@ export function EditCardPage() {
   }
 
   return (
-    <div className="min-h-screen nm-bg nm-constellation-bg flex flex-col items-center p-8 relative z-10">
+    <div className="min-h-screen bg-background text-foreground flex flex-col items-center p-8 relative z-10">
       <div className="w-full max-w-3xl space-y-8">
         {/* Header */}
         <motion.div
@@ -111,15 +111,15 @@ export function EditCardPage() {
         >
           <button
             onClick={() => navigate(`/flashcards/${deckId}`)}
-            className="p-2 rounded-lg bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+            className="p-2 rounded-lg bg-foreground/5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
           >
             <ArrowLeft className="h-5 w-5" />
           </button>
           <div>
-            <h1 className="text-3xl font-bold text-white tracking-tight">
+            <h1 className="text-3xl font-bold text-foreground tracking-tight">
               Edit Card
             </h1>
-            <p className="text-slate-400 font-mono text-xs tracking-wider uppercase mt-1">
+            <p className="text-muted-foreground font-mono text-xs tracking-wider uppercase mt-1">
               MODIFY FLASHCARD DATA
             </p>
           </div>
@@ -136,50 +136,50 @@ export function EditCardPage() {
           >
             {/* Front Text */}
             <div className="space-y-2">
-              <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                Front (Question) <span className="text-cyan-500">*</span>
+              <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                Front (Question) <span className="text-primary">*</span>
               </Label>
               <Textarea
                 {...register('front_text', { required: 'Front text is required' })}
                 rows={4}
                 className={cn(
                   'w-full min-h-[100px] resize-y px-4 py-3 rounded-xl',
-                  'bg-[#0f0f16] border border-white/10 text-white',
-                  'placeholder:text-slate-500 focus:outline-none focus:border-cyan-500/50 transition-colors',
-                  errors.front_text && 'border-red-500/50 focus:border-red-500'
+                  'bg-card border border-border text-foreground',
+                  'placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 transition-colors',
+                  errors.front_text && 'border-destructive/50 focus:border-red-500'
                 )}
               />
               {errors.front_text && (
-                <p className="text-xs text-red-400 mt-1">{errors.front_text.message}</p>
+                <p className="text-xs text-destructive mt-1">{errors.front_text.message}</p>
               )}
             </div>
 
             {/* Back Text */}
             <div className="space-y-2">
-              <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                Back (Answer) <span className="text-purple-500">*</span>
+              <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                Back (Answer) <span className="text-accent">*</span>
               </Label>
               <Textarea
                 {...register('back_text', { required: 'Back text is required' })}
                 rows={4}
                 className={cn(
                   'w-full min-h-[100px] resize-y px-4 py-3 rounded-xl',
-                  'bg-[#0f0f16] border border-white/10 text-white',
-                  'placeholder:text-slate-500 focus:outline-none focus:border-purple-500/50 transition-colors',
-                  errors.back_text && 'border-red-500/50 focus:border-red-500'
+                  'bg-card border border-border text-foreground',
+                  'placeholder:text-muted-foreground focus:outline-none focus:border-accent/50 transition-colors',
+                  errors.back_text && 'border-destructive/50 focus:border-red-500'
                 )}
               />
               {errors.back_text && (
-                <p className="text-xs text-red-400 mt-1">{errors.back_text.message}</p>
+                <p className="text-xs text-destructive mt-1">{errors.back_text.message}</p>
               )}
             </div>
 
             {/* Actions */}
-            <div className="flex gap-3 pt-4 border-t border-white/5">
+            <div className="flex gap-3 pt-4 border-t border-border">
               <button
                 type="button"
                 onClick={() => navigate(`/flashcards/${deckId}`)}
-                className="flex-1 py-3 rounded-xl bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 transition-colors flex items-center justify-center gap-2"
+                className="flex-1 py-3 rounded-xl bg-foreground/5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors flex items-center justify-center gap-2"
               >
                 <X className="h-4 w-4" />
                 Cancel
@@ -187,7 +187,7 @@ export function EditCardPage() {
               <button
                 type="submit"
                 disabled={isPending || !isDirty}
-                className="flex-1 py-3 rounded-xl bg-cyan-600 text-white font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-cyan-500 transition-colors"
+                className="flex-1 py-3 rounded-xl bg-primary text-foreground font-medium flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary transition-colors"
               >
                 {isPending ? (
                   <>

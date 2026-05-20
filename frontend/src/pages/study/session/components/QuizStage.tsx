@@ -23,29 +23,29 @@ export function QuizStage({ item }: QuizStageProps) {
       className="w-full max-w-lg"
     >
       {/* Quiz Card */}
-      <div className="bg-[#0A0A0A]/60 border border-white/10 rounded-3xl p-10 shadow-2xl backdrop-blur-sm">
+      <div className="bg-card/60 border border-border rounded-3xl p-10 shadow-2xl backdrop-blur-sm">
         {/* Question Label */}
         <div className="text-center mb-6">
-          <span className="text-[10px] font-bold uppercase tracking-widest text-slate-600">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
             Question
           </span>
         </div>
         
         {/* Question Content */}
-        <h2 className="text-2xl md:text-3xl font-bold text-white text-center leading-relaxed">
+        <h2 className="text-2xl md:text-3xl font-bold text-foreground text-center leading-relaxed">
           {item.title}
         </h2>
         
         {/* Hint/Description if available */}
         {item.rawData?.description && (
-          <p className="mt-6 text-slate-400 text-center text-sm">
+          <p className="mt-6 text-muted-foreground text-center text-sm">
             {item.rawData.description}
           </p>
         )}
         
         {/* Tap to flip hint (if applicable) */}
         <div className="mt-8 text-center">
-          <span className="text-xs text-slate-600 uppercase tracking-widest">
+          <span className="text-xs text-muted-foreground uppercase tracking-widest">
             Rate your answer below
           </span>
         </div>

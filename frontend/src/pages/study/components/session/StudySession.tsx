@@ -120,13 +120,13 @@ export function StudySession({
         className="flex flex-col items-center justify-center p-8 h-full min-h-[400px]"
       >
         <div className="text-center mb-8">
-          <div className="w-16 h-16 mx-auto bg-green-500/10 rounded-full flex items-center justify-center border border-green-500/20 mb-4">
-            <Trophy size={32} className="text-green-400" />
+          <div className="w-16 h-16 mx-auto bg-accent-olive/10 rounded-full flex items-center justify-center border border-green-500/20 mb-4">
+            <Trophy size={32} className="text-accent-olive" />
           </div>
-          <h2 className="text-3xl font-bold text-white mb-2">
+          <h2 className="text-3xl font-bold text-foreground mb-2">
             Session Complete!
           </h2>
-          <p className="text-slate-400">
+          <p className="text-muted-foreground">
             Great work maintaining your momentum.
           </p>
         </div>
@@ -158,37 +158,37 @@ export function StudySession({
         {(graphStats.strengthened > 0 || graphStats.weakened > 0) && (
           <div className="w-full max-w-2xl mb-8">
             <div className="flex items-center gap-2 mb-3">
-              <Sparkles size={14} className="text-purple-400" />
-              <span className="text-xs uppercase tracking-wider text-slate-500 font-bold">
+              <Sparkles size={14} className="text-accent" />
+              <span className="text-xs uppercase tracking-wider text-muted-foreground font-bold">
                 Memory Intelligence
               </span>
             </div>
             <div className="grid grid-cols-2 gap-3">
               {graphStats.strengthened > 0 && (
-                <div className="flex items-center gap-3 p-3 rounded-lg bg-emerald-500/5 border border-emerald-500/10">
-                  <div className="p-2 rounded-lg bg-emerald-500/10">
-                    <TrendingUp size={16} className="text-emerald-400" />
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-accent-olive/5 border border-accent-olive/10">
+                  <div className="p-2 rounded-lg bg-accent-olive/10">
+                    <TrendingUp size={16} className="text-accent-olive" />
                   </div>
                   <div>
-                    <div className="text-lg font-bold text-emerald-400">
+                    <div className="text-lg font-bold text-accent-olive">
                       {graphStats.strengthened}
                     </div>
-                    <div className="text-[10px] text-slate-500 uppercase tracking-wider">
+                    <div className="text-[10px] text-muted-foreground uppercase tracking-wider">
                       Strengthened
                     </div>
                   </div>
                 </div>
               )}
               {graphStats.weakened > 0 && (
-                <div className="flex items-center gap-3 p-3 rounded-lg bg-amber-500/5 border border-amber-500/10">
-                  <div className="p-2 rounded-lg bg-amber-500/10">
-                    <TrendingDown size={16} className="text-amber-400" />
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-warning/5 border border-warning/10">
+                  <div className="p-2 rounded-lg bg-warning/10">
+                    <TrendingDown size={16} className="text-warning" />
                   </div>
                   <div>
-                    <div className="text-lg font-bold text-amber-400">
+                    <div className="text-lg font-bold text-warning">
                       {graphStats.weakened}
                     </div>
-                    <div className="text-[10px] text-slate-500 uppercase tracking-wider">
+                    <div className="text-[10px] text-muted-foreground uppercase tracking-wider">
                       Needs Practice
                     </div>
                   </div>
@@ -201,13 +201,13 @@ export function StudySession({
         <div className="flex gap-4">
           <button
             onClick={() => onComplete(sessionResponse)}
-            className="synapse-button"
+            className="bg-secondary text-secondary-foreground rounded-lg px-4 py-2 font-medium shadow-ring hover:bg-secondary/80 active:scale-[0.98] transition-all duration-200"
           >
             Back to Hub
           </button>
           <button
             onClick={() => onComplete(sessionResponse)}
-            className="synapse-button-primary synapse-button"
+            className="bg-primary text-primary-foreground rounded-lg px-4 py-2 font-medium shadow-ring-brand hover:bg-primary/90 active:scale-[0.98] transition-all duration-200"
           >
             View Analytics
           </button>
@@ -220,8 +220,8 @@ export function StudySession({
     return (
       <div className="flex items-center justify-center h-full min-h-[400px]">
         <div className="flex flex-col items-center gap-4">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-500" />
-          <p className="text-slate-400 uppercase tracking-widest text-xs">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+          <p className="text-muted-foreground uppercase tracking-widest text-xs">
             Initializing Session...
           </p>
         </div>
@@ -247,7 +247,7 @@ export function StudySession({
 
       {/* Floating Progress Counter - Below timer, very subtle */}
       <div className="fixed top-[4.5rem] left-1/2 -translate-x-1/2 z-10 opacity-40">
-        <span className="text-xs font-mono text-slate-500 tracking-widest">
+        <span className="text-xs font-mono text-muted-foreground tracking-widest">
           {session.currentIndex + 1} / {items.length}
         </span>
       </div>
@@ -279,10 +279,10 @@ export function StudySession({
               exit={{ opacity: 0, scale: 0.9 }}
               className="w-full max-w-md text-center space-y-6"
             >
-              <h2 className="text-3xl font-bold text-white">
+              <h2 className="text-3xl font-bold text-foreground">
                 {currentItem.title}
               </h2>
-              <p className="text-slate-400">
+              <p className="text-muted-foreground">
                 {currentItem.type === "quiz" 
                   ? "Rate your answer" 
                   : "Review this content"}
@@ -312,7 +312,7 @@ export function StudySession({
               exit={{ opacity: 0 }}
               onClick={() => setIsFlipped(true)}
               disabled={session.status === "paused"}
-              className="px-8 py-4 rounded-full bg-white/5 border border-white/10 text-slate-300 font-medium hover:bg-white/10 transition-colors tracking-widest uppercase text-sm"
+              className="px-8 py-4 rounded-full bg-foreground/5 border border-border text-foreground/80 font-medium hover:bg-muted transition-colors tracking-widest uppercase text-sm"
             >
               Reveal Answer
             </motion.button>
@@ -326,14 +326,14 @@ export function StudySession({
             >
               <button
                 onClick={() => handleAnswerWithReinforcement(false)}
-                className="px-6 py-3 rounded-full bg-white/5 border border-white/10 text-slate-300 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/30 transition-colors uppercase text-sm tracking-wider"
+                className="px-6 py-3 rounded-full bg-foreground/5 border border-border text-foreground/80 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-colors uppercase text-sm tracking-wider"
                 disabled={session.status === "paused"}
               >
                 Incorrect
               </button>
               <button
                 onClick={() => handleAnswerWithReinforcement(true)}
-                className="px-6 py-3 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 hover:bg-cyan-500/20 transition-colors uppercase text-sm tracking-wider"
+                className="px-6 py-3 rounded-full bg-primary/10 border border-primary/20 text-primary hover:bg-primary/20 transition-colors uppercase text-sm tracking-wider"
                 disabled={session.status === "paused"}
               >
                 Correct
@@ -350,21 +350,21 @@ export function StudySession({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="absolute inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center rounded-2xl"
+            className="absolute inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center rounded-2xl"
           >
             <div className="text-center p-8">
-              <div className="w-16 h-16 mx-auto bg-white/5 rounded-full flex items-center justify-center border border-white/10 mb-4 animate-pulse">
-                <Clock size={32} className="text-white" />
+              <div className="w-16 h-16 mx-auto bg-foreground/5 rounded-full flex items-center justify-center border border-border mb-4 animate-pulse">
+                <Clock size={32} className="text-foreground" />
               </div>
-              <h3 className="text-2xl font-bold text-white mb-2">
+              <h3 className="text-2xl font-bold text-foreground mb-2">
                 Session Paused
               </h3>
-              <p className="text-slate-400 text-sm mb-6">
+              <p className="text-muted-foreground text-sm mb-6">
                 Timer stopped. Ready when you are.
               </p>
               <button
                 onClick={resumeSession}
-                className="synapse-button-primary synapse-button px-8"
+                className="bg-primary text-primary-foreground rounded-lg px-4 py-2 font-medium shadow-ring-brand hover:bg-primary/90 active:scale-[0.98] transition-all duration-200 px-8"
               >
                 <Play size={16} fill="currentColor" className="mr-2" />
                 Resume
@@ -387,18 +387,18 @@ function StatCard({
   color: string;
 }) {
   const colors = {
-    blue: "text-blue-400 shadow-blue-500/20",
-    green: "text-emerald-400 shadow-emerald-500/20",
-    purple: "text-purple-400 shadow-purple-500/20",
-    cyan: "text-cyan-400 shadow-cyan-500/20",
+    blue: "text-info shadow-blue-500/20",
+    green: "text-accent-olive ",
+    purple: "text-accent ",
+    cyan: "text-primary ",
   } as any;
 
   return (
-    <div className="p-4 rounded-xl bg-white/5 border border-white/5 text-center">
+    <div className="p-4 rounded-xl bg-foreground/5 border border-border text-center">
       <div className={cn("text-2xl font-bold mb-1", colors[color])}>
         {value}
       </div>
-      <div className="text-[10px] text-slate-500 uppercase tracking-wider">
+      <div className="text-[10px] text-muted-foreground uppercase tracking-wider">
         {label}
       </div>
     </div>
