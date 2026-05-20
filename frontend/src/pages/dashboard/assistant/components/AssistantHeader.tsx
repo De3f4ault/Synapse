@@ -17,7 +17,7 @@ export function AssistantHeader() {
     const { toggleSidebar, close } = useAssistantActions();
 
     return (
-        <div className="bg-gradient-to-r from-purple-500/10 via-cyan-500/5 to-transparent py-4 px-4 flex flex-row items-center justify-between border-b border-white/5">
+        <div className="bg-gradient-to-r from-accent/10 via-cyan-500/5 to-transparent py-4 px-4 flex flex-row items-center justify-between border-b border-border">
             <div className="flex items-center gap-3">
                 <NeumorphicButton
                     variant="ghost"
@@ -31,11 +31,11 @@ export function AssistantHeader() {
                         <ChevronLeft className="h-4 w-4" />
                     )}
                 </NeumorphicButton>
-                <div className="w-8 h-8 rounded-lg nm-inset flex items-center justify-center text-cyan-400">
+                <div className="w-8 h-8 rounded-lg bg-muted border border-border rounded-lg flex items-center justify-center text-primary">
                     <Bot className="h-4 w-4" />
                 </div>
                 <div>
-                    <h3 className="text-sm font-bold text-white tracking-tight">
+                    <h3 className="text-sm font-bold text-foreground tracking-tight">
                         Synapse Assistant
                     </h3>
                     <div className="flex items-center gap-1.5">
@@ -44,10 +44,10 @@ export function AssistantHeader() {
                                 "w-1.5 h-1.5 rounded-full",
                                 isInitializing
                                     ? "bg-amber-400 animate-pulse"
-                                    : "bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]"
+                                    : "bg-accent-olive shadow-[0_0_8px_rgba(52,211,153,0.6)]"
                             )}
                         />
-                        <span className="text-[10px] text-slate-400 font-mono uppercase tracking-wider">
+                        <span className="text-[10px] text-muted-foreground font-mono uppercase tracking-wider">
                             {isInitializing ? "INITIALIZING..." : "ONLINE"}
                         </span>
                     </div>
@@ -56,7 +56,7 @@ export function AssistantHeader() {
             <NeumorphicButton
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8 hover:text-white"
+                className="h-8 w-8 hover:text-foreground"
                 onClick={close}
             >
                 <Minimize2 className="h-4 w-4" />

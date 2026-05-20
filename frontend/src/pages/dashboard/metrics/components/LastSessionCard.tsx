@@ -31,7 +31,7 @@ export const LastSessionCard: React.FC<LastSessionCardProps> = ({
         return (
             <NeumorphicCard className="p-5 h-full">
                 <div className="flex items-center justify-center h-full">
-                    <Loader2 className="w-6 h-6 text-cyan-500 animate-spin" />
+                    <Loader2 className="w-6 h-6 text-primary animate-spin" />
                 </div>
             </NeumorphicCard>
         );
@@ -39,9 +39,9 @@ export const LastSessionCard: React.FC<LastSessionCardProps> = ({
 
     // Determine color based on quality
     const getQualityColor = () => {
-        if (accuracyPercent >= 90) return "text-emerald-400";
-        if (accuracyPercent >= 70) return "text-cyan-400";
-        return "text-amber-400";
+        if (accuracyPercent >= 90) return "text-accent-olive";
+        if (accuracyPercent >= 70) return "text-primary";
+        return "text-warning";
     };
 
     const getQualityIcon = () => {
@@ -54,12 +54,12 @@ export const LastSessionCard: React.FC<LastSessionCardProps> = ({
         return (
             <NeumorphicCard className="p-5 h-full">
                 <div className="flex items-center gap-2 mb-4">
-                    <div className="w-8 h-8 rounded-lg nm-inset flex items-center justify-center text-slate-500">
+                    <div className="w-8 h-8 rounded-lg bg-muted border border-border rounded-lg flex items-center justify-center text-muted-foreground">
                         <Zap className="w-4 h-4" />
                     </div>
-                    <h3 className="text-sm font-semibold text-white">Last Session</h3>
+                    <h3 className="text-sm font-semibold text-foreground">Last Session</h3>
                 </div>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-muted-foreground">
                     No sessions yet. Start reviewing to see your progress!
                 </p>
             </NeumorphicCard>
@@ -71,10 +71,10 @@ export const LastSessionCard: React.FC<LastSessionCardProps> = ({
             {/* Header */}
             <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
-                    <div className={`w-8 h-8 rounded-lg nm-inset flex items-center justify-center ${getQualityColor()}`}>
+                    <div className={`w-8 h-8 rounded-lg bg-muted border border-border rounded-lg flex items-center justify-center ${getQualityColor()}`}>
                         {getQualityIcon()}
                     </div>
-                    <h3 className="text-sm font-semibold text-white">Last Session</h3>
+                    <h3 className="text-sm font-semibold text-foreground">Last Session</h3>
                 </div>
             </div>
             
@@ -84,11 +84,11 @@ export const LastSessionCard: React.FC<LastSessionCardProps> = ({
                     <span className={`text-3xl font-bold font-mono ${getQualityColor()}`}>
                         {accuracyPercent.toFixed(0)}%
                     </span>
-                    <span className="text-xs text-slate-500">accuracy</span>
+                    <span className="text-xs text-muted-foreground">accuracy</span>
                 </div>
                 
                 {/* Details */}
-                <div className="flex items-center gap-4 text-xs text-slate-400">
+                <div className="flex items-center gap-4 text-xs text-muted-foreground">
                     <span>{cardsReviewed} cards</span>
                     <span>•</span>
                     <span>{durationMinutes} min</span>

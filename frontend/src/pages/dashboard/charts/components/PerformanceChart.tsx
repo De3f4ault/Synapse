@@ -34,12 +34,12 @@ export function PerformanceChart({ data, className }: PerformanceChartProps) {
         return (
             <GlassCard className={`p-6 ${className || ""}`}>
                 <div className="flex items-center gap-2 mb-4">
-                    <TrendingUp className="w-5 h-5 text-cyan-400" />
-                    <h3 className="text-lg font-semibold text-white">
+                    <TrendingUp className="w-5 h-5 text-primary" />
+                    <h3 className="text-lg font-semibold text-foreground">
                         Performance Trend
                     </h3>
                 </div>
-                <div className="flex items-center justify-center h-64 text-slate-500">
+                <div className="flex items-center justify-center h-64 text-muted-foreground">
                     No performance data available yet
                 </div>
             </GlassCard>
@@ -67,12 +67,12 @@ export function PerformanceChart({ data, className }: PerformanceChartProps) {
                 {/* Header */}
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                        <TrendingUp className="w-5 h-5 text-cyan-400" />
-                        <h3 className="text-lg font-semibold text-white">
+                        <TrendingUp className="w-5 h-5 text-primary" />
+                        <h3 className="text-lg font-semibold text-foreground">
                             Performance Trend
                         </h3>
                     </div>
-                    <div className="text-xs text-slate-500 uppercase tracking-wider">
+                    <div className="text-xs text-muted-foreground uppercase tracking-wider">
                         Last {data.length} days
                     </div>
                 </div>
@@ -95,7 +95,7 @@ export function PerformanceChart({ data, className }: PerformanceChartProps) {
                         />
                         <Tooltip
                             contentStyle={{
-                                backgroundColor: "#0a0a0a",
+                                backgroundColor: "hsl(var(--card))",
                                 border: "1px solid #ffffff20",
                                 borderRadius: "8px",
                                 fontSize: "12px",
@@ -127,26 +127,26 @@ export function PerformanceChart({ data, className }: PerformanceChartProps) {
                 </ResponsiveContainer>
 
                 {/* Stats */}
-                <div className="grid grid-cols-3 gap-4 pt-4 border-t border-white/5">
+                <div className="grid grid-cols-3 gap-4 pt-4 border-t border-border">
                     <div>
-                        <p className="text-xs text-slate-500 uppercase tracking-wider">
+                        <p className="text-xs text-muted-foreground uppercase tracking-wider">
                             Avg Accuracy
                         </p>
-                        <p className="text-lg font-bold text-white">
+                        <p className="text-lg font-bold text-foreground">
                             {avgAccuracy.toFixed(1)}%
                         </p>
                     </div>
                     <div>
-                        <p className="text-xs text-slate-500 uppercase tracking-wider">
+                        <p className="text-xs text-muted-foreground uppercase tracking-wider">
                             Total Reviews
                         </p>
-                        <p className="text-lg font-bold text-white">{totalReviews}</p>
+                        <p className="text-lg font-bold text-foreground">{totalReviews}</p>
                     </div>
                     <div>
-                        <p className="text-xs text-slate-500 uppercase tracking-wider">
+                        <p className="text-xs text-muted-foreground uppercase tracking-wider">
                             Study Time
                         </p>
-                        <p className="text-lg font-bold text-white">{totalStudyTime}h</p>
+                        <p className="text-lg font-bold text-foreground">{totalStudyTime}h</p>
                     </div>
                 </div>
             </div>

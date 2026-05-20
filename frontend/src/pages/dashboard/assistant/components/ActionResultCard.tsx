@@ -50,12 +50,12 @@ export const ActionResultCard: React.FC<ActionResultCardProps> = ({
         switch (action.type) {
             case "create_flashcard":
             case "update_flashcard":
-                return "border-l-blue-500";
+                return "border-l-primary";
             case "create_note":
             case "update_note":
-                return "border-l-purple-500";
+                return "border-l-warning";
             case "create_quiz":
-                return "border-l-green-500";
+                return "border-l-accent-olive";
             default:
                 return "border-l-primary";
         }
@@ -154,7 +154,7 @@ export const ActionResultCard: React.FC<ActionResultCardProps> = ({
 
                 {/* Success Message */}
                 {action.message && (
-                    <div className="text-xs text-green-600 dark:text-green-400 mt-2 flex items-center gap-1">
+                    <div className="text-xs text-green-600 dark:text-accent-olive mt-2 flex items-center gap-1">
                         <CheckCircle className="w-3 h-3" />
                         <span>{action.message}</span>
                     </div>

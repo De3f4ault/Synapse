@@ -28,19 +28,19 @@ function getSourceInfo(source?: string): { label: string; className: string; Ico
         case "gie":
             return {
                 label: "Intelligence",
-                className: "text-cyan-400 bg-cyan-500/10 border-cyan-500/20",
+                className: "text-primary bg-primary/10 border-primary/20",
                 Icon: Brain,
             };
         case "graph":
             return {
                 label: "Learning patterns",
-                className: "text-purple-400 bg-purple-500/10 border-purple-500/20",
+                className: "text-accent bg-accent/10 border-accent/20",
                 Icon: Sparkles,
             };
         case "hybrid":
             return {
                 label: "Confirmed",
-                className: "text-amber-400 bg-amber-500/10 border-amber-500/20",
+                className: "text-warning bg-warning/10 border-warning/20",
                 Icon: CheckCircle2,
             };
         default:
@@ -58,27 +58,27 @@ export function WeakAreasList({ data, className }: WeakAreasListProps) {
     return (
         <NeumorphicCard className={cn("p-6 flex flex-col", className)}>
             <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 rounded-xl nm-inset flex items-center justify-center text-red-400">
+                <div className="w-10 h-10 rounded-xl bg-muted border border-border rounded-lg flex items-center justify-center text-destructive">
                     <AlertCircle className="w-5 h-5" />
                 </div>
                 <div>
-                    <h3 className="text-lg font-bold text-white">Focus Areas</h3>
-                    <p className="text-xs text-slate-500">Suggested improvements</p>
+                    <h3 className="text-lg font-bold text-foreground">Focus Areas</h3>
+                    <p className="text-xs text-muted-foreground">Suggested improvements</p>
                 </div>
             </div>
 
             <div className="flex-1 w-full overflow-y-auto scrollbar-hide space-y-5 pr-2">
                 {data.length === 0 ? (
                     <div className="h-full flex flex-col items-center justify-center text-center px-4 py-8">
-                        <div className="w-14 h-14 rounded-2xl nm-inset flex items-center justify-center mb-4 text-emerald-400/60">
+                        <div className="w-14 h-14 rounded-2xl bg-muted border border-border rounded-lg flex items-center justify-center mb-4 text-accent-olive/60">
                             <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                             </svg>
                         </div>
-                        <p className="text-sm text-emerald-400 font-medium mb-1">
+                        <p className="text-sm text-accent-olive font-medium mb-1">
                             No weak areas detected
                         </p>
-                        <p className="text-xs text-slate-500">
+                        <p className="text-xs text-muted-foreground">
                             Complete study sessions to track areas that need focus
                         </p>
                     </div>
@@ -94,7 +94,7 @@ export function WeakAreasList({ data, className }: WeakAreasListProps) {
                             >
                                 <div className="flex justify-between items-start text-sm gap-2">
                                     <div className="flex-1 min-w-0">
-                                        <span className="font-medium text-slate-300 group-hover:text-white transition-colors block truncate">
+                                        <span className="font-medium text-foreground/80 group-hover:text-foreground transition-colors block truncate">
                                             {area.topic}
                                         </span>
                                         <div className="flex items-center gap-2 mt-1 flex-wrap">
@@ -109,24 +109,24 @@ export function WeakAreasList({ data, className }: WeakAreasListProps) {
                                             )}
                                             {/* Stability indicator for GIE sources */}
                                             {area.stability !== undefined && area.stability < 0.5 && (
-                                                <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded border text-[10px] uppercase tracking-wider font-medium text-red-400 bg-red-500/10 border-red-500/20">
+                                                <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded border text-[10px] uppercase tracking-wider font-medium text-destructive bg-destructive/10 border-destructive/20">
                                                     <TrendingDown className="w-3 h-3" />
                                                     Decaying
                                                 </div>
                                             )}
                                         </div>
                                     </div>
-                                    <span className="text-red-400 font-bold font-mono shrink-0">
+                                    <span className="text-destructive font-bold font-mono shrink-0">
                                         {(area.accuracy * 100).toFixed(0)}%
                                     </span>
                                 </div>
-                                <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
+                                <div className="h-2 w-full bg-foreground/5 rounded-full overflow-hidden">
                                     <div
                                         className={cn(
                                             "h-full rounded-full transition-all duration-500",
-                                            area.source === "gie" ? "bg-cyan-400" :
+                                            area.source === "gie" ? "bg-primary" :
                                                 area.source === "hybrid" ? "bg-amber-400" :
-                                                    area.source === "graph" ? "bg-purple-400" : "bg-red-400"
+                                                    area.source === "graph" ? "bg-accent" : "bg-destructive"
                                         )}
                                         style={{ width: `${area.accuracy * 100}%` }}
                                     />

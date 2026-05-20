@@ -35,7 +35,7 @@ export const TodaysProgressCard: React.FC<TodaysProgressCardProps> = ({
         return (
             <NeumorphicCard className="p-5 h-full">
                 <div className="flex items-center justify-center h-full">
-                    <Loader2 className="w-6 h-6 text-cyan-500 animate-spin" />
+                    <Loader2 className="w-6 h-6 text-primary animate-spin" />
                 </div>
             </NeumorphicCard>
         );
@@ -43,14 +43,14 @@ export const TodaysProgressCard: React.FC<TodaysProgressCardProps> = ({
 
     return (
         <NeumorphicCard 
-            className="p-5 h-full cursor-pointer hover:border-cyan-500/30 transition-colors"
+            className="p-5 h-full cursor-pointer hover:border-primary/30 transition-colors"
             onClick={() => navigate("/flashcards/review")}
         >
             {/* Header */}
             <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
-                    <div className={`w-8 h-8 rounded-lg nm-inset flex items-center justify-center ${
-                        isComplete ? "text-emerald-400" : "text-cyan-400"
+                    <div className={`w-8 h-8 rounded-lg bg-muted border border-border rounded-lg flex items-center justify-center ${
+                        isComplete ? "text-accent-olive" : "text-primary"
                     }`}>
                         {isComplete ? (
                             <CheckCircle2 className="w-4 h-4" />
@@ -58,38 +58,38 @@ export const TodaysProgressCard: React.FC<TodaysProgressCardProps> = ({
                             <Target className="w-4 h-4" />
                         )}
                     </div>
-                    <h3 className="text-sm font-semibold text-white">Today's Progress</h3>
+                    <h3 className="text-sm font-semibold text-foreground">Today's Progress</h3>
                 </div>
-                <span className="text-xs text-slate-500">{studyTimeMinutes} min</span>
+                <span className="text-xs text-muted-foreground">{studyTimeMinutes} min</span>
             </div>
             
             {/* Progress Display */}
             <div className="space-y-3">
                 <div className="flex items-baseline gap-1">
-                    <span className="text-3xl font-bold text-white font-mono">
+                    <span className="text-3xl font-bold text-foreground font-mono">
                         {reviewsCompleted}
                     </span>
-                    <span className="text-lg text-slate-500">/</span>
-                    <span className="text-lg text-slate-400 font-mono">
+                    <span className="text-lg text-muted-foreground">/</span>
+                    <span className="text-lg text-muted-foreground font-mono">
                         {totalDue}
                     </span>
-                    <span className="text-xs text-slate-500 ml-1">reviews</span>
+                    <span className="text-xs text-muted-foreground ml-1">reviews</span>
                 </div>
                 
                 {/* Progress Bar */}
-                <div className="w-full h-2 rounded-full nm-inset overflow-hidden">
+                <div className="w-full h-2 rounded-full bg-muted border border-border rounded-lg overflow-hidden">
                     <div 
                         className={`h-full rounded-full transition-all duration-500 ${
                             isComplete 
                                 ? "bg-gradient-to-r from-emerald-500 to-emerald-400" 
-                                : "bg-gradient-to-r from-cyan-500 to-cyan-400"
+                                : "bg-primary"
                         }`}
                         style={{ width: `${progressPercent}%` }}
                     />
                 </div>
                 
                 {/* Status Text */}
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-muted-foreground">
                     {isComplete 
                         ? "All caught up! 🎉" 
                         : progressPercent > 0 

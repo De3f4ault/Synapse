@@ -34,27 +34,27 @@ export function MasteryChart({ data, className }: MasteryChartProps) {
     return (
         <NeumorphicCard className={cn("p-6 flex flex-col", className)}>
             <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 rounded-xl nm-inset flex items-center justify-center text-yellow-500">
+                <div className="w-10 h-10 rounded-xl bg-muted border border-border rounded-lg flex items-center justify-center text-yellow-500">
                     <Award className="w-5 h-5" />
                 </div>
                 <div>
-                    <h3 className="text-lg font-bold text-white">Topic Mastery</h3>
-                    <p className="text-xs text-slate-500">Knowledge distribution</p>
+                    <h3 className="text-lg font-bold text-foreground">Topic Mastery</h3>
+                    <p className="text-xs text-muted-foreground">Knowledge distribution</p>
                 </div>
             </div>
 
             <div className="flex-1 w-full min-h-0 flex items-center justify-center">
                 {chartData.length < 3 ? (
                     <div className="text-center p-4 flex flex-col items-center">
-                        <div className="w-16 h-16 rounded-2xl nm-inset flex items-center justify-center mb-4 text-amber-400/50">
+                        <div className="w-16 h-16 rounded-2xl bg-muted border border-border rounded-lg flex items-center justify-center mb-4 text-warning/50">
                             <Award className="w-8 h-8" />
                         </div>
-                        <p className="text-sm text-slate-300 mb-1">
+                        <p className="text-sm text-foreground/80 mb-1">
                             {chartData.length === 0 
                                 ? "Review cards to unlock mastery radar"
                                 : `Need ${3 - chartData.length} more topic${3 - chartData.length > 1 ? 's' : ''} for radar`}
                         </p>
-                        <p className="text-xs text-slate-500">
+                        <p className="text-xs text-muted-foreground">
                             Review flashcards across at least 3 different decks
                         </p>
                     </div>

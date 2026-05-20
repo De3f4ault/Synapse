@@ -60,28 +60,28 @@ export function ActivityItem({ activity, index }: ActivityItemProps) {
     return (
         <div
             className={cn(
-                "flex items-start gap-3 p-3 rounded-lg transition-all border border-transparent hover:bg-white/5",
+                "flex items-start gap-3 p-3 rounded-lg transition-all border border-transparent hover:bg-muted/50",
                 "animate-in slide-in-from-left-2 fade-in duration-300"
             )}
             style={{ animationDelay: `${index * 50}ms` }}
         >
             <div className={cn(
-                "w-8 h-8 rounded-lg nm-inset flex items-center justify-center shrink-0",
-                activity.activity_type === "achievement" ? "text-yellow-400" : "text-cyan-400"
+                "w-8 h-8 rounded-lg bg-muted border border-border rounded-lg flex items-center justify-center shrink-0",
+                activity.activity_type === "achievement" ? "text-yellow-400" : "text-primary"
             )}>
                 <Icon className="w-4 h-4" />
             </div>
 
             <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-2">
-                    <h4 className="text-sm font-medium text-slate-200 truncate">
+                    <h4 className="text-sm font-medium text-foreground/70 truncate">
                         {title}
                     </h4>
-                    <span className="text-[10px] text-slate-500 whitespace-nowrap font-mono">
+                    <span className="text-[10px] text-muted-foreground whitespace-nowrap font-mono">
                         {timeAgo}
                     </span>
                 </div>
-                <p className="text-xs text-slate-400 line-clamp-2 mt-0.5">
+                <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
                     {description}
                 </p>
             </div>
