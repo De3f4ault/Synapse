@@ -6,8 +6,16 @@ CRITICAL NOTES:
 - Alembic uses psycopg2 (sync driver)
 - All tables go in developer_schema
 - URL is converted from asyncpg to psycopg2 automatically
+
+REPLICA-FIRST DDL ORDERING:
+- Set ALEMBIC_TARGET=replica to run migrations against the Logical Replica first.
+- This prevents replication stream crashes caused by the replica receiving WAL
+  records for columns that don't exist on its schema yet.
+- Always use `make migrate-safe` instead of running `alembic upgrade head` directly.
+  It enforces the correct sequence: Replica first, then Primary.
 """
 
+import os
 import sys
 from pathlib import Path
 from logging.config import fileConfig
@@ -28,6 +36,28 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 target_metadata = Base.metadata
+
+
+def get_target_url() -> str:
+    """
+    Return the database URL for the migration target.
+
+    When ALEMBIC_TARGET=replica, connects to ANALYTICS_DATABASE_URL (Logical Replica).
+    Otherwise connects to DATABASE_URL (Primary).
+
+    Raises RuntimeError in production if ANALYTICS_DATABASE_URL is unset when
+    ALEMBIC_TARGET=replica — fail loudly at migration time, not silently.
+    """
+    target = os.getenv("ALEMBIC_TARGET", "primary")
+    if target == "replica":
+        url = os.environ.get("ANALYTICS_DATABASE_URL", "")
+        if not url:
+            raise RuntimeError(
+                "ALEMBIC_TARGET=replica requires ANALYTICS_DATABASE_URL to be set.\n"
+                "Set it to the Logical Replica connection string and retry."
+            )
+        return url
+    return settings.DATABASE_URL
 
 
 # Indexes managed outside Alembic (ParadeDB BM25, DiskANN, partial indexes)
@@ -63,8 +93,8 @@ def run_migrations_offline() -> None:
     Run migrations in 'offline' mode.
     Generates SQL scripts without database connection.
     """
-    # Convert async URL to sync URL for Alembic
-    sync_url = settings.DATABASE_URL.replace("+asyncpg", "+psycopg2")
+    # get_target_url() selects Primary or Replica based on ALEMBIC_TARGET env var.
+    sync_url = get_target_url().replace("+asyncpg", "+psycopg2")
 
     context.configure(
         url=sync_url,
@@ -84,8 +114,8 @@ def run_migrations_online() -> None:
     Run migrations in 'online' mode.
     Executes migrations against live database.
     """
-    # Convert async URL to sync URL for Alembic
-    sync_url = settings.DATABASE_URL.replace("+asyncpg", "+psycopg2")
+    # get_target_url() selects Primary or Replica based on ALEMBIC_TARGET env var.
+    sync_url = get_target_url().replace("+asyncpg", "+psycopg2")
 
     # Create synchronous engine
     connectable = create_engine(
