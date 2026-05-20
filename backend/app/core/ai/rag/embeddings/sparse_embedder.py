@@ -4,6 +4,11 @@ Generates sparse vectors (term frequencies) for Qdrant's server-side BM25.
 Qdrant handles IDF computation via Modifier.IDF — we only provide TF.
 
 Singleton pattern: one model instance, shared across the entire application.
+
+Cache: Stored under ModelConfig.model_cache_dir (default: .model_cache/) so that
+all models (Nomic, cross-encoder, BM25) share one canonical directory on disk.
+Run `make download-models` from backend/ to pre-populate the cache before starting
+the server in offline mode.
 """
 
 from typing import List, Optional
@@ -30,8 +35,30 @@ class SparseEmbedder:
     """
 
     def __init__(self, model_name: str = "Qdrant/bm25"):
+        from app.core.ai.rag.config.model_config import get_model_config
+
+        config = get_model_config()
+
         logger.info("loading_sparse_embedder", model=model_name)
-        self._model = SparseTextEmbedding(model_name=model_name)
+
+        try:
+            # local_files_only mirrors the global offline_mode flag so behaviour
+            # is consistent with NomicEmbedder and the cross-encoder.
+            # When offline_mode=True the model MUST already be in cache_dir —
+            # run `make download-models` once to pre-populate it.
+            self._model = SparseTextEmbedding(
+                model_name=model_name,
+                cache_dir=config.model_cache_dir,
+                local_files_only=config.offline_mode,
+            )
+        except Exception as exc:
+            raise RuntimeError(
+                f"Failed to load sparse embedding model '{model_name}'. "
+                f"Cache directory: '{config.model_cache_dir}'. "
+                "Run: make download-models (from backend/) to pre-download the model, "
+                "then restart the server."
+            ) from exc
+
         self._model_name = model_name
         logger.info("sparse_embedder_loaded", model=model_name)
 
