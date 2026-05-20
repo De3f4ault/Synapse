@@ -7,7 +7,7 @@ Essential for RAG (Retrieval Augmented Generation) pipeline.
 
 from typing import Optional
 
-from sqlalchemy import String, Text, Integer, JSON, ForeignKey
+from sqlalchemy import String, Text, Integer, JSON, ForeignKey, Boolean
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base
@@ -88,8 +88,48 @@ class DocumentChunk(Base, TimestampMixin):
         default=None,
         doc="Additional chunk metadata (heading, section, etc.)"
     )
+
+    # Parent-child chunking (Sprint 2, Item 3)
+    # parent_chunk_id: FK to another DocumentChunk that is the 2048-token parent
+    # of this 512-token child. NULL for orphaned chunks and parent chunks themselves.
+    # is_parent: True for synthetic 2048-token windows; False for all child chunks.
+    # Backward-compatible: existing chunks have is_parent=False, parent_chunk_id=NULL.
+    parent_chunk_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("document_chunks.id", ondelete="SET NULL"),
+        nullable=True,
+        default=None,
+        index=True,
+        doc="FK to the parent chunk that owns this child (NULL if no parent or if IS the parent)",
+    )
+    is_parent: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default="false",
+        doc="True if this row is a 2048-token parent window; False for all child chunks",
+    )
+
     # Relationships
     # document: Many-to-one with Document
+    document: Mapped["Document"] = relationship(
+        "Document",
+        foreign_keys=[document_id],
+        back_populates="chunks",
+        lazy="select",
+    )
+    children: Mapped[list["DocumentChunk"]] = relationship(
+        "DocumentChunk",
+        foreign_keys=[parent_chunk_id],
+        back_populates="parent",
+        lazy="select",
+    )
+    parent: Mapped[Optional["DocumentChunk"]] = relationship(
+        "DocumentChunk",
+        foreign_keys=[parent_chunk_id],
+        back_populates="children",
+        remote_side=[id],
+        lazy="select",
+    )
 
     def __repr__(self) -> str:
         """String representation of DocumentChunk."""
