@@ -11,6 +11,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import { LoadingScreen } from "@/components/layout/LoadingScreen";
 import { ErrorBoundary } from "@/components/common/ErrorBoundary";
 import { RouteContextProvider } from "@/platform/audio";
+import { AdminAuthGuard } from "@/components/auth/AdminAuthGuard";
 
 // ==================== LAZY LOADED PAGES ====================
 
@@ -64,30 +65,33 @@ const EditCardPage = React.lazy(() =>
     default: module.EditCardPage,
   })),
 );
-
-// Notes
-// const NotesPage = React.lazy(() =>
-//   import("@/pages/notes/NotesPage").then((module) => ({
-//     default: module.NotesPage,
-//   })),
-// );
-const NoteDetailPage = React.lazy(() =>
-  import("@/modules/notes/pages/NoteDetailPage").then((module) => ({
-    default: module.NoteDetailPage,
-  })),
-);
-const MinimalNotesPage = React.lazy(() =>
-  import("@/modules/notes/pages/MinimalNotesPage").then((module) => ({
-    default: module.MinimalNotesPage,
+const AIDesignPage = React.lazy(() =>
+  import("@/pages/flashcards/ai-design/AIDesignPage").then((module) => ({
+    default: module.AIDesignPage,
   })),
 );
 
-// Journals
-// const JournalsPage = React.lazy(() =>
-//   import("@/pages/journals/JournalsPage").then((module) => ({
-//     default: module.JournalsPage,
-//   })),
-// );
+// Notes — new shell architecture
+const NotesLayout = React.lazy(() =>
+  import("@/modules/notes/layout/NotesLayout").then((module) => ({
+    default: module.NotesLayout,
+  }))
+);
+const NotesHubPage = React.lazy(() =>
+  import("@/modules/notes/features/hub/pages/NotesHubPage").then((module) => ({
+    default: module.NotesHubPage,
+  }))
+);
+const UnifiedNotePage = React.lazy(() =>
+  import("@/modules/notes/pages/UnifiedNotePage").then((module) => ({
+    default: module.UnifiedNotePage,
+  }))
+);
+const JournalsPage = React.lazy(() =>
+  import("@/modules/notes/features/journals/JournalsPage").then((module) => ({
+    default: module.JournalsPage,
+  }))
+);
 
 // Documents
 const DocumentsPage = React.lazy(() =>
@@ -154,6 +158,13 @@ const NotFoundPage = React.lazy(() =>
   import("@/pages/NotFoundPage").then((module) => ({
     default: module.NotFoundPage,
   })),
+);
+
+// Admin Dashboard (god's-eye, full-screen, no AppShell)
+const AdminDashboard = React.lazy(() =>
+  import("@/pages/admin/AdminDashboard").then((module) => ({
+    default: module.AdminDashboard,
+  }))
 );
 
 // Notes Layout
@@ -288,11 +299,12 @@ export function Router() {
               element={<EditCardPage />}
             />
 
-            {/* Minimal Notes - Immersive by default now */}
-            {/* <Route element={<NotesLayout />}>
-              <Route path="/notes" element={<AllDocsPage />} />
-            </Route> */}\
-            {/* NoteDetailPage remains immersive for now */}
+            {/* ========== NOTES (Synapse Hub — Dual-Face Shell) ========== */}
+            <Route element={<NotesLayout />}>
+              <Route path="/notes" element={<NotesHubPage />} />
+              <Route path="/notes/journals" element={<JournalsPage />} />
+              <Route path="/notes/:noteId" element={<UnifiedNotePage />} />
+            </Route>
 
             {/* ========== DOCUMENTS (Omni-Kinetic) ========== */}
             <Route path="/documents" element={<DocumentsPage />} />
@@ -327,16 +339,25 @@ export function Router() {
           {/* ==================== IMMERSIVE ROUTES ==================== */}
           {/* Full-screen experiences without AppShell header */}
           <Route element={<ImmersiveRoute />}>
-            <Route path="/notes" element={<MinimalNotesPage />} />
-            <Route path="/notes/:noteId" element={<NoteDetailPage />} />
+            {/* Notes moved to ProtectedRoute with NotesLayout shell */}
             {/* Journals - Moved to NotesLayout */}
             {/* Flashcard study sessions - full immersive experience */}
             <Route path="/flashcards/:deckId/review" element={<ReviewPage />} />
             <Route path="/flashcards/review" element={<ReviewPage />} />
+            {/* AI Card Designer - full immersive conversation experience */}
+            <Route path="/flashcards/ai-design" element={<AIDesignPage />} />
+            <Route path="/flashcards/:deckId/ai-design" element={<AIDesignPage />} />
             {/* Quiz sessions - full immersive experience */}
             <Route path="/quizzes/:quizId/take" element={<QuizTakePage />} />
             {/* Unified Study sessions - full immersive experience */}
             <Route path="/study/session" element={<StudySessionPage />} />
+          </Route>
+
+          {/* ==================== ADMIN DASHBOARD ==================== */}
+          {/* Completely outside AppShell — full-screen dark layout */}
+          {/* Double-gated: AdminAuthGuard checks isAuthenticated + is_admin */}
+          <Route element={<AdminAuthGuard />}>
+            <Route path="/admin" element={<AdminDashboard />} />
           </Route>
 
           {/* ==================== 404 FALLBACK ==================== */}

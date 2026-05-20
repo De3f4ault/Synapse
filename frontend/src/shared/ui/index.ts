@@ -43,3 +43,9 @@ export {
     type StatCardProps,
 } from "./cards";
 
+// Sidebar
+export {
+    SidebarShell,
+    type SidebarShellProps,
+    type CollapsedAction,
+} from "./SidebarShell";

@@ -1,12 +1,13 @@
 /**
- * GlassCard - Shared UI Primitive
- * 
+ * GlassCard → WarmCard - Shared UI Primitive
+ *
  * CANONICAL SOURCE - Do not fork.
- * 
- * Features:
- * - Specific backdrop blur and noise texture for the sci-fi look
- * - Neon border glow on hover
- * - Standardized rounded corners and padding
+ *
+ * Replaces the glass/blur aesthetic with warm surface styling:
+ * - Solid warm background (card token)
+ * - Ring-based shadow depth (no backdrop-filter)
+ * - Subtle hover: background shift + ring deepening
+ * - No noise texture overlay
  */
 
 import React from "react";
@@ -17,23 +18,29 @@ export interface GlassCardProps extends Omit<MotionProps, "children"> {
     children: React.ReactNode;
     className?: string;
     hover?: boolean;
+    elevated?: boolean;
     onClick?: () => void;
 }
 
 export const GlassCard = React.forwardRef<HTMLDivElement, GlassCardProps>(
-    ({ children, className, hover = false, onClick, ...motionProps }, ref) => {
+    ({ children, className, hover = false, elevated = false, onClick, ...motionProps }, ref) => {
         return (
             <motion.div
                 ref={ref}
                 className={cn(
-                    "synapse-panel", // Base Synapse Panel style
-                    "relative overflow-hidden", // Ensure content/overlays are contained
+                    // Base warm surface
+                    "relative overflow-hidden",
+                    "bg-card text-card-foreground",
+                    "border border-border rounded-lg",
+
+                    // Depth: whisper shadow for elevated cards only
+                    elevated && "shadow-whisper",
 
                     // Interaction
                     hover && [
-                        "transition-all duration-300",
-                        "hover:bg-white/5 hover:border-white/20",
-                        "hover:shadow-xl hover:-translate-y-1",
+                        "transition-all duration-200 ease-out",
+                        "hover:border-primary/20",
+                        "hover:-translate-y-0.5",
                     ],
                     onClick && "cursor-pointer",
 
@@ -42,11 +49,7 @@ export const GlassCard = React.forwardRef<HTMLDivElement, GlassCardProps>(
                 onClick={onClick}
                 {...motionProps}
             >
-                {/* Noise Texture Overlay (Optional, adds grit) */}
-                <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.02] pointer-events-none z-0 mix-blend-overlay" />
-
-                {/* Content */}
-                <div className="relative z-10 h-full">{children}</div>
+                {children}
             </motion.div>
         );
     }

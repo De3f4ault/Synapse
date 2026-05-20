@@ -43,12 +43,12 @@ function getTrendInfo(trendValue: number) {
     if (trendValue > 0)
         return {
             icon: TrendingUp,
-            color: "text-emerald-400",
-            bg: "bg-emerald-500/10",
+            color: "text-accent-olive",
+            bg: "bg-accent-olive/10",
         };
     if (trendValue < 0)
-        return { icon: TrendingDown, color: "text-red-400", bg: "bg-red-500/10" };
-    return { icon: Minus, color: "text-slate-400", bg: "bg-slate-500/10" };
+        return { icon: TrendingDown, color: "text-destructive", bg: "bg-destructive/10" };
+    return { icon: Minus, color: "text-muted-foreground", bg: "bg-slate-500/10" };
 }
 
 export function StatCard({
@@ -60,7 +60,7 @@ export function StatCard({
     formatter,
     trend,
     icon: Icon,
-    iconColor = "text-cyan-400",
+    iconColor = "text-primary",
     variant: _variant = "default",
     className,
     onClick,
@@ -75,7 +75,7 @@ export function StatCard({
             className={cn("p-4 flex flex-col justify-between h-full", className)}
         >
             <div className="flex justify-between items-start mb-2">
-                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
                     {label}
                 </span>
                 {Icon && <Icon className={cn("w-3 h-3 opacity-70", iconColor)} />}
@@ -88,7 +88,7 @@ export function StatCard({
                     suffix={suffix}
                     decimals={decimals}
                     formatter={formatter}
-                    className="text-2xl font-bold text-white leading-none font-mono tracking-tight"
+                    className="text-2xl font-bold text-foreground leading-none font-mono tracking-tight"
                 />
             </div>
 
@@ -105,7 +105,7 @@ export function StatCard({
                         <span>{Math.abs(trend.value)}%</span>
                     </div>
                     {trend.label && (
-                        <span className="text-[9px] text-slate-600 truncate">
+                        <span className="text-[9px] text-muted-foreground truncate">
                             {trend.label}
                         </span>
                     )}
@@ -140,7 +140,7 @@ export function TotalReviewsCard({
             formatter={(v) => v.toLocaleString()}
             trend={trend}
             icon={TrendingUp}
-            iconColor="text-cyan-400"
+            iconColor="text-primary"
             className={className}
             onClick={onClick}
         />
@@ -161,7 +161,7 @@ export function AccuracyCard({
             decimals={1}
             trend={trend}
             icon={TrendingUp}
-            iconColor="text-emerald-400"
+            iconColor="text-accent-olive"
             className={className}
             onClick={onClick}
         />
@@ -182,7 +182,7 @@ export function StudyTimeCard({
             decimals={1}
             trend={trend}
             icon={TrendingUp}
-            iconColor="text-purple-400"
+            iconColor="text-accent"
             className={className}
             onClick={onClick}
         />
@@ -202,7 +202,7 @@ export function StreakStatCard({
             suffix="d"
             trend={trend}
             icon={TrendingUp}
-            iconColor="text-amber-400"
+            iconColor="text-warning"
             className={className}
             onClick={onClick}
         />

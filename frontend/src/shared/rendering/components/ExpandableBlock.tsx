@@ -33,11 +33,11 @@ export const ExpandableBlock: React.FC<ExpandableBlockProps> = ({
                 className="w-full flex items-center gap-2 px-4 py-3 bg-zinc-800/50 hover:bg-zinc-800 transition-colors text-left"
             >
                 {isExpanded ? (
-                    <ChevronDown className="size-4 text-zinc-400 shrink-0" />
+                    <ChevronDown className="size-4 text-muted-foreground shrink-0" />
                 ) : (
-                    <ChevronRight className="size-4 text-zinc-400 shrink-0" />
+                    <ChevronRight className="size-4 text-muted-foreground shrink-0" />
                 )}
-                <span className="text-sm font-medium text-zinc-200">{title}</span>
+                <span className="text-sm font-medium text-foreground/70">{title}</span>
             </button>
 
             {/* Content - collapsible */}
