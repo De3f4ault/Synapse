@@ -23,7 +23,7 @@ from app.models.user import User
 from app.models.document import Document, ProcessingStatus
 from app.models.document_chunk import DocumentChunk
 from app.schemas.common import MessageResponse
-from app.schemas.document import (
+from app.schemas.documents import (
     DocumentResponse,
     DocumentUpdateRequest,
     DocumentChunkResponse,
@@ -36,9 +36,9 @@ from app.schemas.document import (
     RecentActivityItem,
 )
 from app.models.document_note import DocumentNote
-from app.schemas.document_note import DocumentNoteCreate, DocumentNoteResponse
-from app.schemas.document_metadata import DocumentMetadataResponse
-from app.schemas.bulk_edit import BulkEditRequest
+from app.schemas.documents import DocumentNoteCreate, DocumentNoteResponse
+from app.schemas.documents import DocumentMetadataResponse
+from app.schemas.documents import BulkEditRequest
 from app.services.document.service import (
     get_file_extension,
     validate_file,
@@ -46,6 +46,8 @@ from app.services.document.service import (
     save_uploaded_file,
     generate_thumbnail,
     cleanup_physical_file,
+    cleanup_document_vectors,
+    cleanup_gemini_file,
     check_upload_conflicts,
     replace_document_file,
     generate_ai_summary,
@@ -121,7 +123,7 @@ async def upload_document(
         "document_id": new_doc.id,
     })
 
-    return DocumentResponse.model_validate(new_document)
+    return DocumentResponse.model_validate(new_doc)
 
 
 # ── New endpoints: storage & activity (must come before /{document_id}) ──────
@@ -197,7 +199,7 @@ async def get_statistics(
     from app.models.correspondent import Correspondent
     from app.models.document_type import DocumentType
     from app.models.tag import Tag
-    from app.schemas.document import DocumentStatisticsResponse
+    from app.schemas.documents import DocumentStatisticsResponse
     from datetime import datetime, timedelta
 
     now = datetime.utcnow()
@@ -346,194 +348,6 @@ async def toggle_favorite(
     return doc
 
 
-@router.get(
-    "",
-    response_model=List[DocumentResponse],
-    summary="List documents",
-    description="Retrieve user's uploaded documents",
-)
-async def list_documents(
-    folder_id: Optional[int] = Query(
-        None, description="Filter by folder ID (null = root/unfiled documents)"
-    ),
-    include_all: bool = Query(
-        False, description="If true, return all documents ignoring folder filter"
-    ),
-    view: Optional[str] = Query(
-        None, description="Smart view filter: 'recent', 'favorites', or 'archived'"
-    ),
-    status_filter: Optional[ProcessingStatus] = Query(
-        None, description="Filter by processing status"
-    ),
-    page: int = Query(1, ge=1, description="Page number"),
-    page_size: int = Query(20, ge=1, le=100, description="Items per page"),
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    """
-    List user's documents with folder, smart view, and status filtering.
-
-    Smart Views (mutually exclusive with folder_id):
-    - 'recent': All non-archived documents sorted by updated_at DESC
-    - 'favorites': Documents with is_favorite=True
-    - 'archived': Documents with is_archived=True (overrides default exclude)
-
-    A document belongs to exactly one folder or the root (folder_id=null).
-    Archived documents are excluded by default unless view='archived'.
-    """
-    # Build base query
-    query = select(Document).where(
-        and_(
-            Document.user_id == current_user.id,
-            Document.deleted_at.is_(None),
-        )
-    )
-
-    # Smart Views take precedence over folder filtering
-    if view == "archived":
-        # Show archived documents
-        query = query.where(Document.is_archived.is_(True))
-    elif view == "favorites":
-        # Show favorited documents (non-archived only)
-        query = query.where(
-            and_(
-                Document.is_favorite.is_(True),
-                Document.is_archived.is_(False),
-            )
-        )
-    elif view == "recent":
-        # Show all non-archived documents sorted by update time
-        query = query.where(Document.is_archived.is_(False))
-        # Use updated_at for ordering instead of created_at
-        query = query.order_by(Document.updated_at.desc())
-    else:
-        # Default: exclude archived and apply folder filter
-        query = query.where(Document.is_archived.is_(False))
-
-        # Apply folder filter (unless include_all is true)
-        if not include_all:
-            if folder_id is None:
-                # Root/unfiled documents
-                query = query.where(Document.folder_id.is_(None))
-            else:
-                # Specific folder
-                query = query.where(Document.folder_id == folder_id)
-
-    # Apply status filter
-    if status_filter:
-        query = query.where(Document.processing_status == status_filter)
-
-    # Apply pagination and ordering (if not already set by 'recent' view)
-    if view != "recent":
-        query = query.order_by(Document.created_at.desc())
-    query = query.offset((page - 1) * page_size).limit(page_size)
-
-    result = await db.execute(query)
-    documents = result.scalars().all()
-
-    return [DocumentResponse.model_validate(doc) for doc in documents]
-
-
-@router.get(
-    "/{document_id}",
-    response_model=DocumentResponse,
-    summary="Get document",
-    description="Retrieve a specific document by ID",
-)
-async def get_document(
-    document_id: int,
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    """Get a specific document."""
-    result = await db.execute(
-        select(Document).where(
-            and_(
-                Document.id == document_id,
-                Document.user_id == current_user.id,
-                Document.deleted_at.is_(None),
-            )
-        )
-    )
-    doc = result.scalar_one_or_none()
-
-    if not doc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
-
-    return DocumentResponse.model_validate(doc)
-
-
-@router.delete(
-    "/{document_id}",
-    response_model=MessageResponse,
-    summary="Delete document",
-    description="Delete a document and all its chunks",
-)
-async def delete_document(
-    document_id: int,
-    keep_file: bool = Query(False, description="Keep physical file on disk (default: delete it)"),
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    """Delete a document (soft delete + physical cleanup by default)."""
-    result = await db.execute(
-        select(Document).where(
-            and_(
-                Document.id == document_id,
-                Document.user_id == current_user.id,
-                Document.deleted_at.is_(None),
-            )
-        )
-    )
-    doc = result.scalar_one_or_none()
-
-    if not doc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
-
-    # Soft delete
-    doc.deleted_at = datetime.utcnow()
-    await db.commit()
-
-    logger.info(f"Document soft-deleted: {document_id}")
-
-    # Clean up vector embeddings from Qdrant
-    await cleanup_document_vectors(document_id, current_user.id)
-
-    # Delete from Gemini Files API if applicable
-    await cleanup_gemini_file(doc.gemini_file_uri)
-
-    # Delete physical file unless explicitly kept
-    if not keep_file:
-        await cleanup_physical_file(doc.file_path)
-        # Clean up thumbnail if it exists
-        await cleanup_physical_file(f"{doc.file_path}_thumb.png")
-
-    return MessageResponse(message="Document deleted successfully")
-
-
-@router.put(
-    "/{document_id}/replace",
-    response_model=DocumentResponse,
-    summary="Replace document",
-    description="Replace an existing document's file while preserving its ID and metadata",
-)
-async def replace_document(
-    document_id: int,
-    file: UploadFile = File(..., description="New document file"),
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    """Replace an existing document's file while preserving its ID."""
-    doc = await _get_doc_or_404(document_id, current_user, db)
-    try:
-        await replace_document_file(db, doc, file, current_user.id)
-    except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to replace document: {e}")
-    return _doc_response(doc)
-
-
 # ============================================================================
 # List / Get / Delete
 # ============================================================================
@@ -588,17 +402,21 @@ async def get_document(
     return _doc_response(await _get_doc_or_404(document_id, current_user, db))
 
 
-@router.delete("/{document_id}", response_model=MessageResponse)
+@router.delete("/{document_id}", response_model=MessageResponse, operation_id="delete_document")
 async def delete_document(
     document_id: int,
     keep_file: bool = Query(False, description="Keep physical file on disk"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Delete a document (soft delete + physical cleanup by default)."""
+    """Delete a document (soft delete + physical cleanup)."""
     doc = await _get_doc_or_404(document_id, current_user, db)
     doc.deleted_at = datetime.utcnow()
     await db.commit()
+
+    logger.info(f"Document soft-deleted: {doc.id}")
+    await cleanup_document_vectors(doc.id, current_user.id)
+    await cleanup_gemini_file(doc.gemini_file_uri)
 
     if not keep_file:
         await cleanup_physical_file(doc.file_path)
@@ -645,12 +463,28 @@ async def get_processing_status(
 ):
     """Get document processing status."""
     doc = await _get_doc_or_404(document_id, current_user, db)
-    progress = {ProcessingStatus.PENDING: 0.0, ProcessingStatus.PROCESSING: 50.0, ProcessingStatus.COMPLETED: 100.0, ProcessingStatus.FAILED: 0.0}
-    messages = {ProcessingStatus.PENDING: "Queued", ProcessingStatus.PROCESSING: "Processing", ProcessingStatus.COMPLETED: "Complete", ProcessingStatus.FAILED: "Failed"}
+    # Progress reflects the two-pipeline architecture:
+    # 0% queued → 15% parsing → 40% parsed/awaiting RAG → 70% chunking → 100% done
+    progress = {
+        ProcessingStatus.PENDING:   0.0,
+        ProcessingStatus.PARSING:   15.0,
+        ProcessingStatus.PARSED:    40.0,
+        ProcessingStatus.CHUNKING:  70.0,
+        ProcessingStatus.COMPLETED: 100.0,
+        ProcessingStatus.FAILED:    0.0,
+    }
+    messages = {
+        ProcessingStatus.PENDING:   "Queued — waiting for processing",
+        ProcessingStatus.PARSING:   "Parsing document — extracting text and metadata",
+        ProcessingStatus.PARSED:    "Text ready — building knowledge base",
+        ProcessingStatus.CHUNKING:  "Indexing — embedding into knowledge base",
+        ProcessingStatus.COMPLETED: "Ready — fully searchable",
+        ProcessingStatus.FAILED:    "Processing failed — please try re-uploading",
+    }
     return ProcessingStatusResponse(
         document_id=doc.id, status=doc.processing_status,
-        progress_percentage=progress[doc.processing_status],
-        message=messages[doc.processing_status],
+        progress_percentage=progress.get(doc.processing_status, 0.0),
+        message=messages.get(doc.processing_status, "Unknown status"),
     )
 
 
@@ -660,8 +494,14 @@ async def trigger_processing(
 ):
     """Manually trigger document processing."""
     doc = await _get_doc_or_404(document_id, current_user, db)
-    if doc.processing_status not in [ProcessingStatus.PENDING, ProcessingStatus.FAILED]:
-        raise HTTPException(status_code=400, detail=f"Cannot reprocess document in status: {doc.processing_status.value}")
+    # Allow re-trigger from PENDING, PARSED (unchunked), or FAILED
+    retriggerable = {ProcessingStatus.PENDING, ProcessingStatus.PARSED, ProcessingStatus.FAILED}
+    if doc.processing_status not in retriggerable:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot reprocess document in status '{doc.processing_status.value}'. "
+                   f"Must be one of: {', '.join(s.value for s in retriggerable)}",
+        )
     doc.processing_status = ProcessingStatus.PENDING
     await db.commit()
 
@@ -689,7 +529,7 @@ async def list_document_notes(
     """List all notes for a document."""
     await _get_doc_or_404(document_id, current_user, db)
     result = await db.execute(
-        select(DocumentNote, User.username)
+        select(DocumentNote, User.full_name)
         .join(User, DocumentNote.user_id == User.id)
         .where(DocumentNote.document_id == document_id)
         .order_by(DocumentNote.created_at.desc())
@@ -701,9 +541,9 @@ async def list_document_notes(
             user_id=note.user_id,
             note=note.note,
             created_at=note.created_at,
-            username=username,
+            username=full_name,
         )
-        for note, username in result.all()
+        for note, full_name in result.all()
     ]
 
 
@@ -735,7 +575,7 @@ async def create_document_note(
         user_id=new_note.user_id,
         note=new_note.note,
         created_at=new_note.created_at,
-        username=current_user.username,
+        username=current_user.full_name,
     )
 
 
@@ -835,46 +675,14 @@ async def get_document_thumbnail(
     thumb_path = generate_thumbnail(doc.file_path, mime)
     if not thumb_path or not os.path.exists(thumb_path):
         raise HTTPException(status_code=404, detail="Thumbnail not available")
-    return FileResponse(thumb_path, media_type="image/png")
-
-
-@router.get("/batch/thumbs")
-async def get_batch_thumbnails(
-    ids: str = Query(..., description="Comma-separated document IDs"),
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db),
-):
-    """Batch fetch document thumbnails (base64)."""
-    try:
-        doc_ids = [int(i.strip()) for i in ids.split(",") if i.strip()]
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid document IDs format")
-    if not doc_ids:
-        return {"thumbnails": {}}
-    if len(doc_ids) > 50:
-        raise HTTPException(status_code=400, detail="Maximum 50 documents per request")
-
-    perm_service = PermissionService(db)
-    accessible_stmt = perm_service.get_accessible_query(current_user.id)
-    result = await db.execute(
-        accessible_stmt.where(Document.id.in_(doc_ids))
+    return FileResponse(
+        thumb_path, 
+        media_type="image/png",
+        headers={"Cache-Control": "public, max-age=86400, immutable"}
     )
-    thumbnails = {}
-    for doc in result.scalars().all():
-        if not os.path.exists(doc.file_path):
-            thumbnails[str(doc.id)] = None
-            continue
-        mime = "application/pdf" if doc.file_type == "pdf" else f"image/{doc.file_type}"
-        tp = generate_thumbnail(doc.file_path, mime)
-        if tp and os.path.exists(tp):
-            try:
-                with open(tp, "rb") as f:
-                    thumbnails[str(doc.id)] = {"data": f"data:image/png;base64,{base64.b64encode(f.read()).decode()}", "filename": doc.filename}
-            except Exception:
-                thumbnails[str(doc.id)] = None
-        else:
-            thumbnails[str(doc.id)] = None
-    return {"thumbnails": thumbnails}
+
+
+
 
 
 # ============================================================================

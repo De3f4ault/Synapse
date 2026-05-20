@@ -34,6 +34,7 @@ from . import (
     feedback,
     notifications,
     uploads,
+    collections,
     # DMS Classification & Search (Phase 4)
     correspondents,
     document_types,
@@ -46,6 +47,8 @@ from . import (
     shares,
     # DMS Background Tasks (Phase 8)
     tasks,
+    # Admin Dashboard
+    admin,
 )
 
 # Create main API router
@@ -64,7 +67,20 @@ api_router.include_router(decks.router, prefix="/decks", tags=["Flashcards"])
 
 api_router.include_router(flashcards.router, prefix="/cards", tags=["Flashcards"])
 
+# AI Card Designer (conversation-first card creation)
+from app.api.rest import ai_design
+
+api_router.include_router(ai_design.router, prefix="/ai/design", tags=["AI Card Designer"])
+
+# Collections (deck folders) + analytics + CSV import
+api_router.include_router(collections.router, prefix="/collections", tags=["Collections"])
+
 api_router.include_router(notes.router, prefix="/notes", tags=["Notes"])
+
+# Notes AI (SSE text-transform + Excalidraw diagram generation)
+from app.api.rest import notes_ai
+
+api_router.include_router(notes_ai.router, prefix="/notes/ai", tags=["Notes AI"])
 
 # IMPORTANT: folders must be registered BEFORE documents to prevent
 # /{document_id} pattern from catching /folders path
@@ -104,6 +120,11 @@ from app.api.rest import chat_attachments
 
 api_router.include_router(chat_attachments.router, prefix="/chat/attachments", tags=["Chat Attachments"])
 
+# AI Streaming (Vercel AI SDK SSE endpoints)
+from app.api.rest import ai_stream
+
+api_router.include_router(ai_stream.router, prefix="/chat", tags=["Chat Streaming"])
+
 api_router.include_router(study.router, prefix="/study", tags=["Study"])
 
 api_router.include_router(search.router, prefix="/search", tags=["Search"])
@@ -138,5 +159,11 @@ api_router.include_router(notifications.router, prefix="/notifications", tags=["
 # ==================== BLOCKSUITE ASSETS ====================
 
 api_router.include_router(uploads.router, prefix="/uploads/blocksuite", tags=["BlockSuite"])
+
+# ==================== ADMIN DASHBOARD ====================
+# All routes require is_admin = True (enforced inside admin.py via require_admin dependency)
+
+api_router.include_router(admin.router, prefix="/admin", tags=["Admin Dashboard"])
+
 
 __all__ = ["api_router"]

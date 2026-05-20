@@ -6,6 +6,7 @@ FastAPI dependency injection for common operations:
 - User authentication and authorization
 - Permission checking
 - Service injection
+- Admin analytics routing (Replica vs Primary)
 """
 
 from typing import AsyncGenerator, Optional
@@ -222,3 +223,68 @@ def get_optional_user(
     # If credentials provided, validate them
     # This is a simplified version - in production, implement full validation
     return None  # Placeholder
+
+
+# ============================================================================
+# Admin Dashboard — Analytics & Health Dependencies
+# ============================================================================
+
+async def get_analytics_db() -> AsyncGenerator[AsyncSession, None]:
+    """
+    Provides an async session to the Logical Replica.
+
+    All admin dashboard analytical queries (MATERIALIZED VIEW reads, aggregations)
+    go here. Keeps heavy reads completely off the Primary's connection pool.
+    Falls back to Primary in development if ANALYTICS_DATABASE_URL is unset.
+    """
+    from app.db.replica_session import AnalyticsSessionLocal
+    async with AnalyticsSessionLocal() as session:
+        try:
+            yield session
+        finally:
+            await session.close()
+
+
+async def get_primary_health_db():
+    """
+    Provides a direct asyncpg connection to the Primary.
+
+    Used EXCLUSIVELY for pg_stat_database, pg_stat_activity, pg_statio_user_tables,
+    and pg_replication_slots. Bypasses PgBouncer so system catalog stats are accurate.
+    Creates a fresh connection per request — no pooling.
+    """
+    from app.db.primary_health_connection import get_primary_health_db as _get_conn
+    async for conn in _get_conn():
+        yield conn
+
+
+async def get_routed_analytics_db(
+    current_user: User = Depends(get_current_user),
+) -> AsyncGenerator[AsyncSession, None]:
+    """
+    Smart read router for analytics queries.
+
+    Routes reads to the Logical Replica by default.
+    Falls back to the Primary Writer for 3 seconds after any user write,
+    preventing stale reads caused by replication lag.
+
+    Uses the native kv_store (UNLOGGED table cache) — no Redis required.
+    The 3-second TTL is longer than any realistic replication lag under normal load.
+
+    Session factories:
+        WriterSession   = app.db.session.AsyncSessionLocal     (Primary)
+        AnalyticsSession = app.db.replica_session.AnalyticsSessionLocal (Replica)
+    """
+    from app.db.session import AsyncSessionLocal as WriterSession
+    from app.db.replica_session import AnalyticsSessionLocal as AnalyticsSession
+    from app.services.cache.client import get_cache
+
+    cache = get_cache()
+    route_to_primary = await cache.get(f"route_primary:{current_user.id}")
+
+    session_factory = WriterSession if route_to_primary else AnalyticsSession
+    async with session_factory() as session:
+        try:
+            yield session
+        finally:
+            await session.close()
