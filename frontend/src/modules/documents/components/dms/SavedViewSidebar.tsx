@@ -33,7 +33,7 @@ export function SavedViewSidebar({
 
   return (
     <div className={cn("space-y-1", className)}>
-      <h3 className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
+      <h3 className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
         Saved Views
       </h3>
 
@@ -48,14 +48,14 @@ export function SavedViewSidebar({
               "w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-left transition-all",
               "hover:bg-white/[0.05]",
               isActive
-                ? "bg-cyan-500/10 text-cyan-300 border-l-2 border-cyan-400"
-                : "text-slate-400 hover:text-slate-200"
+                ? "bg-primary/10 text-primary/80 border-l-2 border-primary"
+                : "text-muted-foreground hover:text-foreground/70"
             )}
           >
             {view.show_on_dashboard ? (
-              <Star size={14} className={isActive ? "text-cyan-400" : "text-slate-600"} />
+              <Star size={14} className={isActive ? "text-primary" : "text-muted-foreground"} />
             ) : (
-              <FileStack size={14} className={isActive ? "text-cyan-400" : "text-slate-600"} />
+              <FileStack size={14} className={isActive ? "text-primary" : "text-muted-foreground"} />
             )}
 
             <span className="flex-1 text-sm truncate">{view.name}</span>
@@ -65,8 +65,8 @@ export function SavedViewSidebar({
               className={cn(
                 "text-[10px] px-1.5 py-0.5 rounded-full",
                 isActive
-                  ? "bg-cyan-500/20 text-cyan-300"
-                  : "bg-white/5 text-slate-500"
+                  ? "bg-primary/20 text-primary/80"
+                  : "bg-foreground/5 text-muted-foreground"
               )}
             >
               {view.filter_rules.length}

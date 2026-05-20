@@ -38,27 +38,27 @@ interface NotificationDropdownProps {
 const TYPE_CONFIG = {
   consumed: {
     icon: Check,
-    iconClass: "text-emerald-400",
+    iconClass: "text-accent-olive",
     label: "Consumed",
   },
   processing: {
     icon: Loader2,
-    iconClass: "text-cyan-400 animate-spin",
+    iconClass: "text-primary animate-spin",
     label: "Processing",
   },
   failed: {
     icon: AlertTriangle,
-    iconClass: "text-red-400",
+    iconClass: "text-destructive",
     label: "Failed",
   },
   deleted: {
     icon: X,
-    iconClass: "text-slate-400",
+    iconClass: "text-muted-foreground",
     label: "Deleted",
   },
   classification: {
     icon: FileText,
-    iconClass: "text-amber-400",
+    iconClass: "text-warning",
     label: "Classified",
   },
 };
@@ -82,15 +82,15 @@ export function NotificationDropdown({
         <button
           className={cn(
             "relative p-2 rounded-lg transition-colors",
-            "hover:bg-white/5 text-slate-400 hover:text-white",
-            unreadCount > 0 && "text-white",
+            "hover:bg-muted/50 text-muted-foreground hover:text-foreground",
+            unreadCount > 0 && "text-foreground",
             className
           )}
           title={`${unreadCount} unread notification${unreadCount !== 1 ? "s" : ""}`}
         >
           <Bell size={18} />
           {unreadCount > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full bg-cyan-500 text-[10px] font-bold text-black">
+            <span className="absolute -top-0.5 -right-0.5 flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full bg-primary text-[10px] font-bold text-black">
               {unreadCount > 99 ? "99+" : unreadCount}
             </span>
           )}
@@ -98,19 +98,19 @@ export function NotificationDropdown({
       </PopoverTrigger>
 
       <PopoverContent
-        className="w-[360px] p-0 bg-card/95 backdrop-blur-2xl border-white/10"
+        className="w-[360px] p-0 bg-card/95 backdrop-blur-2xl border-border"
         align="end"
         sideOffset={8}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-white/5">
-          <h3 className="text-sm font-semibold text-white">Notifications</h3>
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+          <h3 className="text-sm font-semibold text-foreground">Notifications</h3>
           {unreadCount > 0 && (
             <Button
               variant="ghost"
               size="sm"
               onClick={onAcknowledgeAll}
-              className="text-xs text-cyan-400 hover:text-cyan-300 h-6"
+              className="text-xs text-primary hover:text-primary/80 h-6"
             >
               Mark all read
             </Button>
@@ -120,8 +120,8 @@ export function NotificationDropdown({
         {/* Notification list */}
         <div className="max-h-[400px] overflow-y-auto">
           {notifications.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-10 text-slate-500">
-              <Bell size={28} strokeWidth={1} className="mb-2 text-slate-600" />
+            <div className="flex flex-col items-center justify-center py-10 text-muted-foreground">
+              <Bell size={28} strokeWidth={1} className="mb-2 text-muted-foreground" />
               <p className="text-sm">No notifications</p>
             </div>
           ) : (
@@ -133,8 +133,8 @@ export function NotificationDropdown({
                 <div
                   key={notification.id}
                   className={cn(
-                    "flex items-start gap-3 px-4 py-3 border-b border-white/[0.03] transition-colors",
-                    !notification.acknowledged && "bg-cyan-500/[0.03]"
+                    "flex items-start gap-3 px-4 py-3 border-b border-border transition-colors",
+                    !notification.acknowledged && "bg-primary/[0.03]"
                   )}
                 >
                   {/* Icon */}
@@ -145,19 +145,19 @@ export function NotificationDropdown({
                   {/* Content */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="text-sm text-slate-200 font-medium truncate">
+                      <span className="text-sm text-foreground/70 font-medium truncate">
                         {notification.title}
                       </span>
                       {!notification.acknowledged && (
-                        <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 shrink-0" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
                       )}
                     </div>
                     {notification.detail && (
-                      <p className="text-xs text-slate-500 mt-0.5 truncate">
+                      <p className="text-xs text-muted-foreground mt-0.5 truncate">
                         {notification.detail}
                       </p>
                     )}
-                    <p className="text-[10px] text-slate-600 mt-1">
+                    <p className="text-[10px] text-muted-foreground mt-1">
                       {formatRelativeTime(notification.timestamp)}
                     </p>
                   </div>
@@ -169,7 +169,7 @@ export function NotificationDropdown({
                         e.stopPropagation();
                         onAcknowledge(notification.id);
                       }}
-                      className="p-1 rounded hover:bg-white/5 text-slate-500 hover:text-white shrink-0"
+                      className="p-1 rounded hover:bg-muted/50 text-muted-foreground hover:text-foreground shrink-0"
                       title="Mark as read"
                     >
                       <Check size={12} />

@@ -187,9 +187,12 @@ export function useDocumentUpload(options?: UseDocumentUploadOptions) {
     uploadError: uploadMutation.error instanceof Error ? uploadMutation.error.message : null,
     uploadedDocument: uploadMutation.data,
     processingStatus: processingStatusQuery.data,
+    // isProcessing: true for any state that hasn't reached a terminal status
     isProcessing:
       processingStatusQuery.data?.status === "pending" ||
-      processingStatusQuery.data?.status === "processing",
+      processingStatusQuery.data?.status === "parsing" ||
+      processingStatusQuery.data?.status === "parsed" ||
+      processingStatusQuery.data?.status === "chunking",
     isComplete: processingStatusQuery.data?.status === "completed",
     isFailed: processingStatusQuery.data?.status === "failed",
   };

@@ -23,32 +23,32 @@ export const FolderContextMenu = ({ children, onRename, onDelete, onCut }: Folde
             <ContextMenuTrigger asChild>
                 {children}
             </ContextMenuTrigger>
-            <ContextMenuContent className="w-48 bg-[#0A0A0A]/95 backdrop-blur-xl border-white/10 text-slate-200">
+            <ContextMenuContent className="w-48 bg-popover backdrop-blur-xl border-border text-foreground/70">
                 <ContextMenuItem 
                     onClick={(e) => { e.stopPropagation(); onRename?.(); }}
-                    className="focus:bg-white/10 focus:text-white cursor-pointer group gap-2"
+                    className="focus:bg-foreground/10 focus:text-foreground cursor-pointer group gap-2"
                 >
-                    <Edit2 size={16} className="text-slate-500 group-focus:text-cyan-400" />
+                    <Edit2 size={16} className="text-muted-foreground group-focus:text-primary" />
                     Rename
                 </ContextMenuItem>
                 
-                <ContextMenuSeparator className="bg-white/10" />
+                <ContextMenuSeparator className="bg-foreground/10" />
                 
                 <ContextMenuItem 
                     onClick={(e) => { e.stopPropagation(); onCut?.(); }}
-                    className="focus:bg-white/10 focus:text-white cursor-pointer group gap-2"
+                    className="focus:bg-foreground/10 focus:text-foreground cursor-pointer group gap-2"
                 >
-                    <Scissors size={16} className="text-slate-500 group-focus:text-cyan-400" />
+                    <Scissors size={16} className="text-muted-foreground group-focus:text-primary" />
                     Cut
                 </ContextMenuItem>
 
-                <ContextMenuSeparator className="bg-white/10" />
+                <ContextMenuSeparator className="bg-foreground/10" />
 
                 <ContextMenuItem 
                     onClick={(e) => { e.stopPropagation(); onDelete?.(); }}
-                    className="focus:bg-red-500/10 focus:text-red-400 text-red-400 cursor-pointer group gap-2"
+                    className="focus:bg-destructive/10 focus:text-destructive text-destructive cursor-pointer group gap-2"
                 >
-                    <Trash2 size={16} className="text-red-400" />
+                    <Trash2 size={16} className="text-destructive" />
                     Delete
                 </ContextMenuItem>
             </ContextMenuContent>

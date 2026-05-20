@@ -109,9 +109,9 @@ export function TaxonomyEditDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[450px] bg-card border-white/10">
+      <DialogContent className="sm:max-w-[450px] bg-card border-border">
         <DialogHeader>
-          <DialogTitle className="text-slate-200">
+          <DialogTitle className="text-foreground/70">
             {isEditing ? `Edit ${label}` : `Create ${label}`}
           </DialogTitle>
         </DialogHeader>
@@ -125,7 +125,7 @@ export function TaxonomyEditDialog({
               onChange={(e) => update("name", e.target.value)}
               placeholder={`New ${label.toLowerCase()}`}
               autoFocus
-              className="bg-white/5 border-white/10"
+              className="bg-foreground/5 border-border"
             />
           </div>
 
@@ -147,9 +147,9 @@ export function TaxonomyEditDialog({
                 onChange={(c) => update("color", c)}
               />
               <div className="flex items-center justify-between">
-                <Label className="text-sm text-slate-300">
+                <Label className="text-sm text-foreground/80">
                   Inbox tag
-                  <span className="block text-[11px] text-slate-500 font-normal">
+                  <span className="block text-[11px] text-muted-foreground font-normal">
                     Documents with this tag need attention
                   </span>
                 </Label>
@@ -171,9 +171,9 @@ export function TaxonomyEditDialog({
                 value={form.path || ""}
                 onChange={(e) => update("path", e.target.value)}
                 placeholder="{correspondent}/{title}"
-                className="bg-white/5 border-white/10 font-mono text-sm"
+                className="bg-foreground/5 border-border font-mono text-sm"
               />
-              <p className="text-[11px] text-slate-500">
+              <p className="text-[11px] text-muted-foreground">
                 Variables: {"{correspondent}"}, {"{document_type}"},{" "}
                 {"{title}"}, {"{created}"}, {"{created_year}"},{" "}
                 {"{added}"}, {"{asn}"}
@@ -192,7 +192,7 @@ export function TaxonomyEditDialog({
             <Button
               type="submit"
               disabled={!form.name.trim() || isSaving}
-              className="bg-cyan-600 hover:bg-cyan-700"
+              className="bg-primary hover:bg-primary/80"
             >
               {isSaving ? "Saving…" : isEditing ? "Update" : "Create"}
             </Button>

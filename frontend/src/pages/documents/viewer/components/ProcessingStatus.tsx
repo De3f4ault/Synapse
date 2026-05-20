@@ -23,15 +23,15 @@ export const ProcessingStatus: React.FC<ProcessingStatusProps> = ({
       case "completed":
         return {
           icon: CheckCircle2,
-          color: "text-emerald-400",
-          bgColor: "bg-emerald-950/30",
-          borderColor: "border-emerald-500/30",
+          color: "text-accent-olive",
+          bgColor: "bg-accent-olive/10",
+          borderColor: "border-accent-olive/30",
           label: "Completed",
         };
       case "processing":
         return {
           icon: Loader2,
-          color: "text-amber-400",
+          color: "text-warning",
           bgColor: "bg-amber-950/30",
           borderColor: "border-amber-500/30",
           label: "Processing",
@@ -40,7 +40,7 @@ export const ProcessingStatus: React.FC<ProcessingStatusProps> = ({
       case "failed":
         return {
           icon: AlertCircle,
-          color: "text-red-400",
+          color: "text-destructive",
           bgColor: "bg-red-950/30",
           borderColor: "border-red-500/30",
           label: "Failed",
@@ -48,9 +48,9 @@ export const ProcessingStatus: React.FC<ProcessingStatusProps> = ({
       default:
         return {
           icon: Clock,
-          color: "text-slate-400",
+          color: "text-muted-foreground",
           bgColor: "bg-slate-950/30",
-          borderColor: "border-slate-500/30",
+          borderColor: "border-border/30",
           label: "Pending",
         };
     }
@@ -76,7 +76,7 @@ export const ProcessingStatus: React.FC<ProcessingStatusProps> = ({
 
       {status === "processing" && progress !== undefined && (
         <div className="space-y-2">
-          <div className="flex justify-between text-xs text-slate-400">
+          <div className="flex justify-between text-xs text-muted-foreground">
             <span>Processing...</span>
             <span>{progress}%</span>
           </div>
@@ -84,7 +84,7 @@ export const ProcessingStatus: React.FC<ProcessingStatusProps> = ({
         </div>
       )}
 
-      {message && <p className="text-xs text-slate-400 font-mono">{message}</p>}
+      {message && <p className="text-xs text-muted-foreground font-mono">{message}</p>}
     </div>
   );
 };

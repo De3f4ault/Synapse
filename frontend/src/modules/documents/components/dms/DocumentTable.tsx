@@ -76,7 +76,7 @@ function buildColumns(
       label: "Title",
       sortKey: "title",
       render: (doc) => (
-        <span className="font-medium text-slate-200 truncate block max-w-[300px]">
+        <span className="font-medium text-foreground/70 truncate block max-w-[300px]">
           {doc.title}
         </span>
       ),
@@ -88,9 +88,9 @@ function buildColumns(
       width: "w-16",
       render: (doc) =>
         doc.asn ? (
-          <span className="font-mono text-xs text-cyan-300">#{doc.asn}</span>
+          <span className="font-mono text-xs text-primary/80">#{doc.asn}</span>
         ) : (
-          <span className="text-slate-600">—</span>
+          <span className="text-muted-foreground">—</span>
         ),
     },
     [DisplayField.CORRESPONDENT]: {
@@ -104,12 +104,12 @@ function buildColumns(
               e.stopPropagation();
               onCorrespondentClick?.(doc.correspondent!.id);
             }}
-            className="text-xs px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-300 border border-blue-500/15 hover:bg-blue-500/20 truncate max-w-[120px]"
+            className="text-xs px-1.5 py-0.5 rounded bg-info/10 text-blue-300 border border-blue-500/15 hover:bg-blue-500/20 truncate max-w-[120px]"
           >
             {doc.correspondent.name}
           </button>
         ) : (
-          <span className="text-slate-600 text-xs">—</span>
+          <span className="text-muted-foreground text-xs">—</span>
         ),
     },
     [DisplayField.DOCUMENT_TYPE]: {
@@ -123,12 +123,12 @@ function buildColumns(
               e.stopPropagation();
               onDocumentTypeClick?.(doc.documentType!.id);
             }}
-            className="text-xs px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/15 hover:bg-emerald-500/20 truncate max-w-[120px]"
+            className="text-xs px-1.5 py-0.5 rounded bg-accent-olive/10 text-accent-olive/80 border border-emerald-500/15 hover:bg-accent-olive/20 truncate max-w-[120px]"
           >
             {doc.documentType.name}
           </button>
         ) : (
-          <span className="text-slate-600 text-xs">—</span>
+          <span className="text-muted-foreground text-xs">—</span>
         ),
     },
     [DisplayField.TAGS]: {
@@ -150,7 +150,7 @@ function buildColumns(
             />
           ))}
           {(doc.tags || []).length > 3 && (
-            <span className="text-[9px] text-slate-500">
+            <span className="text-[9px] text-muted-foreground">
               +{doc.tags!.length - 3}
             </span>
           )}
@@ -163,7 +163,7 @@ function buildColumns(
       sortKey: "created",
       width: "w-28",
       render: (doc) => (
-        <span className="text-xs text-slate-400">
+        <span className="text-xs text-muted-foreground">
           {doc.created
             ? new Date(doc.created).toLocaleDateString(undefined, {
                 month: "short",
@@ -180,7 +180,7 @@ function buildColumns(
       sortKey: "added",
       width: "w-28",
       render: (doc) => (
-        <span className="text-xs text-slate-400">
+        <span className="text-xs text-muted-foreground">
           {doc.added ? new Date(doc.added).toLocaleDateString() : "—"}
         </span>
       ),
@@ -204,14 +204,14 @@ function buildColumns(
       sortKey: "owner",
       width: "w-24",
       render: (doc) => (
-        <span className="text-xs text-slate-400 truncate">{doc.owner || "—"}</span>
+        <span className="text-xs text-muted-foreground truncate">{doc.owner || "—"}</span>
       ),
     },
     [DisplayField.STORAGE_PATH]: {
       field: DisplayField.STORAGE_PATH,
       label: "Path",
       sortKey: "storage_path__name",
-      render: () => <span className="text-slate-600 text-xs">—</span>,
+      render: () => <span className="text-muted-foreground text-xs">—</span>,
     },
     [DisplayField.CUSTOM_FIELD]: {
       field: DisplayField.CUSTOM_FIELD,
@@ -260,8 +260,8 @@ function SortHeader({
       onClick={() => onSort(sortKey)}
       className={cn(
         "flex items-center gap-1 text-xs font-medium uppercase tracking-wider",
-        "hover:text-slate-200 transition-colors",
-        isActive ? "text-cyan-400" : "text-slate-500"
+        "hover:text-foreground/70 transition-colors",
+        isActive ? "text-primary" : "text-muted-foreground"
       )}
     >
       {label}
@@ -313,10 +313,10 @@ export function DocumentTable({
   );
 
   return (
-    <div className={cn("overflow-x-auto rounded-lg border border-white/5", className)}>
+    <div className={cn("overflow-x-auto rounded-lg border border-border", className)}>
       <table className="w-full text-left">
         <thead>
-          <tr className="border-b border-white/10 bg-black/20">
+          <tr className="border-b border-border bg-background/50">
             {/* Select all checkbox */}
             <th className="w-10 px-3 py-2">
               <Checkbox
@@ -324,7 +324,7 @@ export function DocumentTable({
                 onCheckedChange={() =>
                   isAllSelected ? onSelectNone() : onSelectAll()
                 }
-                className="h-4 w-4 rounded border-white/30 data-[state=checked]:bg-cyan-500"
+                className="h-4 w-4 rounded border-white/30 data-[state=checked]:bg-primary"
               />
             </th>
             {visibleColumns.map((col) => (
@@ -348,9 +348,9 @@ export function DocumentTable({
                 key={doc.id}
                 onClick={() => onDocumentClick(doc.id)}
                 className={cn(
-                  "border-b border-white/5 cursor-pointer transition-colors",
-                  "hover:bg-white/[0.03]",
-                  isSelected && "bg-cyan-500/5"
+                  "border-b border-border cursor-pointer transition-colors",
+                  "hover:bg-muted/30",
+                  isSelected && "bg-primary/5"
                 )}
               >
                 <td className="px-3 py-2">
@@ -358,7 +358,7 @@ export function DocumentTable({
                     checked={isSelected}
                     onCheckedChange={() => onToggleSelect(doc.id)}
                     onClick={(e) => e.stopPropagation()}
-                    className="h-4 w-4 rounded border-white/30 data-[state=checked]:bg-cyan-500"
+                    className="h-4 w-4 rounded border-white/30 data-[state=checked]:bg-primary"
                   />
                 </td>
                 {visibleColumns.map((col) => (

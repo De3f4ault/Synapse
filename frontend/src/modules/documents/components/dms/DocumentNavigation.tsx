@@ -65,15 +65,15 @@ export function DocumentNavigation({
         className={cn(
           "p-1.5 rounded-lg transition-colors",
           prevId != null
-            ? "text-slate-300 hover:text-white hover:bg-white/10"
-            : "text-slate-600 cursor-not-allowed"
+            ? "text-foreground/80 hover:text-foreground hover:bg-muted"
+            : "text-muted-foreground cursor-not-allowed"
         )}
         title="Previous document"
       >
         <ChevronLeft size={16} />
       </button>
 
-      <span className="text-[10px] text-slate-500 min-w-[3rem] text-center font-mono">
+      <span className="text-[10px] text-muted-foreground min-w-[3rem] text-center font-mono">
         {position} / {total}
       </span>
 
@@ -83,8 +83,8 @@ export function DocumentNavigation({
         className={cn(
           "p-1.5 rounded-lg transition-colors",
           nextId != null
-            ? "text-slate-300 hover:text-white hover:bg-white/10"
-            : "text-slate-600 cursor-not-allowed"
+            ? "text-foreground/80 hover:text-foreground hover:bg-muted"
+            : "text-muted-foreground cursor-not-allowed"
         )}
         title="Next document"
       >

@@ -3,6 +3,7 @@
  */
 
 export { UploadArea } from "./UploadArea";
+export { UploadModal } from "./UploadModal";
 export { UploadProgress } from "./UploadProgress";
 export { FileValidator } from "./FileValidator";
 export { DuplicateConflictModal } from "./DuplicateConflictModal";

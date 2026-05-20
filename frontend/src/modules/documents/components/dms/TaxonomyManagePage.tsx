@@ -134,8 +134,8 @@ export function TaxonomyManagePage<T extends TaxonomyItem>({
       className="p-8 max-w-[1200px] mx-auto space-y-6"
     >
       <div>
-        <h1 className="text-2xl font-bold text-white tracking-tight">{title}</h1>
-        <p className="text-sm text-slate-500 mt-0.5">
+        <h1 className="text-2xl font-bold text-foreground tracking-tight">{title}</h1>
+        <p className="text-sm text-muted-foreground mt-0.5">
           {items.length} item{items.length !== 1 ? "s" : ""} configured
         </p>
       </div>
@@ -174,9 +174,9 @@ export function TaxonomyManagePage<T extends TaxonomyItem>({
         open={!!deleteItem}
         onOpenChange={(open) => !open && setDeleteItem(null)}
       >
-        <AlertDialogContent className="bg-card border-white/10">
+        <AlertDialogContent className="bg-card border-border">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-slate-200">
+            <AlertDialogTitle className="text-foreground/70">
               Delete "{deleteItem?.name}"?
             </AlertDialogTitle>
             <AlertDialogDescription>

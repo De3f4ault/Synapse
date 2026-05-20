@@ -39,9 +39,9 @@ function SettingRow({ label, description, children }: SettingRowProps) {
   return (
     <div className="flex items-center justify-between py-3 px-1">
       <div>
-        <p className="text-sm text-white">{label}</p>
+        <p className="text-sm text-foreground">{label}</p>
         {description && (
-          <p className="text-[11px] text-slate-500 mt-0.5">{description}</p>
+          <p className="text-[11px] text-muted-foreground mt-0.5">{description}</p>
         )}
       </div>
       <div className="shrink-0">{children}</div>
@@ -61,7 +61,7 @@ function Toggle({
       onClick={() => onChange(!checked)}
       className={cn(
         "relative w-9 h-5 rounded-full transition-colors",
-        checked ? "bg-cyan-500" : "bg-white/10"
+        checked ? "bg-primary" : "bg-foreground/10"
       )}
     >
       <div
@@ -83,9 +83,9 @@ interface SectionProps {
 function Section({ title, icon: Icon, children }: SectionProps) {
   return (
     <GlassCard className="overflow-hidden">
-      <div className="flex items-center gap-2 px-4 py-2.5 border-b border-white/[0.04] bg-white/[0.01]">
-        <Icon size={14} className="text-cyan-400" />
-        <span className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
+      <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border bg-white/[0.01]">
+        <Icon size={14} className="text-primary" />
+        <span className="text-xs font-semibold text-foreground/80 uppercase tracking-wider">
           {title}
         </span>
       </div>
@@ -108,14 +108,14 @@ export function SettingsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Settings size={22} className="text-cyan-400" />
-          <h1 className="text-xl font-bold text-white">Settings</h1>
+          <Settings size={22} className="text-primary" />
+          <h1 className="text-xl font-bold text-foreground">Settings</h1>
         </div>
         <Button
           variant="ghost"
           size="sm"
           onClick={resetAll}
-          className="text-xs text-slate-400 hover:text-white"
+          className="text-xs text-muted-foreground hover:text-foreground"
         >
           <RotateCcw size={12} className="mr-1.5" />
           Reset all
@@ -165,7 +165,7 @@ export function SettingsPage() {
             onChange={(e) =>
               set(SETTINGS_KEYS.DOCUMENT_LIST_SIZE, Number(e.target.value))
             }
-            className="px-2 py-1 rounded text-xs bg-white/[0.04] border border-white/10 text-slate-200"
+            className="px-2 py-1 rounded text-xs bg-white/[0.04] border border-border text-foreground/70"
           >
             {[25, 50, 100, 150].map((n) => (
               <option key={n} value={n} className="bg-slate-800">
@@ -189,7 +189,7 @@ export function SettingsPage() {
           <select
             value={get<string>(SETTINGS_KEYS.DATE_FORMAT)}
             onChange={(e) => set(SETTINGS_KEYS.DATE_FORMAT, e.target.value)}
-            className="px-2 py-1 rounded text-xs bg-white/[0.04] border border-white/10 text-slate-200"
+            className="px-2 py-1 rounded text-xs bg-white/[0.04] border border-border text-foreground/70"
           >
             {["mediumDate", "shortDate", "longDate", "yyyy-MM-dd"].map((f) => (
               <option key={f} value={f} className="bg-slate-800">
@@ -293,7 +293,7 @@ export function SettingsPage() {
             onChange={(e) =>
               set(SETTINGS_KEYS.EMPTY_TRASH_DELAY, Number(e.target.value))
             }
-            className="px-2 py-1 rounded text-xs bg-white/[0.04] border border-white/10 text-slate-200"
+            className="px-2 py-1 rounded text-xs bg-white/[0.04] border border-border text-foreground/70"
           >
             {[7, 14, 30, 60, 90].map((n) => (
               <option key={n} value={n} className="bg-slate-800">

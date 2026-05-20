@@ -144,7 +144,7 @@ export function FolderTree({
   if (isLoading) {
     return (
       <div className={cn("flex items-center justify-center py-8", className)}>
-        <RefreshCw className="w-5 h-5 text-slate-500 animate-spin" />
+        <RefreshCw className="w-5 h-5 text-muted-foreground animate-spin" />
       </div>
     );
   }
@@ -153,10 +153,10 @@ export function FolderTree({
   if (error) {
     return (
       <div className={cn("py-4 px-3", className)}>
-        <p className="text-sm text-red-400">Failed to load folders</p>
+        <p className="text-sm text-destructive">Failed to load folders</p>
         <button 
           onClick={() => refetch()}
-          className="text-sm text-cyan-400 hover:text-cyan-300 mt-2"
+          className="text-sm text-primary hover:text-primary/80 mt-2"
         >
           Retry
         </button>
@@ -168,12 +168,12 @@ export function FolderTree({
   if (!folders || folders.length === 0) {
     return (
       <div className={cn("py-4 px-3 text-center", className)}>
-        <Folder className="w-8 h-8 text-slate-600 mx-auto mb-2" />
-        <p className="text-sm text-slate-500">No folders yet</p>
+        <Folder className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+        <p className="text-sm text-muted-foreground">No folders yet</p>
         <button
           onClick={() => seedFolders.mutate()}
           disabled={seedFolders.isPending}
-          className="text-sm text-cyan-400 hover:text-cyan-300 mt-2"
+          className="text-sm text-primary hover:text-primary/80 mt-2"
         >
           {seedFolders.isPending ? 'Creating...' : 'Create defaults'}
         </button>
@@ -225,12 +225,12 @@ export function FolderTree({
     <div className={cn("py-2", className)}>
       {/* Header with Add button */}
       <div className="flex items-center justify-between px-3 mb-2">
-        <span className="text-xs uppercase tracking-wider text-slate-500 font-bold">
+        <span className="text-xs uppercase tracking-wider text-muted-foreground font-bold">
           Folders
         </span>
         <button
           onClick={onCreateFolder}
-          className="w-5 h-5 flex items-center justify-center text-slate-500 hover:text-cyan-400 transition-colors"
+          className="w-5 h-5 flex items-center justify-center text-muted-foreground hover:text-primary transition-colors"
           title="New folder"
         >
           <Plus className="w-4 h-4" />
@@ -252,9 +252,9 @@ export function FolderTree({
           {/* Drag Overlay */}
           <DragOverlay>
             {draggingFolder && (
-              <div className="flex items-center gap-2 py-1.5 px-3 bg-slate-800/90 border border-cyan-500/30 rounded-lg shadow-lg">
-                <Folder className="w-4 h-4 text-cyan-400" />
-                <span className="text-sm text-cyan-100">{draggingFolder.name}</span>
+              <div className="flex items-center gap-2 py-1.5 px-3 bg-slate-800/90 border border-primary/30 rounded-lg shadow-lg">
+                <Folder className="w-4 h-4 text-primary" />
+                <span className="text-sm text-primary-foreground">{draggingFolder.name}</span>
               </div>
             )}
           </DragOverlay>

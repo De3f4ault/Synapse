@@ -24,13 +24,13 @@ export const ChunkExplorer: React.FC<ChunkExplorerProps> = ({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-bold text-white flex items-center gap-2">
-          <FileText size={18} className="text-cyan-400" />
+        <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
+          <FileText size={18} className="text-primary" />
           Document Chunks
         </h3>
         <Badge
           variant="outline"
-          className="bg-cyan-950/30 text-cyan-400 border-cyan-500/30"
+          className="bg-primary/10 text-primary border-primary/30"
         >
           {chunks.length} chunks
         </Badge>
@@ -41,20 +41,20 @@ export const ChunkExplorer: React.FC<ChunkExplorerProps> = ({
           {chunks.map((chunk, index) => (
             <Card
               key={chunk.id}
-              className="bg-white/5 border-white/10 overflow-hidden"
+              className="bg-foreground/5 border-border overflow-hidden"
             >
               <CardHeader
-                className="cursor-pointer hover:bg-white/5 transition-colors p-4"
+                className="cursor-pointer hover:bg-muted/50 transition-colors p-4"
                 onClick={() => toggleChunk(chunk.id)}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     {expandedChunk === chunk.id ? (
-                      <ChevronDown size={16} className="text-cyan-400" />
+                      <ChevronDown size={16} className="text-primary" />
                     ) : (
-                      <ChevronRight size={16} className="text-slate-400" />
+                      <ChevronRight size={16} className="text-muted-foreground" />
                     )}
-                    <CardTitle className="text-sm font-mono text-slate-300">
+                    <CardTitle className="text-sm font-mono text-foreground/80">
                       Chunk #{index + 1}
                     </CardTitle>
                   </div>
@@ -73,24 +73,24 @@ export const ChunkExplorer: React.FC<ChunkExplorerProps> = ({
                     transition={{ duration: 0.2 }}
                   >
                     <CardContent className="pt-0 pb-4 px-4">
-                      <div className="bg-black/40 rounded-lg p-3 border border-white/5">
-                        <p className="text-xs text-slate-300 font-mono leading-relaxed">
+                      <div className="bg-background/70 rounded-lg p-3 border border-border">
+                        <p className="text-xs text-foreground/80 font-mono leading-relaxed">
                           {chunk.content}
                         </p>
                       </div>
 
                       {chunk.embedding && (
-                        <div className="mt-3 text-[10px] text-slate-500">
+                        <div className="mt-3 text-[10px] text-muted-foreground">
                           Embedding: {chunk.embedding.length} dimensions
                         </div>
                       )}
 
                       {chunk.metadata && (
                         <div className="mt-3 space-y-1">
-                          <div className="text-[10px] text-cyan-400 uppercase tracking-wider">
+                          <div className="text-[10px] text-primary uppercase tracking-wider">
                             Metadata
                           </div>
-                          <div className="bg-black/40 rounded p-2 text-xs text-slate-400 font-mono">
+                          <div className="bg-background/70 rounded p-2 text-xs text-muted-foreground font-mono">
                             {JSON.stringify(chunk.metadata, null, 2)}
                           </div>
                         </div>

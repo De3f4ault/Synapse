@@ -12,8 +12,8 @@ interface ThemeSelectorProps {
 const themes: { value: ViewerTheme; label: string; icon: React.ReactNode; color: string }[] = [
     { value: 'light', label: 'Light', icon: <Sun size={14} />, color: 'bg-white text-gray-900 border-gray-300' },
     { value: 'sepia', label: 'Sepia', icon: <Coffee size={14} />, color: 'bg-amber-100 text-amber-900 border-amber-300' },
-    { value: 'twilight', label: 'Twilight', icon: <Sunset size={14} />, color: 'bg-slate-700 text-slate-100 border-slate-500' },
-    { value: 'dark', label: 'Dark', icon: <Moon size={14} />, color: 'bg-zinc-900 text-zinc-100 border-zinc-700' },
+    { value: 'twilight', label: 'Twilight', icon: <Sunset size={14} />, color: 'bg-muted text-foreground border-border' },
+    { value: 'dark', label: 'Dark', icon: <Moon size={14} />, color: 'bg-zinc-900 text-foreground border-zinc-700' },
 ];
 
 /**

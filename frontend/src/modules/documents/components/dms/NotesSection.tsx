@@ -46,7 +46,7 @@ export function NotesSection({
           <MessageSquare size={12} />
           Notes
           {notes.length > 0 && (
-            <span className="px-1.5 py-0.5 bg-amber-500/10 text-amber-300 rounded-full text-[10px]">
+            <span className="px-1.5 py-0.5 bg-warning/10 text-amber-300 rounded-full text-[10px]">
               {notes.length}
             </span>
           )}
@@ -66,7 +66,7 @@ export function NotesSection({
 
       {/* Add note form */}
       {showInput && (
-        <div className="space-y-2 p-2 rounded-lg border border-white/10 bg-white/[0.02]">
+        <div className="space-y-2 p-2 rounded-lg border border-border bg-foreground/5">
           <textarea
             value={newNote}
             onChange={(e) => setNewNote(e.target.value)}
@@ -94,7 +94,7 @@ export function NotesSection({
               size="sm"
               onClick={handleSubmit}
               disabled={!newNote.trim() || isAdding}
-              className="h-7 text-xs bg-cyan-600 hover:bg-cyan-700"
+              className="h-7 text-xs bg-primary hover:bg-primary/80"
             >
               {isAdding ? "Saving…" : "Save Note"}
             </Button>
@@ -112,10 +112,10 @@ export function NotesSection({
           {notes.map((note) => (
             <div
               key={note.id}
-              className="p-2.5 rounded-lg border border-white/5 bg-white/[0.02] group"
+              className="p-2.5 rounded-lg border border-border bg-foreground/5 group"
             >
               <div className="flex items-start justify-between gap-2">
-                <p className="text-sm text-slate-300 whitespace-pre-wrap break-words flex-1">
+                <p className="text-sm text-foreground/80 whitespace-pre-wrap break-words flex-1">
                   {note.note}
                 </p>
                 {note.user === currentUserId && (
@@ -128,7 +128,7 @@ export function NotesSection({
                   </button>
                 )}
               </div>
-              <div className="flex items-center gap-2 mt-1.5 text-[10px] text-slate-500">
+              <div className="flex items-center gap-2 mt-1.5 text-[10px] text-muted-foreground">
                 <User size={9} />
                 <span>User {note.user}</span>
                 <span>•</span>

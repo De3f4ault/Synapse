@@ -330,7 +330,7 @@ export const DocumentsHub = ({
   }, []);
 
   return (
-    <div className="fixed inset-0 min-h-screen flex flex-col pt-16 bg-[#050505]">
+    <div className="fixed inset-0 min-h-screen flex flex-col pt-16 bg-background">
       <div className="flex flex-1 overflow-hidden">
         {/* ═══════════════════════════════════════════════════════════════ */}
         {/* DMS Sidebar (Paperless-ngx style) */}
@@ -355,16 +355,16 @@ export const DocumentsHub = ({
               {/* Title row with view controls */}
                 <div className="flex items-center justify-between gap-4">
                 <div>
-                  <h1 className="text-2xl font-bold text-white tracking-tight">
+                  <h1 className="text-2xl font-bold text-foreground tracking-tight">
                     Documents
                   </h1>
-                  <p className="text-xs text-slate-500 mt-0.5">
+                  <p className="text-xs text-muted-foreground mt-0.5">
                     {documents.length} document{documents.length !== 1 ? "s" : ""}
                     {filterRules.length > 0 && " (filtered)"}
                     {filterRules.length > 0 && (
                       <button
                         onClick={() => setFilterRules([])}
-                        className="ml-2 text-emerald-400 hover:text-emerald-300 transition-colors"
+                        className="ml-2 text-accent-olive hover:text-accent-olive/80 transition-colors"
                       >
                         ×Reset filters
                       </button>
@@ -374,12 +374,12 @@ export const DocumentsHub = ({
 
                 <div className="flex items-center gap-1.5">
                   {/* Select buttons */}
-                  <span className="text-xs text-slate-500 mr-1">Select:</span>
+                  <span className="text-xs text-muted-foreground mr-1">Select:</span>
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={selectAll}
-                    className="text-xs h-7 px-2 border-emerald-800/40 text-slate-300 hover:bg-emerald-900/20"
+                    className="text-xs h-7 px-2 border-accent-olive/30 text-foreground/80 hover:bg-accent-olive/10"
                   >
                     Page
                   </Button>
@@ -387,18 +387,18 @@ export const DocumentsHub = ({
                     variant="outline"
                     size="sm"
                     onClick={selectAll}
-                    className="text-xs h-7 px-2 border-emerald-800/40 text-slate-300 hover:bg-emerald-900/20"
+                    className="text-xs h-7 px-2 border-accent-olive/30 text-foreground/80 hover:bg-accent-olive/10"
                   >
                     All
                   </Button>
 
-                  <div className="w-px h-5 bg-white/10 mx-1" />
+                  <div className="w-px h-5 bg-foreground/10 mx-1" />
 
                   {/* Show dropdown */}
                   <Button
                     variant="outline"
                     size="sm"
-                    className="text-xs h-7 px-2 border-emerald-800/40 text-slate-300 hover:bg-emerald-900/20 gap-1"
+                    className="text-xs h-7 px-2 border-accent-olive/30 text-foreground/80 hover:bg-accent-olive/10 gap-1"
                   >
                     Show <ChevronDown size={12} />
                   </Button>
@@ -414,7 +414,7 @@ export const DocumentsHub = ({
                     variant="outline"
                     size="sm"
                     onClick={() => handleSort(sortField)}
-                    className="text-xs h-7 px-2 border-emerald-800/40 text-slate-300 hover:bg-emerald-900/20 gap-1"
+                    className="text-xs h-7 px-2 border-accent-olive/30 text-foreground/80 hover:bg-accent-olive/10 gap-1"
                   >
                     Sort <ChevronDown size={12} />
                   </Button>
@@ -424,7 +424,7 @@ export const DocumentsHub = ({
                     variant="outline"
                     size="sm"
                     onClick={() => setSaveViewOpen(true)}
-                    className="text-xs h-7 px-2 border-emerald-800/40 text-slate-300 hover:bg-emerald-900/20 gap-1"
+                    className="text-xs h-7 px-2 border-accent-olive/30 text-foreground/80 hover:bg-accent-olive/10 gap-1"
                   >
                     Views <ChevronDown size={12} />
                   </Button>
@@ -444,7 +444,7 @@ export const DocumentsHub = ({
                     onClick={() => setDetailPanelOpen(!detailPanelOpen)}
                     className={cn(
                       "h-7 w-7 p-0",
-                      detailPanelOpen && "bg-emerald-500/10 text-emerald-400"
+                      detailPanelOpen && "bg-accent-olive/10 text-accent-olive"
                     )}
                     title="Toggle detail panel"
                   >
@@ -544,7 +544,7 @@ export const DocumentsHub = ({
                         <div
                           key={i}
                           className={cn(
-                            "rounded-xl bg-white/5 animate-pulse",
+                            "rounded-xl bg-foreground/5 animate-pulse",
                             displayMode === DisplayMode.LARGE_CARDS && "h-[250px]",
                             displayMode === DisplayMode.SMALL_CARDS && "h-16",
                             displayMode === DisplayMode.TABLE && "h-12"
@@ -680,7 +680,7 @@ export const DocumentsHub = ({
                   animate={{ width: 380, opacity: 1 }}
                   exit={{ width: 0, opacity: 0 }}
                   transition={{ type: "spring", bounce: 0.15, duration: 0.35 }}
-                  className="overflow-hidden shrink-0 border-l border-white/5"
+                  className="overflow-hidden shrink-0 border-l border-border"
                 >
                   <DocumentDetailPanel
                     document={{

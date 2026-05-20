@@ -106,7 +106,7 @@ export function DocumentViewerPage() {
   if (loading) {
     return (
       <div className="fixed inset-0 z-50 bg-black flex items-center justify-center">
-        <Loader2 className="w-6 h-6 animate-spin text-zinc-600" />
+        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
       </div>
     );
   }
@@ -115,10 +115,10 @@ export function DocumentViewerPage() {
     return (
       <div className="fixed inset-0 z-50 bg-black flex items-center justify-center">
         <div className="text-center">
-          <p className="text-zinc-400 text-sm mb-4">{error || "Document not found"}</p>
+          <p className="text-muted-foreground text-sm mb-4">{error || "Document not found"}</p>
           <button
             onClick={() => navigate("/documents")}
-            className="text-sm text-cyan-400 hover:text-cyan-300 transition-colors"
+            className="text-sm text-primary hover:text-primary/80 transition-colors"
           >
             ← Back to Documents
           </button>
@@ -132,16 +132,16 @@ export function DocumentViewerPage() {
   return (
     <div className="flex flex-col h-[calc(100vh-64px)]">
       {/* ── Toolbar ── */}
-      <div className="flex items-center gap-2 px-4 py-2 border-b border-white/[0.05] bg-black/30 shrink-0">
+      <div className="flex items-center gap-2 px-4 py-2 border-b border-border bg-card/50 shrink-0">
         <button
           onClick={() => navigate("/documents")}
-          className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+          className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
           title="Back to documents"
         >
           <ArrowLeft size={16} />
         </button>
 
-        <span className="text-sm text-white font-medium truncate flex-1 mx-2">
+        <span className="text-sm text-foreground font-medium truncate flex-1 mx-2">
           {doc.filename}
         </span>
 
@@ -152,7 +152,7 @@ export function DocumentViewerPage() {
           onNavigate={(id) => navigate(`/documents/${id}`)}
         />
 
-        <div className="w-px h-5 bg-white/10 mx-1" />
+        <div className="w-px h-5 bg-foreground/10 mx-1" />
 
         {/* Action buttons */}
         <ToolbarButton icon={Share2} label="Share" onClick={() => setShowShareLinks(true)} />
@@ -162,13 +162,13 @@ export function DocumentViewerPage() {
         )}
         <ToolbarButton icon={Mail} label="Email" onClick={() => setShowEmail(true)} />
 
-        <div className="w-px h-5 bg-white/10 mx-1" />
+        <div className="w-px h-5 bg-foreground/10 mx-1" />
 
         {/* Sidebar toggle */}
         <button
           onClick={() => setShowSidebar(!showSidebar)}
           className={`p-1.5 rounded-lg transition-colors ${
-            showSidebar ? "text-cyan-400 bg-cyan-500/10" : "text-slate-400 hover:text-white hover:bg-white/10"
+            showSidebar ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground hover:bg-muted"
           }`}
           title="Toggle sidebar"
         >
@@ -185,9 +185,9 @@ export function DocumentViewerPage() {
 
         {/* Sidebar */}
         {showSidebar && (
-          <div className="w-80 shrink-0 border-l border-white/[0.05] bg-black/20 flex flex-col overflow-hidden">
+          <div className="w-80 shrink-0 border-l border-border bg-background/50 flex flex-col overflow-hidden">
             {/* Tab bar */}
-            <div className="flex border-b border-white/[0.04]">
+            <div className="flex border-b border-border">
               <SidebarTabButton
                 active={sidebarTab === "notes"}
                 icon={StickyNote}
@@ -261,7 +261,7 @@ function ToolbarButton({
   return (
     <button
       onClick={onClick}
-      className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+      className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
       title={label}
     >
       <Icon size={15} />
@@ -285,8 +285,8 @@ function SidebarTabButton({
       onClick={onClick}
       className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-medium transition-colors ${
         active
-          ? "text-cyan-400 border-b-2 border-cyan-400"
-          : "text-slate-500 hover:text-slate-300"
+          ? "text-primary border-b-2 border-primary"
+          : "text-muted-foreground hover:text-foreground/80"
       }`}
     >
       <Icon size={13} />

@@ -171,8 +171,8 @@ export const DocumentViewer: React.FC<Props> = ({ doc, onClose }) => {
     return (
       <div className="w-full h-full flex items-center justify-center bg-zinc-950">
         <div className="text-center">
-          <FileText className="w-14 h-14 text-zinc-700 mx-auto mb-3" strokeWidth={1} />
-          <p className="text-zinc-500 text-sm">No preview for <span className="font-mono">.{type}</span></p>
+          <FileText className="w-14 h-14 text-muted-foreground mx-auto mb-3" strokeWidth={1} />
+          <p className="text-muted-foreground text-sm">No preview for <span className="font-mono">.{type}</span></p>
         </div>
       </div>
     );
@@ -206,7 +206,7 @@ export const DocumentViewer: React.FC<Props> = ({ doc, onClose }) => {
       <div className="w-full h-full">
         <Suspense fallback={
           <div className="w-full h-full flex items-center justify-center bg-zinc-950">
-            <Loader2 className="w-6 h-6 animate-spin text-zinc-600" />
+            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
           </div>
         }>
           {content}
@@ -218,14 +218,14 @@ export const DocumentViewer: React.FC<Props> = ({ doc, onClose }) => {
         className={`fixed bottom-5 left-1/2 -translate-x-1/2 z-[60]
                      flex items-center gap-1 px-1.5 py-1.5
                      rounded-2xl bg-zinc-900/90 backdrop-blur-2xl
-                     border border-white/[0.06]
+                     border border-border
                      shadow-[0_8px_40px_rgba(0,0,0,0.6),0_0_0_1px_rgba(255,255,255,0.03)]
                      transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]
                      ${visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6 pointer-events-none"}`}
       >
         {/* Back */}
         <button onClick={onClose}
-          className="flex items-center justify-center w-8 h-8 rounded-xl text-zinc-400 hover:text-white hover:bg-white/[0.08] transition-all"
+          className="flex items-center justify-center w-8 h-8 rounded-xl text-muted-foreground hover:text-foreground hover:bg-white/[0.08] transition-all"
           title="Back (Esc)">
           <ArrowLeft size={16} />
         </button>
@@ -233,7 +233,7 @@ export const DocumentViewer: React.FC<Props> = ({ doc, onClose }) => {
         <div className="w-px h-5 bg-white/[0.06]" />
 
         {/* Filename */}
-        <span className="px-2 text-[12px] text-zinc-400 select-none truncate max-w-[220px]" title={doc.filename}>
+        <span className="px-2 text-[12px] text-muted-foreground select-none truncate max-w-[220px]" title={doc.filename}>
           {shortName}
         </span>
 
@@ -242,11 +242,11 @@ export const DocumentViewer: React.FC<Props> = ({ doc, onClose }) => {
           <>
             <div className="w-px h-5 bg-white/[0.06]" />
             <div className="px-2 flex items-center gap-1.5 text-[12px] tabular-nums select-none">
-              <span className="text-zinc-200 font-medium">{page + 1}</span>
-              <span className="text-zinc-600">/</span>
-              <span className="text-zinc-500">{total}</span>
-              <span className="text-zinc-700">·</span>
-              <span className="text-zinc-500">{Math.round(progress * 100)}%</span>
+              <span className="text-foreground/70 font-medium">{page + 1}</span>
+              <span className="text-muted-foreground">/</span>
+              <span className="text-muted-foreground">{total}</span>
+              <span className="text-muted-foreground">·</span>
+              <span className="text-muted-foreground">{Math.round(progress * 100)}%</span>
             </div>
           </>
         )}
@@ -255,7 +255,7 @@ export const DocumentViewer: React.FC<Props> = ({ doc, onClose }) => {
         {total > 0 && (
           <>
             <div className="w-px h-5 bg-white/[0.06]" />
-            <span className="px-2 text-[11px] text-zinc-500 select-none">
+            <span className="px-2 text-[11px] text-muted-foreground select-none">
               {estimateRemaining(page, total)}
             </span>
           </>
@@ -265,7 +265,7 @@ export const DocumentViewer: React.FC<Props> = ({ doc, onClose }) => {
         <div className="w-px h-5 bg-white/[0.06]" />
 
         {/* Reading timer */}
-        <span className="px-2 text-[11px] text-zinc-600 tabular-nums select-none" title="Time reading">
+        <span className="px-2 text-[11px] text-muted-foreground tabular-nums select-none" title="Time reading">
           {formatTime(elapsed)}
         </span>
 
@@ -274,7 +274,7 @@ export const DocumentViewer: React.FC<Props> = ({ doc, onClose }) => {
         {/* Warm filter toggle */}
         <button onClick={toggleWarm}
           className={`flex items-center justify-center w-8 h-8 rounded-xl transition-all ${
-            warm ? "text-amber-400 bg-amber-500/10" : "text-zinc-400 hover:text-white hover:bg-white/[0.08]"
+            warm ? "text-warning bg-warning/10" : "text-muted-foreground hover:text-foreground hover:bg-white/[0.08]"
           }`}
           title={warm ? "Disable warm filter" : "Warm reading mode"}>
           {warm ? <Sun size={15} /> : <Moon size={15} />}
@@ -282,7 +282,7 @@ export const DocumentViewer: React.FC<Props> = ({ doc, onClose }) => {
 
         {/* Download */}
         <button onClick={() => window.open(contentUrl, "_blank")}
-          className="flex items-center justify-center w-8 h-8 rounded-xl text-zinc-400 hover:text-white hover:bg-white/[0.08] transition-all"
+          className="flex items-center justify-center w-8 h-8 rounded-xl text-muted-foreground hover:text-foreground hover:bg-white/[0.08] transition-all"
           title="Download">
           <Download size={15} />
         </button>

@@ -32,7 +32,7 @@ export function SavedViewWidget({
     <GlassCard
       className={cn(
         "p-4 cursor-pointer group",
-        "hover:border-cyan-500/30 transition-all",
+        "hover:border-primary/30 transition-all",
         className
       )}
       hover
@@ -41,28 +41,28 @@ export function SavedViewWidget({
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <div className="p-1.5 rounded-md bg-cyan-500/10 text-cyan-400">
+          <div className="p-1.5 rounded-md bg-primary/10 text-primary">
             <FileStack size={16} />
           </div>
-          <h3 className="text-sm font-semibold text-slate-200 group-hover:text-cyan-400 transition-colors truncate">
+          <h3 className="text-sm font-semibold text-foreground/70 group-hover:text-primary transition-colors truncate">
             {view.name}
           </h3>
         </div>
         <ArrowRight
           size={14}
-          className="text-slate-600 group-hover:text-cyan-400 group-hover:translate-x-0.5 transition-all"
+          className="text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all"
         />
       </div>
 
       {/* Stats */}
       <div className="flex items-center gap-3 mb-3 text-xs">
-        <span className="text-slate-400">
-          <span className="text-lg font-bold text-slate-200">
+        <span className="text-muted-foreground">
+          <span className="text-lg font-bold text-foreground/70">
             {documentCount}
           </span>{" "}
           documents
         </span>
-        <span className="flex items-center gap-1 text-slate-500">
+        <span className="flex items-center gap-1 text-muted-foreground">
           <Filter size={10} />
           {view.filter_rules.length} filters
         </span>
@@ -70,11 +70,11 @@ export function SavedViewWidget({
 
       {/* Recent documents preview */}
       {recentTitles.length > 0 && (
-        <div className="space-y-1 border-t border-white/5 pt-2">
+        <div className="space-y-1 border-t border-border pt-2">
           {recentTitles.slice(0, 5).map((title, i) => (
             <p
               key={i}
-              className="text-xs text-slate-500 truncate"
+              className="text-xs text-muted-foreground truncate"
             >
               {title}
             </p>

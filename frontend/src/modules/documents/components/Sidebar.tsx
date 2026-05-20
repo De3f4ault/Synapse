@@ -112,7 +112,7 @@ export function Sidebar({
       <div className="p-4 pb-0">
         <div className="flex items-center gap-2.5">
           <div className="flex size-8 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500 to-fuchsia-500">
-            <HardDrive className="size-4 text-white" />
+            <HardDrive className="size-4 text-foreground" />
           </div>
           <span className="font-semibold text-base text-foreground">Synapse Drive</span>
         </div>

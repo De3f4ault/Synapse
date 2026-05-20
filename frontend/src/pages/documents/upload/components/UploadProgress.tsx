@@ -28,13 +28,13 @@ export const UploadProgress: React.FC<UploadProgressProps> = ({
                 {entries.map(([filename, progress]) => (
                     <div
                         key={filename}
-                        className="bg-white/5 rounded-lg p-3 border border-white/5 flex flex-col gap-2"
+                        className="bg-foreground/5 rounded-lg p-3 border border-border flex flex-col gap-2"
                     >
                         <div className="flex items-center justify-between">
-                            <span className="text-xs font-mono text-slate-300 truncate">
+                            <span className="text-xs font-mono text-foreground/80 truncate">
                                 {filename}
                             </span>
-                            <span className="text-xs text-cyan-400">{progress}%</span>
+                            <span className="text-xs text-primary">{progress}%</span>
                         </div>
                         <Progress value={progress} className="h-1" />
                     </div>

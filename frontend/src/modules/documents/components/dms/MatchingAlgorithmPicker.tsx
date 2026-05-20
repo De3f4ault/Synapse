@@ -61,7 +61,7 @@ export function MatchingAlgorithmPicker({
           value={String(algorithm)}
           onValueChange={(v) => onAlgorithmChange(Number(v) as MatchingAlgorithm)}
         >
-          <SelectTrigger className="bg-white/5 border-white/10">
+          <SelectTrigger className="bg-foreground/5 border-border">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -72,7 +72,7 @@ export function MatchingAlgorithmPicker({
             ))}
           </SelectContent>
         </Select>
-        <p className="text-[11px] text-slate-500">
+        <p className="text-[11px] text-muted-foreground">
           {ALGORITHM_DESCRIPTIONS[algorithm]}
         </p>
       </div>
@@ -94,7 +94,7 @@ export function MatchingAlgorithmPicker({
                 : "Enter text to match..."
             }
             className={cn(
-              "bg-white/5 border-white/10",
+              "bg-foreground/5 border-border",
               algorithm === MatchingAlgorithm.REGEX && "font-mono text-sm"
             )}
           />
@@ -104,7 +104,7 @@ export function MatchingAlgorithmPicker({
       {/* Case sensitivity */}
       {showMatchInput && (
         <div className="flex items-center justify-between">
-          <Label className="text-sm text-slate-300">
+          <Label className="text-sm text-foreground/80">
             Case insensitive
           </Label>
           <Switch

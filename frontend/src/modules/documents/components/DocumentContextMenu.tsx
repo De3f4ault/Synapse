@@ -157,8 +157,8 @@ export function DocumentContextMenu({
       ref={menuRef}
       className={cn(
         "fixed z-[9999] min-w-[200px] py-1.5 rounded-xl",
-        "bg-zinc-900/95 backdrop-blur-xl border border-white/10",
-        "shadow-2xl shadow-black/50",
+        "bg-popover backdrop-blur-xl border border-border",
+        "shadow-2xl shadow-lg",
         "animate-in fade-in-0 zoom-in-95 duration-100"
       )}
       style={{
@@ -167,8 +167,8 @@ export function DocumentContextMenu({
       }}
     >
       {/* Document Info Header */}
-      <div className="px-3 py-2 border-b border-white/5">
-        <p className="text-xs font-medium text-slate-400 truncate">
+      <div className="px-3 py-2 border-b border-border">
+        <p className="text-xs font-medium text-muted-foreground truncate">
           {doc.filename}
         </p>
       </div>
@@ -185,8 +185,8 @@ export function DocumentContextMenu({
               "transition-colors duration-100",
               item.disabled && "opacity-50 cursor-not-allowed",
               item.variant === 'danger'
-                ? "text-red-400 hover:bg-red-500/10"
-                : "text-slate-300 hover:bg-white/5"
+                ? "text-destructive hover:bg-destructive/10"
+                : "text-foreground/80 hover:bg-muted/50"
             )}
           >
             <item.icon className="w-4 h-4 shrink-0" />

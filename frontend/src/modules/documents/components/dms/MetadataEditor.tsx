@@ -61,7 +61,7 @@ export function MetadataEditor({
           onChange={(e) => setLocalTitle(e.target.value)}
           onBlur={() => onChange("title", localTitle)}
           disabled={readOnly}
-          className="bg-white/5 border-white/10 focus:border-cyan-500/50"
+          className="bg-foreground/5 border-border focus:border-primary/50"
         />
       </div>
 
@@ -76,7 +76,7 @@ export function MetadataEditor({
           onChange={(e) => setLocalCreated(e.target.value)}
           onBlur={() => onChange("created", localCreated)}
           disabled={readOnly}
-          className="bg-white/5 border-white/10 focus:border-cyan-500/50"
+          className="bg-foreground/5 border-border focus:border-primary/50"
         />
       </div>
 
@@ -94,12 +94,12 @@ export function MetadataEditor({
           }
           placeholder="Auto-assign"
           disabled={readOnly}
-          className="bg-white/5 border-white/10 focus:border-cyan-500/50"
+          className="bg-foreground/5 border-border focus:border-primary/50"
         />
       </div>
 
       {/* Read-only technical metadata */}
-      <div className="border-t border-white/10 pt-3 space-y-2">
+      <div className="border-t border-border pt-3 space-y-2">
         <p className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
           <Clock size={12} /> Details
         </p>
@@ -107,7 +107,7 @@ export function MetadataEditor({
           {originalFilename && (
             <>
               <span className="text-muted-foreground">Original</span>
-              <span className="text-slate-300 truncate" title={originalFilename}>
+              <span className="text-foreground/80 truncate" title={originalFilename}>
                 {originalFilename}
               </span>
             </>
@@ -115,25 +115,25 @@ export function MetadataEditor({
           {mimeType && (
             <>
               <span className="text-muted-foreground">MIME</span>
-              <span className="text-slate-400 font-mono text-[10px]">{mimeType}</span>
+              <span className="text-muted-foreground font-mono text-[10px]">{mimeType}</span>
             </>
           )}
           {fileSize && (
             <>
               <span className="text-muted-foreground">Size</span>
-              <span className="text-slate-400">{fileSize}</span>
+              <span className="text-muted-foreground">{fileSize}</span>
             </>
           )}
           {pageCount !== undefined && pageCount > 0 && (
             <>
               <span className="text-muted-foreground">Pages</span>
-              <span className="text-slate-400">{pageCount}</span>
+              <span className="text-muted-foreground">{pageCount}</span>
             </>
           )}
           {added && (
             <>
               <span className="text-muted-foreground">Added</span>
-              <span className="text-slate-400">
+              <span className="text-muted-foreground">
                 {new Date(added).toLocaleDateString()}
               </span>
             </>
@@ -141,7 +141,7 @@ export function MetadataEditor({
           {modified && (
             <>
               <span className="text-muted-foreground">Modified</span>
-              <span className="text-slate-400">
+              <span className="text-muted-foreground">
                 {new Date(modified).toLocaleDateString()}
               </span>
             </>

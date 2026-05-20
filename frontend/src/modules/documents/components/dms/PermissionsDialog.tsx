@@ -160,7 +160,7 @@ export function PermissionsDialog({
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        className="absolute inset-0 bg-background/80 backdrop-blur-sm"
         onClick={onClose}
       />
 
@@ -169,15 +169,15 @@ export function PermissionsDialog({
         animate={{ opacity: 1, scale: 1, y: 0 }}
         className={cn(
           "relative z-10 w-full max-w-md mx-4",
-          "bg-card/95 backdrop-blur-xl border border-white/10 rounded-2xl",
+          "bg-card/95 backdrop-blur-xl border border-border rounded-2xl",
           "shadow-2xl shadow-black/40"
         )}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.05]">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
           <div className="flex items-center gap-2.5">
-            <Shield size={18} className="text-purple-400" />
-            <h2 className="text-base font-semibold text-white">
+            <Shield size={18} className="text-accent" />
+            <h2 className="text-base font-semibold text-foreground">
               {documentName
                 ? `Permissions — ${documentName}`
                 : "Set permissions"}
@@ -185,7 +185,7 @@ export function PermissionsDialog({
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
           >
             <X size={16} />
           </button>
@@ -194,7 +194,7 @@ export function PermissionsDialog({
         {/* Body */}
         <div className="px-5 py-4 space-y-4">
           {isLoading ? (
-            <div className="flex items-center gap-2 py-4 text-sm text-slate-500">
+            <div className="flex items-center gap-2 py-4 text-sm text-muted-foreground">
               <Loader2 size={14} className="animate-spin" />
               Loading permissions...
             </div>
@@ -203,9 +203,9 @@ export function PermissionsDialog({
               {/* Owner display */}
               {perms?.owner_id && (
                 <div className="flex items-center gap-2">
-                  <UserIcon size={13} className="text-slate-500" />
-                  <span className="text-xs text-slate-400">Owner:</span>
-                  <span className="text-xs text-slate-200">
+                  <UserIcon size={13} className="text-muted-foreground" />
+                  <span className="text-xs text-muted-foreground">Owner:</span>
+                  <span className="text-xs text-foreground/70">
                     User #{perms.owner_id}
                   </span>
                 </div>
@@ -213,7 +213,7 @@ export function PermissionsDialog({
 
               {/* View permissions */}
               <div>
-                <label className="flex items-center gap-1.5 text-[10px] text-slate-500 uppercase tracking-wider font-medium mb-1.5">
+                <label className="flex items-center gap-1.5 text-[10px] text-muted-foreground uppercase tracking-wider font-medium mb-1.5">
                   <Users size={11} />
                   View permissions (user IDs)
                 </label>
@@ -223,16 +223,16 @@ export function PermissionsDialog({
                   onChange={(e) => setViewUsers(e.target.value)}
                   placeholder="e.g. 1, 2, 3"
                   className={cn(
-                    "w-full px-3 py-2 rounded-lg text-sm bg-white/[0.03]",
-                    "border border-white/10 text-slate-200 placeholder-slate-500",
-                    "focus:outline-none focus:ring-1 focus:ring-cyan-500/50"
+                    "w-full px-3 py-2 rounded-lg text-sm bg-muted/30",
+                    "border border-border text-foreground/70 placeholder-muted-foreground",
+                    "focus:outline-none focus:ring-1 focus:ring-primary/50"
                   )}
                 />
               </div>
 
               {/* Change permissions */}
               <div>
-                <label className="flex items-center gap-1.5 text-[10px] text-slate-500 uppercase tracking-wider font-medium mb-1.5">
+                <label className="flex items-center gap-1.5 text-[10px] text-muted-foreground uppercase tracking-wider font-medium mb-1.5">
                   <Shield size={11} />
                   Edit permissions (user IDs)
                 </label>
@@ -242,9 +242,9 @@ export function PermissionsDialog({
                   onChange={(e) => setChangeUsers(e.target.value)}
                   placeholder="e.g. 1, 2"
                   className={cn(
-                    "w-full px-3 py-2 rounded-lg text-sm bg-white/[0.03]",
-                    "border border-white/10 text-slate-200 placeholder-slate-500",
-                    "focus:outline-none focus:ring-1 focus:ring-cyan-500/50"
+                    "w-full px-3 py-2 rounded-lg text-sm bg-muted/30",
+                    "border border-border text-foreground/70 placeholder-muted-foreground",
+                    "focus:outline-none focus:ring-1 focus:ring-primary/50"
                   )}
                 />
               </div>
@@ -255,7 +255,7 @@ export function PermissionsDialog({
                   onClick={() => setMerge(!merge)}
                   className={cn(
                     "relative w-9 h-5 rounded-full transition-colors",
-                    merge ? "bg-cyan-500" : "bg-white/10"
+                    merge ? "bg-primary" : "bg-foreground/10"
                   )}
                 >
                   <div
@@ -265,30 +265,30 @@ export function PermissionsDialog({
                     )}
                   />
                 </button>
-                <span className="text-xs text-slate-300">
+                <span className="text-xs text-foreground/80">
                   Merge with existing
                 </span>
               </label>
 
               {/* Hint — matching Paperless L84-88 */}
               <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-blue-500/[0.05] border border-blue-500/10">
-                <Info size={12} className="text-blue-400 shrink-0 mt-0.5" />
-                <p className="text-[11px] text-blue-300/80">{hint}</p>
+                <Info size={12} className="text-info shrink-0 mt-0.5" />
+                <p className="text-[11px] text-muted-foreground">{hint}</p>
               </div>
             </>
           )}
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end gap-2 px-5 py-3 border-t border-white/[0.05]">
-          <Button variant="ghost" size="sm" onClick={onClose} className="text-slate-400">
+        <div className="flex justify-end gap-2 px-5 py-3 border-t border-border">
+          <Button variant="ghost" size="sm" onClick={onClose} className="text-muted-foreground">
             Cancel
           </Button>
           <Button
             onClick={handleSave}
             disabled={setPermsMutation.isPending || isLoading}
             size="sm"
-            className="bg-purple-600 hover:bg-purple-500 text-white"
+            className="bg-primary hover:bg-primary/90 text-primary-foreground"
           >
             {setPermsMutation.isPending ? (
               <Loader2 size={13} className="mr-1.5 animate-spin" />

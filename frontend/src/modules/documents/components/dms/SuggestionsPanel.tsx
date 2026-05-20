@@ -31,10 +31,10 @@ function ConfidenceBadge({ confidence }: { confidence: number }) {
   const pct = Math.round(confidence * 100);
   const color =
     pct >= 80
-      ? "text-emerald-400"
+      ? "text-accent-olive"
       : pct >= 50
-        ? "text-amber-400"
-        : "text-slate-500";
+        ? "text-warning"
+        : "text-muted-foreground";
 
   return (
     <span className={cn("text-[9px] font-mono", color)}>
@@ -76,30 +76,30 @@ export function SuggestionsPanel({
   return (
     <div className={cn("space-y-3", className)}>
       <h4 className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
-        <Sparkles size={12} className="text-amber-400" />
+        <Sparkles size={12} className="text-warning" />
         AI Suggestions
       </h4>
 
       {/* Correspondent suggestions */}
       {correspondents.length > 0 && (
         <div className="space-y-1">
-          <p className="text-[10px] text-slate-500 uppercase tracking-wider">
+          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
             Correspondent
           </p>
           {correspondents.map(({ item, confidence }) => (
             <div
               key={item.id}
-              className="flex items-center justify-between p-1.5 rounded-md hover:bg-white/[0.03] transition-colors"
+              className="flex items-center justify-between p-1.5 rounded-md hover:bg-muted/30 transition-colors"
             >
               <div className="flex items-center gap-2">
-                <span className="text-xs text-slate-300">{item.name}</span>
+                <span className="text-xs text-foreground/80">{item.name}</span>
                 <ConfidenceBadge confidence={confidence} />
               </div>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => onAcceptCorrespondent?.(item.id)}
-                className="h-5 w-5 p-0 text-emerald-400 hover:text-emerald-300"
+                className="h-5 w-5 p-0 text-accent-olive hover:text-accent-olive/80"
               >
                 <Check size={12} />
               </Button>
@@ -111,23 +111,23 @@ export function SuggestionsPanel({
       {/* Document type suggestions */}
       {documentTypes.length > 0 && (
         <div className="space-y-1">
-          <p className="text-[10px] text-slate-500 uppercase tracking-wider">
+          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
             Document type
           </p>
           {documentTypes.map(({ item, confidence }) => (
             <div
               key={item.id}
-              className="flex items-center justify-between p-1.5 rounded-md hover:bg-white/[0.03] transition-colors"
+              className="flex items-center justify-between p-1.5 rounded-md hover:bg-muted/30 transition-colors"
             >
               <div className="flex items-center gap-2">
-                <span className="text-xs text-slate-300">{item.name}</span>
+                <span className="text-xs text-foreground/80">{item.name}</span>
                 <ConfidenceBadge confidence={confidence} />
               </div>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => onAcceptDocumentType?.(item.id)}
-                className="h-5 w-5 p-0 text-emerald-400 hover:text-emerald-300"
+                className="h-5 w-5 p-0 text-accent-olive hover:text-accent-olive/80"
               >
                 <Check size={12} />
               </Button>
@@ -139,7 +139,7 @@ export function SuggestionsPanel({
       {/* Tag suggestions */}
       {tags.length > 0 && (
         <div className="space-y-1">
-          <p className="text-[10px] text-slate-500 uppercase tracking-wider">
+          <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
             Tags
           </p>
           <div className="flex flex-wrap gap-1.5">

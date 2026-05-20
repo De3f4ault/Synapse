@@ -21,10 +21,12 @@ export type ChunkId = number;
 // ============================================================================
 
 export enum DocumentStatus {
-    PENDING = "pending",
-    PROCESSING = "processing",
-    COMPLETED = "completed",
-    FAILED = "failed",
+    PENDING   = "pending",
+    PARSING   = "parsing",    // DMS pipeline: text extraction + OCR running
+    PARSED    = "parsed",     // DMS done — text in DB, awaiting RAG embedding
+    CHUNKING  = "chunking",   // RAG pipeline: chunking + embedding + Qdrant upsert
+    COMPLETED = "completed",  // Both pipelines done — fully searchable
+    FAILED    = "failed",
 }
 
 export enum DocumentFormat {

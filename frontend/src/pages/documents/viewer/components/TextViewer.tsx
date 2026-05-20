@@ -11,8 +11,8 @@ interface TextViewerProps {
 const themeClasses: Record<TextTheme, { bg: string; text: string }> = {
     light: { bg: 'bg-white', text: 'text-gray-900' },
     sepia: { bg: 'bg-amber-50', text: 'text-amber-900' },
-    twilight: { bg: 'bg-slate-900', text: 'text-slate-200' },
-    dark: { bg: 'bg-zinc-950', text: 'text-zinc-100' },
+    twilight: { bg: 'bg-slate-900', text: 'text-foreground/70' },
+    dark: { bg: 'bg-zinc-950', text: 'text-foreground' },
 };
 
 /**

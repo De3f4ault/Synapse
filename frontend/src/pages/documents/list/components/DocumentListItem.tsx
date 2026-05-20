@@ -10,8 +10,6 @@ interface DocumentListItemProps {
     onSelect: (doc: EnhancedDocument) => void;
     onDelete?: () => void;
     logAction: (msg: string) => void;
-    /** Pre-fetched thumbnail data URL (base64) from batch API. If provided, uses this instead of individual fetch. */
-    thumbnailUrl?: string | null;
 }
 
 /**
@@ -47,12 +45,12 @@ const FileIcon: React.FC<{ type: string; className?: string }> = ({
  * For the hub/grid visual identity, use DocumentCard from modules/documents.
  */
 export const DocumentListItem = React.forwardRef<HTMLDivElement, DocumentListItemProps>(
-    ({ doc, index: _index, onSelect, logAction, thumbnailUrl }, ref) => {
+    ({ doc, index: _index, onSelect, logAction }, ref) => {
         const [imgError, setImgError] = React.useState(false);
         const token = useAuthStore((state) => state.token);
 
-        // Use pre-fetched thumbnail if available, otherwise fallback to individual fetch
-        const imgSrc = thumbnailUrl ?? `/api/v1/documents/${doc.id}/thumb?token=${token}`;
+        // Native browser lazy-loading via dedicated endpoint
+        const imgSrc = `/api/v1/documents/${doc.id}/thumb?token=${token}`;
 
         return (
             <GlassCard
@@ -98,13 +96,13 @@ export const DocumentListItem = React.forwardRef<HTMLDivElement, DocumentListIte
                     {/* Status Badge (Absolute Top Right) */}
                     <div className="absolute top-2 right-2 flex flex-col gap-1 items-end">
                         {doc.processing_status === "processing" && (
-                            <span className="bg-amber-500/90 text-black text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm flex items-center gap-1 animate-pulse">
+                            <span className="bg-warning/90 text-black text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm flex items-center gap-1 animate-pulse">
                                 <Loader2 size={10} className="animate-spin" /> PROC
                             </span>
                         )}
                         {doc.ocr_performed && (
                             <span
-                                className="bg-emerald-500/90 text-white text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm flex items-center gap-1"
+                                className="bg-accent-olive/90 text-foreground text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm flex items-center gap-1"
                                 title="OCR Text Available"
                             >
                                 <ScanLine size={10} /> OCR
@@ -114,7 +112,7 @@ export const DocumentListItem = React.forwardRef<HTMLDivElement, DocumentListIte
                 </div>
 
                 {/* Footer Area */}
-                <div className="h-auto min-h-[80px] bg-black/40 backdrop-blur-md p-3 border-t border-white/5 flex flex-col justify-between relative z-10">
+                <div className="h-auto min-h-[80px] bg-background/70 backdrop-blur-md p-3 border-t border-border flex flex-col justify-between relative z-10">
                     <div className="space-y-1">
                         <h3
                             className="text-sm font-semibold text-card-foreground line-clamp-2 leading-tight group-hover:text-primary transition-colors"

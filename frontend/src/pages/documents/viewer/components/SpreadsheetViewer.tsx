@@ -28,15 +28,15 @@ const themeClasses: Record<SpreadsheetTheme, { bg: string; table: string; header
     twilight: {
         bg: 'bg-slate-900',
         table: 'bg-slate-800',
-        header: 'bg-slate-700 text-slate-100',
-        cell: 'text-slate-200',
+        header: 'bg-muted text-foreground',
+        cell: 'text-foreground/70',
         border: 'border-slate-600',
     },
     dark: {
         bg: 'bg-zinc-950',
         table: 'bg-zinc-900',
-        header: 'bg-zinc-800 text-zinc-100',
-        cell: 'text-zinc-200',
+        header: 'bg-zinc-800 text-foreground',
+        cell: 'text-foreground/70',
         border: 'border-zinc-700',
     },
 };
@@ -104,8 +104,8 @@ export const SpreadsheetViewer: React.FC<SpreadsheetViewerProps> = ({
         return (
             <div className={`w-full h-full flex items-center justify-center ${styles.bg} ${className}`}>
                 <div className="text-center">
-                    <Loader2 className="animate-spin text-cyan-500 mx-auto mb-4" size={32} />
-                    <p className="text-slate-400 text-sm">Loading spreadsheet...</p>
+                    <Loader2 className="animate-spin text-primary mx-auto mb-4" size={32} />
+                    <p className="text-muted-foreground text-sm">Loading spreadsheet...</p>
                 </div>
             </div>
         );
@@ -114,7 +114,7 @@ export const SpreadsheetViewer: React.FC<SpreadsheetViewerProps> = ({
     if (error) {
         return (
             <div className={`w-full h-full flex items-center justify-center ${styles.bg} ${className}`}>
-                <div className="text-center text-red-400">
+                <div className="text-center text-destructive">
                     <AlertCircle className="mx-auto mb-4" size={32} />
                     <p className="text-sm">{error}</p>
                 </div>
@@ -125,7 +125,7 @@ export const SpreadsheetViewer: React.FC<SpreadsheetViewerProps> = ({
     if (!currentSheet || currentSheet.data.length === 0) {
         return (
             <div className={`w-full h-full flex items-center justify-center ${styles.bg} ${className}`}>
-                <p className="text-slate-400">No data in spreadsheet</p>
+                <p className="text-muted-foreground">No data in spreadsheet</p>
             </div>
         );
     }
@@ -134,13 +134,13 @@ export const SpreadsheetViewer: React.FC<SpreadsheetViewerProps> = ({
         <div className={`w-full h-full flex flex-col ${styles.bg} ${className}`}>
             {/* Sheet Tabs */}
             {sheets.length > 1 && (
-                <div className="flex items-center gap-2 px-4 py-2 border-b border-white/10 bg-black/20">
+                <div className="flex items-center gap-2 px-4 py-2 border-b border-border bg-background/50">
                     <button
                         onClick={() => setActiveSheet((p) => Math.max(0, p - 1))}
                         disabled={activeSheet === 0}
-                        className="p-1 rounded hover:bg-white/10 disabled:opacity-30"
+                        className="p-1 rounded hover:bg-muted disabled:opacity-30"
                     >
-                        <ChevronLeft size={16} className="text-white" />
+                        <ChevronLeft size={16} className="text-foreground" />
                     </button>
                     <div className="flex gap-1 overflow-x-auto">
                         {sheets.map((sheet, i) => (
@@ -148,8 +148,8 @@ export const SpreadsheetViewer: React.FC<SpreadsheetViewerProps> = ({
                                 key={sheet.name}
                                 onClick={() => setActiveSheet(i)}
                                 className={`px-3 py-1 text-xs rounded whitespace-nowrap transition-colors ${i === activeSheet
-                                    ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30'
-                                    : 'text-slate-400 hover:bg-white/10'
+                                    ? 'bg-primary/20 text-primary border border-primary/30'
+                                    : 'text-muted-foreground hover:bg-muted'
                                     }`}
                             >
                                 {sheet.name}
@@ -159,9 +159,9 @@ export const SpreadsheetViewer: React.FC<SpreadsheetViewerProps> = ({
                     <button
                         onClick={() => setActiveSheet((p) => Math.min(sheets.length - 1, p + 1))}
                         disabled={activeSheet === sheets.length - 1}
-                        className="p-1 rounded hover:bg-white/10 disabled:opacity-30"
+                        className="p-1 rounded hover:bg-muted disabled:opacity-30"
                     >
-                        <ChevronRight size={16} className="text-white" />
+                        <ChevronRight size={16} className="text-foreground" />
                     </button>
                 </div>
             )}
@@ -185,7 +185,7 @@ export const SpreadsheetViewer: React.FC<SpreadsheetViewerProps> = ({
                     </thead>
                     <tbody>
                         {currentSheet.data.slice(1).map((row, rowIdx) => (
-                            <tr key={rowIdx} className="hover:bg-white/5">
+                            <tr key={rowIdx} className="hover:bg-muted/50">
                                 {row.map((cell, cellIdx) => (
                                     <td
                                         key={cellIdx}

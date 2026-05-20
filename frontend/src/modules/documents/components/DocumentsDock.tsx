@@ -80,8 +80,8 @@ export const DocumentsDock = ({
                         key="selection-dock"
                         className={cn(
                             "flex items-center gap-2 p-2 rounded-2xl",
-                            "bg-cyan-950/80 backdrop-blur-xl border border-cyan-500/30",
-                            "shadow-2xl shadow-cyan-900/40 ring-1 ring-cyan-400/20"
+                            "bg-card border border-primary/30",
+                            "shadow-2xl shadow-ring-brand ring-1 ring-primary/20"
                         )}
                         initial={{ y: 20, opacity: 0, scale: 0.9 }}
                         animate={{ y: 0, opacity: 1, scale: 1 }}
@@ -89,15 +89,15 @@ export const DocumentsDock = ({
                         transition={{ type: "spring", bounce: 0.2, duration: 0.3 }}
                     >
                         {/* Selected Count Indicator */}
-                        <div className="pl-4 pr-3 flex items-center gap-2 border-r border-white/10 mr-1">
-                            <span className="flex items-center justify-center w-6 h-6 rounded-full bg-cyan-500 text-black text-xs font-bold">
+                        <div className="pl-4 pr-3 flex items-center gap-2 border-r border-border mr-1">
+                            <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-black text-xs font-bold">
                                 {selectionCount}
                             </span>
-                            <span className="text-sm font-medium text-cyan-100">Selected</span>
+                            <span className="text-sm font-medium text-primary-foreground">Selected</span>
                             
                             <button 
                                 onClick={() => clearSelection()}
-                                className="ml-2 p-1 rounded-full hover:bg-white/10 text-cyan-200/50 hover:text-cyan-100 transition-colors"
+                                className="ml-2 p-1 rounded-full hover:bg-muted text-primary/80/50 hover:text-primary-foreground transition-colors"
                             >
                                 <X size={14} />
                             </button>
@@ -119,7 +119,7 @@ export const DocumentsDock = ({
                             tooltip="Archive" 
                             onClick={() => onBatchArchive?.(Array.from(selectedItemIds))} 
                         />
-                        <div className="w-px h-6 bg-white/10 mx-1" />
+                        <div className="w-px h-6 bg-foreground/10 mx-1" />
                         <ActionBtn 
                             icon={Trash2} 
                             tooltip="Delete" 
@@ -135,8 +135,8 @@ export const DocumentsDock = ({
                         key="default-dock"
                         className={cn(
                             "flex items-center gap-2 p-2 rounded-2xl",
-                            "bg-black/60 backdrop-blur-xl border border-white/10",
-                            "shadow-2xl shadow-black/50"
+                            "bg-background/80 backdrop-blur-xl border border-border",
+                            "shadow-2xl shadow-lg"
                         )}
                         initial={{ y: 20, opacity: 0, scale: 0.9 }}
                         animate={{ y: 0, opacity: 1, scale: 1 }}
@@ -155,7 +155,7 @@ export const DocumentsDock = ({
                                         value={searchQuery}
                                         onChange={(e) => onSearchChange(e.target.value)}
                                         placeholder="Search documents..."
-                                        className="bg-transparent border-none outline-none text-sm text-white placeholder:text-slate-500 h-10"
+                                        className="bg-transparent border-none outline-none text-sm text-foreground placeholder:text-muted-foreground h-10"
                                         autoFocus
                                     />
                                 )}
@@ -164,14 +164,14 @@ export const DocumentsDock = ({
                                 onClick={toggleSearch}
                                 className={cn(
                                     "p-3 rounded-xl transition-all",
-                                    isSearchExpanded ? "bg-white/10 text-white" : "text-slate-400 hover:text-white hover:bg-white/5"
+                                    isSearchExpanded ? "bg-foreground/10 text-foreground" : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                                 )}
                             >
                                 {isSearchExpanded ? <X size={20} /> : <Search size={20} />}
                             </button>
                         </div>
 
-                        <div className="w-px h-8 bg-white/10 mx-1" />
+                        <div className="w-px h-8 bg-foreground/10 mx-1" />
 
                         {/* Quick Filters */}
                         <div className="flex items-center gap-1">
@@ -195,15 +195,15 @@ export const DocumentsDock = ({
                             />
                         </div>
 
-                        <div className="w-px h-8 bg-white/10 mx-1" />
+                        <div className="w-px h-8 bg-foreground/10 mx-1" />
 
                         {/* View Toggle */}
-                        <div className="flex items-center bg-white/5 rounded-xl p-1">
+                        <div className="flex items-center bg-foreground/5 rounded-xl p-1">
                             <button
                                 onClick={() => onViewChange("grid")}
                                 className={cn(
                                     "p-2 rounded-lg transition-all",
-                                    viewMode === "grid" ? "bg-white/10 text-cyan-400 shadow-sm" : "text-slate-400 hover:text-white"
+                                    viewMode === "grid" ? "bg-foreground/10 text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"
                                 )}
                             >
                                 <Grid size={18} />
@@ -212,7 +212,7 @@ export const DocumentsDock = ({
                                 onClick={() => onViewChange("list")}
                                 className={cn(
                                     "p-2 rounded-lg transition-all",
-                                    viewMode === "list" ? "bg-white/10 text-cyan-400 shadow-sm" : "text-slate-400 hover:text-white"
+                                    viewMode === "list" ? "bg-foreground/10 text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"
                                 )}
                             >
                                 <List size={18} />
@@ -227,8 +227,8 @@ export const DocumentsDock = ({
                                 onClick={onCreateFolder}
                                 className={cn(
                                     "p-3 rounded-xl flex items-center gap-2",
-                                    "bg-white/10 text-slate-300 hover:text-white hover:bg-white/20",
-                                    "border border-white/5",
+                                    "bg-foreground/10 text-foreground/80 hover:text-foreground hover:bg-foreground/15",
+                                    "border border-border",
                                 )}
                                 title="New Folder"
                             >
@@ -241,8 +241,8 @@ export const DocumentsDock = ({
                                 onClick={onUpload}
                                 className={cn(
                                     "p-3 rounded-xl flex items-center gap-2",
-                                    "bg-gradient-to-r from-cyan-600 to-blue-600 text-white",
-                                    "shadow-lg shadow-cyan-500/20"
+                                    "bg-primary text-primary-foreground",
+                                    "shadow-lg "
                                 )}
                                 title="Upload"
                             >
@@ -265,8 +265,8 @@ const ActionBtn = ({ icon: Icon, onClick, danger, tooltip }: any) => (
         className={cn(
             "p-3 rounded-xl transition-colors relative group",
             danger 
-                ? "text-red-400 hover:bg-red-500/10 hover:text-red-300" 
-                : "text-cyan-100 hover:bg-cyan-500/20 hover:text-white"
+                ? "text-destructive hover:bg-destructive/10 hover:text-red-300" 
+                : "text-primary-foreground hover:bg-primary/20 hover:text-foreground"
         )}
         title={tooltip}
     >
@@ -280,8 +280,8 @@ const FilterBtn = ({ active, onClick, icon: Icon, label }: any) => (
         className={cn(
             "flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-all",
             active
-                ? "bg-white/15 text-white shadow-lg"
-                : "text-slate-400 hover:text-white hover:bg-white/5"
+                ? "bg-white/15 text-foreground shadow-lg"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
         )}
     >
         <Icon size={16} />

@@ -60,13 +60,13 @@ const DataStreamRow = React.forwardRef<
     const getStatusIcon = (status: string) => {
         switch (status) {
             case "completed":
-                return <CheckCircle2 className="h-4 w-4 text-emerald-400" />;
+                return <CheckCircle2 className="h-4 w-4 text-accent-olive" />;
             case "processing":
-                return <Loader2 className="h-4 w-4 text-amber-400 animate-spin" />;
+                return <Loader2 className="h-4 w-4 text-warning animate-spin" />;
             case "failed":
-                return <AlertCircle className="h-4 w-4 text-red-400" />;
+                return <AlertCircle className="h-4 w-4 text-destructive" />;
             default:
-                return <Clock className="h-4 w-4 text-slate-400" />;
+                return <Clock className="h-4 w-4 text-muted-foreground" />;
         }
     };
 
@@ -81,15 +81,15 @@ const DataStreamRow = React.forwardRef<
                 onSelect(doc);
                 logAction(`STREAM ACCESS: ${doc.filename}`);
             }}
-            className="synapse-panel group relative flex items-center gap-6 p-4 rounded-xl hover:border-cyan-500/30 transition-all cursor-pointer overflow-hidden mb-2"
+            className="bg-card border border-border rounded-lg group relative flex items-center gap-6 p-4 rounded-xl hover:border-primary/30 transition-all cursor-pointer overflow-hidden mb-2"
         >
             {/* Icon */}
             <div
                 className={cn(
                     "p-2 rounded-lg transition-colors",
                     doc.processing_status === "processing"
-                        ? "text-amber-400 bg-amber-500/10"
-                        : "text-cyan-400 bg-cyan-950/30 group-hover:text-white",
+                        ? "text-warning bg-warning/10"
+                        : "text-primary bg-primary/10 group-hover:text-foreground",
                 )}
             >
                 <FileIcon type={doc.type} className="w-5 h-5" />
@@ -97,17 +97,17 @@ const DataStreamRow = React.forwardRef<
 
             {/* Filename */}
             <div className="flex-1 min-w-0">
-                <div className="text-sm font-bold text-slate-300 group-hover:text-white truncate font-mono tracking-wide">
+                <div className="text-sm font-bold text-foreground/80 group-hover:text-foreground truncate font-mono tracking-wide">
                     {doc.filename}
                 </div>
             </div>
 
             {/* Metadata */}
-            <div className="flex items-center gap-8 text-xs font-mono text-slate-500">
-                <div className="w-20 text-right group-hover:text-cyan-400 transition-colors">
+            <div className="flex items-center gap-8 text-xs font-mono text-muted-foreground">
+                <div className="w-20 text-right group-hover:text-primary transition-colors">
                     {doc.size}
                 </div>
-                <div className="w-24 text-center px-2 py-1 rounded bg-black/20 border border-white/5 uppercase tracking-widest text-[9px]">
+                <div className="w-24 text-center px-2 py-1 rounded bg-background/50 border border-border uppercase tracking-widest text-[9px]">
                     {doc.sector}
                 </div>
                 <div className="w-8 flex justify-end">
@@ -154,8 +154,8 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
             {documents.length === 0 && !isLoading && (
                 <div className="absolute inset-0 flex items-center justify-center">
                     <div className="text-center opacity-30">
-                        <ScanLine size={48} className="mx-auto mb-4 text-cyan-400" />
-                        <h2 className="text-xl font-mono text-cyan-400 tracking-[0.5em]">
+                        <ScanLine size={48} className="mx-auto mb-4 text-primary" />
+                        <h2 className="text-xl font-mono text-primary tracking-widest">
                             SECTOR EMPTY
                         </h2>
                     </div>

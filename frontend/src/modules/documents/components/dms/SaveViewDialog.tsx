@@ -63,9 +63,9 @@ export function SaveViewDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[400px] bg-card border-white/10">
+      <DialogContent className="sm:max-w-[400px] bg-card border-border">
         <DialogHeader>
-          <DialogTitle className="text-slate-200">
+          <DialogTitle className="text-foreground/70">
             {existingName ? "Update Saved View" : "Save Current View"}
           </DialogTitle>
         </DialogHeader>
@@ -80,13 +80,13 @@ export function SaveViewDialog({
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Invoices 2024"
               autoFocus
-              className="bg-white/5 border-white/10"
+              className="bg-foreground/5 border-border"
             />
           </div>
 
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <Label className="text-sm text-slate-300">
+              <Label className="text-sm text-foreground/80">
                 Show on dashboard
               </Label>
               <Switch
@@ -96,7 +96,7 @@ export function SaveViewDialog({
             </div>
 
             <div className="flex items-center justify-between">
-              <Label className="text-sm text-slate-300">
+              <Label className="text-sm text-foreground/80">
                 Show in sidebar
               </Label>
               <Switch
@@ -107,13 +107,13 @@ export function SaveViewDialog({
           </div>
 
           {/* Preview info */}
-          <div className="rounded-md bg-white/[0.03] border border-white/5 p-2.5 text-xs text-slate-400">
+          <div className="rounded-md bg-muted/30 border border-border p-2.5 text-xs text-muted-foreground">
             <p>
-              <span className="text-slate-500">Filters:</span>{" "}
+              <span className="text-muted-foreground">Filters:</span>{" "}
               {currentState.filterRules.length} active
             </p>
             <p>
-              <span className="text-slate-500">Sort:</span>{" "}
+              <span className="text-muted-foreground">Sort:</span>{" "}
               {currentState.sortField}{" "}
               {currentState.sortReverse ? "↓" : "↑"}
             </p>
@@ -130,7 +130,7 @@ export function SaveViewDialog({
             <Button
               type="submit"
               disabled={!name.trim() || isSaving}
-              className="bg-cyan-600 hover:bg-cyan-700"
+              className="bg-primary hover:bg-primary/80"
             >
               {isSaving ? "Saving…" : existingName ? "Update" : "Save"}
             </Button>

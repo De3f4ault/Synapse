@@ -17,9 +17,9 @@ export const FileValidator: React.FC<FileValidatorProps> = ({
 }) => {
     if (validationResult.valid) {
         return (
-            <Alert className="border-emerald-500/30 bg-emerald-500/10">
-                <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-                <AlertDescription className="text-emerald-300">
+            <Alert className="border-accent-olive/30 bg-accent-olive/10">
+                <CheckCircle2 className="h-4 w-4 text-accent-olive" />
+                <AlertDescription className="text-accent-olive/80">
                     <span className="font-mono">{filename}</span> is valid and ready to
                     upload
                 </AlertDescription>
@@ -28,8 +28,8 @@ export const FileValidator: React.FC<FileValidatorProps> = ({
     }
 
     return (
-        <Alert className="border-red-500/30 bg-red-500/10">
-            <AlertCircle className="h-4 w-4 text-red-400" />
+        <Alert className="border-red-500/30 bg-destructive/10">
+            <AlertCircle className="h-4 w-4 text-destructive" />
             <AlertDescription className="text-red-300">
                 <span className="font-mono">{filename}</span>: {validationResult.error}
             </AlertDescription>

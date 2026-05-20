@@ -120,22 +120,22 @@ export function BulkEditor({
         exit={{ y: -10, opacity: 0 }}
         className={cn(
           "flex items-center gap-2 px-4 py-2 rounded-xl",
-          "bg-cyan-950/60 backdrop-blur-xl border border-cyan-500/20",
-          "shadow-lg shadow-cyan-900/20",
+          "bg-card border border-primary/20",
+          "shadow-ring-brand",
           className
         )}
       >
         {/* Selection count */}
-        <div className="flex items-center gap-2 pr-3 border-r border-white/10">
-          <span className="flex items-center justify-center min-w-[24px] h-6 px-1.5 rounded-full bg-cyan-500 text-black text-xs font-bold">
+        <div className="flex items-center gap-2 pr-3 border-r border-border">
+          <span className="flex items-center justify-center min-w-[24px] h-6 px-1.5 rounded-full bg-primary text-black text-xs font-bold">
             {selectionCount}
           </span>
-          <span className="text-sm font-medium text-cyan-100 whitespace-nowrap">
+          <span className="text-sm font-medium text-primary-foreground whitespace-nowrap">
             selected
           </span>
           <button
             onClick={onDeselectAll}
-            className="p-1 rounded-full hover:bg-white/10 text-cyan-200/50 hover:text-cyan-100 transition-colors"
+            className="p-1 rounded-full hover:bg-muted text-primary/80/50 hover:text-primary-foreground transition-colors"
             title="Deselect all (Esc)"
           >
             <X size={14} />
@@ -194,8 +194,8 @@ export function BulkEditor({
             className={cn(
               "px-1.5 py-0.5 rounded text-[10px] font-medium transition-colors",
               tagMode === "add"
-                ? "bg-emerald-500/20 text-emerald-300"
-                : "bg-red-500/20 text-red-300"
+                ? "bg-accent-olive/20 text-accent-olive/80"
+                : "bg-destructive/20 text-red-300"
             )}
             title="Toggle add/remove mode"
           >
@@ -216,7 +216,7 @@ export function BulkEditor({
           nullable
         />
 
-        <div className="w-px h-6 bg-white/10 mx-1" />
+        <div className="w-px h-6 bg-foreground/10 mx-1" />
 
         {/* Redo OCR */}
         {onRedoOCR && (
@@ -224,7 +224,7 @@ export function BulkEditor({
             variant="ghost"
             size="sm"
             onClick={onRedoOCR}
-            className="text-slate-300 hover:text-white"
+            className="text-foreground/80 hover:text-foreground"
             title="Redo OCR"
           >
             <RotateCw size={14} />
@@ -237,7 +237,7 @@ export function BulkEditor({
             variant="ghost"
             size="sm"
             onClick={onMerge}
-            className="text-slate-300 hover:text-white"
+            className="text-foreground/80 hover:text-foreground"
             title="Merge documents"
           >
             <Merge size={14} />
@@ -249,7 +249,7 @@ export function BulkEditor({
           variant="ghost"
           size="sm"
           onClick={onDownload}
-          className="text-slate-300 hover:text-white"
+          className="text-foreground/80 hover:text-foreground"
           title="Download selected"
         >
           <Download size={14} />
@@ -260,7 +260,7 @@ export function BulkEditor({
           variant="ghost"
           size="sm"
           onClick={() => setDeleteOpen(true)}
-          className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+          className="text-destructive hover:text-red-300 hover:bg-destructive/10"
           title="Delete selected"
         >
           <Trash2 size={14} />
@@ -269,9 +269,9 @@ export function BulkEditor({
 
       {/* Delete confirmation */}
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <AlertDialogContent className="bg-card border-white/10">
+        <AlertDialogContent className="bg-card border-border">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-slate-200">
+            <AlertDialogTitle className="text-foreground/70">
               Delete {selectionCount} document{selectionCount !== 1 ? "s" : ""}?
             </AlertDialogTitle>
             <AlertDialogDescription>

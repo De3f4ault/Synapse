@@ -197,16 +197,16 @@ export function PDFEditor({
         animate={{ opacity: 1, scale: 1, y: 0 }}
         className={cn(
           "relative z-10 w-full max-w-4xl mx-4 max-h-[85vh]",
-          "bg-card/95 backdrop-blur-xl border border-white/10 rounded-2xl",
+          "bg-card/95 backdrop-blur-xl border border-border rounded-2xl",
           "shadow-2xl shadow-black/40 flex flex-col"
         )}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-3 border-b border-white/[0.05]">
+        <div className="flex items-center justify-between px-5 py-3 border-b border-border">
           <div className="flex items-center gap-2.5">
-            <FileText size={18} className="text-cyan-400" />
-            <h2 className="text-base font-semibold text-white">PDF Editor</h2>
-            <span className="text-xs text-slate-500">
+            <FileText size={18} className="text-primary" />
+            <h2 className="text-base font-semibold text-foreground">PDF Editor</h2>
+            <span className="text-xs text-muted-foreground">
               {pages.length} pages
             </span>
           </div>
@@ -215,23 +215,23 @@ export function PDFEditor({
           <div className="flex items-center gap-1.5">
             {hasSelection && (
               <>
-                <Button variant="ghost" size="sm" onClick={() => rotateSelected(90)} className="text-xs text-slate-300 h-7">
+                <Button variant="ghost" size="sm" onClick={() => rotateSelected(90)} className="text-xs text-foreground/80 h-7">
                   <RotateCw size={13} className="mr-1" /> Rotate
                 </Button>
-                <Button variant="ghost" size="sm" onClick={deleteSelected} className="text-xs text-red-400 h-7">
+                <Button variant="ghost" size="sm" onClick={deleteSelected} className="text-xs text-destructive h-7">
                   <Trash2 size={13} className="mr-1" /> Delete
                 </Button>
-                <Button variant="ghost" size="sm" onClick={deselectAll} className="text-xs text-slate-400 h-7">
+                <Button variant="ghost" size="sm" onClick={deselectAll} className="text-xs text-muted-foreground h-7">
                   Deselect
                 </Button>
               </>
             )}
             {!hasSelection && (
-              <Button variant="ghost" size="sm" onClick={selectAll} className="text-xs text-slate-400 h-7">
+              <Button variant="ghost" size="sm" onClick={selectAll} className="text-xs text-muted-foreground h-7">
                 Select all
               </Button>
             )}
-            <button onClick={onClose} className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 ml-2">
+            <button onClick={onClose} className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted ml-2">
               <X size={16} />
             </button>
           </div>
@@ -251,17 +251,17 @@ export function PDFEditor({
                   className={cn(
                     "relative w-28 rounded-lg border transition-all cursor-grab active:cursor-grabbing",
                     page.selected
-                      ? "border-cyan-400 bg-cyan-500/[0.08]"
-                      : "border-white/10 bg-white/[0.02] hover:border-white/20"
+                      ? "border-primary bg-primary/[0.08]"
+                      : "border-border bg-foreground/5 hover:border-border"
                   )}
                 >
                   {/* Page thumbnail placeholder */}
                   <div
-                    className="aspect-[3/4] flex items-center justify-center bg-white/[0.02] rounded-t-lg"
+                    className="aspect-[3/4] flex items-center justify-center bg-foreground/5 rounded-t-lg"
                     onClick={() => toggleSelection(i)}
                     style={{ transform: `rotate(${page.rotate}deg)` }}
                   >
-                    <span className="text-2xl font-bold text-slate-600">
+                    <span className="text-2xl font-bold text-muted-foreground">
                       {page.page}
                     </span>
                   </div>
@@ -272,30 +272,30 @@ export function PDFEditor({
                     onClick={() => toggleSelection(i)}
                   >
                     {page.selected ? (
-                      <CheckSquare size={14} className="text-cyan-400" />
+                      <CheckSquare size={14} className="text-primary" />
                     ) : (
-                      <Square size={14} className="text-slate-500" />
+                      <Square size={14} className="text-muted-foreground" />
                     )}
                   </button>
 
                   {/* Drag handle */}
                   <GripVertical
                     size={12}
-                    className="absolute top-1 right-1 text-slate-600"
+                    className="absolute top-1 right-1 text-muted-foreground"
                   />
 
                   {/* Page actions */}
-                  <div className="flex items-center justify-between px-1.5 py-1 border-t border-white/[0.05]">
+                  <div className="flex items-center justify-between px-1.5 py-1 border-t border-border">
                     <button
                       onClick={() => rotatePage(i, true)}
-                      className="p-0.5 text-slate-500 hover:text-white transition-colors"
+                      className="p-0.5 text-muted-foreground hover:text-foreground transition-colors"
                       title="Rotate counter-clockwise"
                     >
                       <RotateCcw size={11} />
                     </button>
                     <button
                       onClick={() => rotatePage(i)}
-                      className="p-0.5 text-slate-500 hover:text-white transition-colors"
+                      className="p-0.5 text-muted-foreground hover:text-foreground transition-colors"
                       title="Rotate clockwise"
                     >
                       <RotateCw size={11} />
@@ -305,8 +305,8 @@ export function PDFEditor({
                       className={cn(
                         "p-0.5 transition-colors",
                         page.splitAfter
-                          ? "text-amber-400"
-                          : "text-slate-500 hover:text-white"
+                          ? "text-warning"
+                          : "text-muted-foreground hover:text-foreground"
                       )}
                       title="Split after this page"
                     >
@@ -314,7 +314,7 @@ export function PDFEditor({
                     </button>
                     <button
                       onClick={() => removePage(i)}
-                      className="p-0.5 text-slate-500 hover:text-red-400 transition-colors"
+                      className="p-0.5 text-muted-foreground hover:text-destructive transition-colors"
                       title="Remove page"
                     >
                       <Trash2 size={11} />
@@ -328,7 +328,7 @@ export function PDFEditor({
 
                   {/* Doc index badge (when splitting) */}
                   {hasSplit && (
-                    <div className="absolute top-1 right-6 px-1 py-0.5 text-[9px] bg-amber-500/20 text-amber-400 rounded font-mono">
+                    <div className="absolute top-1 right-6 px-1 py-0.5 text-[9px] bg-warning/20 text-warning rounded font-mono">
                       D{computeDocIndex(i) + 1}
                     </div>
                   )}
@@ -339,16 +339,16 @@ export function PDFEditor({
         </div>
 
         {/* Footer — matching Paperless edit mode + options */}
-        <div className="flex items-center justify-between px-5 py-3 border-t border-white/[0.05]">
+        <div className="flex items-center justify-between px-5 py-3 border-t border-border">
           <div className="flex items-center gap-4">
             {/* Edit mode */}
             <div className="flex items-center gap-2">
-              <label className="text-[10px] text-slate-500 uppercase tracking-wider">Mode</label>
+              <label className="text-[10px] text-muted-foreground uppercase tracking-wider">Mode</label>
               <select
                 value={editMode}
                 onChange={(e) => setEditMode(e.target.value as EditMode)}
                 disabled={hasSplit}
-                className="px-2 py-1 rounded text-xs bg-white/[0.04] border border-white/10 text-slate-200"
+                className="px-2 py-1 rounded text-xs bg-white/[0.04] border border-border text-foreground/70"
               >
                 <option value="update" className="bg-slate-800">Update original</option>
                 <option value="create" className="bg-slate-800">Create new</option>
@@ -356,23 +356,23 @@ export function PDFEditor({
             </div>
 
             {/* Options (Paperless L48-49) */}
-            <label className="flex items-center gap-1.5 text-xs text-slate-400 cursor-pointer">
+            <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
               <input
                 type="checkbox"
                 checked={includeMetadata}
                 onChange={(e) => setIncludeMetadata(e.target.checked)}
-                className="rounded border-white/20 bg-white/5"
+                className="rounded border-border bg-foreground/5"
               />
               Include metadata
             </label>
 
             {editMode === "create" && (
-              <label className="flex items-center gap-1.5 text-xs text-slate-400 cursor-pointer">
+              <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
                 <input
                   type="checkbox"
                   checked={deleteOriginal}
                   onChange={(e) => setDeleteOriginal(e.target.checked)}
-                  className="rounded border-white/20 bg-white/5"
+                  className="rounded border-border bg-foreground/5"
                 />
                 Delete original
               </label>
@@ -382,7 +382,7 @@ export function PDFEditor({
           <Button
             onClick={handleSave}
             disabled={saving || pages.length === 0}
-            className="bg-cyan-600 hover:bg-cyan-500 text-white"
+            className="bg-primary hover:bg-primary text-foreground"
             size="sm"
           >
             {saving ? (

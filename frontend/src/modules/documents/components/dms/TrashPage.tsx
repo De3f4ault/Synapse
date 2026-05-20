@@ -105,10 +105,10 @@ export function TrashPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Trash2 size={22} className="text-red-400" />
-          <h1 className="text-xl font-bold text-white">Trash</h1>
+          <Trash2 size={22} className="text-destructive" />
+          <h1 className="text-xl font-bold text-foreground">Trash</h1>
           {trashedDocs.length > 0 && (
-            <span className="text-xs text-slate-500 bg-white/5 px-2 py-0.5 rounded-full">
+            <span className="text-xs text-muted-foreground bg-foreground/5 px-2 py-0.5 rounded-full">
               {trashedDocs.length} items
             </span>
           )}
@@ -122,7 +122,7 @@ export function TrashPage() {
                 size="sm"
                 onClick={handleRestore}
                 disabled={restoreMutation.isPending}
-                className="text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10"
+                className="text-accent-olive hover:text-accent-olive/80 hover:bg-accent-olive/10"
               >
                 <RotateCcw size={14} className="mr-1.5" />
                 Restore ({selected.size})
@@ -132,7 +132,7 @@ export function TrashPage() {
                 size="sm"
                 onClick={handlePermanentDelete}
                 disabled={emptyMutation.isPending}
-                className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                className="text-destructive hover:text-red-300 hover:bg-destructive/10"
               >
                 <Trash2 size={14} className="mr-1.5" />
                 Delete permanently
@@ -144,7 +144,7 @@ export function TrashPage() {
             size="sm"
             onClick={() => setConfirmEmpty(true)}
             disabled={trashedDocs.length === 0}
-            className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+            className="text-destructive hover:text-red-300 hover:bg-destructive/10"
           >
             <AlertTriangle size={14} className="mr-1.5" />
             Empty trash
@@ -160,14 +160,14 @@ export function TrashPage() {
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
           >
-            <GlassCard className="p-4 border-red-500/20 bg-red-500/[0.03]">
+            <GlassCard className="p-4 border-destructive/20 bg-destructive/[0.03]">
               <div className="flex items-center gap-3">
-                <AlertTriangle size={18} className="text-red-400 shrink-0" />
+                <AlertTriangle size={18} className="text-destructive shrink-0" />
                 <div className="flex-1">
                   <p className="text-sm font-medium text-red-300">
                     Permanently delete all {trashedDocs.length} items?
                   </p>
-                  <p className="text-xs text-slate-500 mt-0.5">
+                  <p className="text-xs text-muted-foreground mt-0.5">
                     This action cannot be undone.
                   </p>
                 </div>
@@ -176,7 +176,7 @@ export function TrashPage() {
                     variant="ghost"
                     size="sm"
                     onClick={() => setConfirmEmpty(false)}
-                    className="text-slate-400"
+                    className="text-muted-foreground"
                   >
                     Cancel
                   </Button>
@@ -185,7 +185,7 @@ export function TrashPage() {
                     size="sm"
                     onClick={handleEmptyAll}
                     disabled={emptyMutation.isPending}
-                    className="text-red-400 hover:bg-red-500/10"
+                    className="text-destructive hover:bg-destructive/10"
                   >
                     {emptyMutation.isPending ? "Deleting..." : "Empty trash"}
                   </Button>
@@ -198,24 +198,24 @@ export function TrashPage() {
 
       {/* Document list */}
       {isLoading ? (
-        <div className="text-center py-12 text-slate-500">Loading...</div>
+        <div className="text-center py-12 text-muted-foreground">Loading...</div>
       ) : trashedDocs.length === 0 ? (
         <GlassCard className="py-16 text-center">
-          <Trash2 size={40} className="mx-auto text-slate-600 mb-3" />
-          <p className="text-sm text-slate-500">Trash is empty</p>
+          <Trash2 size={40} className="mx-auto text-muted-foreground mb-3" />
+          <p className="text-sm text-muted-foreground">Trash is empty</p>
         </GlassCard>
       ) : (
         <GlassCard className="overflow-hidden divide-y divide-white/[0.03]">
           {/* Select all header */}
           <div className="flex items-center gap-3 px-4 py-2 bg-white/[0.01]">
-            <button onClick={selectAll} className="text-slate-400 hover:text-white transition-colors">
+            <button onClick={selectAll} className="text-muted-foreground hover:text-foreground transition-colors">
               {selected.size === trashedDocs.length ? (
-                <CheckSquare size={16} className="text-cyan-400" />
+                <CheckSquare size={16} className="text-primary" />
               ) : (
                 <Square size={16} />
               )}
             </button>
-            <span className="text-xs text-slate-500 uppercase tracking-wider font-medium">
+            <span className="text-xs text-muted-foreground uppercase tracking-wider font-medium">
               {selected.size > 0 ? `${selected.size} selected` : "Select all"}
             </span>
           </div>
@@ -231,14 +231,14 @@ export function TrashPage() {
                 className={cn(
                   "flex items-center gap-3 px-4 py-3 transition-colors cursor-pointer",
                   isSelected
-                    ? "bg-cyan-500/[0.05]"
-                    : "hover:bg-white/[0.02]"
+                    ? "bg-primary/[0.05]"
+                    : "hover:bg-muted/50"
                 )}
                 onClick={() => toggleSelect(doc.id)}
               >
-                <button className="text-slate-400 hover:text-white transition-colors shrink-0">
+                <button className="text-muted-foreground hover:text-foreground transition-colors shrink-0">
                   {isSelected ? (
-                    <CheckSquare size={16} className="text-cyan-400" />
+                    <CheckSquare size={16} className="text-primary" />
                   ) : (
                     <Square size={16} />
                   )}
@@ -249,8 +249,8 @@ export function TrashPage() {
                 </span>
 
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm text-white truncate">{doc.filename}</p>
-                  <p className="text-[10px] text-slate-500 flex items-center gap-2">
+                  <p className="text-sm text-foreground truncate">{doc.filename}</p>
+                  <p className="text-[10px] text-muted-foreground flex items-center gap-2">
                     <span>{(doc.file_size / 1024).toFixed(0)} KB</span>
                     <span>·</span>
                     <span>Deleted {timeAgo(doc.deleted_at)}</span>
@@ -259,11 +259,11 @@ export function TrashPage() {
 
                 <div className="flex items-center gap-1.5 shrink-0">
                   <Clock size={11} className={cn(
-                    daysLeft <= 5 ? "text-red-400" : "text-slate-500"
+                    daysLeft <= 5 ? "text-destructive" : "text-muted-foreground"
                   )} />
                   <span className={cn(
                     "text-[10px]",
-                    daysLeft <= 5 ? "text-red-400" : "text-slate-500"
+                    daysLeft <= 5 ? "text-destructive" : "text-muted-foreground"
                   )}>
                     {daysLeft}d left
                   </span>
@@ -282,18 +282,18 @@ export function TrashPage() {
             size="sm"
             disabled={page <= 1}
             onClick={() => setPage((p) => Math.max(1, p - 1))}
-            className="text-xs text-slate-400"
+            className="text-xs text-muted-foreground"
           >
             Previous
           </Button>
-          <span className="text-xs text-slate-500 flex items-center px-3">
+          <span className="text-xs text-muted-foreground flex items-center px-3">
             Page {page}
           </span>
           <Button
             variant="ghost"
             size="sm"
             onClick={() => setPage((p) => p + 1)}
-            className="text-xs text-slate-400"
+            className="text-xs text-muted-foreground"
           >
             Next
           </Button>

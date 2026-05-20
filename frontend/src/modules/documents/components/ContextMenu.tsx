@@ -127,28 +127,28 @@ export function ContextMenu({ state, onAction, onClose, hasClipboard, selectedCo
     <div
       ref={ref}
       style={{ left: pos.x, top: pos.y }}
-      className="fixed z-[999] min-w-[220px] py-1.5 rounded-xl bg-zinc-900/95 backdrop-blur-xl border border-white/10 shadow-2xl"
+      className="fixed z-[999] min-w-[220px] py-1.5 rounded-xl bg-popover backdrop-blur-xl border border-border shadow-2xl"
     >
-      <div className="px-3 py-1.5 border-b border-white/5">
-        <p className="text-xs text-slate-400 truncate">{headerLabel}</p>
+      <div className="px-3 py-1.5 border-b border-border">
+        <p className="text-xs text-muted-foreground truncate">{headerLabel}</p>
       </div>
       <div className="py-1">
         {items.map((item, i) =>
           item === "separator" ? (
-            <div key={`sep-${i}`} className="my-1 border-t border-white/5" />
+            <div key={`sep-${i}`} className="my-1 border-t border-border" />
           ) : (
             <button
               key={item.label}
               onClick={item.onClick}
               className={cn(
                 "w-full flex items-center gap-3 px-3 py-2 text-sm transition-colors",
-                item.danger ? "text-red-400 hover:bg-red-500/10" : "text-slate-300 hover:bg-white/5"
+                item.danger ? "text-destructive hover:bg-destructive/10" : "text-foreground/80 hover:bg-muted/50"
               )}
             >
               <item.icon className="w-4 h-4 shrink-0" />
               <span className="flex-1 text-left">{item.label}</span>
               {item.shortcut && (
-                <span className="text-[10px] text-slate-600 font-mono">{item.shortcut}</span>
+                <span className="text-[10px] text-muted-foreground font-mono">{item.shortcut}</span>
               )}
             </button>
           )
