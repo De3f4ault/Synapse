@@ -1,0 +1,84 @@
+# docker-compose.analytics.yml
+#
+# Standalone Logical Replica for the Synapse Admin Dashboard.
+#
+# This file is completely independent of the main application stack.
+# The Primary PostgreSQL and all other services continue running natively
+# via supervisord — this ONLY adds the analytics replica node.
+#
+# USAGE:
+#   Start:   docker compose -f docker-compose.analytics.yml up -d
+#   Stop:    docker compose -f docker-compose.analytics.yml down
+#   Logs:    docker compose -f docker-compose.analytics.yml logs -f
+#   Shell:   docker compose -f docker-compose.analytics.yml exec postgres-replica psql -U synapse_replica -d synapse
+#
+# AFTER STARTING:
+#   1. On Primary — create the publication (run once):
+#      psql -c "CREATE PUBLICATION synapse_telemetry_pub FOR TABLE
+#                ai_usage, activity_logs, agent_metrics,
+#                workflow_runs, webhook_events, documents, users;"
+#
+#   2. On Replica — create the subscription (run once):
+#      psql -h localhost -p 5434 -U synapse_replica -d synapse -c "
+#        CREATE SUBSCRIPTION synapse_telemetry_sub
+#          CONNECTION 'host=host.docker.internal port=5432 dbname=synapse user=synapse password=YOUR_PRIMARY_PASSWORD'
+#          PUBLICATION synapse_telemetry_pub;"
+#
+#   3. Apply migrations to replica:
+#      ANALYTICS_DATABASE_URL=postgresql+asyncpg://synapse_replica:password@localhost:5434/synapse \
+#        ALEMBIC_TARGET=replica alembic upgrade head
+#
+#   4. Create materialized views on replica:
+#      psql -h localhost -p 5434 -U synapse_replica -d synapse \
+#        -f app/db/sql/admin/materialized_views_replica.sql
+#
+#   5. Set ANALYTICS_DATABASE_URL in your .env:
+#      ANALYTICS_DATABASE_URL=postgresql+asyncpg://synapse_replica:synapse_replica_pass@localhost:5434/synapse
+#
+# POSTGRES VERSION:
+#   Must match the Primary exactly. Primary is running PostgreSQL 18.
+#
+
+services:
+  postgres-replica:
+    image: postgres:18
+    container_name: synapse-analytics-replica
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_DB: synapse
+      POSTGRES_USER: synapse_replica
+      POSTGRES_PASSWORD: synapse_replica_pass
+      # Allow connections from the host machine and from containers
+      POSTGRES_HOST_AUTH_METHOD: md5
+
+    ports:
+      # Primary runs on host:5432 — replica exposed on host:5434
+      - "5434:5432"
+
+    volumes:
+      - replica_data:/var/lib/postgresql/data
+      # Mount initialization SQL to create the developer_schema on first boot
+      - ./docker/replica-init.sql:/docker-entrypoint-initdb.d/01-init-schema.sql:ro
+
+    command: >
+      postgres
+        -c wal_level=replica
+        -c hot_standby=on
+        -c max_connections=50
+        -c shared_buffers=256MB
+        -c effective_cache_size=768MB
+        -c log_min_duration_statement=1000
+        -c log_line_prefix='%t [%p] [replica] '
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U synapse_replica -d synapse"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+volumes:
+  replica_data:
+    driver: local
+    name: synapse_replica_data
