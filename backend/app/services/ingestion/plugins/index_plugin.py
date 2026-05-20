@@ -1,7 +1,7 @@
 """
 Index plugin — create/update document record in the database.
 
-Final plugin in the pipeline. Creates the Document row in PostgreSQL,
+Final plugin in the pipeline. Creates or updates the Document row in PostgreSQL,
 stores the thumbnail with the new document_id, and optionally triggers
 vector embedding for search.
 """
@@ -15,10 +15,14 @@ logger = logging.getLogger(__name__)
 
 class IndexPlugin(IngestionPlugin):
     """
-    Create the document record in the database.
+    Create or update the document record in the database.
+
+    If doc.document_id is already set (API pre-created the row during upload),
+    the existing record is UPDATED with the parsed content/metadata.
+    Otherwise a new row is created.
 
     Sets on IngestDocument:
-        - document_id (the new DB record ID)
+        - document_id (the DB record ID)
 
     Requires all previous plugins to have populated:
         - stored_original_path
@@ -31,8 +35,15 @@ class IndexPlugin(IngestionPlugin):
         from app.services.ingestion.pipeline import ConsumerStatusCode
 
         try:
-            document_id = await self._create_document_record(doc)
-            doc.document_id = document_id
+            # Mark PARSING as soon as we start — gives the UI real-time visibility
+            if doc.document_id:
+                await self._set_status(doc.document_id, "parsing")
+                # Row already created by upload endpoint — update it
+                await self._update_document_record(doc)
+            else:
+                # No pre-existing row — create one (starts life as PARSED directly)
+                document_id = await self._create_document_record(doc)
+                doc.document_id = document_id
 
             # Auto-classify: correspondent, type, tags, storage path
             await self._auto_classify(doc)
@@ -45,11 +56,11 @@ class IndexPlugin(IngestionPlugin):
                 await self._store_thumbnail(doc)
 
             # Trigger vector embedding (async, fire-and-forget)
-            self._trigger_embedding(document_id)
+            self._trigger_embedding(doc.document_id)
 
             logger.info(
                 "Indexed document %d: %s",
-                document_id, doc.original_filename,
+                doc.document_id, doc.original_filename,
             )
 
         except Exception as e:
@@ -60,17 +71,91 @@ class IndexPlugin(IngestionPlugin):
             doc.status = ConsumerStatusCode.DB_ERROR
             doc.error_message = f"Database error: {e}"
 
+    async def _set_status(self, document_id: int, status: str) -> None:
+        """Update document processing_status. Best-effort — never raises."""
+        try:
+            from app.db.session import AsyncSessionLocal
+            from app.models.document import Document, ProcessingStatus
+            from sqlalchemy import select, update
+
+            async with AsyncSessionLocal() as db:
+                await db.execute(
+                    update(Document)
+                    .where(Document.id == document_id)
+                    .values(processing_status=ProcessingStatus(status))
+                )
+                await db.commit()
+        except Exception as e:
+            logger.debug("_set_status failed (non-fatal): %s", e)
+
+
+    async def _update_document_record(self, doc) -> None:
+        """
+        Update an existing Document row that was pre-created by the upload endpoint.
+
+        The upload endpoint already wrote filename/file_path/size/hash/user_id.
+        We fill in the content extracted by the pipeline.
+        """
+        from app.db.session import AsyncSessionLocal
+        from app.models.document import Document, ProcessingStatus
+        from sqlalchemy import select
+
+        async with AsyncSessionLocal() as db:
+            result = await db.execute(
+                select(Document).where(Document.id == doc.document_id)
+            )
+            document = result.scalar_one_or_none()
+            if not document:
+                logger.warning(
+                    "Document %d not found for update — creating instead",
+                    doc.document_id,
+                )
+                # Fall back to create
+                new_id = await self._create_document_record(doc)
+                doc.document_id = new_id
+                return
+
+            # Update fields set by the DMS pipeline
+            document.content_text = doc.text
+            document.page_count = doc.page_count
+            document.ocr_performed = bool(doc.archive_path)
+            # DMS pipeline complete — text extracted, stored, classified.
+            # Set PARSED (not COMPLETED) so process_document_task knows to embed this document.
+            document.processing_status = ProcessingStatus.PARSED
+
+            if doc.stored_original_path:
+                document.file_path = doc.stored_original_path
+            if doc.archive_path:
+                document.archive_path = doc.stored_archive_path
+                document.archive_checksum = doc.archive_checksum
+            if doc.metadata:
+                document.file_metadata = doc.metadata
+            if doc.created_date:
+                document.created_date = (
+                    doc.created_date.date()
+                    if hasattr(doc.created_date, "date")
+                    else doc.created_date
+                )
+
+            # Persist word count if available
+            if doc.text:
+                document.word_count = len(doc.text.split())
+
+            await db.commit()
+            logger.debug("Updated document record: id=%d status=PARSED", document.id)
+
     async def _create_document_record(self, doc) -> int:
         """
-        Create the Document row in PostgreSQL.
+        Create a new Document row in PostgreSQL.
 
-        Uses the existing async session pattern from Synapse.
+        Only called when the upload endpoint did NOT pre-create the row
+        (e.g. watch-folder / direct pipeline invocation).
         """
-        from app.db.session import get_db_session
+        from app.db.session import AsyncSessionLocal
         from app.models.document import Document, ProcessingStatus
         from pathlib import Path
 
-        async with get_db_session() as db:
+        async with AsyncSessionLocal() as db:
             document = Document(
                 filename=doc.original_filename,
                 file_path=doc.stored_original_path or doc.source_path,
@@ -83,16 +168,22 @@ class IndexPlugin(IngestionPlugin):
                 original_filename=doc.original_filename,
                 content_text=doc.text,
                 page_count=doc.page_count,
-                processing_status=ProcessingStatus.COMPLETED,
+                word_count=len(doc.text.split()) if doc.text else 0,
+                # DMS pipeline done — set PARSED, not COMPLETED.
+                # COMPLETED is set by process_document_task after Qdrant embedding.
+                processing_status=ProcessingStatus.PARSED,
                 user_id=doc.user_id,
                 folder_id=doc.folder_id,
                 file_metadata=doc.metadata if doc.metadata else None,
                 ocr_performed=bool(doc.archive_path),
             )
 
-            # Set created_date if parser found one
             if doc.created_date:
-                document.created_date = doc.created_date.date() if hasattr(doc.created_date, 'date') else doc.created_date
+                document.created_date = (
+                    doc.created_date.date()
+                    if hasattr(doc.created_date, "date")
+                    else doc.created_date
+                )
 
             db.add(document)
             await db.commit()
@@ -122,10 +213,10 @@ class IndexPlugin(IngestionPlugin):
             return
 
         try:
-            from app.db.session import get_db_session
+            from app.db.session import AsyncSessionLocal
             from app.services.classification.auto_assign import auto_classify_document
 
-            async with get_db_session() as db:
+            async with AsyncSessionLocal() as db:
                 result = await auto_classify_document(doc.document_id, db)
 
             logger.info(

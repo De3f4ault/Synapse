@@ -260,7 +260,7 @@ async def search_conversations(
                     matched_snippet=session.title[:200],
                     message_id=None,
                     created_at=session.created_at.isoformat(),
-                    relevance_score=score * 2.0,  # Boost title matches
+                    relevance_score=float(score) * 2.0,  # Boost title matches
                 )
             )
 

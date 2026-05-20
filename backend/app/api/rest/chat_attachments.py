@@ -91,6 +91,7 @@ def _generate_thumbnail(source_path: str, thumb_path: str, max_width: int = 400)
 async def upload_chat_attachment(
     file: UploadFile = File(...),
     session_id: Optional[int] = Form(default=None),
+    caption: Optional[str] = Form(default=None),  # User-provided context for image retrieval
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -174,9 +175,13 @@ async def upload_chat_attachment(
     # Store relative path (relative to data/)
     relative_path = os.path.relpath(file_path, DATA_DIR)
 
-    # Determine processing status — images skip pipeline
+    # Determine processing status:
+    # - Images: PENDING — Celery vision task embeds them into synapse_dense.
+    # - Docs (PDF): PENDING — existing document ingestion pipeline handles them.
+    # Previously images were set to COMPLETED immediately (no Qdrant embedding).
+    # Sprint 1 change: images now go through NomicVisionEmbedder asynchronously.
     is_image = content_type in ALLOWED_IMAGE_TYPES
-    proc_status = ProcessingStatus.COMPLETED if is_image else ProcessingStatus.PENDING
+    proc_status = ProcessingStatus.PENDING
 
     # Build source metadata
     source_meta = {"source": "chat"}
@@ -208,6 +213,18 @@ async def upload_chat_attachment(
         thumb_path = os.path.join(THUMBNAIL_DIR, thumb_name)
         if _generate_thumbnail(file_path, thumb_path):
             thumbnail_url = f"/api/v1/chat/attachments/thumbnail/{document.id}"
+
+    # Dispatch vision embedding task for images.
+    # The task embeds the image into synapse_dense via NomicVisionEmbedder and
+    # updates processing_status to COMPLETED when done.
+    # caption is forwarded so the task can populate surrounding_context;
+    # if None, the task uses the cleaned filename as fallback.
+    if is_image:
+        from app.services.background.tasks import embed_image_task
+        embed_image_task.apply_async(
+            args=[document.id, caption],
+            queue="rag",
+        )
 
     return ChatAttachmentResponse(
         document_id=document.id,
@@ -285,3 +302,109 @@ async def get_attachment_thumbnail(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Thumbnail not found")
 
     return FileResponse(path=thumb_path, media_type="image/webp")
+
+
+class CaptionUpdateRequest(BaseModel):
+    """Request body for updating an image attachment's user caption."""
+    caption: str = Field(
+        ...,
+        min_length=1,
+        max_length=1000,
+        description="User-provided context to append to the LLM-generated caption",
+    )
+
+
+@router.patch(
+    "/{document_id}/caption",
+    status_code=status.HTTP_200_OK,
+    summary="Update user caption for an image attachment",
+)
+async def update_attachment_caption(
+    document_id: int,
+    body: CaptionUpdateRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Append a user-provided caption to an image attachment's surrounding_context.
+
+    Called at message-send time (not at upload time) so the user's typed message
+    can be captured as contextual metadata for retrieval. The LLM-generated caption
+    from the vision ingestion task remains the primary surrounding_context — this
+    call appends "User context: {caption}" as a suffix.
+
+    If the image task has already completed (COMPLETED status), patches the Qdrant
+    point payload in-place via set_payload (no re-embedding required).
+
+    If the task is still running (PENDING/PROCESSING), saves the caption to
+    source_metadata so it can be used on retry or a follow-up patch.
+
+    Non-image attachments (PDFs) are ignored silently — captions only apply to
+    image embeddings that have a Qdrant point.
+    """
+    # Load document, verify ownership
+    result = await db.execute(
+        select(Document).where(
+            and_(
+                Document.id == document_id,
+                Document.user_id == current_user.id,
+                Document.deleted_at.is_(None),
+            )
+        )
+    )
+    document = result.scalar_one_or_none()
+    if not document:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Attachment not found")
+
+    # Only image attachments have Qdrant points — PDFs use the text pipeline
+    if document.mime_type not in ALLOWED_IMAGE_TYPES:
+        return {"status": "skipped", "reason": "not_an_image"}
+
+    user_caption = body.caption.strip()
+
+    # Persist caption in Postgres source_metadata (durable record)
+    meta = dict(document.source_metadata or {})
+    meta["user_caption"] = user_caption
+    document.source_metadata = meta
+    await db.commit()
+
+    # If image embedding has completed, patch the Qdrant payload in-place.
+    # set_payload merges the given keys — other payload fields are untouched.
+    if document.processing_status == ProcessingStatus.COMPLETED:
+        try:
+            import uuid as _uuid
+            from app.core.ai.rag.vector_store.qdrant.client import get_qdrant_client
+
+            point_id = str(_uuid.uuid5(_uuid.NAMESPACE_OID, f"image:{document.id}"))
+            qdrant = get_qdrant_client()
+
+            # Retrieve current surrounding_context (may already have LLM caption)
+            points = qdrant.get_client().retrieve(
+                collection_name="synapse_dense",
+                ids=[point_id],
+                with_payload=True,
+            )
+            current_context = ""
+            if points:
+                current_context = points[0].payload.get("surrounding_context", "") or ""
+
+            # Build updated context: if LLM caption exists, append user note; else use user caption only
+            if current_context and not current_context.endswith(f"User context: {user_caption}"):
+                # Strip any stale user-context suffix before appending fresh one
+                base = current_context.split(". User context:")[0].rstrip(". ")
+                new_context = f"{base}. User context: {user_caption}" if base else user_caption
+            else:
+                new_context = user_caption
+
+            qdrant.get_client().set_payload(
+                collection_name="synapse_dense",
+                payload={"surrounding_context": new_context},
+                points=[point_id],
+            )
+        except Exception as patch_err:
+            # Non-fatal — Postgres record is the durable copy; log and continue
+            import structlog as _structlog
+            _log = _structlog.get_logger(__name__)
+            _log.warning("caption_qdrant_patch_failed", document_id=document_id, error=str(patch_err))
+
+    return {"status": "updated", "document_id": document_id}

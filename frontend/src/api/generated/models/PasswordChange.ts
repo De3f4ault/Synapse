@@ -3,7 +3,7 @@
 /* tslint:disable */
 /* eslint-disable */
 /**
- * Password change request.
+ * Password change schema.
  */
 export type PasswordChange = {
     /**

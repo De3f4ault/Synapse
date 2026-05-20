@@ -77,6 +77,19 @@ class Flashcard(Base, TimestampMixin, SoftDeleteMixin):
         String(500), nullable=True, default=None, doc="Optional URL to media on the back"
     )
 
+    # Structured concept name for the AI learning loop.
+    # Separate from front_text (a question) — this is a noun-phrase like
+    # "PostgreSQL Visibility Map", not "What is the Visibility Map?".
+    # Used as the concept key when writing to concept_mastery.
+    # Nullable for backwards compatibility — existing cards fall back to front_text.
+    topic: Mapped[Optional[str]] = mapped_column(
+        String(200),
+        nullable=True,
+        default=None,
+        index=True,
+        doc="Noun-phrase concept name (e.g. 'PostgreSQL MVCC'). Used for concept_mastery bridge.",
+    )
+
     # SM-2 Algorithm Fields
     ease_factor: Mapped[Decimal] = mapped_column(
         Numeric(precision=3, scale=2),
@@ -131,6 +144,25 @@ class Flashcard(Base, TimestampMixin, SoftDeleteMixin):
     # Vector Embedding Reference (legacy - for Qdrant)
     embedding_id: Mapped[Optional[str]] = mapped_column(
         String(255), nullable=True, default=None, doc="Reference to vector embedding in Qdrant"
+    )
+
+    # Sprint 1 / Cloze support — card variant
+    # 'basic' = standard flip card (default)
+    # 'cloze' = fill-in-the-blank; the blank is marked with __ in front_text
+    card_type: Mapped[str] = mapped_column(
+        String(10),
+        nullable=False,
+        default="basic",
+        server_default="basic",
+        doc="Card variant: 'basic' (flip) or 'cloze' (fill-in-the-blank)",
+    )
+
+    # Sprint 1 — Cloze answer text (null for basic cards)
+    cloze_answer: Mapped[Optional[str]] = mapped_column(
+        Text,
+        nullable=True,
+        default=None,
+        doc="The blanked-out answer for cloze cards. None for basic cards.",
     )
 
     # Vector Embedding (pgvector - for hybrid search)

@@ -34,11 +34,18 @@ CREATE OR REPLACE FUNCTION developer_schema.search_flashcards_fts(
     ) LANGUAGE plpgsql STABLE PARALLEL SAFE AS $func$
 DECLARE v_sql TEXT;
 v_op TEXT := '@' || '@' || '@';
+v_safe_query TEXT;
 -- Build @@@ operator dynamically
 BEGIN -- Handle empty query
 IF p_query IS NULL
 OR TRIM(p_query) = '' THEN RETURN;
 END IF;
+
+v_safe_query := substring(trim(regexp_replace(p_query, '[^a-zA-Z0-9\s]', ' ', 'g')) from 1 for 200);
+IF v_safe_query = '' THEN
+    RETURN;
+END IF;
+
 -- Build dynamic SQL to avoid pg_search parsing issues
 v_sql := '
     WITH bm25_search AS (
@@ -64,7 +71,7 @@ v_sql := '
         WHERE d.user_id = ' || p_user_id || '
           AND f.deleted_at IS NULL
           AND d.deleted_at IS NULL
-          AND f.front_text ' || v_op || ' ' || quote_literal(p_query) || '
+          AND f.front_text ' || v_op || ' ' || quote_literal(v_safe_query) || '
         ORDER BY pdb.score(f.id) DESC
         LIMIT ' || (p_limit * 2) || '
     )

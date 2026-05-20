@@ -21,12 +21,21 @@ from app.core.ai.embeddings.boundary import EMBEDDING_DIM
 
 
 class NoteFormat(str, enum.Enum):
-    """Enum for note content formats. DEPRECATED - kept for migration compatibility."""
+    """Enum for note content formats.
+
+    `editor_version` (e.g. 'tiptap@2', 'excalidraw@0') is now the canonical
+    source of truth. This column is kept for backwards compatibility only.
+    New notes default to TIPTAP.
+
+    CRITICAL: SQLAlchemy stores the member NAME (e.g. 'TIPTAP'), not the string
+    value (e.g. 'tiptap'). Direct SQL inserts/updates MUST use uppercase names.
+    """
 
     MARKDOWN = "markdown"
     HTML = "html"
     PLAIN = "plain"
-    BLOCKSUITE = "blocksuite"  # New default
+    BLOCKSUITE = "blocksuite"  # Legacy — kept for existing rows
+    TIPTAP = "tiptap"          # Current default for all new notes
 
 
 class Note(Base, TimestampMixin, SoftDeleteMixin, UserOwnedMixin):
@@ -57,15 +66,24 @@ class Note(Base, TimestampMixin, SoftDeleteMixin, UserOwnedMixin):
         String(50),
         nullable=True,
         default=None,
-        doc="Editor version (e.g., 'blocksuite@1'). NULL = legacy data.",
+        doc="Editor version (e.g., 'tiptap@2', 'excalidraw@0'). NULL = legacy data.",
     )
 
-    # DEPRECATED: Kept for backwards compatibility during migration
+    # Plain text extracted from content at save time — used by embeddings, BM25, RAG
+    content_text: Mapped[Optional[str]] = mapped_column(
+        String(),
+        nullable=True,
+        default=None,
+        doc="Extracted plain text from content. Set by frontend at save time. "
+            "Used by embedding pipeline, BM25, and RAG. Backend never computes this.",
+    )
+
+    # DEPRECATED: Kept for backwards compatibility. editor_version is canonical.
     format: Mapped[NoteFormat] = mapped_column(
         SQLEnum(NoteFormat, native_enum=False),
-        default=NoteFormat.BLOCKSUITE,
+        default=NoteFormat.TIPTAP,
         nullable=False,
-        doc="DEPRECATED: Format enum. New notes use BLOCKSUITE.",
+        doc="Deprecated format enum. editor_version is the canonical source. Default: TIPTAP.",
     )
 
     # Hierarchy

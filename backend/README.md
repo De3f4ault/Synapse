@@ -8,7 +8,7 @@ The neural core of the Synapse ecosystem. This FastAPI-powered engine orchestrat
 - **Database**: PostgreSQL (Relational Data)
 - **ORM**: SQLAlchemy 2.0 (Async) + Alembic (Migrations)
 - **Validation**: Pydantic v2
-- **AI/LLM**: LangChain (Orchestration), OpenAI/DeepSeek (Cloud), Ollama (Local/Private)
+- **AI/LLM**: LiteLLM (Router + Fallback), Custom ReAct Agent, OpenAI/DeepSeek/Gemini (Cloud), Ollama (Local/Private)
 - **Search**: PGVector (Semantic Search & RAG)
 - **Task Queue**: Celery (Async Jobs - planned)
 

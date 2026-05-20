@@ -12,7 +12,7 @@ Automatically injects:
 This middleware is the bridge between SYNAPSE's context engine
 and the AI agents, enabling personalized, context-aware responses.
 
-Based on LangChain 1.0 middleware pattern.
+Based on SYNAPSE agent middleware pattern.
 """
 
 from typing import Dict, Any, Optional
@@ -65,6 +65,7 @@ class ContextInjectionMiddleware:
         self.include_recent_activity = include_recent_activity
         self.include_preferences = include_preferences
         self.max_context_tokens = max_context_tokens
+        self._session = None  # Owned DB session — opened in before, closed in after
         self.logger = logger.bind(middleware="context_injection")
 
     async def before_execution(
@@ -98,9 +99,17 @@ class ContextInjectionMiddleware:
             # FETCH LEARNING CONTEXT
             # ================================================================
             if self.context_engine is None:
-                # Lazy import to avoid circular dependency
-                from app.core.context.engine import get_context_engine
-                self.context_engine = get_context_engine()
+                # Create a dedicated session for this middleware invocation.
+                # Agents are stateless compute — the DB concern stays here.
+                from app.db.session import AsyncSessionLocal
+                from app.core.context.engine import ContextEngine
+
+                self._session = AsyncSessionLocal()
+
+                from app.services.cache.pg_cache import PgCacheClient
+                _cache = PgCacheClient(session_factory=AsyncSessionLocal)
+
+                self.context_engine = ContextEngine(self._session, cache_client=_cache)
 
             # Get complete user context
             user_context = await self.context_engine.get_user_context(
@@ -116,6 +125,40 @@ class ContextInjectionMiddleware:
                 context.get("query", "")
             )
 
+            # ── Card Designer override ────────────────────────────────────
+            # Designer sessions store the full enriched system prompt in
+            # context["card_designer_system"].  It is self-contained and
+            # replaces the generic context_summary entirely — we don't want
+            # tutor-style framing polluting the design conversation.
+            card_designer_system = context.get("card_designer_system")
+            if card_designer_system:
+                context_summary = card_designer_system
+            else:
+                # ── Card Tutor override ───────────────────────────────────────
+                # When the stream is anchored to a flashcard, prepend the card's
+                # Socratic system prompt so it dominates the context window.
+                card_tutor_system = context.get("card_tutor_system")
+                if card_tutor_system:
+                    context_summary = (
+                        "**[CARD TUTOR MODE — focus exclusively on this concept]**\n\n"
+                        + card_tutor_system
+                        + "\n\n---\n\n"
+                        + context_summary
+                    )
+                # ─────────────────────────────────────────────────────────────
+
+            # ── @Mention entity injection ──────────────────────────────────────
+            # If the user referenced entities via @[title](entity:type:id) markup
+            # and the hydrator produced content, append it AFTER the analytics
+            # context. Placement last ensures maximum LLM attention on the
+            # referenced content — the model reads it immediately before the
+            # user's message.
+            hydration_result = context.get("hydration_result")
+            if hydration_result and hydration_result.has_content:
+                entity_block = self._build_entity_block(hydration_result.injected)
+                context_summary = context_summary + "\n\n" + entity_block
+            # ─────────────────────────────────────────────────────────────────
+
             # ================================================================
             # INJECT INTO AGENT STATE
             # ================================================================
@@ -123,6 +166,11 @@ class ContextInjectionMiddleware:
             context["context_summary"] = context_summary
             state.metadata["user_context"] = user_context
             state.metadata["context_injected"] = True
+            if card_designer_system:
+                state.metadata["card_designer_mode"] = True
+            elif context.get("card_tutor_system"):
+                state.metadata["card_tutor_mode"] = True
+                state.metadata["card_id"] = context.get("card_id")
 
             self.logger.info(
                 "context_injection_completed",
@@ -151,7 +199,7 @@ class ContextInjectionMiddleware:
         user_id: int
     ) -> None:
         """
-        Post-execution hook (not used for context injection)
+        Post-execution cleanup — close the DB session we opened.
 
         Args:
             agent: Agent instance
@@ -159,8 +207,17 @@ class ContextInjectionMiddleware:
             context: Current context
             user_id: User ID
         """
-        # Could be used to invalidate cache or track context usage
-        pass
+        if self._session is not None:
+            try:
+                await self._session.close()
+            except Exception as e:
+                self.logger.warning(
+                    "context_session_close_failed",
+                    error=str(e),
+                )
+            finally:
+                self._session = None
+                self.context_engine = None  # Force fresh session on next invocation
 
     def _build_context_summary(
         self,
@@ -287,6 +344,42 @@ class ContextInjectionMiddleware:
     def _estimate_tokens(self, text: str) -> int:
         """Rough token estimation (1 token ≈ 4 characters)"""
         return len(text) // 4
+
+    def _build_entity_block(self, hydrated: list) -> str:
+        """
+        Build the system prompt section for @mentioned entity content.
+
+        This section is appended AFTER the analytics context so that the LLM
+        reads referenced content immediately before the user's message.
+        The framing instructs the model to treat referenced content as primary
+        source material and cite it by name.
+
+        Args:
+            hydrated: List of HydratedContext objects from ContentHydrator.
+
+        Returns:
+            Formatted markdown string ready for system prompt injection.
+        """
+        if not hydrated:
+            return ""
+
+        lines = [
+            "---",
+            "## Referenced Materials",
+            "The user has explicitly referenced the following content using @mentions.",
+            "Treat this as **primary source material** — prefer it over general knowledge.",
+            "When drawing from a referenced source, cite it by name.",
+            "If the user's question concerns something in the referenced content,"
+            " answer from that content rather than from memory.",
+            "",
+        ]
+
+        for ctx in hydrated:
+            lines.append(f"### {ctx.summary_line}")
+            lines.append(ctx.content_for_ai)
+            lines.append("")
+
+        return "\n".join(lines)
 
 
 # Convenience function for quick middleware creation

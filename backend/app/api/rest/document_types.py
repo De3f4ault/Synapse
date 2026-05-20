@@ -17,7 +17,7 @@ from app.api.deps import get_db, get_current_user
 from app.models.user import User
 from app.models.document_type import DocumentType
 from app.models.document import Document
-from app.schemas.document_type import (
+from app.schemas.documents import (
     DocumentTypeCreate,
     DocumentTypeUpdate,
     DocumentTypeResponse,

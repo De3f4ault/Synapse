@@ -150,13 +150,13 @@ export function RegisterPage() {
         <Link
           to="/auth/login"
           className={`
-            inline-flex items-center gap-2 text-sm text-slate-500
-            hover:text-cyan-400 transition-colors
+            inline-flex items-center gap-2 text-sm text-muted-foreground
+            hover:text-primary transition-colors
             ${status === "loading" ? "pointer-events-none opacity-50" : ""}
             `}
         >
           <span>Already have an account?</span>
-          <span className="font-medium text-cyan-500 hover:underline">
+          <span className="font-medium text-primary hover:underline">
             Sign in
           </span>
         </Link>

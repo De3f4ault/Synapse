@@ -17,7 +17,7 @@ from app.api.deps import get_db, get_current_user
 from app.models.user import User
 from app.models.tag import Tag
 from app.models.document_tags import document_tags
-from app.schemas.tag import TagCreate, TagUpdate, TagResponse
+from app.schemas.documents import TagCreate, TagUpdate, TagResponse
 
 logger = logging.getLogger(__name__)
 router = APIRouter()

@@ -25,7 +25,7 @@ from app.services.grounding.grounding_service import (
     GROUNDING_INSTRUCTION,
 )
 
-from app.schemas.grounding import (
+from app.schemas.intelligence import (
     GroundingResult,
     EvidenceChunk,
     EvidenceUsage,

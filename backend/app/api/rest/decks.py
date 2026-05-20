@@ -10,14 +10,14 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query, File, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_, or_, update
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.api.deps import get_db, get_current_user, PaginationParams
 from app.models.user import User
 from app.models.deck import Deck
 from app.models.flashcard import Flashcard
 from app.schemas.common import MessageResponse
-from app.schemas.flashcard import (
+from app.schemas.study import (
     DeckCreate,
     DeckUpdate,
     DeckResponse,
@@ -50,7 +50,7 @@ async def list_decks(
     db: AsyncSession = Depends(get_db),
 ):
     """List user's decks with card counts and due counts."""
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
 
     stmt = (
         select(
@@ -171,9 +171,9 @@ async def delete_deck(
     await db.execute(
         update(Flashcard)
         .where(and_(Flashcard.deck_id == deck_id, Flashcard.deleted_at.is_(None)))
-        .values(deleted_at=datetime.utcnow())
+        .values(deleted_at=datetime.now(timezone.utc))
     )
-    deck.deleted_at = datetime.utcnow()
+    deck.deleted_at = datetime.now(timezone.utc)
     await db.commit()
     return MessageResponse(message="Deck and flashcards deleted successfully")
 
@@ -242,8 +242,37 @@ async def import_flashcards(
 
 
 # ============================================================================
-# Export / Import (JSON + CSV)
+# Analytics Endpoint — canonical URL: GET /decks/{id}/analytics
+# (The collections router had a duplicate under /collections/decks/{id}/analytics
+#  which is now deprecated in favour of this canonical path.)
 # ============================================================================
+
+
+@router.get("/{deck_id}/analytics", summary="Deck Analytics")
+async def get_deck_analytics(
+    deck_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Return comprehensive learning analytics for a deck.
+
+    Includes:
+    - Card state distribution (new / learning / review / mastered)
+    - Forecast: cards due in 1/7/30 days
+    - Accuracy, average ease factor, retention rate
+    - Review load projection
+    """
+    from app.services.flashcards.analytics_service import FlashcardAnalyticsService
+
+    deck = await _get_user_deck(db, deck_id, current_user.id)
+    service = FlashcardAnalyticsService(db)
+    try:
+        return await service.get_deck_analytics(deck_id=deck.id, user_id=current_user.id)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Analytics error: {e}")
+
+
 
 
 @router.get("/{deck_id}/export", summary="Export Deck (JSON)")
@@ -351,7 +380,7 @@ async def _get_user_deck(db: AsyncSession, deck_id: int, user_id: int) -> Deck:
 
 async def _count_cards(db: AsyncSession, deck_id: int) -> tuple:
     """Return (card_count, due_count) for a deck."""
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     card_count = (await db.execute(
         select(func.count(Flashcard.id)).where(and_(Flashcard.deck_id == deck_id, Flashcard.deleted_at.is_(None)))
     )).scalar() or 0

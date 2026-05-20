@@ -53,7 +53,7 @@ export function GradientCard({
     default:
       "bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800",
     primary:
-      "bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 dark:from-blue-950 dark:via-indigo-950 dark:to-purple-950",
+      "bg-gradient-to-br from-primary/5 via-accent/5 to-primary/10 dark:from-primary/10 dark:via-accent/10 dark:to-primary/15",
     success:
       "bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50 dark:from-emerald-950 dark:via-green-950 dark:to-teal-950",
     warning:
@@ -61,8 +61,8 @@ export function GradientCard({
     danger:
       "bg-gradient-to-br from-rose-50 via-red-50 to-pink-50 dark:from-rose-950 dark:via-red-950 dark:to-pink-950",
     purple:
-      "bg-gradient-to-br from-purple-50 via-violet-50 to-fuchsia-50 dark:from-purple-950 dark:via-violet-950 dark:to-fuchsia-950",
-    blue: "bg-gradient-to-br from-sky-50 via-blue-50 to-cyan-50 dark:from-sky-950 dark:via-blue-950 dark:to-cyan-950",
+      "bg-gradient-to-br from-accent/5 via-primary/5 to-accent/10 dark:from-accent/10 dark:via-primary/10 dark:to-accent/15",
+    blue: "bg-gradient-to-br from-primary/5 via-accent/5 to-warning/5 dark:from-primary/10 dark:via-accent/10 dark:to-warning/10",
   };
 
   const CardComponent = hover ? motion.div : "div";
@@ -110,7 +110,7 @@ export function GradientCardWithBorder({
   return (
     <div className={cn("relative group", className)}>
       {/* Animated gradient border */}
-      <div className="absolute -inset-0.5 bg-gradient-to-r from-pink-600 via-purple-600 to-blue-600 rounded-lg blur opacity-30 group-hover:opacity-100 transition duration-1000 group-hover:duration-200 animate-gradient-xy" />
+      <div className="absolute -inset-0.5 bg-gradient-to-r from-primary via-accent to-warning rounded-lg blur opacity-30 group-hover:opacity-100 transition duration-1000 group-hover:duration-200 animate-gradient-xy" />
 
       {/* Card content */}
       <Card className="relative bg-background">{children}</Card>
@@ -133,8 +133,8 @@ export function GlassCard({
   return (
     <div
       className={cn(
-        "rounded-lg border border-white/10 bg-white/5 backdrop-blur-lg",
-        "dark:border-white/5 dark:bg-white/5",
+        "rounded-lg border border-border bg-foreground/5 backdrop-blur-lg",
+        "dark:border-border dark:bg-foreground/5",
         "shadow-lg",
         className,
       )}

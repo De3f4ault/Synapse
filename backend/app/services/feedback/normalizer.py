@@ -6,7 +6,7 @@ Handles the complexity of "what does a click mean?" across different surfaces.
 """
 
 from typing import Optional
-from app.schemas.search_feedback import FeedbackEvent, FeedbackSource
+from app.schemas.search import FeedbackEvent, FeedbackSource
 
 
 class NormalizedSignal:

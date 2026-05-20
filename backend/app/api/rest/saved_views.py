@@ -15,7 +15,7 @@ from sqlalchemy import select, and_
 from app.api.deps import get_db, get_current_user
 from app.models.user import User
 from app.models.saved_view import SavedView, SavedViewFilterRule
-from app.schemas.saved_view import (
+from app.schemas.documents import (
     SavedViewCreate,
     SavedViewUpdate,
     SavedViewResponse,

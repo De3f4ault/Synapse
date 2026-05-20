@@ -2,6 +2,8 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
+import type { CheckpointRequest } from '../models/CheckpointRequest';
+import type { CreateSessionV2Request } from '../models/CreateSessionV2Request';
 import type { StudyItemResponse } from '../models/StudyItemResponse';
 import type { StudySessionCreate } from '../models/StudySessionCreate';
 import type { StudySessionResponse } from '../models/StudySessionResponse';
@@ -163,6 +165,155 @@ export class StudyService {
             url: '/api/v1/study/recommendations',
             query: {
                 'limit': limit,
+                'token': token,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Create a curated session with a queue snapshot
+     * Create a study session with a budgeted, prioritised card queue.
+     *
+     * The queue is snapshotted at creation — resuming always returns the
+     * same card set the student started with, even if new cards become due.
+     *
+     * Returns the session with a `queue` array containing the full card data.
+     * @param requestBody
+     * @param token Auth token for image/file requests
+     * @returns any Successful Response
+     * @throws ApiError
+     */
+    public static createCuratedSessionApiV1StudySessionsCuratedPost(
+        requestBody: CreateSessionV2Request,
+        token?: (string | null),
+    ): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/study/sessions/curated',
+            query: {
+                'token': token,
+            },
+            body: requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Save current position in an active session
+     * Persist the current card index and optional per-card review detail.
+     *
+     * Called after every card is reviewed so the session can be resumed
+     * at the exact card the student left off on. Lightweight — just an
+     * index update + JSON append.
+     * @param sessionId
+     * @param requestBody
+     * @param token Auth token for image/file requests
+     * @returns any Successful Response
+     * @throws ApiError
+     */
+    public static checkpointSessionApiV1StudySessionsSessionIdCheckpointPatch(
+        sessionId: number,
+        requestBody: CheckpointRequest,
+        token?: (string | null),
+    ): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'PATCH',
+            url: '/api/v1/study/sessions/{session_id}/checkpoint',
+            path: {
+                'session_id': sessionId,
+            },
+            query: {
+                'token': token,
+            },
+            body: requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Complete a session (v2 — uses resume_status)
+     * Mark a session as completed.
+     *
+     * Uses resume_status field (not the v1 is_completed approach) so the
+     * active-sessions endpoint correctly excludes this session from the
+     * resume prompt.
+     * @param sessionId
+     * @param token Auth token for image/file requests
+     * @returns any Successful Response
+     * @throws ApiError
+     */
+    public static completeSessionV2ApiV1StudySessionsSessionIdCompleteV2Post(
+        sessionId: number,
+        token?: (string | null),
+    ): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/study/sessions/{session_id}/complete-v2',
+            path: {
+                'session_id': sessionId,
+            },
+            query: {
+                'token': token,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Abandon a session (user quit mid-session)
+     * Mark a session as abandoned.
+     *
+     * Abandoned sessions surface in 'Not Completed' on the dashboard.
+     * They remain resumable — the student can pick up where they left off.
+     * @param sessionId
+     * @param token Auth token for image/file requests
+     * @returns any Successful Response
+     * @throws ApiError
+     */
+    public static abandonSessionApiV1StudySessionsSessionIdAbandonPost(
+        sessionId: number,
+        token?: (string | null),
+    ): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/study/sessions/{session_id}/abandon',
+            path: {
+                'session_id': sessionId,
+            },
+            query: {
+                'token': token,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Get resumable sessions for the current user
+     * Return sessions that are resumable (in_progress or recently abandoned).
+     *
+     * The frontend uses this to surface "Continue where you left off?" prompts.
+     *
+     * Returns up to 5 sessions ordered by last_activity_at DESC.
+     * Enriched with deck_name and progress percentage.
+     * @param token Auth token for image/file requests
+     * @returns any Successful Response
+     * @throws ApiError
+     */
+    public static getActiveSessionsApiV1StudySessionsActiveGet(
+        token?: (string | null),
+    ): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/study/sessions/active',
+            query: {
                 'token': token,
             },
             errors: {

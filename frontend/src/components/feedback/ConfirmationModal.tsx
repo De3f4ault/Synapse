@@ -55,7 +55,7 @@ export function ConfirmationModal({
                 transition={{ type: "spring", stiffness: 400, damping: 17 }}
                 className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-red-100 dark:bg-red-950/30"
               >
-                <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
+                <AlertCircle className="h-5 w-5 text-red-600 dark:text-destructive" />
               </motion.div>
             )}
             <div className="flex-1">

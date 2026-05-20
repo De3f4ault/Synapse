@@ -19,7 +19,7 @@ from app.models.workflow import (
     WorkflowTriggerType,
     workflow_triggers_assoc, workflow_actions_assoc,
 )
-from app.schemas.workflow import (
+from app.schemas.workflows import (
     WorkflowCreate, WorkflowUpdate,
     WorkflowResponse, WorkflowListResponse,
     WorkflowRunResponse,

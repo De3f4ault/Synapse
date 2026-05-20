@@ -1,18 +1,22 @@
 """
-LangGraph Workflows Module
+Workflows Package — Multi-agent orchestration pipelines.
 
-Complex multi-step workflows using LangGraph.
-Only includes workflows that truly need graph-based orchestration.
-
-Simple sequential tasks should use DeepAgents directly.
+Provides SequentialPipeline for chaining agents with typed state passing,
+replacing the previous LangGraph-based workflow system.
 """
 
-from .multi_agent_collab import create_multi_agent_workflow, MultiAgentState
-from .human_review import create_human_review_workflow, HumanReviewState
+from app.core.ai.workflows.pipeline import (
+    SequentialPipeline,
+    PipelineStep,
+    PipelineResult,
+    ANALYZE_AND_PREPARE,
+)
+from app.core.ai.workflows.multi_agent_collab import execute_multi_agent_workflow
 
 __all__ = [
-    "create_multi_agent_workflow",
-    "MultiAgentState",
-    "create_human_review_workflow",
-    "HumanReviewState",
+    "SequentialPipeline",
+    "PipelineStep",
+    "PipelineResult",
+    "ANALYZE_AND_PREPARE",
+    "execute_multi_agent_workflow",
 ]

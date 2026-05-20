@@ -47,6 +47,14 @@ export type NoteResponse = {
      */
     is_archived?: boolean;
     /**
+     * Extracted plain text
+     */
+    content_text?: (string | null);
+    /**
+     * Editor version
+     */
+    editor_version?: (string | null);
+    /**
      * Number of child notes
      */
     children_count?: number;

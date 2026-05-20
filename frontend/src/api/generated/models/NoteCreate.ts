@@ -26,5 +26,13 @@ export type NoteCreate = {
      * Tag names
      */
     tags?: Array<string>;
+    /**
+     * Plain text extracted by the editor
+     */
+    content_text?: (string | null);
+    /**
+     * Editor version, e.g. 'tiptap@2'
+     */
+    editor_version?: (string | null);
 };
 

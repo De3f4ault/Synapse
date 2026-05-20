@@ -1,7 +1,7 @@
 """
-Agent Middleware - Production control hooks
+Agent Middleware — Production control hooks
 
-Implements LangChain 1.0 Middleware pattern:
+Implements before/after execution pattern:
 - before_execution: Run before agent starts
 - after_execution: Run after agent completes
 
@@ -10,8 +10,6 @@ Middleware types:
 2. QuotaCheckMiddleware - Check Gemini API quotas
 3. WebhookTriggerMiddleware - Trigger webhooks on events
 4. GroundingMiddleware - Inject RAG evidence for grounding
-
-Based on LangChain 1.0 middleware architecture and production best practices.
 """
 
 from app.core.ai.agents.middleware.context_injection import (

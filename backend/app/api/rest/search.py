@@ -16,8 +16,8 @@ from pydantic import BaseModel
 from app.api.deps import get_db, get_current_user
 from app.models.user import User
 from app.utils.logging import get_logger
-from app.schemas.search_context import SearchContext, SearchIntent
-from app.schemas.search_response import UnifiedSearchResponse
+from app.schemas.search import SearchContext, SearchIntent
+from app.schemas.search import UnifiedSearchResponse
 from app.services.search.unified_service import get_unified_search_service
 from app.schemas.search import (
     UnifiedSearchRequest,

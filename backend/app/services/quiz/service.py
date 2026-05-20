@@ -138,6 +138,7 @@ Return ONLY valid JSON in this exact format:
     # Wire knowledge graph
     if document_id:
         await _wire_graph_link(db, user_id, new_quiz.id, document_id, topic, questions_created)
+        await db.commit()
 
     logger.info(
         "quiz_generated",
@@ -295,6 +296,52 @@ async def grade_and_submit(
 
     await db.commit()
 
+    # Wire knowledge graph — quiz practiced
+    try:
+        from app.services.graph.linker import GraphLinker
+        from app.models.link import LinkEntityType as LET, LinkType as LT
+
+        linker = GraphLinker(db)
+        correct_count = sum(1 for a in db_answers if a["is_correct"])
+        accuracy = correct_count / len(db_answers) if db_answers else 0.0
+
+        # If quiz came from a document, reinforce that DERIVED link
+        # strength=1.0, NOT accuracy — the act of practicing matters regardless of score.
+        # Accuracy goes in metadata for the intelligence layer to interpret.
+        # Using accuracy as strength would break the GREATEST upsert:
+        # a 0% quiz score → strength=0.0 → never wins GREATEST comparison → silent no-op
+        quiz_result = await db.execute(
+            select(Quiz).where(Quiz.id == attempt.quiz_id)
+        )
+        quiz = quiz_result.scalar_one_or_none()
+        if quiz and quiz.source_ids:
+            doc_ids = quiz.source_ids.get("document_ids", [])
+            if doc_ids:
+                source_refs = [(LET.DOCUMENT, did) for did in doc_ids if isinstance(did, int)]
+                if source_refs:
+                    await linker.on_entity_created(
+                        user_id=user_id,
+                        entity_type=LET.QUIZ,
+                        entity_id=quiz.id,
+                        source_refs=source_refs,
+                        link_type=LT.DERIVED,
+                        strength=1.0,
+                        label="practiced from",
+                        metadata={
+                            "attempt_id": attempt.id,
+                            "accuracy": accuracy,
+                            "correct_count": correct_count,
+                            "total_questions": len(db_answers),
+                        },
+                    )
+                    await db.commit()
+    except Exception as e:
+        import structlog
+        structlog.get_logger(__name__).error(
+            "graph_linker_failed_on_grade", error=str(e), exc_info=True,
+            attempt_id=attempt_id, user_id=user_id,
+        )
+
     return {
         "attempt_id": attempt.id,
         "score": attempt.score,
@@ -399,4 +446,11 @@ async def _wire_graph_link(
             },
         )
     except Exception as e:
-        logger.warning("graph_linker_failed", error=str(e), quiz_id=quiz_id)
+        logger.error(
+            "graph_linker_failed",
+            error=str(e),
+            exc_info=True,
+            quiz_id=quiz_id,
+            document_id=document_id,
+            user_id=user_id,
+        )

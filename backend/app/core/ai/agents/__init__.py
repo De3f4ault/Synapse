@@ -1,14 +1,14 @@
 """
-AI Agents Module - DeepAgents with LangChain ReAct Pattern
+AI Agents Module — Custom ReAct Agents with Typed State
 
 This module implements production-ready AI agents following:
-- ReAct (Reasoning + Acting) pattern
-- LangChain 1.0 Middleware architecture
+- ReAct (Reasoning + Acting) pattern via custom loop
+- SYNAPSE middleware architecture (before/after execution hooks)
 - DeepAgents principles (planning, delegation, persistence)
 - SYNAPSE context injection
 
 Best Practices Applied:
-1. Middleware for production control (from LangChain 1.0)
+1. Middleware for production control (before/after hooks)
 2. Real-time monitoring via Redis counters
 3. Auto-escalation on failures
 4. Human-in-the-loop for sensitive operations

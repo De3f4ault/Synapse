@@ -53,6 +53,9 @@ class ChatSessionRepository:
                 and_(
                     ChatSession.user_id == user_id,
                     ChatSession.deleted_at.is_(None),
+                    # Exclude Card Tutor sessions — they live in the deck detail view,
+                    # not the main chat sidebar.
+                    ChatSession.source == "chat",
                 )
             )
             .group_by(ChatSession.id)

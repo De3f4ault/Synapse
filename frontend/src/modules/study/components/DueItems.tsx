@@ -140,9 +140,9 @@ function DueItemCard({ item }: DueItemCardProps) {
 
   const getTypeColor = (type: string) => {
     if (type === "flashcard")
-      return "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-400";
+      return "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-info";
     if (type === "quiz")
-      return "bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950 dark:text-purple-400";
+      return "bg-accent/5 text-accent border-accent/20 dark:bg-accent/10 dark:text-accent";
     return "bg-gray-50 text-gray-700 border-gray-200 dark:bg-gray-950 dark:text-gray-400";
   };
 
@@ -158,10 +158,10 @@ function DueItemCard({ item }: DueItemCardProps) {
 
   const getPriorityBadge = (priority: "high" | "medium" | "low") => {
     const colors = {
-      high: "bg-red-50 text-red-700 border-red-200 dark:bg-red-950 dark:text-red-400",
+      high: "bg-red-50 text-red-700 border-red-200 dark:bg-red-950 dark:text-destructive",
       medium:
         "bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-950 dark:text-yellow-400",
-      low: "bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-400",
+      low: "bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-accent-olive",
     };
 
     return (

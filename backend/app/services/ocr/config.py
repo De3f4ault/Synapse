@@ -77,7 +77,7 @@ class OcrConfig(BaseSettings):
     )
 
     clean: OcrCleanMode = Field(
-        default=OcrCleanMode.CLEAN, description="Image cleaning mode for better OCR"
+        default=OcrCleanMode.NONE, description="Image cleaning mode for better OCR (requires unpaper)"
     )
 
     # Output settings

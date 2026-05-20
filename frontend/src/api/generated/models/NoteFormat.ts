@@ -3,11 +3,14 @@
 /* tslint:disable */
 /* eslint-disable */
 /**
- * Enum for note content formats. DEPRECATED - kept for migration compatibility.
+ * Enum for note content formats.
+ * `editor_version` is now the canonical source of truth.
+ * This field is kept for backwards compatibility only.
  */
 export enum NoteFormat {
     MARKDOWN = 'markdown',
     HTML = 'html',
     PLAIN = 'plain',
-    BLOCKSUITE = 'blocksuite',
+    BLOCKSUITE = 'blocksuite',  // Legacy — existing rows only
+    TIPTAP = 'tiptap',          // Current default for all new notes
 }

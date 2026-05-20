@@ -29,7 +29,9 @@ from app.platform.registry import ModuleContract, register_module
 # ============================================================================
 
 QUIZZES_CAPABILITIES = [
+    EntityCapability.REFERENCE_IN_CHAT,
     EntityCapability.REINFORCE_GRAPH,
+    EntityCapability.SUMMARIZE,
 ]
 
 
@@ -56,6 +58,7 @@ async def search_quizzes(
             source_module=ModuleId.QUIZZES,
             title=quiz.title,
             created_at=quiz.created_at,
+            match_preview=quiz.description[:120] if quiz.description else None,
         )
         for quiz in quizzes
     ]
@@ -133,6 +136,15 @@ async def check_quiz_availability(
                 reason="Quiz has no questions",
             )
 
+    if capability == EntityCapability.REFERENCE_IN_CHAT:
+        question_count = len(quiz.questions) if quiz.questions else 0
+        if question_count < 1:
+            return ResolvedCapability(
+                capability=capability,
+                available=False,
+                reason="Quiz has no questions to reference",
+            )
+
     return ResolvedCapability(capability=capability, available=True)
 
 
@@ -150,10 +162,22 @@ async def execute_quiz_capability(
 ) -> PlatformActionResult:
     """Execute a capability on a quiz."""
     match capability:
+        case EntityCapability.REFERENCE_IN_CHAT:
+            return PlatformActionResult(
+                status=ActionStatus.SUCCESS,
+                message="Quiz ready to reference in chat",
+            )
+
         case EntityCapability.REINFORCE_GRAPH:
             return PlatformActionResult(
                 status=ActionStatus.SUCCESS,
                 message="Quiz results reinforced in knowledge graph",
+            )
+
+        case EntityCapability.SUMMARIZE:
+            return PlatformActionResult(
+                status=ActionStatus.SUCCESS,
+                message="Quiz summary generation started",
             )
 
         case _:

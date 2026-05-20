@@ -1,13 +1,11 @@
-// StrictMode removed for tldraw compatibility (causes duplicate selection registration)
+// StrictMode removed to prevent double-mount side effects with canvas editors
 import { createRoot } from "react-dom/client";
 import App from "./App";
-import "./styles/globals.css";
-import "./styles/synapse-theme.css"; // Global Synapse Theme
-import "./styles/glass.css";
-import "./styles/animations.css";
-import "./styles/scrollbar.css";
-import "./styles/markdown.css";
-import "./styles/neumorphic.css"; // Neumorphic Design System
+import "./styles/globals.css";       // Design system (imports tokens.css internally)
+import "./styles/scrollbar.css";     // Warm scrollbar styles
+import "./styles/markdown.css";      // Markdown rendering styles
+import "./styles/chat.css";          // Chat interface styles
+import "./styles/illustrations.css"; // Illustration system placeholders
 import "./api/client"; // Initialize API client
 
 // Graph Module Initialization

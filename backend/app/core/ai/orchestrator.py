@@ -8,7 +8,7 @@ each user request. It provides:
 2. Workflow execution for complex multi-agent tasks
 3. Unified interface for chat.py to call
 
-Based on LangGraph supervisor pattern best practices.
+Based on custom agent orchestration with typed state.
 """
 
 from typing import Dict, Any, Optional, List
@@ -255,71 +255,67 @@ class AgentOrchestrator:
             # 1. Ensure initialized
             await self.initialize()
 
-            # 2. Resolve model using mode system
-            from app.core.ai.resolver import get_resolver
+            # 2. Resolve capability alias using Mode → Alias mapping.
+            # The LiteLLM Router owns all provider/model selection from here.
+            from app.core.ai.providers.litellm_router import (
+                mode_to_alias,
+                REGISTRY_KEY_TO_ALIAS,
+            )
             from app.core.ai.modes import get_mode
 
-            resolver = get_resolver()
-            model_key = resolver.resolve(mode_id, tier_override, model_override)
+            # model_override is a MODEL_REGISTRY key sent by the frontend picker
+            # (e.g. "deepseek_v3_2", "qwen3_next").  Translate it to the correct
+            # LiteLLM alias; if the key is unknown, treat it as a raw alias (backward
+            # compat) or fall back to the mode-derived alias.
+            if model_override:
+                litellm_alias = REGISTRY_KEY_TO_ALIAS.get(
+                    model_override,
+                    model_override,  # pass-through if it's already a valid alias
+                )
+            else:
+                litellm_alias = mode_to_alias(mode_id)
+
             mode = get_mode(mode_id)
 
             self.logger.info(
                 "mode_resolved",
                 mode=mode_id,
                 tier_override=tier_override,
-                resolved_model=model_key,
+                model_override=model_override,
+                resolved_alias=litellm_alias,
             )
 
-            # 2.5. Multimodal intercept — auto-upgrade to vision model if needed
+            # 2.5. Multimodal intercept — auto-upgrade to vision alias when needed
             if image_bytes:
-                from app.core.ai.registry.models import get_model as get_model_desc
+                VISION_ALIAS = "synapse-vision"
+                # Text-only models that cannot handle images
+                _TEXT_ONLY_ALIASES = {"synapse-reasoning", "synapse-deepseek-explicit", "synapse-chat", "synapse-coding"}
 
-                # Vision upgrade map: provider → best vision model
-                VISION_UPGRADES = {
-                    "ollama": "qwen3_vl",
-                    "google": "gemini_flash",
-                }
-
-                try:
-                    model_desc = get_model_desc(model_key)
-                    if model_override and not model_desc.supports_multimodal:
-                        # RULE 1: Explicit override is sacred — warn, don't override
-                        self.logger.info(
-                            "multimodal_override_warning",
-                            model=model_key,
-                            reason="User-selected model doesn't support vision",
-                        )
-                        yield {
-                            "type": "warning",
-                            "message": (
-                                f"{model_desc.model_id} doesn't support images. "
-                                f"Sending text only. Switch to a vision model for image analysis."
-                            ),
-                        }
-                        image_bytes = []  # Strip images, send text only
-
-                    elif not model_desc.supports_multimodal:
-                        # RULE 3: Auto-upgrade
-                        upgrade_key = VISION_UPGRADES.get(model_desc.provider, "qwen3_vl")
-                        self.logger.info(
-                            "multimodal_auto_upgrade",
-                            original=model_key,
-                            upgraded_to=upgrade_key,
-                        )
-                        yield {
-                            "type": "model_upgraded",
-                            "original_model": model_key,
-                            "upgraded_to": upgrade_key,
-                            "reason": "Image attachment detected",
-                        }
-                        model_key = upgrade_key
-
-                    # else: RULE 2 — model already supports vision, proceed
-                except KeyError:
-                    self.logger.warning(
-                        "multimodal_intercept_model_not_found",
-                        model_key=model_key,
+                if litellm_alias in _TEXT_ONLY_ALIASES:
+                    # User picked a text-only model (or default reasoning) but sent an image.
+                    # Override silently to vision alias + emit a warning so the UI can display
+                    # "Switched to vision model for image analysis".
+                    self.logger.info(
+                        "multimodal_auto_upgrade",
+                        original_alias=litellm_alias,
+                        upgraded_to=VISION_ALIAS,
+                        reason="Image detected — text-only alias overridden to vision",
                     )
+                    yield {
+                        "type": "model_upgraded",
+                        "original_model": litellm_alias,
+                        "upgraded_to": VISION_ALIAS,
+                        "reason": (
+                            f"'{litellm_alias}' doesn't support images — "
+                            f"switched to Qwen3-VL for visual understanding."
+                        ),
+                    }
+                    litellm_alias = VISION_ALIAS
+
+                # else: already a vision-capable alias (synapse-vision) — proceed
+
+            # else: no images — RULE 3, proceed with resolved alias unchanged
+
 
             # 3. Route to agent - conditionally use intent classification
             # If mode has explicit agent_name, use it directly (skip classifier)
@@ -375,7 +371,7 @@ class AgentOrchestrator:
                 "agent": agent_name,
                 "mode": mode_id,
                 "confidence": confidence,
-                "model": model_key,
+                "model": litellm_alias,
                 "thinking_ui": mode.thinking_ui.value,
             }
 
@@ -390,7 +386,7 @@ class AgentOrchestrator:
             enhanced_context = {
                 **context,
                 "mode_id": mode_id,
-                "model_key": model_key,
+                "litellm_alias": litellm_alias,
                 "mode_system_prompt": mode_prompt,
             }
 
@@ -401,44 +397,18 @@ class AgentOrchestrator:
                     "orchestrator_image_inject",
                     image_count=len(image_bytes),
                     image_sizes=[len(b) for b in image_bytes],
-                    model_key=model_key,
+                    litellm_alias=litellm_alias,
                 )
 
-            # 8. Stream from agent with fallback support
-            async def stream_with_fallback(model: str, retries: int = 1):
-                """Stream from agent, retrying with fallback model on failure."""
-                current_model = model
-                for attempt in range(retries + 1):
-                    try:
-                        async for chunk in agent.execute_stream(
-                            user_id=user_id,
-                            input=message,
-                            context={**enhanced_context, "model_key": current_model},
-                            chat_history=chat_history,
-                        ):
-                            yield chunk
-                        return  # Success, exit
-                    except Exception as stream_error:
-                        # Check if we can fallback
-                        fallback_model = resolver.get_fallback(current_model)
-                        if attempt < retries and fallback_model and fallback_model != current_model:
-                            self.logger.warning(
-                                "model_fallback_triggered",
-                                original_model=current_model,
-                                fallback_model=fallback_model,
-                                error=str(stream_error),
-                            )
-                            yield {
-                                "type": "fallback",
-                                "original_model": current_model,
-                                "fallback_model": fallback_model,
-                                "reason": str(stream_error),
-                            }
-                            current_model = fallback_model
-                        else:
-                            raise  # Re-raise if no fallback available
-
-            async for chunk in stream_with_fallback(model_key):
+            # 8. Stream from agent.
+            # The LiteLLM Router inside the agent handles all failover and
+            # cooldown logic transparently — no manual retry needed here.
+            async for chunk in agent.execute_stream(
+                user_id=user_id,
+                input=message,
+                context=enhanced_context,
+                chat_history=chat_history,
+            ):
                 yield chunk
 
             # 9. Update metrics

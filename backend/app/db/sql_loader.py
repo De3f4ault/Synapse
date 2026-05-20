@@ -261,12 +261,109 @@ class SQLFunctionLoader:
 
     async def load_views(self) -> Dict[str, bool]:
         """
-        Load materialized views from sql/views directory.
+        Load materialized views, skipping any that already exist in the database.
 
-        Returns:
-            Dict mapping file names to success status
+        PERFORMANCE: On a warm restart (the common case) all 5 views are skipped
+        after a single ~5ms pg_matviews query, saving ~19-20s of DROP+CREATE time.
+
+        SCHEMA CHANGES: If you modify a view definition, manually drop it first:
+            DROP MATERIALIZED VIEW IF EXISTS developer_schema.<view_name> CASCADE;
+        The next restart will recreate it with the new definition.
+
+        NEW DATABASE: All views are created normally (nothing to skip).
         """
-        return await self.load_functions(directory="views")
+        logger.info("loading_sql_functions", directory="views")
+
+        sql_files = self._get_sql_files("views")
+        if not sql_files:
+            return {}
+
+        # One cheap query to find which views already exist (~5ms)
+        existing_views = await self._get_existing_matviews()
+        if existing_views:
+            logger.info("existing_matviews_found", count=len(existing_views), views=sorted(existing_views))
+
+        results: Dict[str, bool] = {}
+        files_to_create: list[tuple[Path, str, str]] = []
+
+        for sql_file in sql_files:
+            relative_path = str(sql_file.relative_to(self.sql_root))
+            sql_content = self._read_sql_file(sql_file)
+
+            if sql_content is None:
+                results[relative_path] = False
+                continue
+
+            view_name = self._extract_view_name(sql_content)
+
+            if view_name and view_name in existing_views:
+                logger.info("matview_exists_skipping", view=view_name, file=relative_path)
+                results[relative_path] = True
+                self.loaded_functions[relative_path] = True
+                continue
+
+            # Not found — needs to be created
+            files_to_create.append((sql_file, relative_path, sql_content))
+
+        if not files_to_create:
+            # All views already existed — nothing to execute
+            success_count = sum(1 for v in results.values() if v)
+            logger.info(
+                "sql_functions_load_complete",
+                total=len(results),
+                success=success_count,
+                failed=0,
+                batched=False,
+            )
+            return results
+
+        # Create missing views (individual execution — views can't be batched
+        # because DROP … CASCADE in one statement rolls back all on any error)
+        async with AsyncSession(engine) as session:
+            for _, rel_path, sql_content in files_to_create:
+                success = await self._execute_sql(sql_content, rel_path, session)
+                results[rel_path] = success
+                self.loaded_functions[rel_path] = success
+
+        success_count = sum(1 for v in results.values() if v)
+        failure_count = len(results) - success_count
+        logger.info(
+            "sql_functions_load_complete",
+            total=len(results),
+            success=success_count,
+            failed=failure_count,
+            batched=False,
+        )
+        return results
+
+    async def _get_existing_matviews(self) -> set:
+        """Query pg_matviews to get existing materialized view names in our schema."""
+        from sqlalchemy import text as sa_text
+
+        async with AsyncSession(engine) as session:
+            try:
+                result = await session.execute(
+                    sa_text(
+                        "SELECT matviewname FROM pg_matviews WHERE schemaname = :schema"
+                    ),
+                    {"schema": settings.DATABASE_SCHEMA},
+                )
+                return {row[0] for row in result.fetchall()}
+            except Exception as e:
+                logger.warning("matview_existence_check_failed", error=str(e)[:200])
+                return set()
+
+    @staticmethod
+    def _extract_view_name(sql: str) -> Optional[str]:
+        """Extract materialized view name from a CREATE MATERIALIZED VIEW statement."""
+        import re
+
+        m = re.search(
+            r"CREATE\s+MATERIALIZED\s+VIEW\s+(?:IF\s+NOT\s+EXISTS\s+)?(?:\w+\.)?([\w]+)",
+            sql,
+            re.IGNORECASE,
+        )
+        return m.group(1) if m else None
 
     async def load_tables(self) -> Dict[str, bool]:
         """

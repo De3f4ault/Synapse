@@ -180,7 +180,7 @@ export function Header({ className }: HeaderProps) {
       >
         {/* 1. Brand + Mobile Launcher */}
         <div
-          className="flex items-center gap-4 z-50 relative pointer-events-auto bg-black/20 backdrop-blur-xl border border-white/10 rounded-full px-4 py-2 shadow-2xl"
+          className="flex items-center gap-4 z-50 relative pointer-events-auto bg-background/50 backdrop-blur-xl border border-border rounded-full px-4 py-2 shadow-2xl"
           ref={launcherRef}
         >
           {/* Mobile Waffle Trigger */}
@@ -190,7 +190,7 @@ export function Header({ className }: HeaderProps) {
               "lg:hidden p-2 rounded-full transition-all active:scale-95 border",
               launcherOpen
                 ? "bg-primary/10 text-primary border-primary/20"
-                : "hover:bg-white/5 text-slate-400 border-transparent",
+                : "hover:bg-muted/50 text-muted-foreground border-transparent",
             )}
           >
             {launcherOpen ? (
@@ -209,25 +209,25 @@ export function Header({ className }: HeaderProps) {
               <motion.div
                 animate={{ rotate: 360 }}
                 transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
-                className="absolute inset-0 rounded-full border-2 border-cyan-500/30 border-t-cyan-500 border-l-transparent"
+                className="absolute inset-0 rounded-full border-2 border-primary/30 border-t-primary border-l-transparent"
               />
-              <Atom className="w-5 h-5 text-cyan-400 relative z-10" />
+              <Atom className="w-5 h-5 text-primary relative z-10" />
             </div>
             <div className="hidden sm:flex flex-col">
-              <span className="font-sans text-lg text-white font-bold tracking-tight leading-none group-hover:text-cyan-400 transition-colors">
+              <span className="font-sans text-lg text-foreground font-bold tracking-tight leading-none group-hover:text-primary transition-colors">
                 SYNAPSE
               </span>
               <div className="flex items-center gap-2 mt-0.5">
                 <span
                   className={cn(
                     "w-1.5 h-1.5 rounded-full animate-pulse",
-                    wsConnected ? "bg-emerald-500" : "bg-red-500",
+                    wsConnected ? "bg-accent-olive" : "bg-destructive",
                   )}
                 />
                 <span
                   className={cn(
                     "text-[9px] font-mono uppercase tracking-wider leading-none",
-                    wsConnected ? "text-slate-400" : "text-red-400",
+                    wsConnected ? "text-muted-foreground" : "text-destructive",
                   )}
                 >
                   {wsConnected ? "ONLINE" : "OFFLINE"}
@@ -252,8 +252,8 @@ export function Header({ className }: HeaderProps) {
         <nav className="hidden lg:flex items-center absolute left-1/2 -translate-x-1/2 pointer-events-auto">
           <div
             className={cn(
-              "flex items-center gap-1 px-3 py-2 rounded-2xl border border-white/10 transition-all duration-500 shadow-2xl",
-              "bg-black/30 backdrop-blur-xl supports-[backdrop-filter]:bg-black/20",
+              "flex items-center gap-1 px-3 py-2 rounded-2xl border border-border transition-all duration-500 shadow-2xl",
+              "bg-card/90 backdrop-blur-xl",
             )}
           >
             {navItems.map((item) => {
@@ -274,15 +274,15 @@ export function Header({ className }: HeaderProps) {
                         className={cn(
                           "relative flex flex-col items-center gap-1 px-4 py-2 rounded-xl group transition-all duration-300",
                           isActive
-                            ? "bg-gradient-to-b from-cyan-500/20 to-cyan-500/5 text-cyan-400"
-                            : "hover:bg-white/5 text-slate-400 hover:text-slate-200",
+                            ? "bg-primary/15 text-primary"
+                            : "hover:bg-muted/50 text-muted-foreground hover:text-foreground/70",
                         )}
                       >
                         <div className="relative">
                           <Icon className="w-5 h-5" />
                           {/* Badge for Study dropdown */}
                           {isStudy && dueStats.total > 0 && (
-                            <span className="absolute -top-1.5 -right-2.5 min-w-[16px] h-4 px-1 text-[9px] font-bold bg-amber-500 text-black rounded-full flex items-center justify-center shadow-lg">
+                            <span className="absolute -top-1.5 -right-2.5 min-w-[16px] h-4 px-1 text-[9px] font-bold bg-warning text-black rounded-full flex items-center justify-center shadow-lg">
                               {dueStats.total > 99 ? "99+" : dueStats.total}
                             </span>
                           )}
@@ -296,12 +296,12 @@ export function Header({ className }: HeaderProps) {
                     <DropdownMenuContent
                       align="center"
                       sideOffset={8}
-                      className="min-w-[200px] p-2 bg-gradient-to-b from-[#0d1117] to-[#0a0a0f] border-white/10 backdrop-blur-3xl rounded-xl shadow-2xl"
+                      className="min-w-[200px] p-2 bg-popover border-border backdrop-blur-xl rounded-xl shadow-2xl"
                     >
-                      <DropdownMenuLabel className="text-[10px] font-medium text-slate-500 px-3 py-1.5 uppercase tracking-wider">
+                      <DropdownMenuLabel className="text-[10px] font-medium text-muted-foreground px-3 py-1.5 uppercase tracking-wider">
                         {item.label}
                       </DropdownMenuLabel>
-                      <DropdownMenuSeparator className="bg-white/5 my-1" />
+                      <DropdownMenuSeparator className="bg-foreground/5 my-1" />
                       {item.children.map((child) => {
                         const ChildIcon = child.icon;
                         const isChildActive = location.pathname.startsWith(child.href);
@@ -312,15 +312,15 @@ export function Header({ className }: HeaderProps) {
                             className={cn(
                               "gap-3 px-3 py-2.5 cursor-pointer rounded-lg transition-all group",
                               isChildActive 
-                                ? "bg-gradient-to-r from-cyan-500/20 to-transparent text-cyan-400" 
-                                : "hover:bg-white/5 focus:bg-white/5 text-slate-300"
+                                ? "bg-primary/15 text-primary" 
+                                : "hover:bg-muted/50 focus:bg-foreground/5 text-foreground/80"
                             )}
                           >
                             <div className={cn(
                               "w-8 h-8 rounded-lg flex items-center justify-center transition-colors",
                               isChildActive 
-                                ? "bg-cyan-500/20 text-cyan-400" 
-                                : "bg-white/5 text-slate-400 group-hover:text-cyan-400 group-hover:bg-cyan-500/10"
+                                ? "bg-primary/20 text-primary" 
+                                : "bg-foreground/5 text-muted-foreground group-hover:text-primary group-hover:bg-primary/10"
                             )}>
                               <ChildIcon className="h-4 w-4" />
                             </div>
@@ -343,8 +343,8 @@ export function Header({ className }: HeaderProps) {
                   className={cn(
                     "relative flex flex-col items-center gap-1 px-4 py-2 rounded-xl transition-all duration-300",
                     isActive
-                      ? "bg-gradient-to-b from-cyan-500/20 to-cyan-500/5 text-cyan-400"
-                      : "hover:bg-white/5 text-slate-400 hover:text-slate-200",
+                      ? "bg-primary/15 text-primary"
+                      : "hover:bg-muted/50 text-muted-foreground hover:text-foreground/70",
                   )}
                 >
                   <Icon className="w-5 h-5" />
@@ -356,7 +356,7 @@ export function Header({ className }: HeaderProps) {
         </nav>
 
         {/* 3. Right Actions */}
-        <div className="flex items-center gap-3 z-50 pointer-events-auto bg-black/20 backdrop-blur-xl border border-white/10 rounded-full px-4 py-2 shadow-2xl">
+        <div className="flex items-center gap-3 z-50 pointer-events-auto bg-background/50 backdrop-blur-xl border border-border rounded-full px-4 py-2 shadow-2xl">
           {/* Inline Search */}
           <DesktopInlineSearch navigate={navigate} />
 
@@ -366,35 +366,35 @@ export function Header({ className }: HeaderProps) {
               <Button
                 size="icon"
                 variant="ghost"
-                className="h-8 w-8 rounded-full hover:bg-white/10 hover:text-cyan-400 text-slate-400"
+                className="h-8 w-8 rounded-full hover:bg-muted hover:text-primary text-muted-foreground"
               >
                 <Plus className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent
               align="end"
-              className="w-56 p-2 bg-[#0a0a0f]/95 border-white/10 backdrop-blur-3xl"
+              className="w-56 p-2 bg-popover border-border backdrop-blur-xl"
             >
-              <DropdownMenuLabel className="text-xs font-medium text-slate-500 px-2 py-1.5 uppercase tracking-wider">
+              <DropdownMenuLabel className="text-xs font-medium text-muted-foreground px-2 py-1.5 uppercase tracking-wider">
                 Quick Create
               </DropdownMenuLabel>
-              <DropdownMenuSeparator className="bg-white/5" />
+              <DropdownMenuSeparator className="bg-foreground/5" />
               {quickActions.map((action) => {
                 const Icon = action.icon;
                 return (
                   <DropdownMenuItem
                     key={action.label}
                     onClick={() => navigate(action.href)}
-                    className="gap-3 p-2 cursor-pointer focus:bg-white/5 focus:text-white group"
+                    className="gap-3 p-2 cursor-pointer focus:bg-foreground/5 focus:text-foreground group"
                   >
-                    <div className="p-1.5 rounded-md bg-white/5 text-slate-400 group-focus:text-cyan-400 transition-colors">
+                    <div className="p-1.5 rounded-md bg-foreground/5 text-muted-foreground group-focus:text-primary transition-colors">
                       <Icon className="h-4 w-4" />
                     </div>
                     <div className="flex-1">
-                      <div className="text-xs font-medium text-slate-300 group-focus:text-white">
+                      <div className="text-xs font-medium text-foreground/80 group-focus:text-foreground">
                         {action.label}
                       </div>
-                      <div className="text-[10px] text-slate-500">
+                      <div className="text-[10px] text-muted-foreground">
                         {action.desc}
                       </div>
                     </div>
@@ -413,9 +413,9 @@ export function Header({ className }: HeaderProps) {
           {/* User Avatar - Control Panel Trigger */}
           <button
             onClick={() => setControlPanelOpen(true)}
-            className="flex items-center gap-2 pl-1 pr-1 py-1 rounded-full hover:bg-white/5 transition-all border border-transparent hover:border-white/10"
+            className="flex items-center gap-2 pl-1 pr-1 py-1 rounded-full hover:bg-muted/50 transition-all border border-transparent hover:border-border"
           >
-            <div className="w-8 h-8 rounded-full bg-cyan-500/10 flex items-center justify-center border border-cyan-500/20 text-cyan-400">
+            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20 text-primary">
               <User className="w-4 h-4" />
             </div>
           </button>
@@ -576,22 +576,22 @@ function MobileLauncherWithSearch({ navItems, navigate, onClose }: MobileLaunche
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: -10, scale: 0.95 }}
       transition={{ duration: 0.2 }}
-      className="absolute top-16 left-0 w-[300px] bg-[#0a0a0f]/95 border border-white/10 rounded-2xl shadow-2xl z-[100] overflow-hidden backdrop-blur-3xl max-h-[70vh] flex flex-col"
+      className="absolute top-16 left-0 w-[300px] bg-popover border border-border rounded-2xl shadow-2xl z-[100] overflow-hidden backdrop-blur-xl max-h-[70vh] flex flex-col"
     >
       {/* Search Input */}
-      <div className="p-3 border-b border-white/5 flex-shrink-0">
+      <div className="p-3 border-b border-border flex-shrink-0">
         <div className="relative">
           {isLoading ? (
-            <Loader2 className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-cyan-500 animate-spin" />
+            <Loader2 className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-primary animate-spin" />
           ) : (
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-500" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
           )}
           <input
             type="text"
             placeholder="Search everything..."
             value={mobileSearch}
             onChange={(e) => setMobileSearch(e.target.value)}
-            className="w-full bg-white/5 rounded-md py-1.5 pl-8 pr-3 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-cyan-500/50 transition-all border border-transparent focus:border-cyan-500/20"
+            className="w-full bg-muted rounded-md py-1.5 pl-8 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50 transition-all border border-transparent focus:border-primary/20"
             autoFocus
           />
         </div>
@@ -599,25 +599,25 @@ function MobileLauncherWithSearch({ navItems, navigate, onClose }: MobileLaunche
 
       {/* Search Results (when searching) */}
       {mobileSearch.length >= 2 && hasResults && (
-        <div className="flex-1 overflow-y-auto max-h-[200px] border-b border-white/5">
+        <div className="flex-1 overflow-y-auto max-h-[200px] border-b border-border">
           <div className="p-2 space-y-1">
-            <div className="px-2 py-1 text-[10px] font-medium text-slate-500 uppercase tracking-wider">
+            <div className="px-2 py-1 text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
               Results
             </div>
             {navigationResults.slice(0, 5).map((result) => (
               <button
                 key={`${result.id.type}-${result.id.id}`}
                 onClick={() => handleResultClick(getHref(result))}
-                className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 transition-colors text-left"
+                className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors text-left"
               >
-                <div className="p-1.5 rounded-md bg-white/5 text-slate-400">
+                <div className="p-1.5 rounded-md bg-foreground/5 text-muted-foreground">
                   {getIcon(result.id.type)}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-white truncate">
+                  <div className="text-sm font-medium text-foreground truncate">
                     {result.title}
                   </div>
-                  <div className="text-[10px] text-slate-500 truncate">
+                  <div className="text-[10px] text-muted-foreground truncate">
                     {result.id.type} • {result.snippet?.slice(0, 50)}...
                   </div>
                 </div>
@@ -627,16 +627,16 @@ function MobileLauncherWithSearch({ navItems, navigate, onClose }: MobileLaunche
               <button
                 key={`diag-${result.id.id}`}
                 onClick={() => handleResultClick(`/study?focus=${result.id.id}`)}
-                className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 transition-colors text-left"
+                className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors text-left"
               >
-                <div className="p-1.5 rounded-md bg-amber-500/10 text-amber-400">
+                <div className="p-1.5 rounded-md bg-warning/10 text-warning">
                   <Brain className="w-4 h-4" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-white truncate">
+                  <div className="text-sm font-medium text-foreground truncate">
                     {result.title}
                   </div>
-                  <div className="text-[10px] text-amber-400/80">
+                  <div className="text-[10px] text-warning/80">
                     Learning insight
                   </div>
                 </div>
@@ -648,7 +648,7 @@ function MobileLauncherWithSearch({ navItems, navigate, onClose }: MobileLaunche
 
       {/* No results */}
       {mobileSearch.length >= 2 && !hasResults && !isLoading && (
-        <div className="p-4 text-center text-sm text-slate-500 border-b border-white/5">
+        <div className="p-4 text-center text-sm text-muted-foreground border-b border-border">
           No results for "{mobileSearch}"
         </div>
       )}
@@ -664,12 +664,12 @@ function MobileLauncherWithSearch({ navItems, navigate, onClose }: MobileLaunche
                 <button
                   key={child.href}
                   onClick={() => handleResultClick(child.href)}
-                  className="flex flex-col items-center gap-1.5 p-2 rounded-lg hover:bg-white/5 transition-colors group"
+                  className="flex flex-col items-center gap-1.5 p-2 rounded-lg hover:bg-muted/50 transition-colors group"
                 >
-                  <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-slate-400 group-hover:bg-cyan-500/20 group-hover:text-cyan-400 transition-colors border border-white/5 group-hover:border-cyan-500/30">
+                  <div className="w-10 h-10 rounded-xl bg-foreground/5 flex items-center justify-center text-muted-foreground group-hover:bg-primary/20 group-hover:text-primary transition-colors border border-border group-hover:border-primary/30">
                     <ChildIcon className="w-5 h-5" />
                   </div>
-                  <span className="text-[10px] font-medium text-slate-500 group-hover:text-slate-300">
+                  <span className="text-[10px] font-medium text-muted-foreground group-hover:text-foreground/80">
                     {child.label}
                   </span>
                 </button>
@@ -683,12 +683,12 @@ function MobileLauncherWithSearch({ navItems, navigate, onClose }: MobileLaunche
             <button
               key={item.href}
               onClick={() => item.href && handleResultClick(item.href)}
-              className="flex flex-col items-center gap-1.5 p-2 rounded-lg hover:bg-white/5 transition-colors group"
+              className="flex flex-col items-center gap-1.5 p-2 rounded-lg hover:bg-muted/50 transition-colors group"
             >
-              <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-slate-400 group-hover:bg-cyan-500/20 group-hover:text-cyan-400 transition-colors border border-white/5 group-hover:border-cyan-500/30">
+              <div className="w-10 h-10 rounded-xl bg-foreground/5 flex items-center justify-center text-muted-foreground group-hover:bg-primary/20 group-hover:text-primary transition-colors border border-border group-hover:border-primary/30">
                 <Icon className="w-5 h-5" />
               </div>
-              <span className="text-[10px] font-medium text-slate-500 group-hover:text-slate-300">
+              <span className="text-[10px] font-medium text-muted-foreground group-hover:text-foreground/80">
                 {item.label}
               </span>
             </button>
@@ -791,13 +791,13 @@ function DesktopInlineSearch({ navigate }: DesktopInlineSearchProps) {
       {!isExpanded && (
         <button
           onClick={() => setIsExpanded(true)}
-          className="flex items-center bg-white/5 border border-transparent rounded-full px-3 py-1.5 hover:bg-white/10 transition-all cursor-text group"
+          className="flex items-center bg-foreground/5 border border-transparent rounded-full px-3 py-1.5 hover:bg-muted transition-all cursor-text group"
         >
-          <Search className="w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300 mr-2" />
-          <span className="text-xs text-slate-500 group-hover:text-slate-300 font-medium mr-2">
+          <Search className="w-3.5 h-3.5 text-muted-foreground group-hover:text-foreground/80 mr-2" />
+          <span className="text-xs text-muted-foreground group-hover:text-foreground/80 font-medium mr-2">
             Search
           </span>
-          <kbd className="text-[9px] font-mono bg-black/40 px-1.5 rounded border border-white/10 text-slate-500">
+          <kbd className="text-[9px] font-mono bg-background/70 px-1.5 rounded border border-border text-muted-foreground">
             ⌘K
           </kbd>
         </button>
@@ -807,11 +807,11 @@ function DesktopInlineSearch({ navigate }: DesktopInlineSearchProps) {
       {isExpanded && (
         <div className="relative">
           {/* Input */}
-          <div className="flex items-center bg-white/10 border border-cyan-500/30 rounded-full px-3 py-1.5 min-w-[280px]">
+          <div className="flex items-center bg-foreground/10 border border-primary/30 rounded-full px-3 py-1.5 min-w-[280px]">
             {isLoading ? (
-              <Loader2 className="w-3.5 h-3.5 text-cyan-500 animate-spin mr-2" />
+              <Loader2 className="w-3.5 h-3.5 text-primary animate-spin mr-2" />
             ) : (
-              <Search className="w-3.5 h-3.5 text-cyan-400 mr-2" />
+              <Search className="w-3.5 h-3.5 text-primary mr-2" />
             )}
             <input
               ref={inputRef}
@@ -820,21 +820,21 @@ function DesktopInlineSearch({ navigate }: DesktopInlineSearchProps) {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={handleKeyDown}
-              className="bg-transparent text-sm text-white placeholder:text-slate-400 focus:outline-none flex-1"
+              className="bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none flex-1"
             />
             <button
               onClick={() => { setIsExpanded(false); setQuery(""); }}
-              className="p-0.5 hover:bg-white/10 rounded transition-colors"
+              className="p-0.5 hover:bg-muted rounded transition-colors"
             >
-              <X className="w-3 h-3 text-slate-400" />
+              <X className="w-3 h-3 text-muted-foreground" />
             </button>
           </div>
 
           {/* Dropdown Results */}
           {query.length >= 2 && (
-            <div className="absolute top-full mt-2 right-0 w-[320px] bg-[#0a0a0f]/95 border border-white/10 rounded-xl shadow-2xl z-[100] overflow-hidden backdrop-blur-3xl max-h-[400px] overflow-y-auto">
+            <div className="absolute top-full mt-2 right-0 w-[320px] bg-popover border border-border rounded-xl shadow-2xl z-[100] overflow-hidden backdrop-blur-xl max-h-[400px] overflow-y-auto">
               {isLoading && (
-                <div className="p-4 text-center text-sm text-slate-500">
+                <div className="p-4 text-center text-sm text-muted-foreground">
                   Searching...
                 </div>
               )}
@@ -844,23 +844,23 @@ function DesktopInlineSearch({ navigate }: DesktopInlineSearchProps) {
                   {/* Navigation Results */}
                   {navigationResults.length > 0 && (
                     <>
-                      <div className="px-2 py-1 text-[10px] font-medium text-slate-500 uppercase tracking-wider">
+                      <div className="px-2 py-1 text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
                         Content
                       </div>
                       {navigationResults.slice(0, 6).map((result) => (
                         <button
                           key={`${result.id.type}-${result.id.id}`}
                           onClick={() => handleResultClick(getHref(result))}
-                          className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 transition-colors text-left"
+                          className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors text-left"
                         >
-                          <div className="p-1.5 rounded-md bg-white/5 text-slate-400">
+                          <div className="p-1.5 rounded-md bg-foreground/5 text-muted-foreground">
                             {getIcon(result.id.type)}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <div className="text-sm font-medium text-white truncate">
+                            <div className="text-sm font-medium text-foreground truncate">
                               {result.title}
                             </div>
-                            <div className="text-[10px] text-slate-500 truncate">
+                            <div className="text-[10px] text-muted-foreground truncate">
                               {result.id.type}
                             </div>
                           </div>
@@ -872,23 +872,23 @@ function DesktopInlineSearch({ navigate }: DesktopInlineSearchProps) {
                   {/* Diagnostic Results */}
                   {diagnosticResults.length > 0 && (
                     <>
-                      <div className="px-2 py-1 mt-2 text-[10px] font-medium text-slate-500 uppercase tracking-wider">
+                      <div className="px-2 py-1 mt-2 text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
                         Learning Insights
                       </div>
                       {diagnosticResults.slice(0, 3).map((result) => (
                         <button
                           key={`diag-${result.id.id}`}
                           onClick={() => handleResultClick(`/study?focus=${result.id.id}`)}
-                          className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-white/5 transition-colors text-left"
+                          className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors text-left"
                         >
-                          <div className="p-1.5 rounded-md bg-amber-500/10 text-amber-400">
+                          <div className="p-1.5 rounded-md bg-warning/10 text-warning">
                             <Brain className="w-3.5 h-3.5" />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <div className="text-sm font-medium text-white truncate">
+                            <div className="text-sm font-medium text-foreground truncate">
                               {result.title}
                             </div>
-                            <div className="text-[10px] text-amber-400/80">
+                            <div className="text-[10px] text-warning/80">
                               {result.signals.is_weak_area ? "Weak area" : "Concept"}
                             </div>
                           </div>
@@ -900,7 +900,7 @@ function DesktopInlineSearch({ navigate }: DesktopInlineSearchProps) {
               )}
 
               {!isLoading && !hasResults && query.length >= 2 && (
-                <div className="p-4 text-center text-sm text-slate-500">
+                <div className="p-4 text-center text-sm text-muted-foreground">
                   No results for "{query}"
                 </div>
               )}

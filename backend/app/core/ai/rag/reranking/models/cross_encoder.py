@@ -1,7 +1,6 @@
 """ms-marco cross-encoder reranker."""
 
 from typing import List, Tuple, Optional
-from sentence_transformers import CrossEncoder
 import numpy as np
 import structlog
 
@@ -45,11 +44,18 @@ class CrossEncoderReranker:
             device=config.reranker_device
         )
         
+        # Deferred import: sentence_transformers is already in sys.modules by the
+        # time CrossEncoderReranker is instantiated (NomicEmbedder loads first).
+        # Kept here for symmetry and to avoid any module-level import cost.
+        from sentence_transformers import CrossEncoder
+
         # Load cross-encoder model
         self.model = CrossEncoder(
             config.reranker_model_name,
             device=config.reranker_device,
-            max_length=config.reranker_max_length
+            cache_folder=config.model_cache_dir,
+            max_length=config.reranker_max_length,
+            local_files_only=config.offline_mode,  # Fail-fast if cache miss; no network
         )
         
         # Set CPU threads

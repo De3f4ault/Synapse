@@ -33,7 +33,7 @@ export const success = (title: string, options?: ToastOptions) => {
         }
       : undefined,
     icon: (
-      <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
+      <CheckCircle className="h-5 w-5 text-green-600 dark:text-accent-olive" />
     ),
   });
 };
@@ -51,7 +51,7 @@ export const error = (title: string, options?: ToastOptions) => {
           onClick: options.action.onClick,
         }
       : undefined,
-    icon: <XCircle className="h-5 w-5 text-red-600 dark:text-red-400" />,
+    icon: <XCircle className="h-5 w-5 text-red-600 dark:text-destructive" />,
   });
 };
 
@@ -69,7 +69,7 @@ export const warning = (title: string, options?: ToastOptions) => {
         }
       : undefined,
     icon: (
-      <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+      <AlertCircle className="h-5 w-5 text-amber-600 dark:text-warning" />
     ),
   });
 };
@@ -87,7 +87,7 @@ export const info = (title: string, options?: ToastOptions) => {
           onClick: options.action.onClick,
         }
       : undefined,
-    icon: <Info className="h-5 w-5 text-blue-600 dark:text-blue-400" />,
+    icon: <Info className="h-5 w-5 text-blue-600 dark:text-info" />,
   });
 };
 
@@ -133,13 +133,13 @@ export const update = (
 ) => {
   const iconMap = {
     success: (
-      <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
+      <CheckCircle className="h-5 w-5 text-green-600 dark:text-accent-olive" />
     ),
-    error: <XCircle className="h-5 w-5 text-red-600 dark:text-red-400" />,
+    error: <XCircle className="h-5 w-5 text-red-600 dark:text-destructive" />,
     warning: (
-      <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+      <AlertCircle className="h-5 w-5 text-amber-600 dark:text-warning" />
     ),
-    info: <Info className="h-5 w-5 text-blue-600 dark:text-blue-400" />,
+    info: <Info className="h-5 w-5 text-blue-600 dark:text-info" />,
   };
 
   sonnerToast.success(options.title ?? "", {

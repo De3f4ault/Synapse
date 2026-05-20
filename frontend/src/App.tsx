@@ -4,6 +4,7 @@ import { Router } from "./router";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as SonnerToaster } from "sonner";
 import { WebSocketProvider } from "@/api/websocket/context/WebSocketProvider";
+import { useThemeStore } from "@/stores/themeStore";
 import { useNotificationEvents } from "@/hooks/useNotificationEvents";
 import { AuthGuard } from "@/lib/authGuard";
 import { startTokenRefreshCycle } from "@/lib/tokenLifecycle";
@@ -44,12 +45,18 @@ const queryClient = new QueryClient({
 });
 
 function App() {
+  const { theme } = useThemeStore();
+  // Resolve 'system' to actual light/dark for Sonner
+  const resolvedTheme = theme === 'system'
+    ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+    : theme;
+
   return (
     <QueryClientProvider client={queryClient}>
       <WebSocketProvider>
         <AppContent />
         <Toaster />
-        <SonnerToaster theme="dark" richColors position="bottom-right" />
+        <SonnerToaster theme={resolvedTheme} richColors position="bottom-right" />
       </WebSocketProvider>
     </QueryClientProvider>
   );

@@ -531,4 +531,74 @@ export class FlashcardsService {
             },
         });
     }
+    /**
+     * Open (or resume) a Card Tutor session for a flashcard
+     * Get or create a Card Tutor chat session anchored to a specific flashcard.
+     *
+     * Returns:
+     * session_id — pass to POST /chat/sessions/{id}/stream to start streaming
+     * system_prompt — pre-built context to inject at session start
+     * is_new — whether this is a fresh session or a resumed one
+     * opening_message — the AI's opening Socratic question (shown immediately,
+     * before the student types anything)
+     *
+     * The frontend flow:
+     * 1. Student fails a card (quality ≤ 2) → gap signal filed automatically
+     * 2. "Need Help?" button appears
+     * 3. POST /cards/{card_id}/tutor  → get session_id + opening_message
+     * 4. Render the opening_message in the side-panel chat
+     * 5. Student types → stream to POST /chat/sessions/{session_id}/stream
+     * with card_id in the request body
+     * @param cardId
+     * @param token Auth token for image/file requests
+     * @returns any Successful Response
+     * @throws ApiError
+     */
+    public static openCardTutorApiV1CardsCardIdTutorPost(
+        cardId: number,
+        token?: (string | null),
+    ): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/cards/{card_id}/tutor',
+            path: {
+                'card_id': cardId,
+            },
+            query: {
+                'token': token,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Get all Card Tutor sessions for a flashcard
+     * Return all Card Tutor conversations the user has had for a specific card.
+     *
+     * Useful for the frontend to show "You discussed this concept 3 times"
+     * with links to each session for review.
+     * @param cardId
+     * @param token Auth token for image/file requests
+     * @returns any Successful Response
+     * @throws ApiError
+     */
+    public static getCardTutorHistoryApiV1CardsCardIdTutorHistoryGet(
+        cardId: number,
+        token?: (string | null),
+    ): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/cards/{card_id}/tutor/history',
+            path: {
+                'card_id': cardId,
+            },
+            query: {
+                'token': token,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
 }

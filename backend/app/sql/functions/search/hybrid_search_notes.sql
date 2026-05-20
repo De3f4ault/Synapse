@@ -32,8 +32,16 @@ v_op TEXT := '@' || '@' || '@';
 v_embedding_str TEXT;
 v_do_bm25 BOOLEAN;
 v_do_semantic BOOLEAN;
+v_safe_query TEXT;
 BEGIN -- Determine which search modes to use
-v_do_bm25 := p_search_mode IN ('bm25', 'hybrid');
+v_safe_query := substring(trim(regexp_replace(p_query, '[^a-zA-Z0-9\s]', ' ', 'g')) from 1 for 200);
+
+IF v_safe_query = '' THEN
+    v_do_bm25 := FALSE;
+ELSE
+    v_do_bm25 := p_search_mode IN ('bm25', 'hybrid');
+END IF;
+
 v_do_semantic := p_search_mode IN ('semantic', 'hybrid')
 AND p_query_embedding IS NOT NULL;
 -- Convert embedding to string format for SQL
@@ -46,13 +54,13 @@ IF v_do_bm25 THEN v_bm25_sql := '
             SELECT 
                 n.id,
                 n.title,
-                LEFT(n.content, 200) as content_preview,
+                LEFT(n.content::text, 200) as content_preview,
                 pdb.score(n.id) as score,
                 pdb.snippet(n.title) as snippet
             FROM developer_schema.notes n
             WHERE n.user_id = ' || p_user_id || '
               AND n.deleted_at IS NULL
-              AND n.title ' || v_op || ' ' || quote_literal(p_query) || '
+              AND n.title ' || v_op || ' ' || quote_literal(v_safe_query) || '
             ORDER BY pdb.score(n.id) DESC
             LIMIT ' || (p_limit * 2) || '
         ),
@@ -78,7 +86,7 @@ IF v_do_semantic THEN v_semantic_sql := '
             SELECT
                 n.id,
                 n.title,
-                LEFT(n.content, 200) as content_preview,
+                LEFT(n.content::text, 200) as content_preview,
                 (1.0 - (n.embedding <=> ' || v_embedding_str || '))::REAL as score,
                 ROW_NUMBER() OVER (ORDER BY n.embedding <=> ' || v_embedding_str || ')::INT AS rank,
                 NULL::TEXT as snippet

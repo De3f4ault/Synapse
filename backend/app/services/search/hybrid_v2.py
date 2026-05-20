@@ -24,8 +24,16 @@ from app.services.search.result_types import (
     FlashcardSearchResult,
     ChatMessageSearchResult,
 )
+import re
 
 logger = logging.getLogger(__name__)
+
+def _sanitize_query(query: str) -> str:
+    """Sanitize query for ParadeDB/Tantivy to prevent parsing errors."""
+    if not query:
+        return query
+    # Replace ParadeDB/Tantivy special characters with space
+    return re.sub(r'[+\-=&|><!(){}\[\]^"~*?:\/\\]', ' ', query)
 
 
 class SearchMode(str, Enum):
@@ -89,6 +97,8 @@ class HybridSearchServiceV2:
         if not query or not query.strip():
             logger.warning(f"Empty query for user {user_id}")
             return []
+            
+        safe_query = _sanitize_query(query)
 
         # For semantic/hybrid mode, embedding is required
         if search_mode in (SearchMode.SEMANTIC, SearchMode.HYBRID):
@@ -122,7 +132,7 @@ class HybridSearchServiceV2:
                 """),
                 {
                     "user_id": user_id,
-                    "query": query,
+                    "query": safe_query,
                     "embedding": embedding_param,
                     "limit": limit,
                     "k": k,
@@ -249,6 +259,8 @@ class HybridSearchServiceV2:
         if not query or not query.strip():
             logger.warning(f"Empty flashcard query for user {user_id}")
             return []
+            
+        safe_query = _sanitize_query(query)
 
         logger.debug(f"Flashcard search (BM25): '{query[:50]}...' for user {user_id}")
 
@@ -259,7 +271,7 @@ class HybridSearchServiceV2:
                         :user_id, :query, :limit
                     )
                 """),
-                {"user_id": user_id, "query": query, "limit": limit},
+                {"user_id": user_id, "query": safe_query, "limit": limit},
             )
 
             rows = result.mappings().all()
@@ -375,6 +387,8 @@ class HybridSearchServiceV2:
             logger.warning(f"Empty chat query for user {user_id}")
             return []
 
+        safe_query = _sanitize_query(query)
+
         logger.debug(f"Chat search: '{query[:50]}...' for user {user_id}")
 
         try:
@@ -383,7 +397,7 @@ class HybridSearchServiceV2:
                     "SELECT * FROM developer_schema.search_conversations_v3("
                     ":user_id, :query, :limit)"
                 ),
-                {"user_id": user_id, "query": query, "limit": limit},
+                {"user_id": user_id, "query": safe_query, "limit": limit},
             )
 
             rows = result.fetchall()
@@ -494,6 +508,8 @@ class HybridSearchServiceV2:
         """
         if not query or not query.strip():
             return []
+            
+        safe_query = _sanitize_query(query)
 
         logger.debug(f"Unified hybrid search: '{query}' for user {user_id}")
 
@@ -504,7 +520,7 @@ class HybridSearchServiceV2:
                         :user_id, :query, :limit
                     )
                 """),
-                {"user_id": user_id, "query": query, "limit": limit},
+                {"user_id": user_id, "query": safe_query, "limit": limit},
             )
 
             rows = result.mappings().all()

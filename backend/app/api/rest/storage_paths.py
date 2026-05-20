@@ -16,7 +16,7 @@ from app.api.deps import get_db, get_current_user
 from app.models.user import User
 from app.models.storage_path import StoragePath
 from app.models.document import Document
-from app.schemas.storage_path import (
+from app.schemas.documents import (
     StoragePathCreate,
     StoragePathUpdate,
     StoragePathResponse,

@@ -9,7 +9,7 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 import structlog
 
-from app.schemas.search_feedback import FeedbackEvent
+from app.schemas.search import FeedbackEvent
 from app.schemas.intelligence import QualifiedSignal
 from app.services.feedback.processor import get_feedback_processor, FeedbackProcessor
 from app.api.deps import get_current_user, get_db

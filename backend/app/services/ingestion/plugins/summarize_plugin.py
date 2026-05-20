@@ -37,10 +37,10 @@ class SummarizePlugin(IngestionPlugin):
             return
 
         try:
-            from app.db.session import get_db_session
+            from app.db.session import AsyncSessionLocal
             from app.models.document import Document
 
-            async with get_db_session() as db:
+            async with AsyncSessionLocal() as db:
                 document = await db.get(Document, doc.document_id)
                 if not document:
                     return
@@ -50,11 +50,10 @@ class SummarizePlugin(IngestionPlugin):
                     logger.debug("Document %d already has summary, skipping", doc.document_id)
                     return
 
-                # Generate summary via Gemini
-                from app.core.config import settings
-                from google import genai
+                # Generate summary via LiteLLM (Gemini Flash → Ollama fallback)
+                from app.core.ai.providers.litellm_router import get_llm_router
 
-                client = genai.Client(api_key=settings.GEMINI_API_KEY)
+                llm_router = get_llm_router()
 
                 # Truncate to avoid token limits
                 content = doc.text[:30000]
@@ -65,11 +64,11 @@ class SummarizePlugin(IngestionPlugin):
                     f"Content:\n{content}"
                 )
 
-                response = client.models.generate_content(
-                    model="gemini-2.0-flash",
-                    contents=prompt,
+                response = await llm_router.acompletion(
+                    model="synapse-utility",
+                    messages=[{"role": "user", "content": prompt}],
                 )
-                summary = response.text
+                summary = response.choices[0].message.content or ""
 
                 document.ai_summary = summary
                 await db.commit()
@@ -85,3 +84,4 @@ class SummarizePlugin(IngestionPlugin):
                 "Auto-summarize failed for document %d: %s",
                 doc.document_id, e,
             )
+

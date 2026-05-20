@@ -20,7 +20,7 @@ from app.models.quiz import Quiz, QuizDifficulty
 from app.models.quiz_question import QuizQuestion
 from app.models.quiz_attempt import QuizAttempt
 from app.core.ai.embeddings.boundary import embed_text_sync, EMBEDDING_VERSION
-from app.schemas.quiz import (
+from app.schemas.study import (
     QuestionCreate,
     QuizCreate,
     QuestionResponse,

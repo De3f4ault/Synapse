@@ -22,10 +22,14 @@ CREATE OR REPLACE FUNCTION developer_schema.search_conversations_v3(
     ) LANGUAGE plpgsql STABLE AS $func$
 DECLARE v_op TEXT := '@' || '@' || '@';
 v_query_lower TEXT := lower(trim(p_query));
+v_safe_query TEXT;
 v_inactive_filter TEXT;
 BEGIN IF p_include_inactive THEN v_inactive_filter := '';
 ELSE v_inactive_filter := 'AND m.is_active = true';
 END IF;
+
+v_safe_query := substring(trim(regexp_replace(p_query, '[^a-zA-Z0-9\s]', ' ', 'g')) from 1 for 200);
+
 -- ==== STAGE 1: Title Exact Matches (score: 10.0) ====
 RETURN QUERY
 SELECT s.id AS session_id,
@@ -87,7 +91,7 @@ RETURN QUERY EXECUTE format(
     ',
     p_user_id,
     v_op,
-    p_query,
+    v_safe_query,
     v_inactive_filter,
     p_limit / 3
 );
@@ -137,7 +141,7 @@ RETURN QUERY EXECUTE format(
     p_user_id,
     '%' || p_query || '%',
     v_op,
-    p_query,
+    v_safe_query,
     v_inactive_filter,
     p_limit / 3
 );

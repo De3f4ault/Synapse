@@ -7,7 +7,7 @@ Supports tagging, visibility control, and AI generation tracking.
 
 from typing import Optional, List
 
-from sqlalchemy import Boolean, String, Text, JSON, ARRAY
+from sqlalchemy import Boolean, ForeignKey, Integer, String, Text, JSON, ARRAY
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base
@@ -53,6 +53,27 @@ class Deck(Base, TimestampMixin, SoftDeleteMixin, UserOwnedMixin):
         doc="Tags for categorization (PostgreSQL array type)"
     )
 
+    # Collection (folder) this deck belongs to.
+    # Nullable — decks without a collection appear in an "Uncategorised" view.
+    collection_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("deck_collections.id", ondelete="SET NULL"),
+        nullable=True,
+        default=None,
+        index=True,
+        doc="FK to deck_collections — the folder this deck lives in",
+    )
+
+    # Scheduling algorithm.
+    # 'sm2' is the current default. 'fsrs' is wired but not yet active.
+    # The dispatch interface in scheduler.py routes to the correct function.
+    scheduling_algorithm: Mapped[str] = mapped_column(
+        String(10),
+        nullable=False,
+        default="sm2",
+        server_default="sm2",
+        doc="Scheduling algorithm: 'sm2' (default) or 'fsrs'",
+    )
+
     # Visibility
     is_public: Mapped[bool] = mapped_column(
         Boolean,
@@ -79,7 +100,9 @@ class Deck(Base, TimestampMixin, SoftDeleteMixin, UserOwnedMixin):
     # Relationships
     # flashcards: One-to-many with Flashcard (defined in flashcard.py)
     # user: Many-to-one with User (provided by UserOwnedMixin)
+    # collection: Many-to-one with DeckCollection
 
     def __repr__(self) -> str:
         """String representation of Deck."""
         return f"<Deck(id={self.id}, name='{self.name}', user_id={self.user_id})>"
+

@@ -12,11 +12,13 @@ from enum import Enum
 
 
 class ProcessingStatus(str, Enum):
-    """Document processing status"""
-    PENDING = "pending"
-    PROCESSING = "processing"
+    """Document processing status (mirrors app.models.document.ProcessingStatus)."""
+    PENDING   = "pending"
+    PARSING   = "parsing"
+    PARSED    = "parsed"
+    CHUNKING  = "chunking"
     COMPLETED = "completed"
-    FAILED = "failed"
+    FAILED    = "failed"
 
 
 # Module Configuration

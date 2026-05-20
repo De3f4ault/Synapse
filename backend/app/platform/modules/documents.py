@@ -135,12 +135,17 @@ async def check_document_availability(
             capability=capability, available=False, reason="Document not found"
         )
 
-    # All capabilities require document to be processed
+    # All capabilities require document to be fully processed (COMPLETED)
     if doc.processing_status != ProcessingStatus.COMPLETED:
-        reason = (
-            "Document is still being processed"
-            if doc.processing_status == ProcessingStatus.PROCESSING
-            else "Document is not ready"
+        status_messages = {
+            ProcessingStatus.PENDING:   "Document is queued for processing",
+            ProcessingStatus.PARSING:   "Document is being parsed and stored",
+            ProcessingStatus.PARSED:    "Document text is ready — embedding in progress",
+            ProcessingStatus.CHUNKING:  "Document is being embedded into the knowledge base",
+            ProcessingStatus.FAILED:    "Document processing failed — please re-upload",
+        }
+        reason = status_messages.get(
+            doc.processing_status, "Document is not ready"
         )
         return ResolvedCapability(capability=capability, available=False, reason=reason)
 

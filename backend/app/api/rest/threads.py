@@ -26,7 +26,7 @@ from app.models.user import User
 
 # Chat models from module interface (temporary migration)
 from app.modules.chat.interface import ChatSession, ChatThread, ChatMessage, MessageRole
-from app.schemas.chat_thread import (
+from app.schemas.chat import (
     ThreadCreate,
     ThreadUpdate,
     ThreadResponse,

@@ -87,10 +87,10 @@ export function MobileNav({ open, onOpenChange }: MobileNavProps) {
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="left"
-        className="w-72 p-0 bg-black/80 backdrop-blur-xl border-r-white/10 text-white"
+        className="w-72 p-0 bg-black/80 backdrop-blur-xl border-r-white/10 text-foreground"
       >
-        <SheetHeader className="border-b border-white/10 px-6 py-4">
-          <SheetTitle className="text-xl font-bold text-white tracking-widest">
+        <SheetHeader className="border-b border-border px-6 py-4">
+          <SheetTitle className="text-xl font-bold text-foreground tracking-widest">
             SYNAPSE
           </SheetTitle>
         </SheetHeader>

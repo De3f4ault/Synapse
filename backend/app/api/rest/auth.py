@@ -27,7 +27,7 @@ from app.models.user import User
 # ============================================================================
 # Import schemas from the shared schemas module
 from app.schemas.auth import UserLogin, UserRegister, TokenResponse
-from app.schemas.user import UserResponse
+from app.schemas.auth import UserResponse
 from app.schemas.common import MessageResponse
 
 logger = logging.getLogger(__name__)

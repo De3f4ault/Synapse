@@ -6,7 +6,7 @@ Complete implementation with quiz items integrated into study flow.
 """
 
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_, or_, func
@@ -54,13 +54,13 @@ async def get_due_flashcards(user_id: int, limit: int, db: AsyncSession) -> List
                     Flashcard.deleted_at.is_(None),
                     Deck.deleted_at.is_(None),
                     or_(
-                        Flashcard.next_review <= datetime.utcnow(), Flashcard.next_review.is_(None)
+                        Flashcard.next_review <= datetime.now(timezone.utc), Flashcard.next_review.is_(None)
                     ),
                 )
             )
             .order_by(
                 # Overdue cards first
-                (Flashcard.next_review < datetime.utcnow()).desc(),
+                (Flashcard.next_review < datetime.now(timezone.utc)).desc(),
                 # Then new cards
                 (Flashcard.learning_state == LearningState.NEW).desc(),
                 # Then by next review date
@@ -157,7 +157,7 @@ async def get_due_quizzes(user_id: int, limit: int, db: AsyncSession) -> List[di
                     last_percentage = 0
 
                 # Check based on difficulty and performance
-                time_since_attempt = datetime.utcnow() - last_completed_at
+                time_since_attempt = datetime.now(timezone.utc) - last_completed_at
 
                 # Spaced repetition: easier quizzes reviewed less frequently
                 if quiz.difficulty == QuizDifficulty.EASY:
@@ -257,7 +257,7 @@ async def start_session(
         user_id=current_user.id,
         session_type=session_data.session_type,
         modules_used={"modules": session_data.modules},
-        started_at=datetime.utcnow(),
+        started_at=datetime.now(timezone.utc),
     )
 
     db.add(new_session)
@@ -281,6 +281,32 @@ async def start_session(
         ended_at=None,
         is_completed=False,
     )
+
+
+
+@router.get(
+    "/sessions/active",
+    tags=["Study Sessions"],
+    summary="Get resumable sessions (used at top to win over /{session_id})",
+    include_in_schema=False,  # Shown via the Sprint 2 section docstring
+)
+async def get_active_sessions_early(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Thin forward — real implementation is in the Sprint 2 section below.
+    Must be registered BEFORE /sessions/{session_id} so 'active' is not
+    treated as a numeric session_id.
+    """
+    from app.services.flashcards.session_service import SessionService as _SS
+    service = _SS(db)
+    sessions = await service.get_active_sessions(current_user.id)
+    for s in sessions:
+        planned = len(s.get("cards_planned") or [])
+        reviewed = s.get("current_card_index") or 0
+        s["progress_pct"] = round(reviewed / planned * 100, 1) if planned else 0.0
+    return sessions
 
 
 @router.get("/sessions/{session_id}", response_model=StudySessionResponse)
@@ -339,7 +365,7 @@ async def complete_session(
         )
 
     # Complete session
-    session.ended_at = datetime.utcnow()
+    session.ended_at = datetime.now(timezone.utc)
     session.time_spent_seconds = int((session.ended_at - session.started_at).total_seconds())
     session.is_completed = True
 
@@ -434,3 +460,171 @@ async def get_recommendations(
     except Exception as e:
         logger.error(f"Error getting recommendations: {str(e)}")
         return []
+
+
+# ============================================================================
+# Sprint 2 — Session Persistence (queue snapshot, checkpoint, resume)
+# ============================================================================
+
+from app.services.flashcards.session_service import SessionService  # noqa: E402
+
+
+class CreateSessionV2Request(BaseModel):
+    """Extended session creation with queue curation."""
+    deck_id: Optional[int] = None
+    session_mode: str = Field("classic", pattern="^(classic|socratic)$")
+    budget: int = Field(25, ge=5, le=100, description="Max cards in this session")
+
+
+class CheckpointRequest(BaseModel):
+    """Checkpoint payload sent after every card review."""
+    current_card_index: int = Field(..., ge=0)
+    card_review: Optional[dict] = Field(
+        None,
+        description="{card_id, quality, duration_ms, hint_used}"
+    )
+
+
+@router.post(
+    "/sessions/curated",
+    status_code=status.HTTP_201_CREATED,
+    tags=["Study Sessions"],
+    summary="Create a curated session with a queue snapshot",
+)
+async def create_curated_session(
+    body: CreateSessionV2Request,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Create a study session with a budgeted, prioritised card queue.
+
+    The queue is snapshotted at creation — resuming always returns the
+    same card set the student started with, even if new cards become due.
+
+    Returns the session with a `queue` array containing the full card data.
+    """
+    service = SessionService(db)
+    try:
+        return await service.create_session(
+            user_id=current_user.id,
+            deck_id=body.deck_id,
+            session_mode=body.session_mode,
+            budget=body.budget,
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(exc),
+        )
+
+
+@router.patch(
+    "/sessions/{session_id}/checkpoint",
+    tags=["Study Sessions"],
+    summary="Save current position in an active session",
+)
+async def checkpoint_session(
+    session_id: int,
+    body: CheckpointRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Persist the current card index and optional per-card review detail.
+
+    Called after every card is reviewed so the session can be resumed
+    at the exact card the student left off on. Lightweight — just an
+    index update + JSON append.
+    """
+    service = SessionService(db)
+    try:
+        return await service.save_checkpoint(
+            session_id=session_id,
+            user_id=current_user.id,
+            current_card_index=body.current_card_index,
+            card_review=body.card_review,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
+
+
+@router.post(
+    "/sessions/{session_id}/complete-v2",
+    tags=["Study Sessions"],
+    summary="Complete a session (v2 — uses resume_status)",
+)
+async def complete_session_v2(
+    session_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Mark a session as completed.
+
+    Uses resume_status field (not the v1 is_completed approach) so the
+    active-sessions endpoint correctly excludes this session from the
+    resume prompt.
+    """
+    service = SessionService(db)
+    try:
+        return await service.complete_session(session_id, current_user.id)
+    except ValueError as exc:
+        code = (
+            status.HTTP_400_BAD_REQUEST
+            if "already completed" in str(exc)
+            else status.HTTP_404_NOT_FOUND
+        )
+        raise HTTPException(status_code=code, detail=str(exc))
+
+
+@router.post(
+    "/sessions/{session_id}/abandon",
+    tags=["Study Sessions"],
+    summary="Abandon a session (user quit mid-session)",
+)
+async def abandon_session(
+    session_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Mark a session as abandoned.
+
+    Abandoned sessions surface in 'Not Completed' on the dashboard.
+    They remain resumable — the student can pick up where they left off.
+    """
+    service = SessionService(db)
+    try:
+        return await service.abandon_session(session_id, current_user.id)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+
+
+@router.get(
+    "/sessions/active",
+    tags=["Study Sessions"],
+    summary="Get resumable sessions for the current user",
+)
+async def get_active_sessions(
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Return sessions that are resumable (in_progress or recently abandoned).
+
+    The frontend uses this to surface "Continue where you left off?" prompts.
+
+    Returns up to 5 sessions ordered by last_activity_at DESC.
+    Enriched with deck_name and progress percentage.
+    """
+    service = SessionService(db)
+    sessions = await service.get_active_sessions(current_user.id)
+
+    # Enrich with progress pct so the frontend can show a progress bar
+    for s in sessions:
+        planned = len(s.get("cards_planned") or [])
+        reviewed = s.get("current_card_index") or 0
+        s["progress_pct"] = round(reviewed / planned * 100, 1) if planned else 0.0
+
+    return sessions

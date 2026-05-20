@@ -214,9 +214,9 @@ export function clamp(value: number, min: number, max: number): number {
  * Get color class based on accuracy/performance.
  */
 export function getPerformanceColor(accuracy: number): string {
-  if (accuracy >= 0.8) return "text-green-600 dark:text-green-400";
+  if (accuracy >= 0.8) return "text-green-600 dark:text-accent-olive";
   if (accuracy >= 0.6) return "text-yellow-600 dark:text-yellow-400";
-  return "text-red-600 dark:text-red-400";
+  return "text-red-600 dark:text-destructive";
 }
 
 /**

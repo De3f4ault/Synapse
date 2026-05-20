@@ -26,7 +26,7 @@ from app.models.user import User
 # Chat models from module interface (temporary migration)
 from app.modules.chat.interface import ChatSession, ChatMessage, MessageRole
 from app.schemas.chat import ChatMessageResponse
-from app.schemas.branch import (
+from app.schemas.chat import (
     BranchCreateRequest,
     BranchSiblingInfo,
     BranchSiblingsResponse,

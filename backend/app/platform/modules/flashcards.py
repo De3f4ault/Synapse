@@ -30,6 +30,7 @@ from app.models.deck import Deck
 # ============================================================================
 
 FLASHCARDS_CAPABILITIES = [
+    EntityCapability.REFERENCE_IN_CHAT,
     EntityCapability.REINFORCE_GRAPH,
 ]
 
@@ -45,25 +46,40 @@ async def search_flashcards(
     user_id: int,
     limit: int = 10,
 ) -> list[EntitySearchResult]:
-    """Search for flashcards by front text."""
+    """
+    Search for flashcard DECKS by name.
+
+    The user's mental model when mentioning flashcards is:
+      @PostgreSQL Internals  → the whole deck, not a single card.
+
+    We search Deck.name so the picker surfaces deck-level results.
+    The entity ID returned is the DECK id (not a card id).
+    EntityType.FLASHCARD is kept to avoid a schema change — the
+    hydrator handles the deck-level hydration.
+    """
     stmt = (
-        select(Flashcard)
-        .join(Deck)
-        .where(Deck.user_id == user_id, Flashcard.front_text.ilike(f"%{query}%"))
+        select(Deck)
+        .where(
+            Deck.user_id == user_id,
+            Deck.name.ilike(f"%{query}%"),
+            Deck.deleted_at.is_(None),
+        )
+        .order_by(Deck.created_at.desc())
         .limit(limit)
     )
     result = await db.execute(stmt)
-    cards = result.scalars().all()
+    decks = result.scalars().all()
 
     return [
         EntitySearchResult(
-            id=card.id,
+            id=deck.id,
             type=EntityType.FLASHCARD,
             source_module=ModuleId.FLASHCARDS,
-            title=card.front_text[:50] + ("..." if len(card.front_text) > 50 else ""),
-            created_at=card.created_at,
+            title=deck.name,
+            created_at=deck.created_at,
+            match_preview=deck.description[:100] if deck.description else None,
         )
-        for card in cards
+        for deck in decks
     ]
 
 
@@ -77,36 +93,54 @@ async def resolve_flashcard(
     db: AsyncSession,
     user_id: int,
 ) -> LearningEntity | None:
-    """Resolve a flashcard to a LearningEntity."""
-    result = await db.execute(select(Flashcard).where(Flashcard.id == int(entity_id)))
-    card = result.scalar_one_or_none()
+    """
+    Resolve a flashcard DECK to a LearningEntity.
 
-    if not card:
+    entity_id is a DECK id (as returned by search_flashcards).
+    SECURITY: Enforces user_id ownership on the Deck row.
+    """
+    from sqlalchemy import func
+
+    result = await db.execute(
+        select(Deck).where(
+            Deck.id == int(entity_id),
+            Deck.user_id == user_id,
+            Deck.deleted_at.is_(None),
+        )
+    )
+    deck = result.scalar_one_or_none()
+
+    if not deck:
         return None
 
-    # Resolve capabilities
     capabilities = []
     for cap in FLASHCARDS_CAPABILITIES:
         resolved = await check_flashcard_availability(entity_id, cap, db, user_id)
         capabilities.append(resolved)
 
-    # Create title from front text
-    title = card.front_text[:50] + ("..." if len(card.front_text) > 50 else "")
+    # Count active cards without eager-loading the full relationship
+    count_result = await db.execute(
+        select(func.count(Flashcard.id)).where(
+            Flashcard.deck_id == deck.id,
+            Flashcard.deleted_at.is_(None),
+        )
+    )
+    card_count = count_result.scalar_one() or 0
 
     return LearningEntity(
-        id=card.id,
+        id=deck.id,
         type=EntityType.FLASHCARD,
         source_module=ModuleId.FLASHCARDS,
-        title=title,
-        created_at=card.created_at,
+        title=deck.name,
+        created_at=deck.created_at,
         capabilities=capabilities,
         visibility=EntityVisibility.PRIVATE,
         metadata={
-            "front_text": card.front_text,
-            "back_text": card.back_text,
-            "deck_id": card.deck_id,
-            "ease_factor": card.ease_factor,
-            "interval": card.interval,
+            "deck_id": deck.id,
+            "deck_name": deck.name,
+            "description": deck.description,
+            "card_count": card_count,
+            "ai_generated": deck.ai_generated,
         },
     )
 
@@ -122,16 +156,26 @@ async def check_flashcard_availability(
     db: AsyncSession,
     user_id: int,
 ) -> ResolvedCapability:
-    """Check if a capability is available for a flashcard."""
-    result = await db.execute(select(Flashcard).where(Flashcard.id == int(entity_id)))
-    card = result.scalar_one_or_none()
+    """
+    Check if a capability is available for a flashcard DECK.
 
-    if not card:
+    entity_id is a DECK id.
+    SECURITY: Enforces user_id ownership on the Deck row.
+    """
+    result = await db.execute(
+        select(Deck).where(
+            Deck.id == int(entity_id),
+            Deck.user_id == user_id,
+            Deck.deleted_at.is_(None),
+        )
+    )
+    deck = result.scalar_one_or_none()
+
+    if not deck:
         return ResolvedCapability(
-            capability=capability, available=False, reason="Flashcard not found"
+            capability=capability, available=False, reason="Deck not found"
         )
 
-    # Flashcards primarily support REINFORCE_GRAPH
     return ResolvedCapability(capability=capability, available=True)
 
 

@@ -15,7 +15,7 @@ from typing import Annotated
 
 from app.api.deps import get_current_user
 from app.models import User
-from app.schemas.rag import (
+from app.schemas.intelligence import (
     DocumentIngestRequest,
     DocumentIngestResponse,
     QueryRequest,

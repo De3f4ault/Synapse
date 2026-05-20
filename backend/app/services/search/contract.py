@@ -7,8 +7,8 @@ Logs violations loudly. Never silently drops.
 import structlog
 from typing import List
 
-from app.schemas.search_identity import SearchEntityIdentity, IdentityAuthority
-from app.schemas.search_result import UnifiedSearchResult, SearchRole, AssertionType
+from app.schemas.search import SearchEntityIdentity, IdentityAuthority
+from app.schemas.search import UnifiedSearchResult, SearchRole, AssertionType
 
 
 logger = structlog.get_logger(__name__)
