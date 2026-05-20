@@ -1,97 +1,218 @@
 /**
- * Message markdown styling - Oracle Theme
- * Applies the Cinzel/Mono typography to rendered content.
+ * Markdown Rendering Styles — Warm Palette
+ * For rendered content in chat, notes, and document viewer.
  *
- * Location: src/pages/chat/styles/markdown.css
+ * Uses serif headlines, warm code blocks, and editorial spacing.
  */
 
 .markdown-content {
-  @apply text-slate-300 leading-relaxed;
-  font-size: 0.95rem;
+  color: var(--text-primary);
+  line-height: var(--leading-loose);
+  font-size: var(--text-body-std);
 }
 
-/* Paragraphs */
+/* --- Paragraphs --- */
 .markdown-content p {
-  @apply mb-4 last:mb-0;
-  line-height: 1.75;
+  margin-bottom: 1rem;
+  line-height: var(--leading-loose);
 }
 
-/* Headings - Oracle Serif Style */
+.markdown-content p:last-child {
+  margin-bottom: 0;
+}
+
+/* --- Headings — Serif, weight 500 --- */
 .markdown-content h1 {
-  @apply text-2xl font-bold text-cyan-50 mb-4 mt-8 first:mt-0 font-serif tracking-wide;
+  font-family: var(--font-serif);
+  font-size: var(--text-subhead-sm);
+  font-weight: 500;
+  line-height: var(--leading-snug);
+  color: var(--text-primary);
+  margin-bottom: 1rem;
+  margin-top: 2rem;
+}
+
+.markdown-content h1:first-child {
+  margin-top: 0;
 }
 
 .markdown-content h2 {
-  @apply text-xl font-bold text-cyan-100 mb-3 mt-6 font-serif tracking-wide;
+  font-family: var(--font-serif);
+  font-size: var(--text-feature);
+  font-weight: 500;
+  line-height: var(--leading-snug);
+  color: var(--text-primary);
+  margin-bottom: 0.75rem;
+  margin-top: 1.5rem;
 }
 
 .markdown-content h3 {
-  @apply text-lg font-semibold text-cyan-200 mb-3 mt-5 font-serif;
+  font-family: var(--font-serif);
+  font-size: var(--text-body-lg);
+  font-weight: 500;
+  line-height: var(--leading-normal);
+  color: var(--text-primary);
+  margin-bottom: 0.75rem;
+  margin-top: 1.25rem;
 }
 
-/* Lists */
+/* --- Lists --- */
 .markdown-content ul {
-  @apply list-disc list-outside ml-5 mb-4 space-y-2 marker:text-cyan-500/50;
+  list-style-type: disc;
+  list-style-position: outside;
+  margin-left: 1.25rem;
+  margin-bottom: 1rem;
+}
+
+.markdown-content ul > li {
+  padding-left: 0.25rem;
+  margin-bottom: 0.5rem;
+  color: var(--text-primary);
+}
+
+.markdown-content ul > li::marker {
+  color: var(--color-ring-default);
 }
 
 .markdown-content ol {
-  @apply list-decimal list-outside ml-5 mb-4 space-y-2 marker:text-cyan-500/50;
+  list-style-type: decimal;
+  list-style-position: outside;
+  margin-left: 1.25rem;
+  margin-bottom: 1rem;
 }
 
-.markdown-content li {
-  @apply text-slate-300;
+.markdown-content ol > li {
   padding-left: 0.25rem;
+  margin-bottom: 0.5rem;
+  color: var(--text-primary);
 }
 
-/* Links */
+.markdown-content ol > li::marker {
+  color: var(--color-ring-default);
+}
+
+/* --- Links — Brand accent --- */
 .markdown-content a {
-  @apply text-cyan-400 hover:text-cyan-300 underline decoration-cyan-500/30 underline-offset-2;
-  transition: all 0.2s ease;
+  color: var(--brand-accent);
+  text-decoration: underline;
+  text-decoration-color: var(--brand-accent);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+  transition: all var(--duration-micro) var(--ease-enter);
 }
 
-/* Inline code */
+.markdown-content a:hover {
+  color: var(--brand-primary);
+  text-decoration-color: var(--brand-primary);
+}
+
+/* --- Inline code --- */
 .markdown-content code {
-  @apply px-1.5 py-0.5 rounded bg-white/5 border border-white/10;
-  @apply text-cyan-200 text-[0.85rem] font-mono;
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  letter-spacing: var(--tracking-tight);
+  padding: 2px 6px;
+  border-radius: var(--radius-subtle);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  color: var(--text-primary);
 }
 
-/* Code blocks (pre > code) are handled by the CodeBlock component,
- *  but this handles raw pre tags if they appear */
+/* --- Code blocks (pre > code handled by CodeBlock component) --- */
 .markdown-content pre {
-  @apply mb-4 rounded-lg overflow-x-auto bg-black/50 border border-white/10 p-4;
+  margin-bottom: 1rem;
+  border-radius: var(--radius-default);
+  overflow-x: auto;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  padding: 1rem;
 }
 
-/* Blockquotes */
+.markdown-content pre code {
+  padding: 0;
+  border: none;
+  background: transparent;
+  font-size: var(--text-code);
+}
+
+/* --- Blockquotes --- */
 .markdown-content blockquote {
-  @apply border-l-2 border-cyan-500/30 pl-4 py-1 my-4;
-  @apply text-slate-400 italic bg-white/5 rounded-r-lg;
+  border-left: 3px solid var(--brand-primary);
+  padding-left: 1rem;
+  padding-top: 0.25rem;
+  padding-bottom: 0.25rem;
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+  color: var(--text-secondary);
+  font-style: italic;
+  background: var(--bg-surface);
+  border-radius: 0 var(--radius-default) var(--radius-default) 0;
 }
 
-/* Horizontal rule */
+/* --- Horizontal rule --- */
 .markdown-content hr {
-  @apply my-8 border-white/10;
+  margin: 2rem 0;
+  border: none;
+  border-top: 1px solid var(--border-default);
 }
 
-/* Tables */
+/* --- Tables --- */
 .markdown-content table {
-  @apply w-full my-6 border-collapse;
-  @apply border border-white/10 rounded-lg overflow-hidden;
+  width: 100%;
+  margin: 1.5rem 0;
+  border-collapse: collapse;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-default);
+  overflow: hidden;
 }
 
 .markdown-content thead {
-  @apply bg-white/5;
+  background: var(--bg-surface);
 }
 
 .markdown-content th {
-  @apply px-4 py-3 text-left text-xs font-bold text-cyan-100 uppercase tracking-wider font-mono;
-  @apply border-b border-white/10;
+  padding: 0.75rem 1rem;
+  text-align: left;
+  font-size: var(--text-caption);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-label);
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-default);
 }
 
 .markdown-content td {
-  @apply px-4 py-3 text-sm text-slate-300;
-  @apply border-b border-white/5;
+  padding: 0.75rem 1rem;
+  font-size: var(--text-body-sm);
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .markdown-content tr:hover {
-  @apply bg-white/5;
+  background: var(--bg-surface-hover);
+}
+
+/* --- Images --- */
+.markdown-content img {
+  border-radius: var(--radius-large);
+  max-width: 100%;
+  height: auto;
+  margin: 1rem 0;
+}
+
+/* --- Strong / Bold --- */
+.markdown-content strong {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* --- Emphasis --- */
+.markdown-content em {
+  font-style: italic;
+}
+
+/* --- Task lists --- */
+.markdown-content input[type="checkbox"] {
+  accent-color: var(--brand-primary);
+  margin-right: 0.5rem;
 }

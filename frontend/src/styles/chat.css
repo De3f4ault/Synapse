@@ -1,0 +1,228 @@
+/**
+ * Synapse Chat UI Styles — Warm Palette
+ *
+ * Styles for: message bubbles, streaming indicators,
+ * citation badges, input composer, typing indicators.
+ */
+
+/* ============================================================
+   MESSAGE BUBBLES
+   User messages: warm sand surface
+   AI messages: elevated card surface
+   ============================================================ */
+.chat-message {
+  max-width: 85%;
+  padding: 12px 16px;
+  border-radius: var(--radius-generous);
+  line-height: var(--leading-loose);
+  font-size: var(--text-body-std);
+  transition: background-color var(--duration-standard) var(--ease-enter);
+}
+
+/* User message — warm sand, right-aligned */
+.chat-message-user {
+  background: var(--color-warm-sand);
+  color: var(--color-text-button);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-generous) var(--radius-generous) var(--radius-subtle) var(--radius-generous);
+  margin-left: auto;
+}
+
+/* AI message — elevated surface, left-aligned */
+.chat-message-ai {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-generous) var(--radius-generous) var(--radius-generous) var(--radius-subtle);
+}
+
+/* Dark mode overrides */
+.dark .chat-message-user {
+  background: var(--color-dark-elevated);
+  color: var(--color-text-dark-primary);
+  border-color: var(--color-border-dark);
+}
+
+
+/* ============================================================
+   STREAMING INDICATOR
+   Warm-toned cursor blink
+   ============================================================ */
+.streaming-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1.2em;
+  background: var(--brand-primary);
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  animation: cursor-blink 1s var(--ease-state) infinite;
+}
+
+@keyframes cursor-blink {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0; }
+}
+
+
+/* ============================================================
+   TYPING INDICATOR
+   Three dots with warm accent
+   ============================================================ */
+.typing-indicator {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 16px;
+}
+
+.typing-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-ring-default);
+  animation: typing-dot 1.4s var(--ease-state) infinite;
+}
+
+.typing-dot:nth-child(2) { animation-delay: 0.2s; }
+.typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes typing-dot {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.5; }
+  30%           { transform: translateY(-6px); opacity: 1; }
+}
+
+
+/* ============================================================
+   CITATION / SOURCE BADGES
+   Warm accent, not chromatic
+   ============================================================ */
+.citation-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  font-size: var(--text-label);
+  font-weight: 500;
+  letter-spacing: var(--tracking-label);
+  background: var(--brand-primary);
+  color: var(--color-ivory);
+  cursor: pointer;
+  transition: all var(--duration-micro) var(--ease-enter);
+  text-decoration: none;
+}
+
+.citation-badge:hover {
+  opacity: 0.85;
+  transform: translateY(-1px);
+}
+
+/* Muted variant for inline citations */
+.citation-badge-muted {
+  background: transparent;
+  color: var(--brand-accent);
+  border: 1px solid var(--brand-accent);
+}
+
+.citation-badge-muted:hover {
+  background: var(--brand-accent);
+  color: var(--color-ivory);
+}
+
+
+/* ============================================================
+   CHAT INPUT COMPOSER
+   Warm surface with ring-based focus
+   ============================================================ */
+.chat-input-container {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-generous);
+  padding: 8px;
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  transition: all var(--duration-standard) var(--ease-enter);
+}
+
+.chat-input-container:focus-within {
+  border-color: var(--ring-focus);
+  box-shadow: var(--shadow-ring-focus);
+}
+
+.chat-input-container textarea,
+.chat-input-container input {
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--text-primary);
+  font-size: var(--text-body-std);
+  line-height: var(--leading-loose);
+  resize: none;
+  flex: 1;
+  min-height: 24px;
+  max-height: 200px;
+}
+
+.chat-input-container textarea::placeholder,
+.chat-input-container input::placeholder {
+  color: var(--text-tertiary);
+}
+
+/* Send button inside composer */
+.chat-send-button {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-default);
+  background: var(--brand-primary);
+  color: var(--color-ivory);
+  border: none;
+  cursor: pointer;
+  transition: all var(--duration-micro) var(--ease-enter);
+  flex-shrink: 0;
+}
+
+.chat-send-button:hover {
+  opacity: 0.9;
+}
+
+.chat-send-button:disabled {
+  background: var(--bg-surface);
+  color: var(--text-tertiary);
+  cursor: not-allowed;
+}
+
+
+/* ============================================================
+   SOURCE FOOTER (Collapsible)
+   ============================================================ */
+.sources-footer {
+  border-top: 1px solid var(--border-default);
+  padding: 12px 16px;
+  margin-top: 8px;
+}
+
+.sources-footer-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  font-size: var(--text-caption);
+  font-weight: 500;
+  transition: color var(--duration-micro) var(--ease-enter);
+}
+
+.sources-footer-header:hover {
+  color: var(--text-primary);
+}
+
+.sources-footer-content {
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}

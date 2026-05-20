@@ -1,0 +1,55 @@
+/**
+ * Synapse Illustration System — CSS Placeholders
+ *
+ * Hand-drawn-feeling vector placeholders using the strict 3-color palette:
+ *   - Terracotta #c96442 (dominant shapes)
+ *   - Near-black #141413 (line work, shadows)
+ *   - Muted olive-green #788c5d (accents)
+ *
+ * Usage: Empty states, onboarding, conceptual sections.
+ *        Never for functional UI communication.
+ */
+
+/* Base illustration container */
+.illustration {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-brand);
+  user-select: none;
+  pointer-events: none;
+}
+
+/* Illustration on parchment only — never on dark backgrounds */
+.illustration-on-parchment {
+  background: var(--color-parchment);
+  border-radius: var(--radius-large);
+  padding: var(--space-8);
+}
+
+/* Color tokens for SVG illustrations */
+.illustration-primary { color: var(--color-brand); }           /* #c96442 Terracotta */
+.illustration-line { color: var(--color-near-black); }         /* #141413 Line work */
+.illustration-accent { color: var(--color-accent-green); }     /* #788c5d Olive-green */
+
+/* Empty state placeholder */
+.empty-state-illustration {
+  width: 120px;
+  height: 120px;
+  border-radius: var(--radius-max);
+  background: var(--bg-surface);
+  border: 2px dashed var(--border-default);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto var(--space-6);
+}
+
+.empty-state-illustration svg {
+  width: 48px;
+  height: 48px;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  color: var(--text-tertiary);
+}
