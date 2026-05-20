@@ -41,7 +41,10 @@ class DocumentProcessor:
             "txt": self._extract_txt,
             "md": self._extract_txt,
             "docx": self._extract_docx,
-            # Image formats (OCR required)
+            # EPUB (ebook format) — chapter-aware extraction
+            "epub": self._extract_epub,
+            # Image formats — visual embedding via embed_image_task is preferred;
+            # these OCR fallbacks are only used when content_text is absent
             "png": self._extract_image,
             "jpg": self._extract_image,
             "jpeg": self._extract_image,
@@ -51,6 +54,14 @@ class DocumentProcessor:
             "gif": self._extract_image,
             "webp": self._extract_image,
         }
+
+    # Image types that should be routed to embed_image_task, not OCR chunking
+    IMAGE_TYPES = {"png", "jpg", "jpeg", "tiff", "tif", "bmp", "gif", "webp"}
+
+    @classmethod
+    def is_image_type(cls, file_type: str) -> bool:
+        """True if the file type should be handled by embed_image_task (visual embeddings)."""
+        return file_type.lower().lstrip(".") in cls.IMAGE_TYPES
 
     def process_document(self, file_path: str, file_type: str) -> Dict[str, Any]:
         """
@@ -260,20 +271,134 @@ class DocumentProcessor:
             logger.error(f"Error extracting DOCX: {str(e)}")
             raise
 
+    def _extract_epub(self, file_path: str) -> Dict[str, Any]:
+        """
+        Extract text from an EPUB file, preserving chapter structure.
+
+        Strategy:
+          1. Parse with ebooklib to get ordered document items (chapters)
+          2. Skip navigation, TOC, cover, copyright items
+          3. Clean each chapter's HTML with BeautifulSoup + lxml
+          4. Insert double-newlines around headings to create semantic boundaries
+          5. Join chapters with '\n\n' separators
+
+        The resulting text structure helps the semantic chunker detect chapter/section
+        boundaries — topics shift at headings and chapter breaks, not at character limits.
+
+        Returns:
+            content:    Full chapter-ordered plain text
+            page_count: Estimated from word count (250 words/page)
+            metadata:   Dublin Core title, author, subject
+            ocr_performed: False (EPUBs are text-native)
+        """
+        try:
+            import ebooklib
+            from ebooklib import epub as epub_lib
+            from bs4 import BeautifulSoup
+
+            # Suppress ebooklib's noisy warnings about missing cover items
+            import warnings
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                book = epub_lib.read_epub(file_path, options={"ignore_ncx": True})
+
+            # Skip non-content documents (TOC, nav, cover, copyright)
+            SKIP_HINTS = {"toc", "nav", "cover", "copyright", "title", "colophon", "halftitle"}
+
+            chapters = []
+            for item in book.get_items_of_type(ebooklib.ITEM_DOCUMENT):
+                name = item.get_name().lower()
+
+                # Skip navigation/metadata documents
+                if any(hint in name for hint in SKIP_HINTS):
+                    continue
+
+                html = item.get_body_content()
+                if not html:
+                    continue
+
+                soup = BeautifulSoup(html, "lxml")
+
+                # Strip noise: scripts, styles, hidden elements
+                for tag in soup(["script", "style", "meta", "link"]):
+                    tag.decompose()
+
+                # Preserve heading structure as semantic boundary markers.
+                # Double-newlines around headings signal topic shifts to the
+                # semantic chunker, keeping chapters from bleeding into each other.
+                for heading in soup.find_all(["h1", "h2", "h3", "h4", "h5", "h6"]):
+                    heading.string = f"\n\n{heading.get_text(strip=True)}\n\n"
+
+                text = soup.get_text(separator=" ")
+                # Collapse whitespace runs but preserve paragraph breaks
+                text = re.sub(r"[ \t]+", " ", text)
+                text = re.sub(r"\n{3,}", "\n\n", text).strip()
+
+                if len(text) >= MIN_TEXT_LENGTH:
+                    chapters.append(text)
+
+            if not chapters:
+                raise ValueError(f"No readable content extracted from EPUB: {file_path}")
+
+            # Join with section separators
+            full_text = "\n\n".join(chapters)
+
+            # Estimate page count (250 words per page is standard)
+            word_count = len(full_text.split())
+            estimated_pages = max(1, word_count // 250)
+
+            # Extract Dublin Core metadata
+            metadata: Dict[str, Any] = {}
+            dc_title = book.get_metadata("DC", "title")
+            if dc_title:
+                metadata["title"] = dc_title[0][0]
+            dc_creator = book.get_metadata("DC", "creator")
+            if dc_creator:
+                metadata["author"] = dc_creator[0][0]
+            dc_subject = book.get_metadata("DC", "subject")
+            if dc_subject:
+                metadata["subject"] = dc_subject[0][0]
+
+            logger.info(
+                f"EPUB extracted: {len(chapters)} chapters, "
+                f"{word_count:,} words, ~{estimated_pages} pages"
+            )
+
+            return {
+                "content": full_text,
+                "page_count": estimated_pages,
+                "metadata": metadata,
+                "ocr_performed": False,
+            }
+
+        except Exception as e:
+            logger.error(f"Error extracting EPUB {file_path}: {e}")
+            raise
+
     def _clean_text(self, text: str) -> str:
         """
         Clean and normalize extracted text.
+
+        IMPORTANT: Only collapses horizontal whitespace (spaces and tabs).
+        Newlines are deliberately preserved — they carry paragraph and chapter
+        structure that the semantic chunker uses to find topic boundaries.
+        Collapsing \\n to spaces (the old behavior) destroyed all structural
+        markers before the chunker ever saw the text, causing 98% safeguard rate.
 
         Args:
             text: Raw extracted text
 
         Returns:
-            Cleaned text
+            Cleaned text with paragraph structure intact
         """
-        # Remove excessive whitespace
-        text = re.sub(r"\s+", " ", text)
+        # Remove NUL bytes — PostgreSQL TEXT columns reject 0x00 characters
+        text = text.replace("\x00", "")
 
-        # Remove excessive newlines
+        # Collapse horizontal whitespace only (spaces and tabs).
+        # DO NOT use r"\s+" here — \s matches \n which destroys paragraph breaks.
+        text = re.sub(r"[ \t]+", " ", text)
+
+        # Normalize excessive newlines (3+ → 2) while preserving paragraph breaks
         text = re.sub(r"\n{3,}", "\n\n", text)
 
         # Strip leading/trailing whitespace

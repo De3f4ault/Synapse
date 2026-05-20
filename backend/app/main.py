@@ -150,6 +150,14 @@ async def _init_vector_store() -> None:
     qdrant_client.get_client().get_collections()
     logger.info("qdrant_initialized")
 
+    # Create synapse_colbert collection when ColBERT is enabled.
+    # Idempotent — skips creation if collection already exists.
+    from app.core.ai.rag.config.rag_config import get_rag_config as _get_rag_config_startup
+    if _get_rag_config_startup().colbert_enable:
+        from app.core.ai.rag.vector_store.qdrant.collection_manager import CollectionManager as _CM
+        _CM(client=qdrant_client.get_client()).create_colbert_collection()
+        logger.info("synapse_colbert_collection_ready")
+
 
 async def _init_sql_functions() -> None:
     """
@@ -239,19 +247,30 @@ async def _init_orchestrator() -> None:
 
 async def _init_rag(app: FastAPI) -> None:
     """
-    RAG Service Injection.
+    RAG Service Injection + Pre-warm.
 
-    **Target**: `app.services.rag`
-    **State Mutation**: `app.state.rag_service`
-    **Action**: Instantiates the RAG pipeline (Retrieval -> Reranking -> Generation)
-    and attaches it to the FastAPI application state.
-    **Usage**: Route handlers access this via `request.app.state.rag_service`.
+    **Targets**:
+    - `app.services.rag.get_rag_service` — ingestion pipeline attached to app state.
+    - `app.core.ai.rag.pipeline.rag_pipeline.pre_warm_pipeline` — search pipeline
+      singleton + heavy models (cross-encoder, BM25 sparse embedder) loaded into memory.
+
+    **Why pre-warm?**
+    The RAGPipeline, cross-encoder (ms-marco-MiniLM-L-6-v2), and Qdrant/bm25 sparse
+    embedder are expensive to initialise (~3-4s combined). Pre-warming them here means
+    the first real user request pays zero additional cold-start cost.
+
     **Dependencies**: Requires Vector Store (`_init_vector_store`) to be ready.
     """
     from app.services.rag import get_rag_service
+    from app.core.ai.rag.pipeline.rag_pipeline import pre_warm_pipeline
 
+    # 1. Ingestion-path RAG service (attached to app state for document uploads)
     rag_service = get_rag_service()
     app.state.rag_service = rag_service
+
+    # 2. Pre-warm the search-path singleton so the first query is fast.
+    #    pre_warm_pipeline() is best-effort and suppresses its own exceptions.
+    await pre_warm_pipeline()
 
     logger.info(
         "rag_system_initialized",
@@ -260,6 +279,8 @@ async def _init_rag(app: FastAPI) -> None:
             "llm_enhancement",
             "learning_aware_reranking",
             "feedback_loops",
+            "singleton_pipeline",   # ← new
+            "pre_warmed",           # ← new
         ],
     )
 

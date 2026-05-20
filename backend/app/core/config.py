@@ -23,6 +23,15 @@ class Settings(BaseSettings):
 
     DATABASE_SCHEMA: str = Field(default="developer_schema", description="PostgreSQL schema name")
 
+    # Admin Dashboard — Logical Replica connection
+    # In development: if unset, analytics reads fall back to the Primary with a warning log.
+    # In production: REQUIRED. App startup fails loudly if missing.
+    # Points to the Logical Replica (e.g. postgresql+asyncpg://user:pass@localhost:5434/synapse)
+    ANALYTICS_DATABASE_URL: Optional[str] = Field(
+        default=None,
+        description="PostgreSQL Logical Replica connection string (asyncpg driver). Required in production.",
+    )
+
     # Event Bus — Direct PostgreSQL connection for LISTEN/NOTIFY
     # Auto-derived from DATABASE_URL if not set. Must bypass PgBouncer.
     PG_LISTEN_DSN: str = Field(
@@ -79,6 +88,8 @@ class Settings(BaseSettings):
             "https://localhost",
             "https://127.0.0.1",
             "https://synapse.local",
+            # ngrok external access
+            "https://shine-uplifted-cubical.ngrok-free.dev",
         ],
         description="Allowed CORS origins",
     )
