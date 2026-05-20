@@ -5,14 +5,14 @@ Fire-and-forget analytics for the search bus. INSERT never blocks the
 search response — errors are swallowed and logged.
 """
 
-import logging
+import structlog
 import re
 from typing import Optional, List
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 # Simple question marker  (starts or contains a question word / ends with ?)
 _QUESTION_RE = re.compile(

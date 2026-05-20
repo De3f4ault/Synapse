@@ -16,6 +16,35 @@ import { OpenAPI } from '../core/OpenAPI';
 import { request as __request } from '../core/request';
 export class AnalyticsService {
     /**
+     * Get Deck Analytics
+     * Per-deck analytics.
+     *
+     * Returns mastery distribution, recall rate, Ebbinghaus retention curve,
+     * weak card list, and 30-day consistency window.
+     * @param deckId
+     * @param token Auth token for image/file requests
+     * @returns any Successful Response
+     * @throws ApiError
+     */
+    public static getDeckAnalyticsApiV1CollectionsDecksDeckIdAnalyticsGet(
+        deckId: number,
+        token?: (string | null),
+    ): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/v1/collections/decks/{deck_id}/analytics',
+            path: {
+                'deck_id': deckId,
+            },
+            query: {
+                'token': token,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
      * Get Overview
      * Get dashboard overview from pre-computed materialized view.
      *

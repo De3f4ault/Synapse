@@ -84,8 +84,8 @@ export const GlobalContextMenu = ({
         className={cn(
           "w-full flex items-center justify-between px-3 py-2 text-sm transition-colors rounded-md group",
           danger 
-            ? "text-red-400 hover:bg-red-500/10 hover:text-red-300" 
-            : "text-slate-300 hover:bg-white/10 hover:text-white"
+            ? "text-destructive hover:bg-destructive/10 hover:text-red-300" 
+            : "text-foreground/80 hover:bg-muted hover:text-foreground"
         )}
       >
         <div className="flex items-center gap-2">
@@ -93,10 +93,10 @@ export const GlobalContextMenu = ({
           <span>{label}</span>
         </div>
         {shortcut && (
-          <span className="text-xs text-slate-500 font-mono group-hover:text-slate-400">{shortcut}</span>
+          <span className="text-xs text-muted-foreground font-mono group-hover:text-muted-foreground">{shortcut}</span>
         )}
       </button>
-      {divider && <div className="h-px bg-white/10 my-1 mx-2" />}
+      {divider && <div className="h-px bg-foreground/10 my-1 mx-2" />}
     </>
   );
 
@@ -108,9 +108,9 @@ export const GlobalContextMenu = ({
       exit={{ opacity: 0, scale: 0.95 }}
       transition={{ duration: 0.1 }}
       style={{ top: style.top, left: style.left }}
-      className="fixed z-[100] w-64 p-1.5 rounded-xl border border-white/10 bg-[#0A0A0A]/95 backdrop-blur-xl shadow-2xl flex flex-col"
+      className="fixed z-[100] w-64 p-1.5 rounded-xl border border-border bg-popover backdrop-blur-xl shadow-2xl flex flex-col"
     >
-      <div className="px-3 py-1.5 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
+      <div className="px-3 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">
         Actions
       </div>
 
@@ -143,9 +143,9 @@ export const GlobalContextMenu = ({
         onClick={onSelectAll} 
       />
       
-      <div className="h-px bg-white/10 my-1 mx-2" />
+      <div className="h-px bg-foreground/10 my-1 mx-2" />
       
-      <div className="px-3 py-1.5 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1 mt-1">
+      <div className="px-3 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1 mt-1">
         View
       </div>
       

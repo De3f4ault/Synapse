@@ -12,7 +12,7 @@ from typing import List
 import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.schemas.search_feedback import FeedbackEvent
+from app.schemas.search import FeedbackEvent
 from app.schemas.intelligence import QualifiedSignal
 from app.services.feedback.normalizer import normalize_feedback
 from app.services.intelligence import get_promotion_service

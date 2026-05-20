@@ -5,8 +5,8 @@ Tracks study sessions across different learning modules.
 Records performance metrics and time spent.
 """
 
-from datetime import datetime
-from typing import Optional
+from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional
 import enum
 
 from sqlalchemy import String, Integer, DateTime, JSON, ForeignKey
@@ -48,6 +48,14 @@ class StudySession(Base):
         doc="ID of the user"
     )
 
+    # Sprint 2 — deck-focused session (null = cross-deck session)
+    deck_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("decks.id", ondelete="SET NULL"),
+        nullable=True,
+        default=None,
+        doc="Which deck this session is focused on (null = cross-deck session)",
+    )
+
     # Session Configuration
     session_type: Mapped[StudySessionType] = mapped_column(
         SQLEnum(StudySessionType, native_enum=False),
@@ -55,10 +63,63 @@ class StudySession(Base):
         doc="Type of study session"
     )
 
-    modules_used: Mapped[dict] = mapped_column(
+    # Sprint 2 — Socratic or classic review mode
+    session_mode: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        default="classic",
+        server_default="classic",
+        doc="'classic' (flip card) | 'socratic' (typed answer evaluated by AI)",
+    )
+
+    # Sprint 2 — resume lifecycle
+    resume_status: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        default="in_progress",
+        server_default="in_progress",
+        index=True,
+        doc="'in_progress' | 'completed' | 'abandoned'",
+    )
+
+    modules_used: Mapped[Dict[str, Any]] = mapped_column(
         JSON,
         nullable=False,
-        doc="List of module names used in session"
+        default=dict,
+        doc="Module metadata used in this session"
+    )
+
+    # Sprint 2 — Queue snapshot: [{card_id, deck_id}] ordered at session start
+    cards_planned: Mapped[Optional[List[Dict[str, Any]]]] = mapped_column(
+        JSON,
+        nullable=True,
+        default=None,
+        doc="Ordered queue snapshot captured at session start for deterministic resume",
+    )
+
+    # Sprint 2 — Per-card review detail: [{card_id, quality, duration_ms, hint_used, reviewed_at}]
+    cards_reviewed_detail: Mapped[Optional[List[Dict[str, Any]]]] = mapped_column(
+        JSON,
+        nullable=True,
+        default=None,
+        doc="Per-card review records appended after every rating",
+    )
+
+    # Sprint 2 — Current position in cards_planned (for resume)
+    current_card_index: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        default=0,
+        server_default="0",
+        doc="0-based index into cards_planned — where to resume",
+    )
+
+    # Sprint 2 — Last heartbeat for stale-session detection
+    last_activity_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+        default=None,
+        doc="Updated on every checkpoint. Sessions idle > 48h are auto-abandoned.",
     )
 
     # Timing

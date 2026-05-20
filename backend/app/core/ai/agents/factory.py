@@ -17,8 +17,10 @@ from pathlib import Path
 
 from app.core.ai.agents.base_agent import BaseAgent, AgentConfig, AgentCapability
 from app.core.ai.agents.middleware import GroundingMiddleware
+from app.core.ai.agents.middleware.context_injection import ContextInjectionMiddleware
+from app.core.ai.agents.middleware.learning_signal_middleware import LearningSignalMiddleware
 from app.core.ai.tools.registry import ToolRegistry
-from langchain_core.tools import BaseTool
+from app.core.ai.tools.base import BaseTool
 
 logger = structlog.get_logger(__name__)
 
@@ -207,7 +209,9 @@ class AgentFactory:
                     "analyze_document",  # RAG: Deep document analysis
                 ],
                 "default_middleware": [
+                    ContextInjectionMiddleware(),  # Inject learning profile (weak areas, mastery)
                     GroundingMiddleware(),  # Inject RAG evidence for grounding
+                    LearningSignalMiddleware(),  # Extract learning signals post-execution
                 ],
             },
             "document": {
@@ -248,7 +252,9 @@ class AgentFactory:
                     "search_flashcards",
                 ],
                 "default_middleware": [
+                    ContextInjectionMiddleware(),  # Inject learning profile
                     GroundingMiddleware(),  # Inject RAG evidence for grounding
+                    LearningSignalMiddleware(),  # Extract learning signals post-execution
                 ],
             },
             "general": {
@@ -266,7 +272,9 @@ class AgentFactory:
                     "search_flashcards",
                 ],
                 "default_middleware": [
+                    ContextInjectionMiddleware(),  # Inject learning profile
                     GroundingMiddleware(),
+                    LearningSignalMiddleware(),  # Extract learning signals post-execution
                 ],
             },
         }

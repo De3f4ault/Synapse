@@ -22,10 +22,10 @@ import { cn } from "@/lib/utils";
    ================================================================ */
 
 const TIER_CONFIG: Record<string, { icon: React.ReactNode; label: string; color: string }> = {
-  speed: { icon: <Zap className="size-2.5" />, label: "Speed", color: "bg-emerald-500/15 text-emerald-400" },
-  balanced: { icon: <Scale className="size-2.5" />, label: "Balanced", color: "bg-blue-500/15 text-blue-400" },
-  reasoning: { icon: <Brain className="size-2.5" />, label: "Reasoning", color: "bg-amber-500/15 text-amber-400" },
-  thinking: { icon: <Lightbulb className="size-2.5" />, label: "Thinking", color: "bg-purple-500/15 text-purple-400" },
+  speed: { icon: <Zap className="size-2.5" />, label: "Speed", color: "bg-accent-olive/15 text-accent-olive" },
+  balanced: { icon: <Scale className="size-2.5" />, label: "Balanced", color: "bg-blue-500/15 text-info" },
+  reasoning: { icon: <Brain className="size-2.5" />, label: "Reasoning", color: "bg-warning/15 text-warning" },
+  thinking: { icon: <Lightbulb className="size-2.5" />, label: "Thinking", color: "bg-accent/15 text-accent" },
 };
 
 /* ================================================================
@@ -107,8 +107,8 @@ function ModelDropdown({
         className={cn(
           "w-full flex items-center gap-3 px-3 py-2.5 text-left transition-all rounded-lg mx-1",
           isSelected
-            ? "bg-cyan-500/10 text-cyan-300"
-            : "text-zinc-300 hover:bg-white/5 hover:text-white"
+            ? "bg-primary/10 text-primary/80"
+            : "text-foreground/80 hover:bg-muted/50 hover:text-foreground"
         )}
         onClick={() => {
           onSelect(model.id);
@@ -127,22 +127,22 @@ function ModelDropdown({
               </span>
             )}
             {model.supportsThinking && (
-              <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 whitespace-nowrap font-medium">
+              <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-accent/20 text-accent/80 whitespace-nowrap font-medium">
                 💭 Thinking
               </span>
             )}
             {model.supportsVision && (
-              <Eye className="size-3 text-zinc-500" />
+              <Eye className="size-3 text-muted-foreground" />
             )}
           </div>
           {model.description && (
-            <p className="text-[11px] text-zinc-500 truncate mt-0.5">
+            <p className="text-[11px] text-muted-foreground truncate mt-0.5">
               {model.description}
             </p>
           )}
         </div>
         {isSelected && (
-          <Check className="size-3.5 text-cyan-400 shrink-0" />
+          <Check className="size-3.5 text-primary shrink-0" />
         )}
       </button>
     );
@@ -152,7 +152,7 @@ function ModelDropdown({
     if (items.length === 0) return null;
     return (
       <div key={title}>
-        <div className="px-3 py-1.5 text-[10px] font-medium text-zinc-500 uppercase tracking-wider sticky top-0 bg-[#0e0e12]/98 backdrop-blur-sm z-10">
+        <div className="px-3 py-1.5 text-[10px] font-medium text-muted-foreground uppercase tracking-wider sticky top-0 bg-popover backdrop-blur-sm z-10">
           {title}
         </div>
         {items.map(renderModelItem)}
@@ -175,11 +175,11 @@ function ModelDropdown({
               bottom: `${window.innerHeight - pos.top + 8}px`,
               left: `${pos.left}px`,
             }}
-            className="min-w-[300px] max-h-[420px] overflow-y-auto scrollbar-hide rounded-xl border border-white/10 bg-[#0e0e12]/98 backdrop-blur-2xl shadow-2xl shadow-black/50 z-[9999] py-1"
+            className="min-w-[300px] max-h-[420px] overflow-y-auto scrollbar-hide rounded-xl border border-border bg-popover backdrop-blur-2xl shadow-2xl shadow-lg z-[9999] py-1"
           >
             {renderGroup("Ollama — Open Source", grouped.ollama)}
             {grouped.ollama.length > 0 && grouped.google.length > 0 && (
-              <div className="h-px bg-white/5 mx-2 my-1" />
+              <div className="h-px bg-foreground/5 mx-2 my-1" />
             )}
             {renderGroup("Google Cloud", grouped.google)}
           </motion.div>
@@ -195,13 +195,13 @@ function ModelDropdown({
         className={cn(
           "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all border",
           isOpen
-            ? "bg-white/8 border-white/15 text-white"
-            : "bg-white/5 border-white/8 text-zinc-300 hover:bg-white/8 hover:border-white/12 hover:text-white"
+            ? "bg-muted/50 border-border text-foreground"
+            : "bg-foreground/5 border-border text-foreground/80 hover:bg-muted/50 hover:border-border hover:text-foreground"
         )}
         onClick={handleToggle}
         aria-expanded={isOpen}
       >
-        <span className="text-[10px] uppercase tracking-wide text-zinc-500 mr-0.5">
+        <span className="text-[10px] uppercase tracking-wide text-muted-foreground mr-0.5">
           {label}
         </span>
         <span className="truncate max-w-[140px]">
@@ -236,8 +236,8 @@ export function ComparisonToggle() {
         className={cn(
           "flex items-center gap-2 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all border",
           isComparisonMode
-            ? "bg-cyan-500/10 border-cyan-500/20 text-cyan-300"
-            : "bg-white/5 border-white/8 text-zinc-500 hover:text-zinc-300 hover:bg-white/8"
+            ? "bg-primary/10 border-primary/20 text-primary/80"
+            : "bg-foreground/5 border-border text-muted-foreground hover:text-foreground/80 hover:bg-muted/50"
         )}
         title="Compare responses from two models side by side"
       >
@@ -262,7 +262,7 @@ export function ComparisonToggle() {
               models={models}
               grouped={grouped}
             />
-            <span className="text-[11px] font-semibold text-zinc-600 uppercase">
+            <span className="text-[11px] font-semibold text-muted-foreground uppercase">
               vs
             </span>
             <ModelDropdown

@@ -253,7 +253,7 @@ export const ChatInterface = forwardRef<
                 >
                   <div className="relative w-14 h-14 mx-auto">
                     <div className="absolute inset-0 bg-[var(--synapse-cyan)]/20 blur-xl rounded-full" />
-                    <div className="relative bg-black/60 border border-white/20 p-3 rounded-2xl backdrop-blur-sm">
+                    <div className="relative bg-background/80 border border-border p-3 rounded-2xl backdrop-blur-sm">
                       <svg
                         viewBox="0 0 24 24"
                         fill="none"
@@ -269,10 +269,10 @@ export const ChatInterface = forwardRef<
                       </svg>
                     </div>
                   </div>
-                  <h2 className="text-2xl font-semibold text-white">
+                  <h2 className="text-2xl font-semibold text-foreground">
                     How can I help you learn?
                   </h2>
-                  <p className="text-sm text-white/50 max-w-md mx-auto">
+                  <p className="text-sm text-foreground/50 max-w-md mx-auto">
                     Ask questions, analyze documents, create quizzes, or explore complex topics
                   </p>
                 </motion.div>
@@ -300,7 +300,7 @@ export const ChatInterface = forwardRef<
 
         {/* BOTTOM INPUT AREA */}
         {!showCenteredInput && (
-          <div className="flex-none p-4 border-t border-white/5 bg-[#0a0a0a]/90 backdrop-blur-md z-50 relative">
+          <div className="flex-none p-4 border-t border-border bg-card/90 backdrop-blur-md z-50 relative">
             <div className="max-w-3xl mx-auto w-full">
               <MessageInput
                 onSend={handleSendMessage}

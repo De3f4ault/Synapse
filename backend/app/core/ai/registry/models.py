@@ -179,6 +179,30 @@ QWEN3_VL = ModelDescriptor(
     known_limitations=("Requires image input for best results",),
 )
 
+GEMMA4_31B = ModelDescriptor(
+    model_id="gemma4:31b-cloud",
+    provider="ollama",
+    capabilities=frozenset(
+        {
+            AICapability.HIGH_ACCURACY,
+            AICapability.MULTIMODAL_VISION,
+        }
+    ),
+    max_context_tokens=128_000,
+    supports_multimodal=True,
+    cost_tier="free",
+    tier=Tier.SPEED,
+    fallback_id="gemini_flash",
+    supports_thinking=False,
+    strengths=(
+        "Fast conversational responses",
+        "Excellent instruction-following",
+        "Socratic tutoring",
+        "Low latency streaming",
+    ),
+    known_limitations=("Less strong on deep multi-step reasoning",),
+)
+
 
 # =============================================================================
 # GOOGLE MODELS
@@ -266,6 +290,7 @@ MODEL_REGISTRY: dict[str, ModelDescriptor] = {
     "qwen3_vl": QWEN3_VL,  # Vision model
     "gpt_oss_120b": GPT_OSS_120B,
     "gpt_oss_20b": GPT_OSS_20B,
+    "gemma4_31b": GEMMA4_31B,  # Fast conversational — card tutor
     # Google
     "gemini_flash": GEMINI_FLASH,
     "gemini_pro": GEMINI_PRO,
@@ -278,9 +303,9 @@ MODEL_REGISTRY: dict[str, ModelDescriptor] = {
 # =============================================================================
 
 TIER_DEFAULTS: dict[Tier, list[str]] = {
-    Tier.SPEED: ["gpt_oss_20b", "gemini_flash"],
+    Tier.SPEED: ["gemma4_31b", "gpt_oss_20b", "gemini_flash"],
     Tier.BALANCED: ["deepseek_v3_2", "gpt_oss_120b", "gemini_flash"],
-    Tier.REASONING: ["qwen3_next", "qwen3_coder", "qwen3_vl", "gemini_pro"],  # Added vision model
+    Tier.REASONING: ["qwen3_next", "qwen3_coder", "qwen3_vl", "gemini_pro"],
     Tier.THINKING: ["deepseek_v3_1", "gemini_thinking"],
 }
 
@@ -289,11 +314,12 @@ TIER_DEFAULTS: dict[Tier, list[str]] = {
 # DEFAULT MODEL CONSTANTS — Import these instead of hardcoding model strings
 # =============================================================================
 
-DEFAULT_CHAT_MODEL = GEMINI_FLASH.model_id  # "gemini-2.5-flash"
-DEFAULT_GENERATION_MODEL = GEMINI_PRO.model_id  # "gemini-1.5-pro"
-DEFAULT_SPEED_MODEL = GPT_OSS_20B.model_id  # fast, cheap
-DEFAULT_CACHE_MODEL = "gemini-2.0-flash-001"  # caching requires versioned model
-DEFAULT_TOKENIZER_MODEL = "gemini-2.0-flash"  # for token counting only
+DEFAULT_CHAT_MODEL = GEMINI_FLASH.model_id        # "gemini-2.5-flash" — main chat
+DEFAULT_CARD_TUTOR_MODEL = GEMMA4_31B.model_id    # "gemma4:31b-cloud" — fast, non-thinking, conversational
+DEFAULT_GENERATION_MODEL = GEMINI_PRO.model_id    # "gemini-1.5-pro"
+DEFAULT_SPEED_MODEL = GPT_OSS_20B.model_id        # fast, cheap
+DEFAULT_CACHE_MODEL = "gemini-2.0-flash-001"      # caching requires versioned model
+DEFAULT_TOKENIZER_MODEL = "gemini-2.0-flash"      # for token counting only
 
 
 def get_model(model_key: str) -> ModelDescriptor:

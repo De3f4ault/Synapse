@@ -45,8 +45,8 @@ export const ActivityGraph: React.FC<ActivityGraphProps> = ({
     if (isLoading) {
         return (
             <NeumorphicCard className={`h-[380px] flex flex-col items-center justify-center ${className || ""}`}>
-                <Loader2 className="w-8 h-8 text-cyan-500 animate-spin mb-4" />
-                <span className="text-slate-400 font-mono text-sm">
+                <Loader2 className="w-8 h-8 text-primary animate-spin mb-4" />
+                <span className="text-muted-foreground font-mono text-sm">
                     Loading neural activity...
                 </span>
             </NeumorphicCard>
@@ -58,28 +58,28 @@ export const ActivityGraph: React.FC<ActivityGraphProps> = ({
         return (
             <NeumorphicCard className={`h-[380px] p-6 flex flex-col ${className || ""}`}>
                 <div className="flex items-center gap-3 mb-6">
-                    <div className="w-10 h-10 rounded-xl nm-inset flex items-center justify-center text-cyan-400">
+                    <div className="w-10 h-10 rounded-xl bg-muted border border-border rounded-lg flex items-center justify-center text-primary">
                         <TrendingUp className="w-5 h-5" />
                     </div>
                     <div>
-                        <h3 className="text-lg font-bold text-white">Learning Activity</h3>
-                        <p className="text-xs text-slate-500">Performance over time</p>
+                        <h3 className="text-lg font-bold text-foreground">Learning Activity</h3>
+                        <p className="text-xs text-muted-foreground">Performance over time</p>
                     </div>
                 </div>
 
                 <div className="flex-1 flex flex-col items-center justify-center text-center">
-                    <div className="w-20 h-20 rounded-2xl nm-inset flex items-center justify-center mb-6 text-cyan-400/50">
+                    <div className="w-20 h-20 rounded-2xl bg-muted border border-border rounded-lg flex items-center justify-center mb-6 text-primary/50">
                         <BookOpen className="w-10 h-10" />
                     </div>
-                    <h4 className="text-lg font-semibold text-white mb-2">
+                    <h4 className="text-lg font-semibold text-foreground mb-2">
                         Start Your Learning Journey
                     </h4>
-                    <p className="text-sm text-slate-400 mb-6 max-w-xs">
+                    <p className="text-sm text-muted-foreground mb-6 max-w-xs">
                         Complete your first study session to see your performance trends here.
                     </p>
                     <button
                         onClick={() => navigate("/flashcards/review")}
-                        className="px-6 py-3 rounded-xl nm-convex text-cyan-400 font-medium hover:text-cyan-300 transition-colors flex items-center gap-2"
+                        className="px-6 py-3 rounded-xl nm-convex text-primary font-medium hover:text-primary/80 transition-colors flex items-center gap-2"
                     >
                         <Zap className="w-4 h-4" />
                         Start Studying
@@ -94,29 +94,29 @@ export const ActivityGraph: React.FC<ActivityGraphProps> = ({
             {/* Header with Toggle */}
             <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl nm-inset flex items-center justify-center text-cyan-400">
+                    <div className="w-10 h-10 rounded-xl bg-muted border border-border rounded-lg flex items-center justify-center text-primary">
                         <TrendingUp className="w-5 h-5" />
                     </div>
                     <div>
-                        <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                        <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
                             Learning Activity
-                            {isFetching && <Loader2 className="w-4 h-4 animate-spin text-cyan-400" />}
+                            {isFetching && <Loader2 className="w-4 h-4 animate-spin text-primary" />}
                         </h3>
-                        <p className="text-xs text-slate-500">Grouped by {bucket}</p>
+                        <p className="text-xs text-muted-foreground">Grouped by {bucket}</p>
                     </div>
                 </div>
                 
                 {/* Time Bucket Toggle */}
                 {onBucketChange && (
-                    <div className="flex rounded-lg nm-inset p-1">
+                    <div className="flex rounded-lg bg-muted border border-border rounded-lg p-1">
                         {buckets.map((b) => (
                             <button
                                 key={b}
                                 onClick={() => onBucketChange(b)}
                                 className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${
                                     bucket === b
-                                        ? "nm-convex text-cyan-400"
-                                        : "text-slate-400 hover:text-slate-300"
+                                        ? "nm-convex text-primary"
+                                        : "text-muted-foreground hover:text-foreground/80"
                                 }`}
                             >
                                 {b.charAt(0).toUpperCase() + b.slice(1)}

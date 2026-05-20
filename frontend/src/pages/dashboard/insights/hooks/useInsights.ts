@@ -69,7 +69,7 @@ export function useInsights() {
     // Content for context
     const notesQuery = useQuery({
         queryKey: queryKeys.notes.lists(),
-        queryFn: () => NotesService.listNotesApiV1NotesGet(undefined, undefined, 1, 100),
+        queryFn: () => NotesService.listNotesApiV1NotesGet(undefined, undefined, undefined, undefined, 1, 100),
         staleTime: 1000 * 60 * 5,
     });
 
@@ -114,7 +114,12 @@ export function useInsights() {
             weakAreas: weakAreasQuery.data || [],
             dueCards: dueCardsQuery.data || [],
             documents: documentsQuery.data || [],
-            notes: notesQuery.data || [],
+            notes: (notesQuery.data || []).map(n => ({
+                id: n.id,
+                title: n.title,
+                // content is string | Record<string,any> from the API — engine only needs plain text
+                content: typeof n.content === 'string' ? n.content : (n.content_text ?? undefined),
+            })),
             quizzes: (quizzesQuery.data || []).map(q => ({
                 ...q,
                 time_limit_minutes: q.time_limit_minutes === null ? undefined : q.time_limit_minutes

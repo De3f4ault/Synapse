@@ -18,7 +18,7 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({ current, total }) => {
     return (
         <div className="h-[2px] w-full bg-white/[0.04] relative">
             <motion.div
-                className="absolute inset-y-0 left-0 bg-gradient-to-r from-cyan-500 to-purple-500 shadow-[0_0_10px_rgba(6,182,212,0.5)]"
+                className="absolute inset-y-0 left-0 bg-primary shadow-[0_0_10px_rgba(191,107,76,0.5)]"
                 initial={{ width: 0 }}
                 animate={{ width: `${percentage}%` }}
                 transition={{ duration: 0.3 }}

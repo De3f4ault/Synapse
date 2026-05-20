@@ -1,281 +1,324 @@
-/* Import chat UI color system */
-@import "./globals-chat.css";
+/**
+ * Synapse Global Styles
+ * Warm design system — dark-first, literary UI.
+ *
+ * Imports:
+ *   1. Design tokens (palette, spacing, motion, typography)
+ *   2. Tailwind layers
+ *   3. Base resets & typography
+ *   4. Focus ring system
+ *   5. Utility animations (warm-appropriate)
+ *   6. Reduced motion support
+ *   7. Utility classes
+ */
 
+/* --- Token System --- */
+@import "./tokens.css";
+
+/* --- Tailwind --- */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/**
- * Global Styles (ENHANCED)
- *
- * Additions:
- * - Semantic status colors (success, warning, info)
- * - Learning-specific colors (mastery, learning, new, review)
- * - Difficulty colors (easy, medium, hard)
- * - Gradient definitions
- * - Animation keyframes
- */
-
+/* ============================================================
+   BASE LAYER — Resets, typography defaults, shadcn variable bridge
+   ============================================================ */
 @layer base {
+
+  /* ----- shadcn/ui CSS variable bridge -----
+     Maps warm tokens to the HSL-based variables that shadcn components expect.
+     Light mode is default. .dark class activates dark mode.
+     This follows the standard Tailwind/shadcn convention. */
   :root {
-    /* Original theme colors */
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
+    /* shadcn semantic tokens — LIGHT mode values (default) */
+    --background:         49 10% 95%;         /* #f5f4ed parchment */
+    --foreground:         20 7% 8%;           /* #141413 */
+
+    --card:               48 13% 97%;         /* #faf9f5 ivory */
+    --card-foreground:    20 7% 8%;
+
+    --popover:            48 13% 97%;
+    --popover-foreground: 20 7% 8%;
+
+    --primary:            16 54% 53%;         /* #c96442 terracotta */
+    --primary-foreground: 50 3% 96%;          /* #faf9f5 */
+
+    --secondary:          44 10% 90%;         /* #e8e6dc warm sand */
+    --secondary-foreground: 30 4% 29%;        /* #4d4c48 */
+
+    --muted:              44 10% 90%;         /* #e8e6dc */
+    --muted-foreground:   38 3% 36%;          /* #5e5d59 */
+
+    --accent:             16 60% 60%;         /* #d97757 */
+    --accent-foreground:  20 7% 8%;
+
+    --destructive:        0 55% 46%;          /* #b53333 */
+    --destructive-foreground: 50 3% 96%;
+
+    --border:             46 14% 92%;         /* #f0eee6 */
+    --input:              44 10% 90%;         /* #e8e6dc */
+    --ring:               16 54% 53%;         /* #c96442 */
+
     --radius: 0.5rem;
 
-    /* NEW: Semantic status colors */
-    --success: 142 76% 36%;
-    --success-foreground: 138 76% 97%;
-    --warning: 38 92% 50%;
-    --warning-foreground: 48 96% 89%;
-    --info: 199 89% 48%;
-    --info-foreground: 204 94% 94%;
+    /* Sidebar tokens (light) */
+    --sidebar:                48 13% 97%;
+    --sidebar-foreground:     20 7% 8%;
+    --sidebar-primary:        16 54% 53%;
+    --sidebar-primary-foreground: 50 3% 96%;
+    --sidebar-accent:         44 10% 90%;
+    --sidebar-accent-foreground: 20 7% 8%;
+    --sidebar-border:         46 14% 92%;
+    --sidebar-ring:           16 54% 53%;
 
-    /* NEW: Learning state colors */
-    --mastery: 142 71% 45%;
-    --mastery-foreground: 138 76% 97%;
-    --learning: 217 91% 60%;
-    --learning-foreground: 222 47% 11%;
-    --new: 262 83% 58%;
-    --new-foreground: 210 40% 98%;
-    --review: 38 92% 50%;
-    --review-foreground: 48 96% 89%;
+    /* Semantic status (light) */
+    --success:    88 20% 46%;       /* #788c5d olive-green */
+    --success-foreground: 48 13% 97%;
+    --warning:    42 60% 42%;       /* warm amber */
+    --warning-foreground: 20 7% 8%;
+    --info:       209 42% 62%;      /* #6a9bcc muted blue */
+    --info-foreground: 20 7% 8%;
 
-    /* NEW: Difficulty colors */
-    --difficulty-easy: 142 76% 36%;
-    --difficulty-medium: 38 92% 50%;
-    --difficulty-hard: 0 84% 60%;
+    /* Learning state colors (warm variants) */
+    --mastery:    88 20% 46%;
+    --mastery-foreground: 48 13% 97%;
+    --learning:   209 42% 62%;
+    --learning-foreground: 20 7% 8%;
+    --new:        16 54% 53%;
+    --new-foreground: 50 3% 96%;
+    --review:     42 60% 42%;
+    --review-foreground: 20 7% 8%;
+
+    /* Difficulty colors (warm variants) */
+    --difficulty-easy:   88 20% 46%;
+    --difficulty-medium: 42 60% 42%;
+    --difficulty-hard:   0 55% 46%;
   }
 
+  /* Dark mode overrides (activated by .dark class on <html>) */
   .dark {
-    /* Original dark theme colors */
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 48%;
+    --background:         20 7% 8%;           /* #141413 */
+    --foreground:         50 3% 96%;          /* #faf9f5 */
 
-    /* NEW: Semantic status colors (dark) */
-    --success: 142 71% 45%;
-    --success-foreground: 138 76% 97%;
-    --warning: 38 92% 50%;
-    --warning-foreground: 48 96% 89%;
-    --info: 199 89% 48%;
-    --info-foreground: 204 94% 94%;
+    --card:               20 4% 18%;          /* #30302e */
+    --card-foreground:    50 3% 96%;
 
-    /* NEW: Learning state colors (dark) */
-    --mastery: 142 71% 45%;
-    --mastery-foreground: 138 76% 97%;
-    --learning: 217 91% 60%;
-    --learning-foreground: 222 47% 11%;
-    --new: 262 83% 58%;
-    --new-foreground: 210 40% 98%;
-    --review: 38 92% 50%;
-    --review-foreground: 48 96% 89%;
+    --popover:            20 4% 18%;
+    --popover-foreground: 50 3% 96%;
 
-    /* NEW: Difficulty colors (dark) */
-    --difficulty-easy: 142 71% 45%;
-    --difficulty-medium: 38 92% 50%;
-    --difficulty-hard: 0 72% 51%;
+    --primary:            16 54% 53%;         /* #c96442 — same in both */
+    --primary-foreground: 50 3% 96%;
+
+    --secondary:          20 4% 18%;          /* #30302e */
+    --secondary-foreground: 50 3% 96%;
+
+    --muted:              30 3% 16%;          /* ~#2a2a28 */
+    --muted-foreground:   40 3% 68%;          /* #b0aea5 */
+
+    --accent:             16 60% 60%;         /* #d97757 */
+    --accent-foreground:  50 3% 96%;
+
+    --destructive:        0 55% 46%;
+    --destructive-foreground: 50 3% 96%;
+
+    --border:             20 4% 18%;          /* #30302e */
+    --input:              20 4% 18%;
+    --ring:               16 54% 53%;
+
+    /* Sidebar tokens (dark) */
+    --sidebar:                20 7% 8%;
+    --sidebar-foreground:     50 3% 96%;
+    --sidebar-primary:        16 54% 53%;
+    --sidebar-primary-foreground: 50 3% 96%;
+    --sidebar-accent:         20 4% 18%;
+    --sidebar-accent-foreground: 50 3% 96%;
+    --sidebar-border:         20 4% 18%;
+    --sidebar-ring:           16 54% 53%;
+
+    /* Semantic status (dark) */
+    --success:    88 20% 46%;
+    --success-foreground: 50 3% 96%;
+    --warning:    42 60% 51%;
+    --warning-foreground: 20 7% 8%;
+    --info:       209 42% 62%;
+    --info-foreground: 50 3% 96%;
+
+    /* Learning state colors */
+    --mastery:    88 20% 46%;
+    --mastery-foreground: 50 3% 96%;
+    --learning:   209 42% 62%;
+    --learning-foreground: 20 7% 8%;
+    --new:        16 54% 53%;
+    --new-foreground: 50 3% 96%;
+    --review:     42 60% 51%;
+    --review-foreground: 20 7% 8%;
+
+    /* Difficulty colors */
+    --difficulty-easy:   88 20% 46%;
+    --difficulty-medium: 42 60% 51%;
+    --difficulty-hard:   0 55% 46%;
   }
-}
 
-@layer base {
+  /* System preference — dark override when no class set */
+  @media (prefers-color-scheme: dark) {
+    :root:not(.dark):not(.light):not([data-theme]) {
+      --background:         20 7% 8%;
+      --foreground:         50 3% 96%;
+      --card:               20 4% 18%;
+      --card-foreground:    50 3% 96%;
+      --popover:            20 4% 18%;
+      --popover-foreground: 50 3% 96%;
+      --primary:            16 54% 53%;
+      --primary-foreground: 50 3% 96%;
+      --secondary:          20 4% 18%;
+      --secondary-foreground: 50 3% 96%;
+      --muted:              30 3% 16%;
+      --muted-foreground:   40 3% 68%;
+      --accent:             16 60% 60%;
+      --accent-foreground:  50 3% 96%;
+      --destructive:        0 55% 46%;
+      --destructive-foreground: 50 3% 96%;
+      --border:             20 4% 18%;
+      --input:              20 4% 18%;
+      --ring:               16 54% 53%;
+    }
+  }
+
+  /* ----- Global resets ----- */
   * {
     @apply border-border;
   }
 
   body {
     @apply bg-background text-foreground;
-    font-feature-settings:
-      "rlig" 1,
-      "calt" 1;
+    font-family: var(--font-sans);
+    font-feature-settings: "rlig" 1, "calt" 1;
+    line-height: var(--leading-loose); /* 1.60 — editorial line-height */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Serif headings in reading contexts */
+  h1, h2, h3 {
+    font-family: var(--font-serif);
+    font-weight: 500;        /* Claude spec: serif weight 500, never bold */
+    line-height: var(--leading-snug);
+  }
+
+  h4, h5, h6 {
+    font-weight: 500;
+    line-height: var(--leading-normal);
+  }
+
+  /* Code defaults */
+  code, kbd, pre, samp {
+    font-family: var(--font-mono);
+    font-size: var(--text-code);
+    letter-spacing: var(--tracking-tight);
   }
 }
 
-/**
- * Custom scrollbar
- */
-::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+
+/* ============================================================
+   FOCUS RING SYSTEM
+   Cool-blue focus ring — sole cool-toned moment in the system.
+   ============================================================ */
+*:focus-visible {
+  outline: none;
+  box-shadow: var(--shadow-ring-focus);
 }
 
-::-webkit-scrollbar-track {
-  @apply bg-secondary;
+/* Buttons get a ring-offset variant for better visibility */
+button:focus-visible,
+[role="button"]:focus-visible,
+a:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--bg-primary), var(--shadow-ring-focus);
 }
 
-::-webkit-scrollbar-thumb {
-  @apply bg-muted-foreground/50 rounded-md;
-}
 
-::-webkit-scrollbar-thumb:hover {
-  @apply bg-muted-foreground/70;
-}
+/* ============================================================
+   UTILITY ANIMATIONS — Warm-appropriate keyframes
+   Timing aligned with motion tokens from tokens.css
+   ============================================================ */
 
-/**
- * NEW: Enhanced animations
- */
-@keyframes slide-in {
-  from {
-    transform: translateX(-100%);
-    opacity: 0;
-  }
-
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
-}
-
+/* Fade in — standard UI entrance */
 @keyframes fade-in {
-  from {
-    opacity: 0;
-  }
-
-  to {
-    opacity: 1;
-  }
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
-@keyframes shimmer {
-  0% {
-    background-position: -200% 0;
-  }
-
-  100% {
-    background-position: 200% 0;
-  }
+/* Fade in with upward movement — cards, list items */
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
-@keyframes bounce-subtle {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-
-  50% {
-    transform: translateY(-4px);
-  }
+/* Fade in with downward movement — dropdown menus */
+@keyframes fade-in-down {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
+/* Slide in from left — sidebars, drawers */
+@keyframes slide-in-left {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(0); }
+}
+
+/* Slide in from right — panels */
+@keyframes slide-in-right {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0); }
+}
+
+/* Scale in — modals, popovers */
 @keyframes scale-in {
-  from {
-    transform: scale(0.9);
-    opacity: 0;
-  }
-
-  to {
-    transform: scale(1);
-    opacity: 1;
-  }
+  from { opacity: 0; transform: scale(0.95); }
+  to   { opacity: 1; transform: scale(1); }
 }
 
-@keyframes pulse-ring {
-  0% {
-    transform: scale(1);
-    opacity: 1;
-  }
-
-  100% {
-    transform: scale(1.5);
-    opacity: 0;
-  }
+/* Pulse — loading, in-progress states */
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.5; }
 }
 
-.animate-slide-in {
-  animation: slide-in 0.3s ease-out;
+/* Spin — loading spinners (linear easing is correct here) */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
 }
 
-.animate-fade-in {
-  animation: fade-in 0.2s ease-out;
+/* Typing dots — chat typing indicator */
+@keyframes typing-dot {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.7; }
+  30%           { transform: translateY(-6px); opacity: 1; }
 }
 
-.animate-shimmer {
-  animation: shimmer 2s infinite linear;
+/* Shimmer — skeleton loading */
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
 }
 
-.animate-bounce-subtle {
-  animation: bounce-subtle 1s ease-in-out infinite;
-}
+/* Animation utility classes */
+.animate-fade-in       { animation: fade-in var(--duration-standard) var(--ease-enter); }
+.animate-fade-in-up    { animation: fade-in-up var(--duration-deliberate) var(--ease-enter); }
+.animate-fade-in-down  { animation: fade-in-down var(--duration-deliberate) var(--ease-enter); }
+.animate-slide-in-left  { animation: slide-in-left var(--duration-deliberate) var(--ease-enter); }
+.animate-slide-in-right { animation: slide-in-right var(--duration-deliberate) var(--ease-enter); }
+.animate-scale-in      { animation: scale-in var(--duration-standard) var(--ease-enter); }
+.animate-pulse         { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+.animate-spin          { animation: spin 1s linear infinite; }
+.animate-typing-dot    { animation: typing-dot 1.4s var(--ease-state) infinite; }
+.animate-shimmer       { animation: shimmer 2s linear infinite; }
 
-.animate-scale-in {
-  animation: scale-in 0.2s ease-out;
-}
 
-.animate-pulse-ring {
-  animation: pulse-ring 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-
-/**
- * NEW: Gradient utilities
- */
-.gradient-success {
-  background: linear-gradient(
-    135deg,
-    hsl(var(--success)) 0%,
-    hsl(var(--success) / 0.7) 100%
-  );
-}
-
-.gradient-warning {
-  background: linear-gradient(
-    135deg,
-    hsl(var(--warning)) 0%,
-    hsl(var(--warning) / 0.7) 100%
-  );
-}
-
-.gradient-info {
-  background: linear-gradient(
-    135deg,
-    hsl(var(--info)) 0%,
-    hsl(var(--info) / 0.7) 100%
-  );
-}
-
-.gradient-primary {
-  background: linear-gradient(
-    135deg,
-    hsl(var(--primary)) 0%,
-    hsl(var(--primary) / 0.7) 100%
-  );
-}
-
-/**
- * NEW: Shimmer effect for skeleton loaders
- */
+/* ============================================================
+   SKELETON LOADER
+   Warm-toned shimmer effect
+   ============================================================ */
 .skeleton-shimmer {
   background: linear-gradient(
     90deg,
@@ -284,37 +327,95 @@
     hsl(var(--muted)) 100%
   );
   background-size: 200% 100%;
-  animation: shimmer 2s infinite linear;
+  animation: shimmer 2s linear infinite;
 }
 
-/**
- * NEW: Text balance utilities
- */
+
+/* ============================================================
+   GRADIENT UTILITIES — Warm-toned
+   ============================================================ */
+.gradient-success {
+  background: linear-gradient(135deg, hsl(var(--success)) 0%, hsl(var(--success) / 0.7) 100%);
+}
+.gradient-warning {
+  background: linear-gradient(135deg, hsl(var(--warning)) 0%, hsl(var(--warning) / 0.7) 100%);
+}
+.gradient-info {
+  background: linear-gradient(135deg, hsl(var(--info)) 0%, hsl(var(--info) / 0.7) 100%);
+}
+.gradient-primary {
+  background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary) / 0.7) 100%);
+}
+
+
+/* ============================================================
+   INTERACTIVE STATES — Button depth system
+   Ring-based, following Claude's depth model
+   ============================================================ */
+@layer components {
+  /* Default transition for interactive elements */
+  .interactive {
+    transition-property: color, background-color, border-color, box-shadow, opacity, transform;
+    transition-duration: var(--duration-standard);
+    transition-timing-function: var(--ease-enter);
+  }
+
+  /* Hover lift — subtle, no translateY glow effects */
+  .hover-lift {
+    transition: transform var(--duration-micro) var(--ease-enter),
+                box-shadow var(--duration-micro) var(--ease-enter);
+  }
+  .hover-lift:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-whisper);
+  }
+  .hover-lift:active {
+    transform: translateY(0);
+  }
+}
+
+
+/* ============================================================
+   TEXT UTILITIES
+   ============================================================ */
 .text-balance {
   text-wrap: balance;
 }
-
 .text-pretty {
   text-wrap: pretty;
 }
 
-/**
- * NEW: Focus ring enhancement
- */
-*:focus-visible {
-  @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
-}
 
-/**
- * Utility to hide scrollbars
- */
+/* ============================================================
+   SCROLLBAR HIDE UTILITY
+   ============================================================ */
 .scrollbar-hide {
   -ms-overflow-style: none;
-  /* IE and Edge */
   scrollbar-width: none;
-  /* Firefox */
 }
-
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+
+/* ============================================================
+   REDUCED MOTION — Accessibility
+   Must be last to override all animation definitions.
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

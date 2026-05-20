@@ -2,7 +2,7 @@
  * ConversationPreview — Preview pane for search results
  *
  * Renders messages in the SAME layout as the main chat:
- * - User messages: right-aligned, dark bubble (#141414)
+ * - User messages: right-aligned, warm sand bubble (bg-secondary)
  * - AI messages: left-aligned, borderless, full MarkdownRenderer
  *
  * Uses the shared rendering pipeline — no re-invented wheel.
@@ -22,7 +22,7 @@ interface ConversationPreviewProps {
   className?: string;
 }
 
-const GROK_USER_BUBBLE = "#141414";
+
 
 export function ConversationPreview({
   sessionId,
@@ -41,7 +41,7 @@ export function ConversationPreview({
 
   if (!sessionId) {
     return (
-      <div className={cn("h-full flex flex-col items-center justify-center text-zinc-500", className)}>
+      <div className={cn("h-full flex flex-col items-center justify-center text-muted-foreground", className)}>
         <MessageSquare className="size-12 mb-4 opacity-20" />
         <p className="text-sm">Select a conversation to preview</p>
       </div>
@@ -51,14 +51,14 @@ export function ConversationPreview({
   if (isLoading) {
     return (
       <div className={cn("h-full flex items-center justify-center", className)}>
-        <Loader2 className="size-6 text-cyan-400 animate-spin" />
+        <Loader2 className="size-6 text-primary animate-spin" />
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className={cn("h-full flex flex-col items-center justify-center text-red-400", className)}>
+      <div className={cn("h-full flex flex-col items-center justify-center text-destructive", className)}>
         <AlertCircle className="size-8 mb-2" />
         <p className="text-sm">Failed to load preview</p>
       </div>
@@ -67,7 +67,7 @@ export function ConversationPreview({
 
   if (messages.length === 0) {
     return (
-      <div className={cn("h-full flex flex-col items-center justify-center text-zinc-500", className)}>
+      <div className={cn("h-full flex flex-col items-center justify-center text-muted-foreground", className)}>
         <p className="text-sm">No messages in this conversation</p>
       </div>
     );
@@ -98,11 +98,10 @@ export function ConversationPreview({
                   className={cn(
                     "overflow-hidden min-w-0 max-w-full",
                     isUser
-                      ? "rounded-2xl rounded-br-sm px-4 py-2.5 text-zinc-100"
-                      : "px-1 py-2 text-zinc-200"
+                      ? "rounded-2xl rounded-br-sm px-4 py-2.5 bg-secondary text-secondary-foreground"
+                      : "px-1 py-2 text-foreground/70"
                   )}
                   style={{
-                    ...(isUser ? { backgroundColor: GROK_USER_BUBBLE } : {}),
                     wordBreak: "break-word",
                   }}
                 >
@@ -121,7 +120,7 @@ export function ConversationPreview({
                 </div>
 
                 {/* Timestamp */}
-                <span className="text-[10px] text-zinc-500 px-1">
+                <span className="text-[10px] text-muted-foreground px-1">
                   {new Date(msg.created_at).toLocaleTimeString([], {
                     hour: "2-digit",
                     minute: "2-digit",

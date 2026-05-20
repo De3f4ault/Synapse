@@ -34,28 +34,28 @@ export const DocumentStats: React.FC<DocumentStatsProps> = ({ documents }) => {
             label: "Total Documents",
             value: stats.total,
             icon: FileText,
-            color: "text-cyan-400",
-            bgColor: "bg-cyan-950/30",
+            color: "text-primary",
+            bgColor: "bg-primary/10",
         },
         {
             label: "Completed",
             value: stats.completed,
             icon: CheckCircle2,
-            color: "text-emerald-400",
-            bgColor: "bg-emerald-950/30",
+            color: "text-accent-olive",
+            bgColor: "bg-accent-olive/10",
         },
         {
             label: "Processing",
             value: stats.processing,
             icon: Loader2,
-            color: "text-amber-400",
+            color: "text-warning",
             bgColor: "bg-amber-950/30",
         },
         {
             label: "Failed",
             value: stats.failed,
             icon: AlertCircle,
-            color: "text-red-400",
+            color: "text-destructive",
             bgColor: "bg-red-950/30",
         },
     ];
@@ -68,7 +68,7 @@ export const DocumentStats: React.FC<DocumentStatsProps> = ({ documents }) => {
                     return (
                         <Card
                             key={stat.label}
-                            className="bg-white/5 border-white/10 overflow-hidden"
+                            className="bg-foreground/5 border-border overflow-hidden"
                         >
                             <CardContent className="p-4">
                                 <div className="flex items-center gap-3">
@@ -76,10 +76,10 @@ export const DocumentStats: React.FC<DocumentStatsProps> = ({ documents }) => {
                                         <Icon size={20} className={stat.color} />
                                     </div>
                                     <div>
-                                        <div className="text-2xl font-bold text-white">
+                                        <div className="text-2xl font-bold text-foreground">
                                             {stat.value}
                                         </div>
-                                        <div className="text-xs text-slate-400">{stat.label}</div>
+                                        <div className="text-xs text-muted-foreground">{stat.label}</div>
                                     </div>
                                 </div>
                             </CardContent>
@@ -88,11 +88,11 @@ export const DocumentStats: React.FC<DocumentStatsProps> = ({ documents }) => {
                 })}
             </div>
 
-            <Card className="bg-white/5 border-white/10">
+            <Card className="bg-foreground/5 border-border">
                 <CardContent className="p-4">
                     <div className="flex items-center justify-between">
-                        <span className="text-sm text-slate-400">Total Storage Used</span>
-                        <span className="text-lg font-bold text-white font-mono">
+                        <span className="text-sm text-muted-foreground">Total Storage Used</span>
+                        <span className="text-lg font-bold text-foreground font-mono">
                             {formatBytes(stats.totalSize)}
                         </span>
                     </div>

@@ -34,8 +34,8 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = ({
     return (
         <div className="space-y-6">
             {/* Question Card */}
-            <div className="bg-[#0c0c12] border border-white/[0.06] rounded-2xl p-8">
-                <h2 className="text-2xl font-medium text-slate-100 leading-relaxed mb-8">
+            <div className="bg-card border border-border rounded-2xl p-8">
+                <h2 className="text-2xl font-medium text-foreground leading-relaxed mb-8">
                     {question.question_text}
                 </h2>
 
@@ -50,7 +50,7 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = ({
                             optionLetter.toLowerCase() === correctAnswer.toLowerCase();
 
                         let statusClass =
-                            "border-white/[0.06] bg-[#08080c] text-slate-300 hover:border-cyan-500/30 hover:bg-cyan-500/5";
+                            "border-border bg-muted text-foreground/80 hover:border-primary/30 hover:bg-primary/5";
                         let indicator = (
                             <span className="font-mono text-sm opacity-50">{optionLetter}.</span>
                         );
@@ -58,14 +58,14 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = ({
                         if (isAnswered) {
                             if (isThisCorrect) {
                                 statusClass =
-                                    "border-emerald-500/50 bg-emerald-500/10 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.1)]";
-                                indicator = <CheckCircle size={18} className="text-emerald-400" />;
+                                    "border-emerald-500/50 bg-accent-olive/10 text-accent-olive shadow-[0_0_15px_rgba(16,185,129,0.1)]";
+                                indicator = <CheckCircle size={18} className="text-accent-olive" />;
                             } else if (isSelected) {
-                                statusClass = "border-red-500/50 bg-red-500/10 text-red-400";
-                                indicator = <XCircle size={18} className="text-red-400" />;
+                                statusClass = "border-destructive/50 bg-destructive/10 text-destructive";
+                                indicator = <XCircle size={18} className="text-destructive" />;
                             } else {
                                 statusClass =
-                                    "border-white/[0.04] bg-[#08080c] text-slate-500 opacity-50";
+                                    "border-border bg-muted text-muted-foreground opacity-50";
                             }
                         }
 
@@ -102,18 +102,18 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = ({
                             className={cn(
                                 "overflow-hidden rounded-xl border p-5",
                                 questionState.isCorrect
-                                    ? "bg-emerald-500/5 border-emerald-500/20"
-                                    : "bg-[#08080c] border-white/[0.08]"
+                                    ? "bg-accent-olive/5 border-accent-olive/20"
+                                    : "bg-muted border-border"
                             )}
                         >
                             <div className="flex gap-3">
                                 <div className="shrink-0 mt-1">
                                     {questionState.isCorrect ? (
-                                        <div className="p-1.5 rounded-full bg-emerald-500/20 text-emerald-400">
+                                        <div className="p-1.5 rounded-full bg-accent-olive/20 text-accent-olive">
                                             <CheckCircle size={16} />
                                         </div>
                                     ) : (
-                                        <div className="p-1.5 rounded-full bg-white/[0.06] text-slate-400">
+                                        <div className="p-1.5 rounded-full bg-white/[0.06] text-muted-foreground">
                                             <Lightbulb size={16} />
                                         </div>
                                     )}
@@ -122,12 +122,12 @@ export const QuestionRenderer: React.FC<QuestionRendererProps> = ({
                                     <h4
                                         className={cn(
                                             "font-bold mb-1 text-sm uppercase tracking-wider",
-                                            questionState.isCorrect ? "text-emerald-400" : "text-slate-300"
+                                            questionState.isCorrect ? "text-accent-olive" : "text-foreground/80"
                                         )}
                                     >
                                         {questionState.isCorrect ? "Correct!" : "Insight"}
                                     </h4>
-                                    <p className="text-slate-400 leading-relaxed text-sm">
+                                    <p className="text-muted-foreground leading-relaxed text-sm">
                                         {explanation || "No additional explanation provided."}
                                     </p>
                                 </div>

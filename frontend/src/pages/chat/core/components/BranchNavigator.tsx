@@ -48,7 +48,7 @@ export function BranchNavigator({
                     onClick={onPrev}
                     disabled={!hasPrev}
                     className={cn(
-                        "p-0.5 rounded hover:bg-white/10 transition-colors",
+                        "p-0.5 rounded hover:bg-muted transition-colors",
                         !hasPrev && "opacity-30 cursor-not-allowed"
                     )}
                     aria-label="Previous branch"
@@ -62,7 +62,7 @@ export function BranchNavigator({
                     onClick={onNext}
                     disabled={!hasNext}
                     className={cn(
-                        "p-0.5 rounded hover:bg-white/10 transition-colors",
+                        "p-0.5 rounded hover:bg-muted transition-colors",
                         !hasNext && "opacity-30 cursor-not-allowed"
                     )}
                     aria-label="Next branch"
@@ -77,7 +77,7 @@ export function BranchNavigator({
     return (
         <div className={cn(
             "flex items-center gap-1 px-2 py-1 rounded-lg",
-            "bg-zinc-900/50 border border-white/5",
+            "bg-card/80 border border-border",
             className
         )}>
             <Button

@@ -1,0 +1,294 @@
+/**
+ * Synapse Design Token System
+ * Warm palette derived from Claude Design System spec.
+ * Light-default, dark via .dark class (standard Tailwind/shadcn convention).
+ *
+ * Structure:
+ *   1. Core Palette (raw hex values)
+ *   2. Semantic Tokens (mapped to purpose)
+ *   3. Spacing & Radius
+ *   4. Z-Index Contract
+ *   5. Motion Timing
+ *   6. Typography
+ */
+
+/* ============================================================
+   1. CORE PALETTE — Raw warm values
+   ============================================================ */
+:root {
+  /* --- Surfaces --- */
+  --color-parchment:        #f5f4ed;
+  --color-ivory:            #faf9f5;
+  --color-white:            #ffffff;
+  --color-near-black:       #141413;
+  --color-dark-elevated:    #30302e;
+  --color-warm-sand:        #e8e6dc;
+
+  /* --- Text --- */
+  --color-text-primary:     #141413;
+  --color-text-secondary:   #5e5d59;
+  --color-text-tertiary:    #87867f;
+  --color-text-button:      #4d4c48;
+  --color-text-dark-primary:  #faf9f5;
+  --color-text-dark-secondary: #b0aea5;
+
+  /* --- Brand & Accent --- */
+  --color-brand:            #c96442;
+  --color-accent:           #d97757;
+  --color-accent-blue:      #6a9bcc;
+  --color-accent-green:     #788c5d;
+  --color-focus:            #3898ec;
+  --color-error:            #b53333;
+
+  /* --- Borders & Rings --- */
+  --color-border-subtle:    #f0eee6;
+  --color-border-strong:    #e8e6dc;
+  --color-border-dark:      #30302e;
+  --color-ring-default:     #d1cfc5;
+  --color-ring-subtle:      #e8e6dc;
+  --color-ring-deep:        #c2c0b6;
+}
+
+/* ============================================================
+   2. SEMANTIC TOKENS — Purpose-mapped, theme-switchable
+   :root = light (default), .dark = dark override
+   ============================================================ */
+
+/* --- Light Mode (Default) --- */
+:root {
+  --bg-primary:           var(--color-parchment);
+  --bg-elevated:          var(--color-ivory);
+  --bg-surface:           var(--color-ivory);
+  --bg-surface-hover:     var(--color-warm-sand);
+  --bg-input:             var(--color-ivory);
+  --bg-overlay:           rgba(245, 244, 237, 0.8);
+
+  --text-primary:         var(--color-text-primary);
+  --text-secondary:       var(--color-text-secondary);
+  --text-tertiary:        var(--color-text-tertiary);
+  --text-button:          var(--color-text-button);
+  --text-link:            var(--color-brand);
+
+  --border-default:       var(--color-border-subtle);
+  --border-subtle:        var(--color-border-subtle);
+  --border-strong:        var(--color-border-strong);
+  --border-input:         var(--color-border-strong);
+
+  --ring-default:         var(--color-ring-default);
+  --ring-focus:           var(--color-focus);
+
+  --brand-primary:        var(--color-brand);
+  --brand-accent:         var(--color-accent);
+
+  --status-error:         var(--color-error);
+  --status-error-bg:      rgba(181, 51, 51, 0.08);
+  --status-success:       var(--color-accent-green);
+  --status-success-bg:    rgba(120, 140, 93, 0.08);
+  --status-warning:       #b8942e;
+  --status-warning-bg:    rgba(184, 148, 46, 0.08);
+  --status-info:          var(--color-accent-blue);
+  --status-info-bg:       rgba(106, 155, 204, 0.08);
+}
+
+/* --- Dark Mode (.dark class) --- */
+.dark {
+  --bg-primary:           var(--color-near-black);
+  --bg-elevated:          var(--color-dark-elevated);
+  --bg-surface:           #1e1e1c;
+  --bg-surface-hover:     #2a2a28;
+  --bg-input:             var(--color-dark-elevated);
+  --bg-overlay:           rgba(20, 20, 19, 0.8);
+
+  --text-primary:         var(--color-text-dark-primary);
+  --text-secondary:       var(--color-text-dark-secondary);
+  --text-tertiary:        var(--color-text-tertiary);
+  --text-button:          var(--color-text-dark-primary);
+  --text-link:            var(--color-accent);
+
+  --border-default:       var(--color-border-dark);
+  --border-subtle:        rgba(255, 255, 255, 0.06);
+  --border-strong:        rgba(255, 255, 255, 0.12);
+  --border-input:         var(--color-border-dark);
+
+  --ring-default:         var(--color-ring-default);
+  --ring-focus:           var(--color-focus);
+
+  --brand-primary:        var(--color-brand);
+  --brand-accent:         var(--color-accent);
+
+  --status-error:         var(--color-error);
+  --status-error-bg:      rgba(181, 51, 51, 0.12);
+  --status-success:       var(--color-accent-green);
+  --status-success-bg:    rgba(120, 140, 93, 0.12);
+  --status-warning:       #d4a843;
+  --status-warning-bg:    rgba(212, 168, 67, 0.12);
+  --status-info:          var(--color-accent-blue);
+  --status-info-bg:       rgba(106, 155, 204, 0.12);
+}
+
+/* System preference detection (no stored preference) */
+@media (prefers-color-scheme: dark) {
+  :root:not(.dark):not(.light):not([data-theme]) {
+    --bg-primary:           var(--color-near-black);
+    --bg-elevated:          var(--color-dark-elevated);
+    --bg-surface:           #1e1e1c;
+    --bg-surface-hover:     #2a2a28;
+    --bg-input:             var(--color-dark-elevated);
+    --bg-overlay:           rgba(20, 20, 19, 0.8);
+
+    --text-primary:         var(--color-text-dark-primary);
+    --text-secondary:       var(--color-text-dark-secondary);
+    --text-tertiary:        var(--color-text-tertiary);
+    --text-button:          var(--color-text-dark-primary);
+    --text-link:            var(--color-accent);
+
+    --border-default:       var(--color-border-dark);
+    --border-subtle:        rgba(255, 255, 255, 0.06);
+    --border-strong:        rgba(255, 255, 255, 0.12);
+    --border-input:         var(--color-border-dark);
+
+    --ring-default:         var(--color-ring-default);
+    --ring-focus:           var(--color-focus);
+
+    --brand-primary:        var(--color-brand);
+    --brand-accent:         var(--color-accent);
+  }
+}
+
+
+/* ============================================================
+   3. SPACING & RADIUS
+   Base unit: 8px
+   ============================================================ */
+:root {
+  /* Spacing scale */
+  --space-0:   0px;
+  --space-0-5: 2px;
+  --space-1:   4px;
+  --space-1-5: 6px;
+  --space-2:   8px;
+  --space-2-5: 10px;
+  --space-3:   12px;
+  --space-4:   16px;
+  --space-5:   20px;
+  --space-6:   24px;
+  --space-8:   32px;
+  --space-10:  40px;
+  --space-12:  48px;
+  --space-16:  64px;
+  --space-20:  80px;
+  --space-24:  96px;
+  --space-30:  120px;
+
+  /* Border radius scale */
+  --radius-sharp:     4px;
+  --radius-subtle:    6px;
+  --radius-default:   8px;
+  --radius-generous:  12px;
+  --radius-large:     16px;
+  --radius-xl:        24px;
+  --radius-max:       32px;
+  --radius-full:      9999px;
+}
+
+
+/* ============================================================
+   4. Z-INDEX CONTRACT
+   Prevents stacking context conflicts.
+   ============================================================ */
+:root {
+  --z-base:           0;
+  --z-sticky:         100;
+  --z-dropdown:       200;
+  --z-tooltip:        300;
+  --z-modal-overlay:  400;
+  --z-modal-content:  500;
+  --z-toast:          600;
+  --z-debug:          9999;
+}
+
+
+/* ============================================================
+   5. MOTION TIMING
+   Inferred from Claude's CSS; follows web motion best practices.
+   ============================================================ */
+:root {
+  /* Durations */
+  --duration-instant:     0ms;
+  --duration-micro:       100ms;
+  --duration-standard:    200ms;
+  --duration-deliberate:  300ms;
+  --duration-expressive:  400ms;
+
+  /* Easings */
+  --ease-enter:   ease-out;        /* Fast start, soft landing */
+  --ease-exit:    ease-in;         /* Slow start, quick departure */
+  --ease-state:   ease-in-out;     /* Between states (toggles, tabs) */
+  --ease-spring:  cubic-bezier(0.34, 1.56, 0.64, 1); /* Playful micro-interactions */
+}
+
+
+/* ============================================================
+   6. TYPOGRAPHY
+   Serif for headlines, Sans for UI, Mono for code.
+   ============================================================ */
+:root {
+  /* Font families */
+  --font-serif:  'Georgia', 'ui-serif', serif;
+  --font-sans:   'Roboto', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Helvetica Neue', 'Arial', sans-serif;
+  --font-mono:   'JetBrains Mono', 'ui-monospace', 'Consolas', 'Monaco', 'Courier New', monospace;
+
+  /* Type scale */
+  --text-display:     64px;
+  --text-section:     52px;
+  --text-subhead-lg:  36px;
+  --text-subhead:     32px;
+  --text-subhead-sm:  25px;
+  --text-feature:     21px;
+  --text-body-lg:     20px;
+  --text-body:        17px;
+  --text-body-std:    16px;
+  --text-body-sm:     15px;
+  --text-caption:     14px;
+  --text-label:       12px;
+  --text-overline:    10px;
+  --text-code:        15px;
+
+  /* Line heights */
+  --leading-tight:    1.10;
+  --leading-snug:     1.20;
+  --leading-normal:   1.30;
+  --leading-relaxed:  1.50;
+  --leading-loose:    1.60;
+
+  /* Letter spacing */
+  --tracking-tight:  -0.32px;  /* Code */
+  --tracking-normal:  0px;
+  --tracking-label:   0.12px;  /* Labels ≤12px */
+  --tracking-overline: 0.5px;  /* Uppercase overlines */
+}
+
+
+/* ============================================================
+   7. SHADOW / DEPTH SYSTEM
+   Ring-based depth. No heavy drop shadows.
+   ============================================================ */
+:root {
+  /* Ring shadows (depth levels) */
+  --shadow-ring:      0 0 0 1px var(--ring-default);
+  --shadow-ring-hover: 0 0 0 1px var(--color-ring-deep);
+  --shadow-ring-brand: 0 0 0 1px var(--color-brand);
+  --shadow-ring-focus: 0 0 0 3px rgba(56, 152, 236, 0.4);
+  --shadow-ring-error: 0 0 0 3px rgba(181, 51, 51, 0.12);
+
+  /* Whisper shadow (elevated cards only) — light default */
+  --shadow-whisper:   0 4px 24px rgba(0, 0, 0, 0.05);
+
+  /* Inset (pressed states) */
+  --shadow-inset:     inset 0 0 0 1px rgba(0, 0, 0, 0.15);
+}
+
+/* Dark mode shadow overrides */
+.dark {
+  --shadow-whisper:   0 4px 24px rgba(0, 0, 0, 0.3);
+}

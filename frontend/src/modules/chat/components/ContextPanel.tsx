@@ -110,7 +110,7 @@ function ContextSection({
 
 function getFileIcon(fileType: string) {
   if (fileType.includes("pdf"))
-    return <FileText className="h-4 w-4 text-red-500" />;
+    return <FileText className="h-4 w-4 text-destructive" />;
   if (fileType.includes("word"))
     return <FileType className="h-4 w-4 text-blue-500" />;
   return <FileText className="h-4 w-4 text-muted-foreground" />;
@@ -259,7 +259,7 @@ export function ContextPanel({
             {relatedNotes.length > 0 && (
               <ContextSection
                 title="Notes"
-                icon={<BookOpen className="h-4 w-4 text-green-500" />}
+                icon={<BookOpen className="h-4 w-4 text-accent-olive" />}
                 count={relatedNotes.length}
               >
                 <div className="space-y-2">
@@ -292,7 +292,7 @@ export function ContextPanel({
             {weakAreas.length > 0 && (
               <ContextSection
                 title="Areas to Focus"
-                icon={<Brain className="h-4 w-4 text-purple-500" />}
+                icon={<Brain className="h-4 w-4 text-accent" />}
                 count={weakAreas.length}
               >
                 <div className="flex flex-wrap gap-1.5">

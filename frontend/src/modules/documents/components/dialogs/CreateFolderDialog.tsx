@@ -60,7 +60,7 @@ export function CreateFolderDialog({
 
   return (
     <div
-      className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in-0 duration-200"
+      className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in-0 duration-200"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
@@ -72,21 +72,21 @@ export function CreateFolderDialog({
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center">
-              <FolderPlus className="w-5 h-5 text-cyan-400" />
+            <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/30 flex items-center justify-center">
+              <FolderPlus className="w-5 h-5 text-primary" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-white">
+              <h2 className="text-lg font-semibold text-foreground">
                 {parentId ? 'Create Subfolder' : 'Create Folder'}
               </h2>
               {parentName && (
-                <p className="text-xs text-slate-400">in {parentName}</p>
+                <p className="text-xs text-muted-foreground">in {parentName}</p>
               )}
             </div>
           </div>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-white transition-colors"
+            className="text-muted-foreground hover:text-foreground transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -95,7 +95,7 @@ export function CreateFolderDialog({
         {/* Form */}
         <form onSubmit={handleSubmit}>
           <div className="mb-6">
-            <label htmlFor="folder-name" className="block text-sm font-medium text-slate-300 mb-2">
+            <label htmlFor="folder-name" className="block text-sm font-medium text-foreground/80 mb-2">
               Folder Name
             </label>
             <input
@@ -108,9 +108,9 @@ export function CreateFolderDialog({
               placeholder="Enter folder name..."
               className={cn(
                 "w-full px-4 py-3 rounded-xl",
-                "bg-slate-800/50 border border-white/10",
-                "text-white placeholder-slate-500",
-                "focus:outline-none focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500/50",
+                "bg-slate-800/50 border border-border",
+                "text-foreground placeholder-slate-500",
+                "focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50",
                 "transition-all duration-200"
               )}
               autoComplete="off"
@@ -123,14 +123,14 @@ export function CreateFolderDialog({
               type="button"
               variant="ghost"
               onClick={onClose}
-              className="text-slate-400 hover:text-white"
+              className="text-muted-foreground hover:text-foreground"
             >
               Cancel
             </Button>
             <Button
               type="submit"
               disabled={!name.trim() || isSubmitting}
-              className="bg-cyan-500 hover:bg-cyan-400 text-white"
+              className="bg-primary hover:bg-primary text-foreground"
             >
               {isSubmitting ? 'Creating...' : 'Create Folder'}
             </Button>

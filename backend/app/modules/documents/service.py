@@ -62,8 +62,8 @@ class DocumentService:
             raise Exception(f"Document {document_id} not found")
 
         try:
-            # Update status
-            document.processing_status = ProcessingStatus.PROCESSING
+            # Update status — this function does both DMS extraction + chunking inline
+            document.processing_status = ProcessingStatus.PARSING
             await self.session.commit()
 
             # Extract text

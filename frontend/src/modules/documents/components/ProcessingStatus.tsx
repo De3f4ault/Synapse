@@ -3,18 +3,25 @@ import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { CheckCircle, XCircle, Loader2, Clock, RefreshCw } from "lucide-react";
+import {
+  CheckCircle,
+  XCircle,
+  Loader2,
+  Clock,
+  RefreshCw,
+  ScanText,
+  Database,
+} from "lucide-react";
 import type { ProcessingStatus as ProcessingStatusType } from "@/api/generated";
 
 /**
- * Enhanced ProcessingStatus Component
+ * ProcessingStatus Component
  *
- * Improvements per documentation:
- * - Animated progress indicators
- * - Better visual feedback
- * - Smooth state transitions
- * - Enhanced status icons with animations
- * - Retry functionality with feedback
+ * Covers the full 6-state two-pipeline document lifecycle:
+ *   DMS:  pending → parsing → parsed
+ *   RAG:  parsed  → chunking → completed
+ *
+ * Animates correctly for each in-progress state.
  */
 
 interface ProcessingStatusProps {
@@ -25,38 +32,62 @@ interface ProcessingStatusProps {
   className?: string;
 }
 
+// Helper: which statuses are "in progress" (show progress bar + spinner)
+const IN_PROGRESS = new Set(["pending", "parsing", "parsed", "chunking"]);
+// Helper: which statuses show spinning animation
+const SPINNING = new Set(["parsing", "chunking"]);
+
 const STATUS_CONFIG: Record<
-  ProcessingStatusType,
+  string,
   {
     icon: React.ReactNode;
     label: string;
     color: string;
     badgeVariant: "default" | "secondary" | "destructive" | "outline";
+    description: string;
   }
 > = {
   pending: {
     icon: <Clock className="h-4 w-4" />,
-    label: "Pending",
+    label: "Queued",
     color: "text-muted-foreground",
     badgeVariant: "secondary",
+    description: "Waiting to be processed",
   },
-  processing: {
-    icon: <Loader2 className="h-4 w-4 animate-spin" />,
-    label: "Processing",
+  parsing: {
+    icon: <ScanText className="h-4 w-4" />,
+    label: "Parsing",
     color: "text-blue-500",
     badgeVariant: "default",
+    description: "Extracting text and metadata",
+  },
+  parsed: {
+    icon: <Loader2 className="h-4 w-4 animate-spin" />,
+    label: "Indexing",
+    color: "text-violet-500",
+    badgeVariant: "default",
+    description: "Text ready — building knowledge base",
+  },
+  chunking: {
+    icon: <Database className="h-4 w-4" />,
+    label: "Embedding",
+    color: "text-amber-500",
+    badgeVariant: "default",
+    description: "Embedding into knowledge base",
   },
   completed: {
     icon: <CheckCircle className="h-4 w-4" />,
-    label: "Completed",
-    color: "text-green-500",
+    label: "Ready",
+    color: "text-accent-olive",
     badgeVariant: "outline",
+    description: "Fully searchable",
   },
   failed: {
     icon: <XCircle className="h-4 w-4" />,
     label: "Failed",
     color: "text-destructive",
     badgeVariant: "destructive",
+    description: "Processing failed",
   },
 };
 
@@ -67,7 +98,9 @@ export function ProcessingStatus({
   onRetry,
   className,
 }: ProcessingStatusProps) {
-  const config = STATUS_CONFIG[status];
+  const config = STATUS_CONFIG[status] ?? STATUS_CONFIG["pending"];
+  const isInProgress = IN_PROGRESS.has(status);
+  const isSpinning = SPINNING.has(status);
 
   return (
     <motion.div
@@ -81,14 +114,14 @@ export function ProcessingStatus({
           <motion.span
             className={config.color}
             animate={
-              status === "processing"
+              isSpinning
                 ? { rotate: 360 }
                 : status === "completed"
                   ? { scale: [1, 1.2, 1] }
                   : {}
             }
             transition={
-              status === "processing"
+              isSpinning
                 ? { duration: 2, repeat: Infinity, ease: "linear" }
                 : { duration: 0.3 }
             }
@@ -97,7 +130,7 @@ export function ProcessingStatus({
           </motion.span>
           <Badge variant={config.badgeVariant}>{config.label}</Badge>
         </div>
-        {status === "processing" && (
+        {isInProgress && progress > 0 && (
           <motion.span
             className="text-sm font-medium text-muted-foreground"
             initial={{ opacity: 0 }}
@@ -109,7 +142,7 @@ export function ProcessingStatus({
         )}
       </div>
 
-      {(status === "pending" || status === "processing") && (
+      {isInProgress && (
         <motion.div
           initial={{ scaleX: 0 }}
           animate={{ scaleX: 1 }}
@@ -120,14 +153,14 @@ export function ProcessingStatus({
         </motion.div>
       )}
 
-      {message && (
+      {(message || config.description) && (
         <motion.p
           className="text-sm text-muted-foreground"
           initial={{ opacity: 0, x: -10 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.1 }}
         >
-          {message}
+          {message ?? config.description}
         </motion.p>
       )}
 
@@ -137,12 +170,7 @@ export function ProcessingStatus({
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
         >
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onRetry}
-            className="mt-2"
-          >
+          <Button variant="outline" size="sm" onClick={onRetry} className="mt-2">
             <RefreshCw className="mr-2 h-4 w-4" />
             Retry Processing
           </Button>
@@ -154,7 +182,7 @@ export function ProcessingStatus({
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-          className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400"
+          className="flex items-center gap-2 text-sm text-green-600 dark:text-accent-olive"
         >
           <CheckCircle className="h-4 w-4" />
           <span>Document ready for use</span>
@@ -165,7 +193,8 @@ export function ProcessingStatus({
 }
 
 /**
- * Compact inline status indicator with animation.
+ * Compact inline status badge with animation.
+ * Safe fallback for unknown status values.
  */
 interface StatusBadgeProps {
   status: ProcessingStatusType;
@@ -173,7 +202,8 @@ interface StatusBadgeProps {
 }
 
 export function ProcessingStatusBadge({ status, className }: StatusBadgeProps) {
-  const config = STATUS_CONFIG[status];
+  const config = STATUS_CONFIG[status] ?? STATUS_CONFIG["pending"];
+  const isSpinning = SPINNING.has(status);
 
   return (
     <motion.div
@@ -184,14 +214,14 @@ export function ProcessingStatusBadge({ status, className }: StatusBadgeProps) {
       <Badge variant={config.badgeVariant} className={cn("gap-1", className)}>
         <motion.span
           animate={
-            status === "processing"
+            isSpinning
               ? { rotate: 360 }
               : status === "completed"
                 ? { scale: [1, 1.1, 1] }
                 : {}
           }
           transition={
-            status === "processing"
+            isSpinning
               ? { duration: 2, repeat: Infinity, ease: "linear" }
               : { duration: 0.3 }
           }

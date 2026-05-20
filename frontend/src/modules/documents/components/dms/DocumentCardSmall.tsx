@@ -61,24 +61,24 @@ export function DocumentCardSmall({
       <div
         className={cn(
           "flex items-stretch rounded-lg border bg-card/50 backdrop-blur-sm overflow-hidden",
-          "hover:border-emerald-500/30 hover:bg-card/80 transition-all cursor-pointer",
-          selected && "ring-2 ring-emerald-400 border-emerald-400/50 bg-emerald-500/5"
+          "hover:border-accent-olive/30 hover:bg-card/80 transition-all cursor-pointer",
+          selected && "ring-2 ring-accent-olive border-accent-olive/50 bg-accent-olive/5"
         )}
       >
         {/* Checkbox */}
         {onSelect && (
-          <div className="flex items-center px-2 border-r border-white/5">
+          <div className="flex items-center px-2 border-r border-border">
             <Checkbox
               checked={selected}
               onCheckedChange={() => onSelect(id)}
-              className="h-4 w-4 rounded border-white/30 data-[state=checked]:bg-emerald-500"
+              className="h-4 w-4 rounded border-white/30 data-[state=checked]:bg-accent-olive"
             />
           </div>
         )}
 
         {/* Thumbnail */}
         <div
-          className="w-16 h-16 flex-shrink-0 bg-white/[0.03] flex items-center justify-center overflow-hidden"
+          className="w-16 h-16 flex-shrink-0 bg-muted/30 flex items-center justify-center overflow-hidden"
           onClick={onClick}
           onDoubleClick={onDoubleClick}
         >
@@ -90,7 +90,7 @@ export function DocumentCardSmall({
               loading="lazy"
             />
           ) : (
-            <FileText size={24} strokeWidth={1} className="text-slate-500" />
+            <FileText size={24} strokeWidth={1} className="text-muted-foreground" />
           )}
         </div>
 
@@ -102,11 +102,11 @@ export function DocumentCardSmall({
         >
           {/* Title row */}
           <div className="flex items-center gap-2">
-            <h3 className="text-sm font-medium text-slate-200 truncate group-hover:text-emerald-400 transition-colors">
+            <h3 className="text-sm font-medium text-foreground/70 truncate group-hover:text-accent-olive transition-colors">
               {title}
             </h3>
             {asn && (
-              <span className="text-[9px] font-mono px-1 py-0.5 bg-emerald-500/10 text-emerald-300 rounded border border-emerald-500/20 flex-shrink-0">
+              <span className="text-[9px] font-mono px-1 py-0.5 bg-accent-olive/10 text-accent-olive/80 rounded border border-accent-olive/20 flex-shrink-0">
                 #{asn}
               </span>
             )}
@@ -126,7 +126,7 @@ export function DocumentCardSmall({
                   e.stopPropagation();
                   onCorrespondentClick?.(correspondent.id);
                 }}
-                className="px-1 py-0.5 rounded bg-blue-500/10 text-blue-300 border border-blue-500/15 hover:bg-blue-500/20 truncate max-w-[80px]"
+                className="px-1 py-0.5 rounded bg-info/10 text-blue-300 border border-blue-500/15 hover:bg-blue-500/20 truncate max-w-[80px]"
               >
                 {correspondent.name}
               </button>
@@ -137,13 +137,13 @@ export function DocumentCardSmall({
                   e.stopPropagation();
                   onDocumentTypeClick?.(documentType.id);
                 }}
-                className="px-1 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/15 hover:bg-emerald-500/20 truncate max-w-[80px]"
+                className="px-1 py-0.5 rounded bg-accent-olive/10 text-accent-olive/80 border border-emerald-500/15 hover:bg-accent-olive/20 truncate max-w-[80px]"
               >
                 {documentType.name}
               </button>
             )}
             {created && (
-              <span className="text-slate-500 flex-shrink-0">
+              <span className="text-muted-foreground flex-shrink-0">
                 {new Date(created).toLocaleDateString(undefined, {
                   month: "short",
                   day: "numeric",
@@ -165,7 +165,7 @@ export function DocumentCardSmall({
                 />
               ))}
               {tags.length > 3 && (
-                <span className="text-[9px] text-slate-500 self-center">
+                <span className="text-[9px] text-muted-foreground self-center">
                   +{tags.length - 3}
                 </span>
               )}

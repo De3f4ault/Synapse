@@ -2,7 +2,7 @@ import { OpenAPI } from "./generated/core/OpenAPI";
 
 // Configure the API client base URL
 const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+  import.meta.env.VITE_API_BASE_URL || "";
 
 // Set base URL for the generated client
 OpenAPI.BASE = API_BASE_URL;

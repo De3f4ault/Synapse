@@ -1,7 +1,8 @@
 /**
- * ChatMain - Main chat orchestrator component
- * Manages state and switches between welcome/conversation view
- * Integrates voice mode inline (Gemini Live-style)
+ * ChatMain — Chat orchestrator.
+ *
+ * Pure Vercel architecture: SDK `messages` is the ONLY source of truth.
+ * No manual streaming state. No prop-drilling of streamingContent/streamingThinking.
  */
 
 import { useState, useEffect, useCallback } from "react";
@@ -9,12 +10,13 @@ import { ChatWelcomeScreen } from "./ChatWelcomeScreen";
 import { ChatConversationView } from "./ChatConversationView";
 import { ThreadPanel } from "./ThreadPanel";
 import { useChatMessages, useInvalidateMessages } from "../hooks/useChatMessages";
-import { useChatStreaming } from "../hooks/useChatStreaming";
+import { useSynapseChat } from "../hooks/useSynapseChat";
 import { useImplicitFeedback } from "@/modules/chat/hooks/useImplicitFeedback";
 import { useAuthStore } from "@/stores/authStore";
 import { useTTSAutoRead } from "@/platform/audio/hooks/useTTSAutoRead";
 import { useThreadStore } from "../state/threadStore";
 import { useLiveVoice } from "../../voice/hooks/useLiveVoice";
+import { getAuthToken } from "@/api/client";
 
 interface ChatMainProps {
   sessionId: number;
@@ -25,80 +27,78 @@ export function ChatMain({ sessionId, sessionTitle }: ChatMainProps) {
   const [message, setMessage] = useState("");
   const [threadPanelWidth, setThreadPanelWidth] = useState(384);
 
-  // Get user ID for telemetry
   const user = useAuthStore((state) => state.user);
   const userId = user?.id ?? 0;
 
-  // Thread store - reset on session change
+  // Reset thread state on session change
   const resetThreadStore = useThreadStore((state) => state.reset);
-  useEffect(() => {
-    resetThreadStore();
-  }, [sessionId, resetThreadStore]);
+  useEffect(() => { resetThreadStore(); }, [sessionId, resetThreadStore]);
 
-  // Fetch messages for this session
-  const { data: messages = [], isLoading } = useChatMessages(sessionId);
+  // DB messages — used only as initial seed for the SDK; never drives rendering
+  const { data: dbMessages = [], isLoading } = useChatMessages(sessionId);
   const invalidateMessages = useInvalidateMessages(sessionId);
 
-  // Wire up implicit feedback loop for telemetry
-  useImplicitFeedback(sessionId, messages, userId);
+  // Implicit feedback telemetry (needs DB messages for history)
+  useImplicitFeedback(sessionId, dbMessages, userId);
 
-  // WebSocket streaming
-  const {
-    isStreaming,
-    streamingContent,
-    streamingThinking,
-    sendMessage: sendStreamingMessage,
-    stopGeneration,
-    isConnected,
-  } = useChatStreaming({
+  // SDK streaming — owns ALL message state after initial seed
+  const { messages, sendMessage: sendStreamingMessage, stop, status } = useSynapseChat({
     sessionId,
-    autoConnect: true,
+    initialMessages: dbMessages,
   });
 
-  // Audio Integration: Read AI responses aloud when streaming completes
-  useTTSAutoRead({
-    enabled: true,
-    content: streamingContent,
-    isStreaming,
-  });
+  const isStreaming = status === 'streaming' || status === 'submitted';
 
-  // ==================== INLINE VOICE MODE ====================
-  // Gemini Live-style: voice controls replace the text input toolbar,
-  // transcripts appear as chat messages in the same conversation view.
+  // TTS reads the last assistant text part when streaming completes
+  const lastAssistantText = (() => {
+    const last = [...messages].reverse().find(m => m.role === 'assistant');
+    if (!last?.parts) return '';
+    return last.parts.filter(p => p.type === 'text').map(p => (p as any).text).join('');
+  })();
 
+  useTTSAutoRead({ enabled: true, content: lastAssistantText, isStreaming });
+
+  // Voice mode (Gemini Live-style inline)
   const voice = useLiveVoice({
     sessionId,
     systemInstruction: "You are Synapse, a helpful AI learning assistant.",
     enableSearch: true,
-    onMessagesSaved: () => {
-      // Backend saved a turn — refresh the message list
-      invalidateMessages();
-    },
+    onMessagesSaved: () => { invalidateMessages(); },
   });
 
   const handleVoiceToggle = useCallback(() => {
-    if (voice.isActive) {
-      voice.endSession();
-    } else {
-      voice.startSession();
-    }
+    voice.isActive ? voice.endSession() : voice.startSession();
   }, [voice.isActive, voice.endSession, voice.startSession]);
 
-  const isConversationStarted = messages.length > 0;
-
   const handleSend = (attachmentIds?: number[]) => {
-    if (!message.trim() && !(attachmentIds && attachmentIds.length > 0)) return;
+    if (!message.trim() && !(attachmentIds?.length)) return;
 
     if (voice.isActive) {
-      // In voice mode, send text via voice WebSocket
       voice.sendText(message);
       setMessage("");
       return;
     }
 
-    if (!isConnected) {
-      console.error("[ChatMain] Cannot send - WebSocket not connected");
-      return;
+    // Fire-and-forget: patch user caption onto each image attachment so the
+    // typed message becomes retrievable context alongside the LLM-generated caption.
+    // Only fires when there are attachments AND a non-empty message.
+    if (attachmentIds?.length && message.trim()) {
+      const API_BASE = import.meta.env.VITE_API_BASE_URL || "";
+      const token = getAuthToken();
+      attachmentIds.forEach((docId) => {
+        fetch(`${API_BASE}/api/v1/chat/attachments/${docId}/caption`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({ caption: message.trim() }),
+          credentials: "include",
+        }).catch((err) => {
+          // Non-fatal — LLM caption is the primary signal, user caption is supplementary
+          console.warn("[ChatMain] Caption patch failed:", err);
+        });
+      });
     }
 
     try {
@@ -109,17 +109,12 @@ export function ChatMain({ sessionId, sessionTitle }: ChatMainProps) {
     }
   };
 
-  const handleReset = () => {
-    setMessage("");
+  const handleStop = () => {
+    voice.isActive ? voice.endSession() : stop();
   };
 
-  const handleStop = () => {
-    if (voice.isActive) {
-      voice.endSession();
-    } else {
-      stopGeneration();
-    }
-  };
+  // Conversation has started if SDK has any messages (covers both DB-seeded and new)
+  const isConversationStarted = messages.length > 0 || voice.isActive;
 
   if (isLoading) {
     return (
@@ -132,42 +127,38 @@ export function ChatMain({ sessionId, sessionTitle }: ChatMainProps) {
   return (
     <div className="h-full flex flex-row">
       <div className="flex-1 flex flex-col min-w-0">
-      {isConversationStarted || voice.isActive ? (
-        <ChatConversationView
-          messages={messages}
-          message={message}
-          sessionId={sessionId}
-          sessionTitle={sessionTitle}
-          onMessageChange={setMessage}
-          onSend={handleSend}
-          onReset={handleReset}
-          onStop={handleStop}
-          onVoiceClick={handleVoiceToggle}
-          isSending={isStreaming}
-          isStreaming={isStreaming}
-          streamingContent={streamingContent}
-          streamingThinking={streamingThinking}
-          // Voice mode props
-          voiceActive={voice.isActive}
-          voiceState={voice.state}
-          voiceInputTranscript={voice.inputTranscript}
-          voiceOutputTranscript={voice.outputTranscript}
-          voiceAudioLevel={voice.audioLevel}
-          voiceTranscriptHistory={voice.transcriptHistory}
-          onVoiceInterrupt={voice.interrupt}
-          onVoiceEndSession={voice.endSession}
-        />
-      ) : (
-        <ChatWelcomeScreen
-          message={message}
-          onMessageChange={setMessage}
-          onSend={handleSend}
-          onVoiceClick={handleVoiceToggle}
-        />
-      )}
+        {isConversationStarted ? (
+          <ChatConversationView
+            messages={messages}
+            message={message}
+            sessionId={sessionId}
+            sessionTitle={sessionTitle}
+            onMessageChange={setMessage}
+            onSend={handleSend}
+            onReset={() => setMessage("")}
+            onStop={handleStop}
+            onVoiceClick={handleVoiceToggle}
+            isStreaming={isStreaming}
+            // Voice mode props
+            voiceActive={voice.isActive}
+            voiceState={voice.state}
+            voiceInputTranscript={voice.inputTranscript}
+            voiceOutputTranscript={voice.outputTranscript}
+            voiceAudioLevel={voice.audioLevel}
+            voiceTranscriptHistory={voice.transcriptHistory}
+            onVoiceInterrupt={voice.interrupt}
+            onVoiceEndSession={voice.endSession}
+          />
+        ) : (
+          <ChatWelcomeScreen
+            message={message}
+            onMessageChange={setMessage}
+            onSend={handleSend}
+            onVoiceClick={handleVoiceToggle}
+          />
+        )}
       </div>
 
-      {/* Thread Panel - Grok-style embedded side panel */}
       <ThreadPanel
         sessionId={sessionId}
         panelWidth={threadPanelWidth}

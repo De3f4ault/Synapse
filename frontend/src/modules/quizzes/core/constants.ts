@@ -142,16 +142,16 @@ export function getGradeInfo(percentage: number): {
     bg: string;
 } {
     if (percentage >= GRADE_THRESHOLDS.A_PLUS) {
-        return { grade: "A+", color: "text-emerald-400", bg: "bg-emerald-500/10" };
+        return { grade: "A+", color: "text-accent-olive", bg: "bg-accent-olive/10" };
     }
     if (percentage >= GRADE_THRESHOLDS.A) {
-        return { grade: "A", color: "text-emerald-400", bg: "bg-emerald-500/10" };
+        return { grade: "A", color: "text-accent-olive", bg: "bg-accent-olive/10" };
     }
     if (percentage >= GRADE_THRESHOLDS.B) {
-        return { grade: "B", color: "text-cyan-400", bg: "bg-cyan-500/10" };
+        return { grade: "B", color: "text-primary", bg: "bg-primary/10" };
     }
     if (percentage >= GRADE_THRESHOLDS.C) {
         return { grade: "C", color: "text-yellow-400", bg: "bg-yellow-500/10" };
     }
-    return { grade: "D", color: "text-red-400", bg: "bg-red-500/10" };
+    return { grade: "D", color: "text-destructive", bg: "bg-destructive/10" };
 }

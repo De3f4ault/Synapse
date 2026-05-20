@@ -15,7 +15,7 @@ import structlog
 from app.api.deps import get_db, get_current_user
 from app.models.user import User
 from app.core.config import settings
-from app.schemas.analytics import (
+from app.schemas.intelligence import (
     TimeBucket,
     DashboardOverview,
     WeakArea,

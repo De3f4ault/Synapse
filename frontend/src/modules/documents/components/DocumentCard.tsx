@@ -37,16 +37,16 @@ const getDocumentIcon = (type: string) => {
 const getFormatColor = (type: string) => {
     switch (type.toLowerCase()) {
         case "pdf":
-            return "text-red-400 bg-red-500/10 border-red-500/20";
+            return "text-destructive bg-destructive/10 border-destructive/20";
         case "epub":
-            return "text-amber-400 bg-amber-500/10 border-amber-500/20";
+            return "text-warning bg-warning/10 border-warning/20";
         case "jpg":
         case "png":
-            return "text-purple-400 bg-purple-500/10 border-purple-500/20";
+            return "text-accent bg-accent/10 border-accent/20";
         case "md":
-            return "text-blue-400 bg-blue-500/10 border-blue-500/20";
+            return "text-info bg-info/10 border-blue-500/20";
         default:
-            return "text-slate-400 bg-slate-500/10 border-slate-500/20";
+            return "text-muted-foreground bg-slate-500/10 border-border/20";
     }
 };
 
@@ -84,7 +84,7 @@ export const DocumentCard = ({ document, onClick, onContextMenu, thumbnailUrl, d
         >
             <div onClick={onClick} onContextMenu={onContextMenu} className="cursor-pointer h-full relative preserve-3d">
                 <GlassCard
-                    className="h-[280px] p-0 overflow-hidden relative border-white/5 hover:border-cyan-500/30 transition-colors"
+                    className="h-[280px] p-0 overflow-hidden relative border-border hover:border-primary/30 transition-colors"
                     hover
                 >
                     {/* Flex container INSIDE GlassCard to properly handle layout */}
@@ -96,7 +96,7 @@ export const DocumentCard = ({ document, onClick, onContextMenu, thumbnailUrl, d
                         )}>
                             {/* Abstract Background Pattern - visible only if no thumbnail */}
                             {!finalThumbnail && (
-                                <div className="absolute inset-0 opacity-20 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-cyan-900/40 via-transparent to-transparent" />
+                                <div className="absolute inset-0 opacity-20 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/40 via-transparent to-transparent" />
                             )}
 
                             {/* Thumbnail or Icon */}
@@ -115,7 +115,7 @@ export const DocumentCard = ({ document, onClick, onContextMenu, thumbnailUrl, d
                                         "p-4 rounded-2xl border backdrop-blur-md shadow-2xl transition-all", 
                                         colorClass,
                                         // Selected State overrides
-                                        isSelected ? "ring-2 ring-cyan-400 bg-cyan-500/20" : ""
+                                        isSelected ? "ring-2 ring-primary bg-primary/20" : ""
                                     )}
                                     whileHover={{ scale: 1.1, rotate: -5 }}
                                 >
@@ -123,39 +123,39 @@ export const DocumentCard = ({ document, onClick, onContextMenu, thumbnailUrl, d
                                 </motion.div>
                             )}
 
-                            {/* Status Indicator */}
-                            {document.status === "processing" && (
+                            {/* Status Indicator — show for all in-progress pipeline states */}
+                            {["parsing", "parsed", "chunking", "pending"].includes(document.processing_status ?? "") && (
                                 <div className="absolute top-3 right-3 z-10">
                                     <span className="relative flex h-3 w-3">
-                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
-                                        <span className="relative inline-flex rounded-full h-3 w-3 bg-cyan-500"></span>
+                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                                        <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
                                     </span>
                                 </div>
                             )}
                         </div>
 
                         {/* Content Footer - BOTTOM (fixed height) */}
-                        <div className="shrink-0 p-4 bg-black/40 backdrop-blur-md border-t border-white/10 z-10 relative">
+                        <div className="shrink-0 p-4 bg-background/70 backdrop-blur-md border-t border-border z-10 relative">
                             <div className="flex justify-between items-start gap-2">
                                 <div className="flex-1 min-w-0">
-                                    <h3 className="text-sm font-semibold text-slate-200 truncate group-hover:text-cyan-400 transition-colors" title={document.filename}>
+                                    <h3 className="text-sm font-semibold text-foreground/70 truncate group-hover:text-primary transition-colors" title={document.filename}>
                                         {document.filename}
                                     </h3>
                                     <div className="flex items-center gap-2 mt-1.5">
                                         <span className={cn(
                                             "text-[10px] uppercase font-mono px-1.5 py-0.5 rounded border",
                                             colorClass,
-                                            finalThumbnail ? "bg-black/50 border-white/20" : ""
+                                            finalThumbnail ? "bg-black/50 border-border" : ""
                                         )}>
                                             {document.type}
                                         </span>
-                                        <span className="text-xs text-slate-500 truncate">
+                                        <span className="text-xs text-muted-foreground truncate">
                                             {document.size}
                                         </span>
                                     </div>
                                 </div>
 
-                                <button className="text-slate-500 hover:text-white transition-colors p-1 rounded-md hover:bg-white/5">
+                                <button className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded-md hover:bg-muted/50">
                                     <MoreVertical size={16} />
                                 </button>
                             </div>

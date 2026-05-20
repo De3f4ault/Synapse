@@ -58,8 +58,8 @@ interface GlowConfig {
 
 const variantConfigs: Record<AuroraVariant, GlowConfig> = {
     default: {
-        primary: "bg-purple-900",
-        secondary: "bg-cyan-900",
+        primary: "bg-accent/20",
+        secondary: "bg-primary/20",
         tertiary: "bg-blue-900/10",
     },
     warm: {
@@ -74,7 +74,7 @@ const variantConfigs: Record<AuroraVariant, GlowConfig> = {
     },
     minimal: {
         primary: "bg-slate-800",
-        secondary: "bg-slate-700",
+        secondary: "bg-muted",
         tertiary: "bg-slate-800/5",
     },
 };
@@ -171,7 +171,7 @@ export function AuroraBackground({
     return (
         <div
             className={cn(
-                "relative w-full overflow-hidden bg-[#050505] text-slate-200",
+                "relative w-full overflow-hidden bg-background text-foreground/70",
                 fixed && "h-screen",
                 className
             )}

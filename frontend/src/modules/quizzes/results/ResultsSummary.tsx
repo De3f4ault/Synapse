@@ -47,10 +47,10 @@ export const ResultsSummary: React.FC<ResultsSummaryProps> = ({
                         "w-32 h-32 mx-auto rounded-full flex items-center justify-center",
                         "border-4",
                         rank.bg,
-                        rank.color === "text-emerald-400"
+                        rank.color === "text-accent-olive"
                             ? "border-emerald-500/40 shadow-[0_0_40px_rgba(16,185,129,0.2)]"
-                            : rank.color === "text-cyan-400"
-                                ? "border-cyan-500/40 shadow-[0_0_40px_rgba(6,182,212,0.2)]"
+                            : rank.color === "text-primary"
+                                ? "border-primary/40 shadow-[0_0_40px_rgba(6,182,212,0.2)]"
                                 : rank.color === "text-yellow-400"
                                     ? "border-yellow-500/40 shadow-[0_0_40px_rgba(234,179,8,0.2)]"
                                     : "border-red-500/40 shadow-[0_0_40px_rgba(239,68,68,0.2)]"
@@ -67,10 +67,10 @@ export const ResultsSummary: React.FC<ResultsSummaryProps> = ({
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.2 }}
                 >
-                    <h1 className="text-5xl font-bold text-white mb-2">
+                    <h1 className="text-5xl font-bold text-foreground mb-2">
                         {Math.round(percentage)}%
                     </h1>
-                    <p className="text-slate-400">
+                    <p className="text-muted-foreground">
                         {correctCount} of {totalCount} correct
                     </p>
                 </motion.div>
@@ -82,27 +82,27 @@ export const ResultsSummary: React.FC<ResultsSummaryProps> = ({
                     transition={{ delay: 0.3 }}
                     className="grid grid-cols-3 gap-4"
                 >
-                    <div className="bg-[#0c0c12] border border-white/[0.06] rounded-xl p-4">
-                        <Trophy size={20} className="text-amber-400 mx-auto mb-2" />
-                        <p className="text-lg font-bold text-white">{Math.round(score)}</p>
-                        <p className="text-xs text-slate-500">Score</p>
+                    <div className="bg-card border border-border rounded-xl p-4">
+                        <Trophy size={20} className="text-warning mx-auto mb-2" />
+                        <p className="text-lg font-bold text-foreground">{Math.round(score)}</p>
+                        <p className="text-xs text-muted-foreground">Score</p>
                     </div>
-                    <div className="bg-[#0c0c12] border border-white/[0.06] rounded-xl p-4">
-                        <Clock size={20} className="text-cyan-400 mx-auto mb-2" />
-                        <p className="text-lg font-bold text-white">
+                    <div className="bg-card border border-border rounded-xl p-4">
+                        <Clock size={20} className="text-primary mx-auto mb-2" />
+                        <p className="text-lg font-bold text-foreground">
                             {formatDuration(duration)}
                         </p>
-                        <p className="text-xs text-slate-500">Time</p>
+                        <p className="text-xs text-muted-foreground">Time</p>
                     </div>
-                    <div className="bg-[#0c0c12] border border-white/[0.06] rounded-xl p-4">
+                    <div className="bg-card border border-border rounded-xl p-4">
                         <div className="flex justify-center gap-1 mb-2">
-                            <CheckCircle size={16} className="text-emerald-400" />
-                            <XCircle size={16} className="text-red-400" />
+                            <CheckCircle size={16} className="text-accent-olive" />
+                            <XCircle size={16} className="text-destructive" />
                         </div>
-                        <p className="text-lg font-bold text-white">
+                        <p className="text-lg font-bold text-foreground">
                             {correctCount}/{incorrectCount}
                         </p>
-                        <p className="text-xs text-slate-500">Right/Wrong</p>
+                        <p className="text-xs text-muted-foreground">Right/Wrong</p>
                     </div>
                 </motion.div>
 
@@ -117,7 +117,7 @@ export const ResultsSummary: React.FC<ResultsSummaryProps> = ({
                 >
                     <button
                         onClick={onReturn}
-                        className="px-8 py-3 rounded-lg font-medium bg-white/[0.04] hover:bg-white/[0.08] text-white border border-white/[0.06] transition-colors"
+                        className="px-8 py-3 rounded-lg font-medium bg-white/[0.04] hover:bg-white/[0.08] text-foreground border border-border transition-colors"
                     >
                         Return to Quizzes
                     </button>

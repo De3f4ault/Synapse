@@ -31,8 +31,8 @@ export function Breadcrumbs({ folderId, folders, onNavigate }: BreadcrumbsProps)
         onClick={() => onNavigate(null)}
         className={`px-1.5 py-0.5 rounded-md transition-colors ${
           folderId === null
-            ? "text-zinc-200 font-medium"
-            : "text-zinc-500 hover:text-zinc-300"
+            ? "text-foreground/70 font-medium"
+            : "text-muted-foreground hover:text-foreground/80"
         }`}
       >
         Library
@@ -40,13 +40,13 @@ export function Breadcrumbs({ folderId, folders, onNavigate }: BreadcrumbsProps)
 
       {path.map((folder) => (
         <div key={folder.id} className="flex items-center gap-1">
-          <ChevronRight className="w-3 h-3 text-zinc-700" />
+          <ChevronRight className="w-3 h-3 text-muted-foreground" />
           <button
             onClick={() => onNavigate(folder.id)}
             className={`px-1.5 py-0.5 rounded-md transition-colors ${
               folder.id === folderId
-                ? "text-zinc-200 font-medium"
-                : "text-zinc-500 hover:text-zinc-300"
+                ? "text-foreground/70 font-medium"
+                : "text-muted-foreground hover:text-foreground/80"
             }`}
           >
             {folder.name}

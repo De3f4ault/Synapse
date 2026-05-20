@@ -148,7 +148,7 @@ export function DMSSidebar({
   return (
     <nav
       className={cn(
-        "flex flex-col h-full bg-[#0a1a0a]/80 backdrop-blur-xl border-r border-emerald-900/30",
+        "flex flex-col h-full bg-card/80 backdrop-blur-xl border-r border-accent-olive/20",
         "transition-all duration-300 ease-in-out",
         collapsed ? "w-16" : "w-[15.5rem]",
         className
@@ -159,9 +159,9 @@ export function DMSSidebar({
         {!collapsed && (
           <div className="flex items-center gap-2 pl-1">
             <div className="w-7 h-7 rounded-lg bg-emerald-600 flex items-center justify-center">
-              <FileText size={14} className="text-white" />
+              <FileText size={14} className="text-foreground" />
             </div>
-            <span className="text-sm font-semibold text-slate-200 tracking-tight">
+            <span className="text-sm font-semibold text-foreground/70 tracking-tight">
               Documents
             </span>
           </div>
@@ -171,7 +171,7 @@ export function DMSSidebar({
           size="icon"
           onClick={toggleCollapse}
           className={cn(
-            "h-7 w-7 text-slate-500 hover:text-slate-300 hover:bg-white/5",
+            "h-7 w-7 text-muted-foreground hover:text-foreground/80 hover:bg-muted/50",
             collapsed && "mx-auto"
           )}
         >
@@ -209,15 +209,15 @@ export function DMSSidebar({
                 <button
                   key={doc.id}
                   onClick={() => onOpenDocumentClick?.(doc.id)}
-                  className="w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-sm text-emerald-300 hover:bg-emerald-900/20 transition-colors truncate"
+                  className="w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-sm text-accent-olive/80 hover:bg-accent-olive/10 transition-colors truncate"
                 >
-                  <FileText size={13} className="shrink-0 text-emerald-500" />
+                  <FileText size={13} className="shrink-0 text-accent-olive" />
                   <span className="truncate">{doc.title}</span>
                 </button>
               ))}
               <button
                 onClick={onCloseAllDocuments}
-                className="w-full flex items-center gap-2 px-3 py-1 rounded-md text-xs text-slate-500 hover:text-slate-300 hover:bg-white/5 transition-colors"
+                className="w-full flex items-center gap-2 px-3 py-1 rounded-md text-xs text-muted-foreground hover:text-foreground/80 hover:bg-muted/50 transition-colors"
               >
                 <X size={11} />
                 Close all
@@ -229,7 +229,7 @@ export function DMSSidebar({
         {/* MANAGE section */}
         <div className="mt-4 px-2">
           {!collapsed && <SectionHeader label="MANAGE" />}
-          {collapsed && <div className="h-px bg-emerald-900/30 mx-2 my-2" />}
+          {collapsed && <div className="h-px bg-accent-olive/15 mx-2 my-2" />}
           <div className="space-y-0.5">
             {manageItems.map((item) => (
               <NavButton
@@ -268,7 +268,7 @@ export function DMSSidebar({
         {/* ADMINISTRATION section */}
         <div className="mt-4 px-2">
           {!collapsed && <SectionHeader label="ADMINISTRATION" />}
-          {collapsed && <div className="h-px bg-emerald-900/30 mx-2 my-2" />}
+          {collapsed && <div className="h-px bg-accent-olive/15 mx-2 my-2" />}
           <div className="space-y-0.5">
             {adminItems.map((item) => (
               <NavButton
@@ -291,7 +291,7 @@ export function DMSSidebar({
           onClick={onUpload}
           className={cn(
             "w-full flex items-center gap-2 text-sm font-medium",
-            "bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-400 hover:text-emerald-300",
+            "bg-emerald-600/10 hover:bg-accent-olive/20 text-accent-olive hover:text-accent-olive/80",
             "border border-emerald-800/30 rounded-lg transition-colors",
             collapsed ? "justify-center p-2" : "justify-start px-3 py-2"
           )}
@@ -308,7 +308,7 @@ export function DMSSidebar({
 
 function SectionHeader({ label }: { label: string }) {
   return (
-    <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-slate-600 select-none">
+    <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-muted-foreground select-none">
       {label}
     </div>
   );
@@ -335,29 +335,29 @@ function NavButton({
         "group w-full flex items-center gap-2.5 rounded-md transition-all duration-150",
         collapsed ? "justify-center p-2.5" : "px-3 py-[7px]",
         active
-          ? "bg-emerald-600/15 text-emerald-300 border-l-[3px] border-emerald-400"
-          : "text-slate-400 hover:bg-white/[0.04] hover:text-slate-200 border-l-[3px] border-transparent"
+          ? "bg-emerald-600/15 text-accent-olive/80 border-l-[3px] border-accent-olive"
+          : "text-muted-foreground hover:bg-white/[0.04] hover:text-foreground/70 border-l-[3px] border-transparent"
       )}
     >
       <Icon
         size={collapsed ? 18 : 15}
         className={cn(
           "shrink-0 transition-colors",
-          active ? "text-emerald-400" : "text-slate-500 group-hover:text-slate-400"
+          active ? "text-accent-olive" : "text-muted-foreground group-hover:text-muted-foreground"
         )}
       />
       {!collapsed && (
         <span
           className={cn(
             "text-[13px] font-medium truncate transition-colors",
-            active ? "text-emerald-200" : "text-slate-400 group-hover:text-slate-200"
+            active ? "text-accent-olive/80" : "text-muted-foreground group-hover:text-foreground/70"
           )}
         >
           {item.label}
         </span>
       )}
       {!collapsed && item.badge !== undefined && item.badge > 0 && (
-        <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-600/20 text-emerald-400">
+        <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded-full bg-accent-olive/20 text-accent-olive">
           {item.badge}
         </span>
       )}

@@ -63,11 +63,11 @@ export function ChatFlashcardSet({ title, cards, onSave }: ChatFlashcardSetProps
             {/* Header - Minimal, blends with AI message */}
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                    <div className="p-1.5 rounded-lg bg-cyan-500/10">
-                        <Layers className="size-4 text-cyan-400" />
+                    <div className="p-1.5 rounded-lg bg-primary/10">
+                        <Layers className="size-4 text-primary" />
                     </div>
                     <div>
-                        <span className="font-medium text-sm text-white">{title}</span>
+                        <span className="font-medium text-sm text-foreground">{title}</span>
                         <span className="text-xs text-muted-foreground ml-2">
                             ({cards.length} cards)
                         </span>
@@ -79,7 +79,7 @@ export function ChatFlashcardSet({ title, cards, onSave }: ChatFlashcardSetProps
                             variant="outline"
                             size="sm"
                             onClick={() => onSave(cards)}
-                            className="h-7 text-xs gap-1.5 border-cyan-500/30 hover:bg-cyan-500/10 hover:border-cyan-500/50 transition-colors"
+                            className="h-7 text-xs gap-1.5 border-primary/30 hover:bg-primary/10 hover:border-primary/50 transition-colors"
                         >
                             <Save className="size-3" />
                             Save to Deck
@@ -89,7 +89,7 @@ export function ChatFlashcardSet({ title, cards, onSave }: ChatFlashcardSetProps
                         variant="default"
                         size="sm"
                         onClick={handleStudyNow}
-                        className="h-7 text-xs gap-1.5 bg-cyan-600 hover:bg-cyan-500 transition-colors"
+                        className="h-7 text-xs gap-1.5 bg-primary hover:bg-primary transition-colors"
                     >
                         <BookOpen className="size-3" />
                         Study Now
@@ -105,7 +105,7 @@ export function ChatFlashcardSet({ title, cards, onSave }: ChatFlashcardSetProps
                     size="icon"
                     onClick={(e) => { e.stopPropagation(); goPrev(); }}
                     disabled={currentIndex === 0}
-                    className="size-10 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white disabled:opacity-20 shrink-0"
+                    className="size-10 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground disabled:opacity-20 shrink-0"
                 >
                     <ChevronLeft className="size-5" />
                 </Button>
@@ -124,7 +124,7 @@ export function ChatFlashcardSet({ title, cards, onSave }: ChatFlashcardSetProps
                     >
                         {/* FRONT FACE */}
                         <div
-                            className="absolute inset-0 rounded-2xl bg-[#0a0a0f] border border-white/5 overflow-hidden"
+                            className="absolute inset-0 rounded-2xl bg-popover border border-border overflow-hidden"
                             style={{
                                 backfaceVisibility: 'hidden',
                                 WebkitBackfaceVisibility: 'hidden',
@@ -134,21 +134,21 @@ export function ChatFlashcardSet({ title, cards, onSave }: ChatFlashcardSetProps
                             <div className="w-full h-full p-5 flex flex-col items-center justify-center relative">
                                 {/* Header */}
                                 <div className="absolute top-4 left-0 right-0 flex justify-center opacity-30">
-                                    <div className="text-[9px] font-mono tracking-[0.3em] uppercase text-white/60">
+                                    <div className="text-[9px] font-mono tracking-[0.3em] uppercase text-foreground/60">
                                         Question
                                     </div>
                                 </div>
 
                                 {/* Content */}
                                 <div className="w-full text-center px-4">
-                                    <p className="text-sm font-medium text-slate-100 leading-relaxed">
+                                    <p className="text-sm font-medium text-foreground leading-relaxed">
                                         {currentCard.front}
                                     </p>
                                 </div>
 
                                 {/* Footer */}
                                 <div className="absolute bottom-4 left-0 right-0 flex justify-center opacity-20">
-                                    <div className="text-[8px] font-mono tracking-[0.2em] uppercase text-white/40">
+                                    <div className="text-[8px] font-mono tracking-[0.2em] uppercase text-foreground/40">
                                         Tap to Flip
                                     </div>
                                 </div>
@@ -157,7 +157,7 @@ export function ChatFlashcardSet({ title, cards, onSave }: ChatFlashcardSetProps
 
                         {/* BACK FACE */}
                         <div
-                            className="absolute inset-0 rounded-2xl bg-[#08080c] border border-emerald-500/10 overflow-hidden"
+                            className="absolute inset-0 rounded-2xl bg-muted border border-accent-olive/10 overflow-hidden"
                             style={{
                                 backfaceVisibility: 'hidden',
                                 WebkitBackfaceVisibility: 'hidden',
@@ -166,7 +166,7 @@ export function ChatFlashcardSet({ title, cards, onSave }: ChatFlashcardSetProps
                         >
                             <div className="w-full h-full p-5 flex flex-col items-center relative">
                                 {/* Header */}
-                                <div className="w-full flex justify-center opacity-40 text-emerald-400/50 mb-3">
+                                <div className="w-full flex justify-center opacity-40 text-accent-olive/50 mb-3">
                                     <div className="text-[9px] font-mono tracking-[0.3em] uppercase">
                                         Answer
                                     </div>
@@ -174,7 +174,7 @@ export function ChatFlashcardSet({ title, cards, onSave }: ChatFlashcardSetProps
 
                                 {/* Content */}
                                 <div className="w-full flex-1 overflow-y-auto flex items-center justify-center px-3">
-                                    <p className="text-sm font-medium text-slate-200 leading-relaxed text-center">
+                                    <p className="text-sm font-medium text-foreground/70 leading-relaxed text-center">
                                         {currentCard.back}
                                     </p>
                                 </div>
@@ -189,7 +189,7 @@ export function ChatFlashcardSet({ title, cards, onSave }: ChatFlashcardSetProps
                     size="icon"
                     onClick={(e) => { e.stopPropagation(); goNext(); }}
                     disabled={currentIndex === cards.length - 1}
-                    className="size-10 rounded-full hover:bg-white/10 text-zinc-400 hover:text-white disabled:opacity-20 shrink-0"
+                    className="size-10 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground disabled:opacity-20 shrink-0"
                 >
                     <ChevronRight className="size-5" />
                 </Button>
@@ -197,7 +197,7 @@ export function ChatFlashcardSet({ title, cards, onSave }: ChatFlashcardSetProps
 
             {/* Card Counter - Minimal */}
             <div className="flex justify-center">
-                <span className="text-xs text-zinc-500 font-mono">
+                <span className="text-xs text-muted-foreground font-mono">
                     {currentIndex + 1} / {cards.length}
                 </span>
             </div>

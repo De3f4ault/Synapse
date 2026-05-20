@@ -72,7 +72,7 @@ export function NoResultsRecovery({
                 </div>
 
                 {relaxationLevel === 'fuzzy' && (
-                    <p className="text-xs text-amber-400/80">
+                    <p className="text-xs text-warning/80">
                         Showing similar results instead
                     </p>
                 )}
@@ -118,7 +118,7 @@ export function NoResultsRecovery({
                                 className={cn(
                                     "w-full flex items-center gap-2 px-2 py-1.5 rounded-md",
                                     "text-xs text-left text-muted-foreground",
-                                    "hover:bg-white/5 hover:text-foreground",
+                                    "hover:bg-muted/50 hover:text-foreground",
                                     "transition-colors group"
                                 )}
                             >
@@ -131,7 +131,7 @@ export function NoResultsRecovery({
             )}
 
             {/* Helpful tips */}
-            <div className="text-center pt-2 border-t border-white/5">
+            <div className="text-center pt-2 border-t border-border">
                 <p className="text-[10px] text-muted-foreground/70">
                     Try fewer words or check spelling
                 </p>

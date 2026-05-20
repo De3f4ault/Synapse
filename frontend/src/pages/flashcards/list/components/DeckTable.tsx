@@ -33,9 +33,9 @@ export function DeckTable({
     onDeckReview,
 }: DeckTableProps) {
     return (
-        <div className="w-full overflow-hidden rounded-xl border border-white/10 bg-[#0a0a0f]">
+        <div className="w-full overflow-hidden rounded-xl border border-border bg-popover">
             {/* Header */}
-            <div className="grid grid-cols-12 gap-4 px-6 py-3 bg-white/5 text-xs font-bold text-slate-500 uppercase tracking-wider">
+            <div className="grid grid-cols-12 gap-4 px-6 py-3 bg-foreground/5 text-xs font-bold text-muted-foreground uppercase tracking-wider">
                 <div className="col-span-4">Name</div>
                 <div className="col-span-2 text-center">Cards</div>
                 <div className="col-span-2 text-center">Mastery</div>
@@ -56,20 +56,20 @@ export function DeckTable({
                             animate={{ opacity: 1, x: 0 }}
                             transition={{ delay: index * 0.05 }}
                             onClick={() => onDeckClick(deck.id)}
-                            className="grid grid-cols-12 gap-4 px-6 py-4 items-center cursor-pointer hover:bg-white/5 transition-colors group"
+                            className="grid grid-cols-12 gap-4 px-6 py-4 items-center cursor-pointer hover:bg-muted/50 transition-colors group"
                         >
                             {/* Name */}
                             <div className="col-span-4">
-                                <h3 className="font-medium text-white group-hover:text-cyan-400 transition-colors truncate">
+                                <h3 className="font-medium text-foreground group-hover:text-primary transition-colors truncate">
                                     {deck.name}
                                 </h3>
-                                <p className="text-xs text-slate-500 truncate">
+                                <p className="text-xs text-muted-foreground truncate">
                                     {deck.description || 'No description'}
                                 </p>
                             </div>
 
                             {/* Cards */}
-                            <div className="col-span-2 flex items-center justify-center gap-1.5 text-slate-400">
+                            <div className="col-span-2 flex items-center justify-center gap-1.5 text-muted-foreground">
                                 <Layers size={14} />
                                 <span className="text-sm">{deck.card_count || 0}</span>
                             </div>
@@ -78,12 +78,12 @@ export function DeckTable({
                             <div className="col-span-2 flex items-center justify-center">
                                 <span
                                     className={`text-sm font-bold ${mastery >= 70
-                                            ? 'text-emerald-400'
+                                            ? 'text-accent-olive'
                                             : mastery >= 50
-                                                ? 'text-cyan-400'
+                                                ? 'text-primary'
                                                 : mastery >= 30
-                                                    ? 'text-amber-400'
-                                                    : 'text-red-400'
+                                                    ? 'text-warning'
+                                                    : 'text-destructive'
                                         }`}
                                 >
                                     {mastery}%
@@ -91,7 +91,7 @@ export function DeckTable({
                             </div>
 
                             {/* Due */}
-                            <div className="col-span-2 flex items-center justify-center gap-1.5 text-amber-400">
+                            <div className="col-span-2 flex items-center justify-center gap-1.5 text-warning">
                                 <Zap size={14} />
                                 <span className="text-sm">{dueCount}</span>
                             </div>
@@ -103,7 +103,7 @@ export function DeckTable({
                                         e.stopPropagation();
                                         onDeckReview(deck.id);
                                     }}
-                                    className="p-2 rounded-lg bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/20 transition-colors"
+                                    className="p-2 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
                                     title="Review"
                                 >
                                     <Play size={14} />
@@ -113,7 +113,7 @@ export function DeckTable({
                                         e.stopPropagation();
                                         onDeckEdit(deck.id);
                                     }}
-                                    className="p-2 rounded-lg bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white transition-colors"
+                                    className="p-2 rounded-lg bg-foreground/5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
                                     title="Edit"
                                 >
                                     <Edit size={14} />
@@ -123,7 +123,7 @@ export function DeckTable({
                                         e.stopPropagation();
                                         onDeckDelete(deck.id);
                                     }}
-                                    className="p-2 rounded-lg bg-white/5 text-slate-400 hover:bg-red-500/20 hover:text-red-400 transition-colors"
+                                    className="p-2 rounded-lg bg-foreground/5 text-muted-foreground hover:bg-destructive/20 hover:text-destructive transition-colors"
                                     title="Delete"
                                 >
                                     <Trash2 size={14} />

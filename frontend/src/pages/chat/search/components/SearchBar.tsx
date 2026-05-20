@@ -226,7 +226,7 @@ export function SearchBar({
 
             {/* Recent Searches Dropdown */}
             {showRecentDropdown && (
-                <div className="absolute top-full left-0 right-0 z-50 bg-popover border border-white/10 rounded-b-lg shadow-xl py-1">
+                <div className="absolute top-full left-0 right-0 z-50 bg-popover border border-border rounded-b-lg shadow-xl py-1">
                     <div className="px-3 py-1.5 text-[10px] text-muted-foreground uppercase tracking-wider flex items-center gap-1">
                         <Clock className="size-3" />
                         Recent searches
@@ -239,7 +239,7 @@ export function SearchBar({
                                 setLocalQuery(query);
                                 setShowRecent(false);
                             }}
-                            className="w-full text-left px-3 py-1.5 text-sm hover:bg-white/5 transition-colors"
+                            className="w-full text-left px-3 py-1.5 text-sm hover:bg-muted/50 transition-colors"
                         >
                             {query}
                         </button>

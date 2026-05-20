@@ -13,12 +13,17 @@ UPDATED: Now includes complete vector search implementation.
 from typing import Dict, List, Optional
 from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_
+from sqlalchemy import select, and_, text
 from sqlalchemy.orm import selectinload
 
 from .repository import NoteRepository
 from .constants import NoteFormat, MAX_HIERARCHY_DEPTH
 from app.api.websockets.events import broadcast_note_created, broadcast_note_updated
+
+# Minimum plain-text length (chars) below which chunking is skipped.
+# Notes shorter than this (~150 tokens) are small enough to inject in full;
+# semantic chunking overhead is not worth it.
+NOTE_CHUNK_MIN_LENGTH = 600
 
 
 class NoteService:
@@ -393,16 +398,20 @@ class NoteService:
 
     async def _generate_embeddings(self, note):
         """
-        Generate embeddings for a note SYNCHRONOUSLY.
+        Generate note-level and chunk-level embeddings in a single transaction.
 
-        ARCHITECTURAL CHANGE: Transactional entities embed synchronously.
-        - Uses boundary module for sync embedding (~20ms)
-        - Sets embedding_status and embedding_model for versioning
-        - Falls back gracefully on failure
+        Uses content_text (plain text extracted by the frontend editor) instead
+        of the raw JSONB content blob. Both the note-level embedding update and
+        the chunk insertions commit atomically — if chunk insertion fails, the
+        note's embedding_status is set to FAILED so the hydrator knows it cannot
+        rely on chunk data for this note.
 
-        Args:
-            note: Note model instance
+        Tiers used by ContentHydrator._hydrate_note:
+          READY  → note-level + chunks exist, full semantic retrieval available
+          FAILED → fall back to structural truncation
+          PENDING → note was too short to embed or chunk (inject in full)
         """
+        import asyncio
         import structlog
         from app.core.ai.embeddings.boundary import (
             embed_text_sync,
@@ -413,23 +422,131 @@ class NoteService:
         logger = structlog.get_logger()
 
         try:
-            # Combine title and content for embedding
-            text_to_embed = f"{note.title or ''}\n\n{note.content or ''}"
+            # Use pre-extracted plain text. Never embed raw JSONB.
+            body = note.content_text or ""
+            text_to_embed = f"{note.title or ''}\n\n{body}".strip()
 
-            # Sync embed (~20ms)
-            embedding, status = embed_text_sync(text_to_embed)
+            if not text_to_embed:
+                logger.warning("note_embedding_skipped_no_text", note_id=note.id)
+                note.embedding_status = EmbeddingStatus.PENDING.value
+                return
 
-            # Update note fields
+            # ── 1. Note-level embedding (existing behaviour) ───────────────────
+            embedding, emb_status = await asyncio.get_event_loop().run_in_executor(
+                None, embed_text_sync, text_to_embed
+            )
+
             note.embedding = embedding
-            note.embedding_status = status.value
-            note.embedding_model = EMBEDDING_VERSION if status == EmbeddingStatus.READY else None
+            note.embedding_status = emb_status.value
+            note.embedding_model = EMBEDDING_VERSION if emb_status == EmbeddingStatus.READY else None
 
-            logger.info("note_embedding_sync_complete", note_id=note.id, status=status.value)
+            # ── 2. Chunk-level embeddings (new) ───────────────────────────────
+            # Only chunk if text is long enough to be worth it.
+            if emb_status == EmbeddingStatus.READY and len(text_to_embed) >= NOTE_CHUNK_MIN_LENGTH:
+                await self._generate_chunk_embeddings(note, text_to_embed)
+
+            logger.info(
+                "note_embedding_complete",
+                note_id=note.id,
+                status=emb_status.value,
+                chunked=len(text_to_embed) >= NOTE_CHUNK_MIN_LENGTH,
+            )
 
         except Exception as e:
-            # Log but don't fail - allow save to proceed
-            logger.warning("note_embedding_sync_failed", note_id=note.id, error=str(e))
+            logger.warning("note_embedding_failed", note_id=note.id, error=str(e))
             note.embedding_status = "FAILED"
+
+    async def _generate_chunk_embeddings(self, note, full_text: str) -> None:
+        """
+        Chunk full_text via AdvancedSemanticChunker and store chunk embeddings.
+
+        Performs an atomic replace: old chunks are deleted and new chunks are
+        inserted within the same database session. If insertion fails mid-way,
+        the caller's exception handler marks embedding_status = FAILED so the
+        hydrator knows chunks are unreliable for this note.
+
+        Args:
+            note: Note model instance (for note_id + user_id)
+            full_text: Pre-extracted plain text (title + body)
+        """
+        import asyncio
+        import structlog
+        from app.core.ai.rag.chunking import get_semantic_chunker
+        from app.core.ai.embeddings.boundary import embed_text_sync, EMBEDDING_DIM
+
+        logger = structlog.get_logger()
+
+        # Chunk in thread pool — SemanticSplitterNodeParser runs sync embedding calls
+        chunker = get_semantic_chunker()  # singleton, model loaded once per worker
+        chunks = await asyncio.get_event_loop().run_in_executor(
+            None,
+            chunker.chunk_text,
+            full_text,
+            {"note_id": note.id, "user_id": note.user_id},
+        )
+
+        if not chunks:
+            logger.warning("note_chunking_produced_no_chunks", note_id=note.id)
+            return
+
+        # Atomic replace: delete stale chunks, insert fresh ones.
+        # This executes within the same session/transaction as the note-level
+        # embedding update — both commit together in the caller.
+        await self.session.execute(
+            text("DELETE FROM developer_schema.note_chunks WHERE note_id = :note_id"),
+            {"note_id": note.id},
+        )
+
+        for chunk in chunks:
+            chunk_text = chunk["text"]
+            if not chunk_text.strip():
+                continue
+
+            # Embed each chunk synchronously in thread pool
+            chunk_embedding, chunk_status = await asyncio.get_event_loop().run_in_executor(
+                None, embed_text_sync, chunk_text
+            )
+
+            if chunk_embedding is None:
+                logger.warning(
+                    "chunk_embedding_failed",
+                    note_id=note.id,
+                    chunk_index=chunk["chunk_index"],
+                )
+                continue
+
+            # Format embedding as PostgreSQL vector literal
+            emb_str = "[" + ",".join(str(x) for x in chunk_embedding) + "]"
+
+            await self.session.execute(
+                text("""
+                    INSERT INTO developer_schema.note_chunks
+                        (note_id, user_id, chunk_index, content, embedding, chunking_method)
+                    VALUES
+                        (:note_id, :user_id, :chunk_index, :content,
+                         CAST(:embedding AS vector(:dim)), :method)
+                    ON CONFLICT (note_id, chunk_index) DO UPDATE
+                        SET content = EXCLUDED.content,
+                            embedding = EXCLUDED.embedding,
+                            chunking_method = EXCLUDED.chunking_method,
+                            created_at = NOW()
+                """),
+                {
+                    "note_id": note.id,
+                    "user_id": note.user_id,
+                    "chunk_index": chunk["chunk_index"],
+                    "content": chunk_text,
+                    "embedding": emb_str,
+                    "dim": EMBEDDING_DIM,
+                    "method": chunk.get("chunking_method", "semantic"),
+                },
+            )
+
+        logger.info(
+            "note_chunk_embeddings_complete",
+            note_id=note.id,
+            chunk_count=len(chunks),
+        )
 
     # ==================== HIERARCHY OPERATIONS ====================
 

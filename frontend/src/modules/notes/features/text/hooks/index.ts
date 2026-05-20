@@ -1,2 +1,2 @@
 
-export * from './useTextNote';
+export * from './useTiptapNote';

@@ -61,7 +61,7 @@ export function ArtifactPanel() {
   const handleCopy = async () => {
     if (!activeArtifact) return;
     try {
-      await navigator.clipboard.writeText(activeArtifact.content);
+      await navigator.clipboard.writeText(activeArtifact.content ?? '');
       toast.success("Copied to clipboard");
     } catch {
       toast.error("Failed to copy");
@@ -87,7 +87,7 @@ export function ArtifactPanel() {
       activeArtifact.filename ||
       `${activeArtifact.title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}.${extension}`;
 
-    const blob = new Blob([activeArtifact.content], { type: "text/plain" });
+    const blob = new Blob([activeArtifact.content ?? ''], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -115,7 +115,8 @@ export function ArtifactPanel() {
 
   const isReactArtifact = activeArtifact.artifactType === "application/vnd.ant.react";
   const isMarkdownArtifact = activeArtifact.artifactType === "text/markdown";
-  const lineCount = activeArtifact.content.split("\n").length;
+  const artifactContent = activeArtifact.content ?? '';
+  const lineCount = artifactContent.split("\n").length;
   const HeaderIcon = isMarkdownArtifact ? FileText : Code;
 
   return (
@@ -139,7 +140,7 @@ export function ArtifactPanel() {
         </button>
         
         <div className="artifact-panel-title">
-          <HeaderIcon className="size-4 text-cyan-400" />
+          <HeaderIcon className="size-4 text-primary" />
           <span>{activeArtifact.title}</span>
         </div>
         
@@ -175,11 +176,11 @@ export function ArtifactPanel() {
           />
         ) : isMarkdownArtifact ? (
           <div className="artifact-panel-markdown">
-            <MarkdownRenderer content={activeArtifact.content} />
+            <MarkdownRenderer content={artifactContent} />
           </div>
         ) : (
-          <CodeView 
-            code={activeArtifact.content} 
+          <CodeView
+            code={artifactContent}
             language={activeArtifact.language || "typescript"}
             showLineNumbers
           />

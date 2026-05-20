@@ -16,7 +16,7 @@ from app.models.user import User
 from app.models.link import Link, LinkType, LinkEntityType
 from app.services.graph.link_service import LinkService
 from app.schemas.common import MessageResponse
-from app.schemas.link import (
+from app.schemas.graph import (
     LinkCreate,
     LinkUpdate,
     LinkResponse,

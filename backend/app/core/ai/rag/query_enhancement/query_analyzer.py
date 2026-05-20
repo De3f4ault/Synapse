@@ -93,7 +93,11 @@ class QueryAnalyzer:
         elif any(kw in query for kw in self.example_keywords):
             return QueryType.EXAMPLE
         else:
-            return QueryType.CONCEPTUAL  # Default
+            # No keyword signals → treat as factual (fast, precise, skips LLM HyDE).
+            # Unmatched queries are more often short/ambiguous messages than true
+            # conceptual questions. Defaulting to CONCEPTUAL was triggering the
+            # expensive HyDE path for every conversational query.
+            return QueryType.FACTUAL
     
     def _classify_intent(self, query: str) -> QueryIntent:
         """Classify learning intent"""

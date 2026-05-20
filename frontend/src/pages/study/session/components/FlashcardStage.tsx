@@ -39,7 +39,7 @@ export function FlashcardStage({ item, isFlipped, onFlip }: FlashcardStageProps)
   
   if (!flashcard) {
     return (
-      <div className="flex items-center justify-center h-full text-slate-500">
+      <div className="flex items-center justify-center h-full text-muted-foreground">
         Unable to load flashcard data
       </div>
     );

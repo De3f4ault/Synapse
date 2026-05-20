@@ -1,60 +1,54 @@
 /**
- * Custom scrollbar styles - Oracle Theme
- * Minimal, Cyan-tinted scrollbars for the Grimoire and Chat.
- *
- * Location: src/pages/chat/styles/scrollbar.css
+ * Synapse Scrollbar Styles — Warm Palette
+ * Minimal, warm-toned scrollbars for all surfaces.
+ * Light default, .dark override — matches token convention.
  */
 
-/* Base Oracle Scrollbar */
-.oracle-scrollbar {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(6, 182, 212, 0.2) transparent;
+/* Global scrollbar — warm, unobtrusive */
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
 }
 
-.oracle-scrollbar::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
-}
-
-.oracle-scrollbar::-webkit-scrollbar-track {
+*::-webkit-scrollbar-track {
   background: transparent;
 }
 
-.oracle-scrollbar::-webkit-scrollbar-thumb {
-  background-color: rgba(6, 182, 212, 0.15);
-  border-radius: 4px;
-  transition: background-color 0.2s ease;
+/* Light mode (default) */
+*::-webkit-scrollbar-thumb {
+  background-color: var(--color-ring-default, #d1cfc5);
+  border-radius: 3px;
+  transition: background-color var(--duration-standard, 200ms) var(--ease-enter, ease-out);
 }
 
-.oracle-scrollbar::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(6, 182, 212, 0.4);
-  box-shadow: 0 0 10px rgba(6, 182, 212, 0.2);
+*::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-ring-deep, #c2c0b6);
 }
 
-/* Hide scrollbar utility */
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-ring-default, #d1cfc5) transparent;
+}
+
+/* Dark mode overrides */
+.dark *::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.dark *::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+}
+
+.dark * {
+  scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
+}
+
+/* Scrollbar hide utility */
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
 .scrollbar-hide {
   -ms-overflow-style: none;
   scrollbar-width: none;
-}
-
-/* Global reset to thin scrollbars for the app */
-*::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
-}
-
-*::-webkit-scrollbar-track {
-  background: #020408;
-}
-
-*::-webkit-scrollbar-thumb {
-  background-color: #1e293b;
-  border-radius: 3px;
-}
-
-*::-webkit-scrollbar-thumb:hover {
-  background-color: #334155;
 }

@@ -12,7 +12,6 @@ Key differences from MiniLM:
 
 from typing import List, Union, Optional
 import numpy as np
-from sentence_transformers import SentenceTransformer
 import structlog
 
 from app.core.ai.rag.embeddings.models.base_embedder import BaseEmbedder
@@ -66,11 +65,16 @@ class NomicEmbedder(BaseEmbedder):
             device=config.embedding_device,
         )
 
+        # Deferred import: sentence_transformers + torch take ~12s combined.
+        # Importing here rather than at module level keeps uvicorn's module scan fast.
+        from sentence_transformers import SentenceTransformer
+
         self.model = SentenceTransformer(
             self._MODEL_NAME,
             device=config.embedding_device,
             cache_folder=config.model_cache_dir,
             trust_remote_code=True,  # Required for NomicBERT architecture
+            local_files_only=config.offline_mode,  # Fail-fast if cache miss; no network
         )
 
         # Set number of threads for CPU inference

@@ -53,15 +53,15 @@ export const DocumentsList = ({
             exit={{ opacity: 0 }}
             className="w-full"
         >
-            <GlassCard className="overflow-hidden border-white/5">
+            <GlassCard className="overflow-hidden border-border">
                 <table className="w-full">
                     <thead>
-                        <tr className="border-b border-white/5 bg-white/[0.02]">
-                            <th className="text-left py-4 px-6 text-xs font-mono text-slate-500 uppercase tracking-wider">Name</th>
-                            <th className="text-left py-4 px-6 text-xs font-mono text-slate-500 uppercase tracking-wider">Type</th>
-                            <th className="text-left py-4 px-6 text-xs font-mono text-slate-500 uppercase tracking-wider">Size</th>
-                            <th className="text-left py-4 px-6 text-xs font-mono text-slate-500 uppercase tracking-wider">Date Modified</th>
-                            <th className="text-right py-4 px-6 text-xs font-mono text-slate-500 uppercase tracking-wider">Actions</th>
+                        <tr className="border-b border-border bg-foreground/5">
+                            <th className="text-left py-4 px-6 text-xs font-mono text-muted-foreground uppercase tracking-wider">Name</th>
+                            <th className="text-left py-4 px-6 text-xs font-mono text-muted-foreground uppercase tracking-wider">Type</th>
+                            <th className="text-left py-4 px-6 text-xs font-mono text-muted-foreground uppercase tracking-wider">Size</th>
+                            <th className="text-left py-4 px-6 text-xs font-mono text-muted-foreground uppercase tracking-wider">Date Modified</th>
+                            <th className="text-right py-4 px-6 text-xs font-mono text-muted-foreground uppercase tracking-wider">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -79,8 +79,8 @@ export const DocumentsList = ({
                                         animate={{ opacity: 1, y: 0 }}
                                         transition={{ delay: i * 0.03 }}
                                         className={cn(
-                                            "group transition-colors border-b border-white/5 last:border-none cursor-pointer",
-                                            isSelected ? "bg-cyan-500/10 hover:bg-cyan-500/20" : "hover:bg-white/[0.02]"
+                                            "group transition-colors border-b border-border last:border-none cursor-pointer",
+                                            isSelected ? "bg-primary/10 hover:bg-primary/20" : "hover:bg-muted/50"
                                         )}
                                         onClick={(e) => handleClick(`folder:${folder.id}`, e, () => onFolderClick?.(folder))}
                                         onDoubleClick={() => onFolderDoubleClick?.(folder)}
@@ -90,14 +90,14 @@ export const DocumentsList = ({
                                             <div className="flex items-center gap-3">
                                                 <div className={cn(
                                                     "p-2 rounded-lg transition-colors",
-                                                    isSelected ? "bg-cyan-500/20 text-cyan-300" : "bg-cyan-500/10 text-cyan-400 group-hover:bg-cyan-500/20"
+                                                    isSelected ? "bg-primary/20 text-primary/80" : "bg-primary/10 text-primary group-hover:bg-primary/20"
                                                 )}>
                                                     <Folder size={18} fill="currentColor" className={isSelected ? "fill-cyan-300/20" : "fill-cyan-400/20"} />
                                                 </div>
                                                 <div>
                                                     <p className={cn(
                                                         "text-sm font-medium transition-colors",
-                                                        isSelected ? "text-cyan-100" : "text-slate-200 group-hover:text-white"
+                                                        isSelected ? "text-primary-foreground" : "text-foreground/70 group-hover:text-foreground"
                                                     )}>
                                                         {folder.name}
                                                     </p>
@@ -105,17 +105,17 @@ export const DocumentsList = ({
                                             </div>
                                         </td>
                                         <td className="py-4 px-6">
-                                            <span className="text-xs font-mono text-slate-500 uppercase bg-white/5 px-2 py-1 rounded border border-white/5">
+                                            <span className="text-xs font-mono text-muted-foreground uppercase bg-foreground/5 px-2 py-1 rounded border border-border">
                                                 Folder
                                             </span>
                                         </td>
                                         <td className="py-4 px-6">
-                                            <span className="text-sm text-slate-500 font-mono">
+                                            <span className="text-sm text-muted-foreground font-mono">
                                                 -
                                             </span>
                                         </td>
                                         <td className="py-4 px-6">
-                                            <span className="text-sm text-slate-500">
+                                            <span className="text-sm text-muted-foreground">
                                                 -
                                             </span>
                                         </td>
@@ -137,8 +137,8 @@ export const DocumentsList = ({
                                     animate={{ opacity: 1, y: 0 }}
                                     transition={{ delay: i * 0.03 }}
                                     className={cn(
-                                        "group transition-colors border-b border-white/5 last:border-none cursor-pointer",
-                                        isSelected ? "bg-cyan-500/10 hover:bg-cyan-500/20" : "hover:bg-white/[0.02]"
+                                        "group transition-colors border-b border-border last:border-none cursor-pointer",
+                                        isSelected ? "bg-primary/10 hover:bg-primary/20" : "hover:bg-muted/50"
                                     )}
                                     onClick={(e) => handleClick(`doc:${doc.id}`, e, () => onDocumentClick?.(doc))}
                                     onContextMenu={(e) => onContextMenu?.(doc, e)}
@@ -147,14 +147,14 @@ export const DocumentsList = ({
                                         <div className="flex items-center gap-3">
                                             <div className={cn(
                                                 "p-2 rounded-lg transition-colors",
-                                                isSelected ? "bg-cyan-500/20 text-cyan-300" : "bg-white/5 text-slate-400 group-hover:text-cyan-400 group-hover:bg-cyan-500/10"
+                                                isSelected ? "bg-primary/20 text-primary/80" : "bg-foreground/5 text-muted-foreground group-hover:text-primary group-hover:bg-primary/10"
                                             )}>
                                                 <FileText size={18} />
                                             </div>
                                             <div>
                                                 <p className={cn(
                                                     "text-sm font-medium transition-colors",
-                                                    isSelected ? "text-cyan-100" : "text-slate-200 group-hover:text-white"
+                                                    isSelected ? "text-primary-foreground" : "text-foreground/70 group-hover:text-foreground"
                                                 )}>
                                                     {doc.filename}
                                                 </p>
@@ -162,29 +162,29 @@ export const DocumentsList = ({
                                         </div>
                                     </td>
                                     <td className="py-4 px-6">
-                                        <span className="text-xs font-mono text-slate-400 uppercase bg-white/5 px-2 py-1 rounded border border-white/5">
+                                        <span className="text-xs font-mono text-muted-foreground uppercase bg-foreground/5 px-2 py-1 rounded border border-border">
                                             {doc.type}
                                         </span>
                                     </td>
                                     <td className="py-4 px-6">
-                                        <span className="text-sm text-slate-500 font-mono">
+                                        <span className="text-sm text-muted-foreground font-mono">
                                             {doc.size}
                                         </span>
                                     </td>
                                     <td className="py-4 px-6">
-                                        <span className="text-sm text-slate-500">
+                                        <span className="text-sm text-muted-foreground">
                                             {doc.updated_at ? format(new Date(doc.updated_at), "MMM d, yyyy") : "-"}
                                         </span>
                                     </td>
                                     <td className="py-4 px-6 text-right">
                                         <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <button className="p-2 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition-colors">
+                                            <button className="p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors">
                                                 <Download size={16} />
                                             </button>
-                                            <button className="p-2 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition-colors">
+                                            <button className="p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors">
                                                 <Share2 size={16} />
                                             </button>
-                                            <button className="p-2 rounded-lg hover:bg-red-500/10 text-slate-400 hover:text-red-400 transition-colors">
+                                            <button className="p-2 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors">
                                                 <Trash2 size={16} />
                                             </button>
                                         </div>

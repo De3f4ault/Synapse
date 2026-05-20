@@ -15,11 +15,11 @@ from datetime import datetime
 from typing import List, Any, Dict
 import structlog
 
-from app.schemas.search_identity import (
+from app.schemas.search import (
     SearchEntityIdentity,
     IdentityAuthority,
 )
-from app.schemas.search_result import (
+from app.schemas.search import (
     UnifiedSearchResult,
     SearchRole,
     AssertionType,
@@ -245,6 +245,11 @@ def adapt_rag_chunks(
                 signals={
                     "chunk_index": metadata.get("chunk_index", 0),
                     "source_type": source_type,
+                },
+                # Preserve image-routing fields for downstream EvidenceChunk assembly
+                metadata={
+                    "content_type": metadata.get("content_type", "text"),
+                    "storage_path": metadata.get("storage_path"),
                 },
                 assertion_type=AssertionType.INFERENTIAL,
                 confidence=score,  # Use vector similarity as confidence

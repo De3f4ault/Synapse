@@ -69,8 +69,8 @@ export function DocumentCardLarge({
       <GlassCard
         className={cn(
           "p-0 overflow-hidden relative aspect-[3/4]",
-          "border-white/5 hover:border-emerald-500/30 transition-all",
-          selected && "ring-2 ring-emerald-400 border-emerald-400/50"
+          "border-border hover:border-accent-olive/30 transition-all",
+          selected && "ring-2 ring-accent-olive border-accent-olive/50"
         )}
         hover
       >
@@ -83,7 +83,7 @@ export function DocumentCardLarge({
                 <Checkbox
                   checked={selected}
                   onCheckedChange={() => onSelect(id)}
-                  className="h-4 w-4 rounded border-white/30 data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
+                  className="h-4 w-4 rounded border-white/30 data-[state=checked]:bg-accent-olive data-[state=checked]:border-emerald-500"
                 />
               </div>
             )}
@@ -91,7 +91,7 @@ export function DocumentCardLarge({
             {/* ASN badge */}
             {asn && (
               <div className="absolute top-2 right-2 z-20">
-                <span className="px-1.5 py-0.5 text-[9px] font-mono bg-black/60 text-emerald-300 rounded-full border border-emerald-500/30">
+                <span className="px-1.5 py-0.5 text-[9px] font-mono bg-background/80 text-accent-olive/80 rounded-full border border-accent-olive/30">
                   #{asn}
                 </span>
               </div>
@@ -99,7 +99,7 @@ export function DocumentCardLarge({
 
             {/* Notes indicator */}
             {notesCount > 0 && (
-              <div className="absolute bottom-2 right-2 z-20 flex items-center gap-1 px-1.5 py-0.5 bg-black/60 rounded-full text-[10px] text-amber-300 border border-amber-500/30">
+              <div className="absolute bottom-2 right-2 z-20 flex items-center gap-1 px-1.5 py-0.5 bg-background/80 rounded-full text-[10px] text-amber-300 border border-amber-500/30">
                 <StickyNote size={9} />
                 {notesCount}
               </div>
@@ -125,18 +125,18 @@ export function DocumentCardLarge({
                 onClick={onClick}
                 onDoubleClick={onDoubleClick}
               >
-                <div className="p-4 rounded-xl border border-white/10 bg-white/[0.03]">
-                  <FileText size={36} strokeWidth={1} className="text-slate-500" />
+                <div className="p-4 rounded-xl border border-border bg-muted/30">
+                  <FileText size={36} strokeWidth={1} className="text-muted-foreground" />
                 </div>
               </div>
             )}
           </div>
 
           {/* Footer with metadata */}
-          <div className="p-2.5 bg-black/40 backdrop-blur-md border-t border-white/10 space-y-1.5">
+          <div className="p-2.5 bg-background/70 backdrop-blur-md border-t border-border space-y-1.5">
             {/* Title */}
             <h3
-              className="text-xs font-semibold text-slate-200 truncate cursor-pointer group-hover:text-emerald-400 transition-colors"
+              className="text-xs font-semibold text-foreground/70 truncate cursor-pointer group-hover:text-accent-olive transition-colors"
               onClick={onClick}
               title={title}
             >
@@ -148,7 +148,7 @@ export function DocumentCardLarge({
               {correspondent && (
                 <button
                   onClick={() => onCorrespondentClick?.(correspondent.id)}
-                  className="text-[9px] px-1 py-0.5 rounded-full bg-blue-500/10 text-blue-300 border border-blue-500/20 hover:bg-blue-500/20 transition-colors truncate max-w-[80px]"
+                  className="text-[9px] px-1 py-0.5 rounded-full bg-info/10 text-blue-300 border border-blue-500/20 hover:bg-blue-500/20 transition-colors truncate max-w-[80px]"
                   title={correspondent.name}
                 >
                   {correspondent.name}
@@ -157,7 +157,7 @@ export function DocumentCardLarge({
               {documentType && (
                 <button
                   onClick={() => onDocumentTypeClick?.(documentType.id)}
-                  className="text-[9px] px-1 py-0.5 rounded-full bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors truncate max-w-[80px]"
+                  className="text-[9px] px-1 py-0.5 rounded-full bg-accent-olive/10 text-accent-olive/80 border border-accent-olive/20 hover:bg-accent-olive/20 transition-colors truncate max-w-[80px]"
                   title={documentType.name}
                 >
                   {documentType.name}
@@ -166,7 +166,7 @@ export function DocumentCardLarge({
             </div>
 
             {/* Date + page info row */}
-            <div className="flex items-center gap-2 text-[10px] text-slate-500">
+            <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
               {created && (
                 <span>
                   {new Date(created).toLocaleDateString(undefined, {
@@ -191,7 +191,7 @@ export function DocumentCardLarge({
                   />
                 ))}
                 {tags.length > 3 && (
-                  <span className="text-[9px] text-slate-500 self-center">
+                  <span className="text-[9px] text-muted-foreground self-center">
                     +{tags.length - 3}
                   </span>
                 )}
@@ -199,23 +199,23 @@ export function DocumentCardLarge({
             )}
 
             {/* Action buttons — Open, Preview, Download (Paperless-ngx style) */}
-            <div className="flex items-center gap-1 pt-1 border-t border-white/5 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="flex items-center gap-1 pt-1 border-t border-border opacity-0 group-hover:opacity-100 transition-opacity">
               <button
                 onClick={onDoubleClick}
-                className="flex-1 flex items-center justify-center gap-1 py-1 rounded text-[10px] text-slate-400 hover:text-emerald-400 hover:bg-white/5 transition-colors"
+                className="flex-1 flex items-center justify-center gap-1 py-1 rounded text-[10px] text-muted-foreground hover:text-accent-olive hover:bg-muted/50 transition-colors"
                 title="Open document"
               >
                 <ExternalLink size={12} />
               </button>
               <button
                 onClick={onClick}
-                className="flex-1 flex items-center justify-center gap-1 py-1 rounded text-[10px] text-slate-400 hover:text-emerald-400 hover:bg-white/5 transition-colors"
+                className="flex-1 flex items-center justify-center gap-1 py-1 rounded text-[10px] text-muted-foreground hover:text-accent-olive hover:bg-muted/50 transition-colors"
                 title="Preview"
               >
                 <Eye size={12} />
               </button>
               <button
-                className="flex-1 flex items-center justify-center gap-1 py-1 rounded text-[10px] text-slate-400 hover:text-emerald-400 hover:bg-white/5 transition-colors"
+                className="flex-1 flex items-center justify-center gap-1 py-1 rounded text-[10px] text-muted-foreground hover:text-accent-olive hover:bg-muted/50 transition-colors"
                 title="Download"
               >
                 <Download size={12} />

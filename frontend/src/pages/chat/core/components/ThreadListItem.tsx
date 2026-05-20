@@ -23,8 +23,8 @@ export function ThreadListItem({ thread, isActive, onClick }: ThreadListItemProp
                 "w-full text-left px-3 py-[7px] rounded transition-colors",
                 "text-[13px] leading-[1.3] truncate block",
                 isActive
-                    ? "bg-white/[0.08] text-zinc-100"
-                    : "text-zinc-500 hover:bg-white/[0.04] hover:text-zinc-300"
+                    ? "bg-muted text-foreground"
+                    : "text-muted-foreground hover:bg-muted/50 hover:text-foreground/80"
             )}
             title={thread.title || 'Untitled thread'}
         >

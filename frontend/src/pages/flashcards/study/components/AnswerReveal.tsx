@@ -23,10 +23,10 @@ export function AnswerReveal({ onReveal, disabled = false }: AnswerRevealProps) 
             className="
         px-16 h-14 
         rounded-full
-        bg-cyan-500 text-white
+        bg-primary text-foreground
         text-lg font-bold tracking-wide
         transition-all duration-200
-        hover:bg-cyan-400
+        hover:bg-primary
         disabled:opacity-50 disabled:cursor-not-allowed
         shadow-lg shadow-cyan-500/30
       "

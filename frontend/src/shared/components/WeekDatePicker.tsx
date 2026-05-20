@@ -82,7 +82,7 @@ export const WeekDatePicker = memo(function WeekDatePicker({
     <div
       className={cn(
         "flex items-center gap-2 p-2 rounded-xl",
-        "bg-zinc-900/80 backdrop-blur-sm border border-white/10",
+        "bg-zinc-900/80 backdrop-blur-sm border border-border",
         className
       )}
     >
@@ -91,7 +91,7 @@ export const WeekDatePicker = memo(function WeekDatePicker({
         variant="ghost"
         size="icon"
         onClick={onPrev}
-        className="h-8 w-8 text-zinc-400 hover:text-white hover:bg-white/5 rounded-lg"
+        className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-lg"
         aria-label="Previous week"
       >
         <ChevronLeft className="h-4 w-4" />
@@ -115,7 +115,7 @@ export const WeekDatePicker = memo(function WeekDatePicker({
         variant="ghost"
         size="icon"
         onClick={onNext}
-        className="h-8 w-8 text-zinc-400 hover:text-white hover:bg-white/5 rounded-lg"
+        className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-lg"
         aria-label="Next week"
       >
         <ChevronRight className="h-4 w-4" />
@@ -153,8 +153,8 @@ const DayCell = memo(function DayCell({
         "w-12 h-14 rounded-lg transition-all duration-200",
         "text-sm font-medium",
         isActive
-          ? "bg-cyan-500 text-white shadow-lg shadow-cyan-500/20"
-          : "text-zinc-400 hover:bg-white/5 hover:text-white",
+          ? "bg-primary text-foreground shadow-lg "
+          : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
         isToday && !isActive && "ring-1 ring-cyan-500/50"
       )}
       aria-label={day.format(DATE_FORMAT)}

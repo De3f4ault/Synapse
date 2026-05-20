@@ -45,14 +45,10 @@ llama-index-readers-file==0.5.5
 llama-index-readers-llama-parse==0.5.1
 llama-index-workflows==2.11.5
 llama-parse==0.6.54
-langchain==1.0.2
-langchain-core==1.0.1
-langchain-community==0.4.1
-langchain-text-splitters==1.0.0
-langgraph==1.0.1
-langgraph-checkpoint==3.0.1
-langgraph-sdk==0.2.12
-openai==1.109.1
+# LiteLLM — unified provider abstraction (replaces per-provider SDK calls)
+litellm>=1.67.0
+# OpenAI SDK — required by litellm (2.x installed by litellm 1.83)
+openai>=2.0.0
 
 # Embeddings & ML
 sentence-transformers>=3.0.0

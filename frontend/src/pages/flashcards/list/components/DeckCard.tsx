@@ -14,6 +14,7 @@ import {
     Layers,
     Zap,
     BrainCircuit,
+    FolderInput,
 } from 'lucide-react';
 import {
     DropdownMenu,
@@ -33,14 +34,15 @@ interface DeckCardProps {
     onEdit: () => void;
     onReview: () => void;
     onClick: () => void;
+    onMoveToCollection?: () => void;
 }
 
 // Color accent based on mastery - using same cyan-centric palette as Notes/Quizzes
 function getMasteryBadge(masteryPercent: number): { text: string; className: string } {
-    if (masteryPercent >= 80) return { text: 'Mastered', className: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' };
-    if (masteryPercent >= 50) return { text: 'Learning', className: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20' };
-    if (masteryPercent >= 30) return { text: 'Started', className: 'bg-amber-500/10 text-amber-400 border-amber-500/20' };
-    return { text: 'New', className: 'bg-purple-500/10 text-purple-400 border-purple-500/20' };
+    if (masteryPercent >= 80) return { text: 'Mastered', className: 'bg-accent-olive/10 text-accent-olive border-accent-olive/20' };
+    if (masteryPercent >= 50) return { text: 'Learning', className: 'bg-primary/10 text-primary border-primary/20' };
+    if (masteryPercent >= 30) return { text: 'Started', className: 'bg-warning/10 text-warning border-warning/20' };
+    return { text: 'New', className: 'bg-accent/10 text-accent border-accent/20' };
 }
 
 export const DeckCard = React.memo(function DeckCard({
@@ -51,6 +53,7 @@ export const DeckCard = React.memo(function DeckCard({
     onEdit,
     onReview,
     onClick,
+    onMoveToCollection,
 }: DeckCardProps) {
     const badge = getMasteryBadge(masteryPercent);
 
@@ -65,11 +68,11 @@ export const DeckCard = React.memo(function DeckCard({
         >
             <GlassCard className="h-full p-6 flex flex-col relative overflow-hidden">
                 {/* Background Glow - matching NoteCard */}
-                <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/10 blur-[50px] rounded-full group-hover:bg-cyan-500/20 transition-all duration-500" />
+                <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 blur-[50px] rounded-full group-hover:bg-primary/20 transition-all duration-500" />
 
                 {/* Header */}
                 <div className="flex justify-between items-start mb-4 relative z-10">
-                    <div className="p-2.5 rounded-xl bg-cyan-500/5 border border-cyan-500/10 text-cyan-400">
+                    <div className="p-2.5 rounded-xl bg-primary/5 border border-primary/10 text-primary">
                         <BrainCircuit size={20} />
                     </div>
                     <div className="flex items-center gap-2">
@@ -83,18 +86,23 @@ export const DeckCard = React.memo(function DeckCard({
                         <div className="opacity-0 group-hover:opacity-100 transition-opacity">
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                                    <button className="h-7 w-7 rounded-full flex items-center justify-center bg-white/5 text-white/70 hover:bg-white/10 hover:text-white transition-colors">
+                                    <button className="h-7 w-7 rounded-full flex items-center justify-center bg-foreground/5 text-foreground/70 hover:bg-muted hover:text-foreground transition-colors">
                                         <MoreVertical size={14} />
                                     </button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent
                                     align="end"
-                                    className="bg-zinc-900 border-white/10 text-slate-200"
+                                    className="bg-zinc-900 border-border text-foreground/70"
                                 >
                                     <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit(); }}>
                                         <Edit className="mr-2 h-4 w-4" /> Edit
                                     </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onDelete(); }} className="text-red-400">
+                                    {onMoveToCollection && (
+                                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onMoveToCollection(); }}>
+                                            <FolderInput className="mr-2 h-4 w-4" /> Move to Collection
+                                        </DropdownMenuItem>
+                                    )}
+                                    <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onDelete(); }} className="text-destructive">
                                         <Trash2 className="mr-2 h-4 w-4" /> Delete
                                     </DropdownMenuItem>
                                 </DropdownMenuContent>
@@ -105,31 +113,33 @@ export const DeckCard = React.memo(function DeckCard({
 
                 {/* Content */}
                 <div className="flex-1 relative z-10">
-                    <h3 className="text-lg font-bold text-white mb-2 line-clamp-1 group-hover:text-cyan-300 transition-colors">
+                    <h3 className="text-lg font-bold text-foreground mb-2 line-clamp-1 group-hover:text-primary/80 transition-colors">
                         {deck.name}
                     </h3>
-                    <p className="text-sm text-slate-400 line-clamp-2 leading-relaxed">
+                    <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed">
                         {deck.description || 'No description provided.'}
                     </p>
                 </div>
 
 
                 {/* Footer Stats - matching NoteCard/QuizCard */}
-                <div className="mt-auto pt-4 border-t border-white/5 flex items-center justify-between relative z-10">
-                    <div className="flex items-center gap-4 text-xs font-mono text-slate-600">
+                <div className="mt-auto pt-4 border-t border-border flex items-center justify-between relative z-10">
+                    <div className="flex items-center gap-4 text-xs font-mono text-muted-foreground">
                         <span className="flex items-center gap-1.5">
-                            <Layers size={12} className="text-slate-500" />
+                            <Layers size={12} className="text-muted-foreground" />
                             {deck.card_count || 0} cards
                         </span>
-                        <span className="flex items-center gap-1.5">
-                            <Zap size={12} className="text-amber-400" />
-                            {dueCount} due
-                        </span>
+                        {(deck.due_count ?? 0) > 0 && (
+                            <span className="flex items-center gap-1.5 text-warning">
+                                <Zap size={12} className="text-warning" />
+                                {deck.due_count} due
+                            </span>
+                        )}
                     </div>
 
                     <motion.button
                         onClick={(e) => { e.stopPropagation(); onReview(); }}
-                        className="p-2 rounded-full bg-cyan-500/10 text-cyan-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="p-2 rounded-full bg-primary/10 text-primary opacity-0 group-hover:opacity-100 transition-opacity"
                         whileHover={{ scale: 1.1 }}
                         whileTap={{ scale: 0.9 }}
                     >

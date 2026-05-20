@@ -1,7 +1,5 @@
 /**
  * CreateDeckPage - Manual Deck Creation
- * 
- * REFACTORED: Uses premium AuroraBackground and GlassCard.
  */
 
 import { useState } from 'react';
@@ -86,18 +84,18 @@ export function CreateDeckPage() {
     };
 
     return (
-        <div className="fixed inset-0 min-h-screen flex flex-col nm-bg nm-constellation-bg pt-16">
+        <div className="fixed inset-0 min-h-screen flex flex-col bg-background text-foreground pt-16">
             {/* Top Bar */}
-            <div className="flex-none h-16 border-b border-white/5 bg-black/20 backdrop-blur-xl z-20 px-8 flex items-center gap-4">
+            <div className="flex-none h-16 border-b border-border bg-background/50 backdrop-blur-xl z-20 px-8 flex items-center gap-4">
                 <button
                     onClick={() => navigate('/flashcards')}
-                    className="p-2 rounded-full bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+                    className="p-2 rounded-full bg-foreground/5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                 >
                     <ArrowLeft className="h-5 w-5" />
                 </button>
                 <div>
-                    <h1 className="text-sm font-bold text-white leading-none mb-1">Create New Deck</h1>
-                    <span className="text-[10px] font-mono text-slate-500 uppercase tracking-wider">Configuration</span>
+                    <h1 className="text-sm font-bold text-foreground leading-none mb-1">Create New Deck</h1>
+                    <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">Configuration</span>
                 </div>
             </div>
 
@@ -113,26 +111,26 @@ export function CreateDeckPage() {
                             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
                                 {/* Deck Name */}
                                 <div className="space-y-2">
-                                    <Label htmlFor="name" className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                                        Deck Name <span className="text-cyan-500">*</span>
+                                    <Label htmlFor="name" className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                                        Deck Name <span className="text-primary">*</span>
                                     </Label>
                                     <input
                                         id="name"
                                         placeholder="e.g., Quantum Physics Fundamentals"
                                         {...register('name')}
                                         className={cn(
-                                            'w-full px-4 py-3 rounded-xl bg-black/30 border border-white/10 text-white placeholder:text-slate-600 focus:outline-none focus:border-cyan-500/50 transition-colors backdrop-blur-sm',
-                                            errors.name && 'border-red-500/50 focus:border-red-500'
+                                            'w-full px-4 py-3 rounded-xl bg-card/50 border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 transition-colors backdrop-blur-sm',
+                                            errors.name && 'border-destructive/50 focus:border-red-500'
                                         )}
                                     />
                                     {errors.name && (
-                                        <p className="text-xs text-red-400 mt-1">{errors.name?.message}</p>
+                                        <p className="text-xs text-destructive mt-1">{errors.name?.message}</p>
                                     )}
                                 </div>
 
                                 {/* Description */}
                                 <div className="space-y-2">
-                                    <Label htmlFor="description" className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                                    <Label htmlFor="description" className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
                                         Description
                                     </Label>
                                     <Textarea
@@ -140,13 +138,13 @@ export function CreateDeckPage() {
                                         placeholder="Describe the topics covered in this deck..."
                                         rows={4}
                                         {...register('description')}
-                                        className="w-full min-h-[120px] resize-y px-4 py-3 rounded-xl bg-black/30 border border-white/10 text-white placeholder:text-slate-600 focus:outline-none focus:border-cyan-500/50 transition-colors backdrop-blur-sm"
+                                        className="w-full min-h-[120px] resize-y px-4 py-3 rounded-xl bg-card/50 border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 transition-colors backdrop-blur-sm"
                                     />
                                 </div>
 
                                 {/* Tags */}
                                 <div className="space-y-3">
-                                    <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                                    <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
                                         Tags ({tags.length}/10)
                                     </Label>
 
@@ -163,13 +161,13 @@ export function CreateDeckPage() {
                                             placeholder="Add a tag..."
                                             maxLength={50}
                                             disabled={tags.length >= 10}
-                                            className="flex-1 px-4 py-2 rounded-xl bg-black/30 border border-white/10 text-white placeholder:text-slate-600 focus:outline-none focus:border-cyan-500/50 transition-colors backdrop-blur-sm"
+                                            className="flex-1 px-4 py-2 rounded-xl bg-card/50 border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 transition-colors backdrop-blur-sm"
                                         />
                                         <button
                                             type="button"
                                             onClick={addTag}
                                             disabled={!tagInput.trim() || tags.length >= 10}
-                                            className="px-4 py-2 rounded-xl bg-cyan-600/80 text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-cyan-500 transition-colors"
+                                            className="px-4 py-2 rounded-xl bg-primary/80 text-foreground disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary transition-colors"
                                         >
                                             <Plus className="h-4 w-4" />
                                         </button>
@@ -180,13 +178,13 @@ export function CreateDeckPage() {
                                             {tags.map((tag) => (
                                                 <span
                                                     key={tag}
-                                                    className="px-3 py-1 rounded-lg bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-sm flex items-center gap-2"
+                                                    className="px-3 py-1 rounded-lg bg-primary/10 border border-primary/30 text-primary text-sm flex items-center gap-2"
                                                 >
                                                     {tag}
                                                     <button
                                                         type="button"
                                                         onClick={() => removeTag(tag)}
-                                                        className="hover:text-cyan-300 transition-colors"
+                                                        className="hover:text-primary/80 transition-colors"
                                                     >
                                                         <X className="h-3 w-3" />
                                                     </button>
@@ -197,12 +195,12 @@ export function CreateDeckPage() {
                                 </div>
 
                                 {/* Public Toggle */}
-                                <div className="flex items-center justify-between p-4 rounded-xl bg-cyan-500/5 border border-cyan-500/10">
+                                <div className="flex items-center justify-between p-4 rounded-xl bg-primary/5 border border-primary/10">
                                     <div>
-                                        <Label htmlFor="is_public" className="text-sm font-bold text-slate-200 cursor-pointer">
+                                        <Label htmlFor="is_public" className="text-sm font-bold text-foreground/70 cursor-pointer">
                                             Make Deck Public
                                         </Label>
-                                        <p className="text-xs text-slate-500 mt-1">
+                                        <p className="text-xs text-muted-foreground mt-1">
                                             Allow other users to find and study this deck
                                         </p>
                                     </div>
@@ -214,18 +212,18 @@ export function CreateDeckPage() {
                                 </div>
 
                                 {/* Actions */}
-                                <div className="flex gap-4 pt-4 border-t border-white/5">
+                                <div className="flex gap-4 pt-4 border-t border-border">
                                     <button
                                         type="button"
                                         onClick={() => navigate('/flashcards')}
-                                        className="flex-1 py-3.5 rounded-xl bg-white/5 text-slate-400 hover:text-white hover:bg-white/10 transition-colors font-medium border border-transparent hover:border-white/10"
+                                        className="flex-1 py-3.5 rounded-xl bg-foreground/5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors font-medium border border-transparent hover:border-border"
                                     >
                                         Cancel
                                     </button>
                                     <button
                                         type="submit"
                                         disabled={isPending || !isDirty}
-                                        className="flex-1 py-3.5 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 text-white font-bold flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:from-cyan-500 hover:to-blue-500 transition-all shadow-lg shadow-cyan-500/20"
+                                        className="flex-1 py-3.5 rounded-xl bg-primary text-primary-foreground font-bold flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary/90 transition-all"
                                     >
                                         {isPending ? (
                                             <>

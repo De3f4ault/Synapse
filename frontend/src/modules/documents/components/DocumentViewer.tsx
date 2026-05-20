@@ -39,11 +39,11 @@ interface DocumentViewerProps {
 
 function getFileIcon(fileType: string) {
   if (fileType.includes("pdf"))
-    return <FileText className="h-12 w-12 text-red-500" />;
+    return <FileText className="h-12 w-12 text-destructive" />;
   if (fileType.includes("word") || fileType.includes("docx"))
     return <FileType className="h-12 w-12 text-blue-500" />;
   if (fileType.includes("epub"))
-    return <FileIcon className="h-12 w-12 text-purple-500" />;
+    return <FileIcon className="h-12 w-12 text-accent" />;
   if (fileType.includes("markdown") || fileType.includes("md"))
     return <FileText className="h-12 w-12 text-gray-500" />;
   return <FileText className="h-12 w-12 text-muted-foreground" />;
@@ -145,11 +145,11 @@ export function DocumentViewer({
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
               whileHover={{ scale: 1.01 }}
-              className="rounded-lg border p-3 bg-gradient-to-r from-purple-500/10 to-blue-500/10"
+              className="rounded-lg border p-3 bg-gradient-to-r from-accent/10 to-primary/10"
             >
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium flex items-center gap-2">
-                  <Sparkles className="h-4 w-4 text-purple-500" />
+                  <Sparkles className="h-4 w-4 text-accent" />
                   AI Processing
                 </span>
                 {document.gemini_file_expired ? (
@@ -172,7 +172,7 @@ export function DocumentViewer({
               >
                 <Button
                   onClick={onGenerateFlashcards}
-                  className="gap-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+                  className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground"
                 >
                   <Sparkles className="h-4 w-4" />
                   Generate Flashcards

@@ -30,7 +30,7 @@ export function StopButton({ isStreaming, onStop, className }: StopButtonProps) 
             size="sm"
             onClick={onStop}
             className={cn(
-                'gap-1.5 border-red-500/30 text-red-400 hover:bg-red-500/10 hover:text-red-300',
+                'gap-1.5 border-red-500/30 text-destructive hover:bg-destructive/10 hover:text-red-300',
                 'transition-colors',
                 className
             )}

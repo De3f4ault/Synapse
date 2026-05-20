@@ -7,7 +7,7 @@ long-term memory (Mastery, Knowledge Graph).
 PRINCIPLE: Better to ignore a valid signal than to learn a false one.
 """
 
-from app.schemas.search_feedback import FeedbackEvent, FeedbackSource
+from app.schemas.search import FeedbackEvent, FeedbackSource
 
 
 def should_update_mastery(event: FeedbackEvent) -> bool:

@@ -75,8 +75,8 @@ export const DOCXViewer: React.FC<DOCXViewerProps> = ({
         return (
             <div className={`w-full h-full flex items-center justify-center ${bg} ${className}`}>
                 <div className="text-center">
-                    <Loader2 className="animate-spin text-cyan-500 mx-auto mb-4" size={32} />
-                    <p className="text-slate-400 text-sm">Converting document...</p>
+                    <Loader2 className="animate-spin text-primary mx-auto mb-4" size={32} />
+                    <p className="text-muted-foreground text-sm">Converting document...</p>
                 </div>
             </div>
         );
@@ -85,7 +85,7 @@ export const DOCXViewer: React.FC<DOCXViewerProps> = ({
     if (error) {
         return (
             <div className={`w-full h-full flex items-center justify-center ${bg} ${className}`}>
-                <div className="text-center text-red-400">
+                <div className="text-center text-destructive">
                     <AlertCircle className="mx-auto mb-4" size={32} />
                     <p className="text-sm">{error}</p>
                 </div>

@@ -21,6 +21,7 @@ export default defineConfig({
     server: {
         port: 3000,
         host: true, // Listen on all addresses
+        allowedHosts: true, // Allow ngrok and other external hosts
 
         // Proxy API requests to backend on port 8000
         proxy: {
@@ -52,10 +53,9 @@ export default defineConfig({
                     'query-vendor': ['@tanstack/react-query'],
                     'ui-vendor': ['framer-motion', 'recharts'],
                     'editor-vendor': [
-                        '@blocknote/react', 
-                        '@blocknote/core', 
-                        '@blocknote/mantine',
-                        '@blocknote/xl-ai',
+                        '@tiptap/react',
+                        '@tiptap/core',
+                        '@tiptap/starter-kit',
                         'prosemirror-state',
                         'prosemirror-view',
                         'prosemirror-model',

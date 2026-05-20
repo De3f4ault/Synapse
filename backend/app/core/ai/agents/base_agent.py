@@ -1,14 +1,12 @@
 """
-Base Agent Class - Foundation for all SYNAPSE agents
+Base Agent — Foundation for all SYNAPSE agents.
 
 Implements:
 - ReAct pattern (Reasoning + Acting)
-- Middleware pipeline (LangChain 1.0 style)
+- Middleware pipeline
 - Tool execution framework
 - Memory management
 - Error handling and retries
-
-Based on LangChain 1.0 and DeepAgents best practices.
 """
 
 from abc import ABC, abstractmethod
@@ -17,18 +15,79 @@ from enum import Enum
 from dataclasses import dataclass, field
 from datetime import datetime
 import asyncio
+import json
 import time
 import structlog
 
-from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
-from langchain_core.tools import BaseTool
+from app.core.ai.agents.messages import (
+    AIMessage, HumanMessage, SystemMessage, ToolMessage,
+    AgentMessage, message_from_db_row,
+)
+from app.core.ai.tools.base import BaseTool
 
-# Cognitive Router imports
+# Cognitive Router — used by AgentConfig.cognitive_task and subclasses
 from app.core.ai.contracts.task import AITask
-from app.core.ai.router import router, ModelRoutingDecision
-from app.core.ai.providers.factory import get_provider
+from app.core.ai.router import router
 
 logger = structlog.get_logger(__name__)
+
+
+def _try_parse_text_tool_call(text: str) -> Optional[Dict[str, Any]]:
+    """
+    Detect when a model outputs a tool call as plain JSON text instead of
+    using the structured ``delta.tool_calls`` protocol.
+
+    Handles three common model output formats:
+
+    1. Raw JSON::
+
+        {"name": "search_notes", "arguments": {}}
+
+    2. Markdown code-fenced JSON (DeepSeek / Ollama often do this)::
+
+        ```json
+        {"name": "search_notes", "arguments": {}}
+        ```
+
+    3. JSON embedded after a ``<think>`` reasoning block::
+
+        <think>I should search...</think>
+        {"name": "search_notes", "arguments": {}}
+
+    Returns a ``{"name": str, "args": dict}`` dict when a tool call is
+    detected, otherwise ``None``.
+    """
+    import re as _re
+
+    # 1. Strip <think>...</think> blocks (reasoning models prepend these)
+    cleaned = _re.sub(r"<think>.*?</think>", "", text, flags=_re.DOTALL).strip()
+
+    # 2. Extract JSON from ```json ... ``` or ``` ... ``` code fences
+    fence_match = _re.search(
+        r"```(?:json)?\s*\n?({.*?})\s*\n?```",
+        cleaned,
+        flags=_re.DOTALL,
+    )
+    if fence_match:
+        candidate = fence_match.group(1).strip()
+    else:
+        candidate = cleaned
+
+    # Quick gate: must look like a JSON object containing "name"
+    if not candidate.startswith("{") or '"name"' not in candidate:
+        return None
+
+    try:
+        data = json.loads(candidate)
+    except (json.JSONDecodeError, ValueError):
+        return None
+    if not isinstance(data, dict) or "name" not in data:
+        return None
+    # Accept both "arguments" (OpenAI style) and "args" (shorthand)
+    args = data.get("arguments") or data.get("args") or {}
+    if not isinstance(args, dict):
+        args = {}
+    return {"name": str(data["name"]), "args": args}
 
 
 class AgentCapability(str, Enum):
@@ -84,17 +143,22 @@ class AgentResult:
 
 
 class AgentState:
-    """Maintains agent state across execution"""
+    """Maintains agent state across execution.
+
+    Also serves as the checkpoint boundary: the DB *is* the checkpoint
+    store, and ``from_chat_history`` reconstructs state from chat_messages
+    rows so an agent can resume mid-session.
+    """
 
     def __init__(self):
-        self.messages: List[Any] = []
+        self.messages: List[AgentMessage] = []
         self.iterations: int = 0
         self.tool_calls: List[Dict] = []
         self.metadata: Dict[str, Any] = {}
         self.output: str = ""  # Accumulated output for post-execution middleware
         self.start_time: float = time.time()
 
-    def add_message(self, message: Any) -> None:
+    def add_message(self, message: AgentMessage) -> None:
         """Add message to state"""
         self.messages.append(message)
 
@@ -122,6 +186,36 @@ class AgentState:
             "metadata": self.metadata,
             "execution_time_ms": self.get_execution_time_ms(),
         }
+
+    # ── Layer 2: Checkpoint / Restore ────────────────────────────────
+
+    def checkpoint(self) -> Dict[str, Any]:
+        """Serialize full state for debugging or out-of-band persistence."""
+        return {
+            "messages": [m.model_dump() for m in self.messages],
+            "iterations": self.iterations,
+            "tool_calls": self.tool_calls,
+            "metadata": self.metadata,
+        }
+
+    @classmethod
+    def from_chat_history(
+        cls,
+        db_rows: List[Dict[str, Any]],
+    ) -> "AgentState":
+        """Reconstruct state from chat_messages DB rows.
+
+        The DB *is* the checkpoint. This is the resume path for
+        interrupted sessions — no Redis, no separate checkpoint store.
+
+        Args:
+            db_rows: List of dicts from ChatMessage rows, each with
+                     at minimum ``role`` and ``content`` keys.
+        """
+        state = cls()
+        for row in db_rows:
+            state.add_message(message_from_db_row(row))
+        return state
 
 
 class BaseAgent(ABC):
@@ -159,31 +253,27 @@ class BaseAgent(ABC):
         if self.config.max_iterations < 1:
             raise ValueError("max_iterations must be >= 1")
 
-    def _get_routed_provider(self):
-        """
-        Get provider via Cognitive Router.
+    # _get_routed_provider() removed — superseded by _resolve_litellm_model().
+    # All LLM calls now go through the LiteLLM Router singleton.
+    # See: app.core.ai.providers.litellm_router.get_llm_router()
 
-        Routes based on the agent's cognitive_task configuration.
-        Caches the routing decision for reuse within the agent lifecycle.
+    def _resolve_litellm_model(self, context: Dict[str, Any]) -> str:
+        """
+        Resolve the LiteLLM Router alias for this agent execution.
+
+        The orchestrator writes ``context["litellm_alias"]`` via ``mode_to_alias()``
+        before calling ``execute_stream()``.  The Router then handles all provider
+        selection, failover, and cooldown logic transparently.
+
+        Falls back to ``"synapse-chat"`` for the non-streaming ``execute()`` path
+        where no alias has been injected.
 
         Returns:
-            Tuple of (provider, model_id, routing_decision)
+            LiteLLM Router alias string (e.g. ``"synapse-chat"``, ``"synapse-reasoning"``)
         """
-        if self._routing_decision is None:
-            self._routing_decision = router.route(
-                task=self.config.cognitive_task,
-                context_tokens=self.config.max_tokens,
-            )
-            self.logger.info(
-                "agent_model_routed",
-                task=self.config.cognitive_task.value,
-                model=self._routing_decision.model_id,
-                provider=self._routing_decision.provider,
-                reason=self._routing_decision.decision_reason,
-            )
-
-        provider = get_provider(self._routing_decision.provider)
-        return provider, self._routing_decision.model_id, self._routing_decision
+        alias = context.get("litellm_alias", "synapse-chat")
+        self.logger.debug("agent_resolved_alias", litellm_alias=alias)
+        return alias
 
     # ============================================================================
     # Abstract Methods - Must be implemented by subclasses
@@ -247,6 +337,11 @@ class BaseAgent(ABC):
             # Inject input into context for middleware visibility
             context["input"] = input
 
+            # Expose chat history in context so grounding middleware can pass it
+            # to the context-aware query rewriter (resolves pronoun/continuation queries).
+            if chat_history:
+                context["chat_history"] = chat_history
+
             # ================================================================
             # PRE-EXECUTION MIDDLEWARE
             # ================================================================
@@ -278,7 +373,7 @@ class BaseAgent(ABC):
             # ================================================================
             # REACT LOOP
             # ================================================================
-            output = await self._react_loop(state, context)
+            output = await self._react_loop(state, context, user_id)
 
             # ================================================================
             # POST-EXECUTION MIDDLEWARE
@@ -358,41 +453,38 @@ class BaseAgent(ABC):
             chat_history: Previous messages for context
             **kwargs: Additional arguments
         """
-        # Get provider via Cognitive Router
-        llm, model_id, routing_decision = self._get_routed_provider()
-
         state = AgentState()
         context = context or {}
 
         # Expose input to middleware (same as execute())
         context["input"] = input
 
-        # Override model if orchestrator specified a model_key for multimodal upgrade
-        # Only apply when image data is present — otherwise trust the agent's own router
-        model_key_override = context.get("model_key")
-        has_images = bool(context.get("image_bytes"))
-        if model_key_override and has_images:
-            from app.core.ai.registry.models import MODEL_REGISTRY
-            from app.core.ai.providers.factory import get_provider as get_provider_by_name
-            descriptor = MODEL_REGISTRY.get(model_key_override)
-            if descriptor and descriptor.model_id != model_id:
-                self.logger.info(
-                    "agent_model_override",
-                    original_model=model_id,
-                    override_model=descriptor.model_id,
-                    override_key=model_key_override,
-                    reason="orchestrator model_key override",
-                )
-                model_id = descriptor.model_id
-                llm = get_provider_by_name(descriptor.provider)
+        # Expose chat history for context-aware query rewriting in grounding.
+        if chat_history:
+            context["chat_history"] = chat_history
+
+        # ── Designer tool injection ────────────────────────────────────
+        # When this stream is anchored to a card-designer session, inject
+        # ProposeCardPlanTool so the model can call it as a real function.
+        # The tool is added to tools_dict (execution) here; _format_tools_for_litellm
+        # is patched below to also include it in the LiteLLM schema.
+        if context.get("card_designer_system"):
+            try:
+                from app.core.ai.tools.card_design_tools import ProposeCardPlanTool
+                self.tools_dict["propose_card_plan"] = ProposeCardPlanTool()
+            except Exception:
+                pass  # non-fatal — text-fallback detection still works
+        # ──────────────────────────────────────────────────────────────
+
+        # Resolve LiteLLM model string from context + cognitive router
+        litellm_model = self._resolve_litellm_model(context)
 
         try:
             self.logger.info(
                 "agent_stream_started",
                 user_id=user_id,
                 input_length=len(input),
-                model=model_id,
-                provider=type(llm).__name__,
+                litellm_model=litellm_model,
             )
 
             # ================================================================
@@ -402,9 +494,21 @@ class BaseAgent(ABC):
 
             # Build system prompt (now has context["grounding"] from middleware)
             system_prompt = await self._get_system_prompt(context)
+
+            # Append RAG citation instruction when relevant tools are available
+            _RAG_TOOL_NAMES = {"search_notes", "search_flashcards", "analyze_document"}
+            if any(t.name in _RAG_TOOL_NAMES for t in self.config.tools):
+                system_prompt += (
+                    "\n\nWhen your response draws on retrieved search results, "
+                    "cite each reference with [1], [2], etc. matching the numbered "
+                    "results returned by the search tools. Place citation markers "
+                    "only where you are genuinely using that specific source. "
+                    "Do not cite when answering from general knowledge."
+                )
+
             state.add_message(SystemMessage(content=system_prompt))
 
-            # Inject chat history
+            # Inject chat history into state
             if chat_history:
                 for msg in chat_history:
                     role = msg.get("role", "").upper()
@@ -417,79 +521,273 @@ class BaseAgent(ABC):
             # Add current user message
             state.add_message(HumanMessage(content=input))
 
-            # Streaming ReAct loop (using routed provider)
+            # Streaming ReAct loop (using LiteLLM)
             for iteration in range(self.config.max_iterations):
                 state.iterations = iteration + 1
 
-                # Format prompt
-                prompt = self._format_messages(state.messages)
-                tools = self._format_tools_for_gemini()  # TODO: Make provider-agnostic
+                # Format messages and tools for LiteLLM (OpenAI-standard format)
+                litellm_messages = self._format_messages_for_litellm(state.messages)
+                litellm_tools = self._format_tools_for_litellm() or None
 
-                # Accumulate text for this iteration
+                # Accumulate text for this iteration.
+                # IMPORTANT: we buffer tokens and do NOT yield them immediately.
+                # After the stream ends we inspect the buffer to detect text-encoded
+                # tool calls (models that output {"name":"...","arguments":{}} as plain
+                # delta.content instead of delta.tool_calls).  Real text is flushed
+                # to the client only after we confirm it is not a tool call.
                 iteration_text = ""
+                text_token_buffer: List[str] = []  # holds raw token strings pre-flush
                 pending_tool_calls = []
+                tool_call_buffers: Dict[int, Dict[str, Any]] = {}  # index → partial tc
 
-                # Build extra kwargs for provider (e.g., image_bytes for vision)
-                provider_kwargs = {}
+                # Build extra kwargs (multimodal image passthrough)
                 image_bytes = context.get("image_bytes")
                 if image_bytes:
-                    provider_kwargs["image_bytes"] = image_bytes
-                    self.logger.info(
-                        "agent_image_passthrough",
-                        image_count=len(image_bytes),
-                        provider=type(llm).__name__,
-                        model=model_id,
+                    # LiteLLM handles images via content list on the last user message
+                    # Inject images into the last user message part
+                    last_user_idx = next(
+                        (i for i, m in reversed(list(enumerate(litellm_messages)))
+                         if m["role"] == "user"), None
                     )
-
-                # Stream from LLM
-                async for chunk in llm.stream_with_tools(
-                    prompt=prompt,
-                    tools=tools,
-                    model=model_id,  # Use routed model_id, not deprecated config.model
-                    temperature=self.config.temperature,
-                    **provider_kwargs,
-                ):
-                    chunk_type = chunk.get("type")
-
-                    if chunk_type == "text":
-                        text = chunk.get("content", "")
-                        iteration_text += text
-                        yield {
-                            "type": "token",
-                            "text": text,
-                            "model": self.config.model,
-                            "streaming": True,
-                        }
-
-                    elif chunk_type == "thinking":
-                        # Forward thinking content (from <think> tag parsing)
-                        yield {
-                            "type": "thinking",
-                            "text": chunk.get("content", ""),
-                            "model": self.config.model,
-                        }
-
-                    elif chunk_type == "tool_call":
-                        # Queue tool call for execution after streaming
-                        pending_tool_calls.append(
-                            {"name": chunk.get("name"), "args": chunk.get("args", {})}
+                    if last_user_idx is not None:
+                        import base64, imghdr
+                        parts = []
+                        orig_text = litellm_messages[last_user_idx].get("content", "")
+                        if orig_text:
+                            parts.append({"type": "text", "text": orig_text})
+                        for img_data in image_bytes:
+                            img_type = imghdr.what(None, h=img_data) or "jpeg"
+                            mime = f"image/{img_type}"
+                            b64 = base64.b64encode(img_data).decode()
+                            parts.append({"type": "image_url", "image_url": {"url": f"data:{mime};base64,{b64}"}})
+                        litellm_messages[last_user_idx]["content"] = parts
+                        self.logger.info(
+                            "agent_image_passthrough",
+                            image_count=len(image_bytes),
+                            litellm_model=litellm_model,
                         )
-                        yield {
-                            "type": "tool_call",
-                            "name": chunk.get("name"),
-                            "args": chunk.get("args", {}),
-                        }
 
-                    elif chunk_type == "complete":
-                        # End of streaming for this iteration
-                        pass
+                # ── Stream via LiteLLM Router (handles failover automatically) ──
+                try:
+                    from app.core.ai.providers.litellm_router import get_llm_router
+                    stream = await get_llm_router().acompletion(
+                        model=litellm_model,
+                        messages=litellm_messages,
+                        tools=litellm_tools,
+                        temperature=self.config.temperature,
+                        timeout=float(self.config.timeout_seconds),
+                        stream=True,
+                    )
+                except Exception as stream_init_err:
+                    self.logger.error("router_stream_init_failed", error=str(stream_init_err), alias=litellm_model)
+                    yield {"type": "error", "message": str(stream_init_err)}
+                    return
 
-                    elif chunk_type == "error":
-                        yield {"type": "error", "message": chunk.get("message", "Unknown error")}
-                        return
+                # ── Two-phase streaming: no hang + reliable tool detection ─
+                #
+                # Phase 1 — <think> content:  stream immediately as `thinking`
+                #   events. This prevents the UI from hanging during long
+                #   reasoning blocks (DeepSeek-R1 can think for 60-70 s).
+                #
+                # Phase 2 — post-think text:  apply a minimal heuristic.
+                #   Because <think> content is already stripped, the ONLY thing
+                #   left in text_out is either a JSON tool call (starts with `{`
+                #   or ` ```json`) or normal response text. We can safely check
+                #   the first character and unlock immediate token streaming as
+                #   soon as we confirm it is not a JSON tool call.
+                _in_think_tag = False
+                _think_started_at: Optional[float] = None  # monotonic wall-clock
+                _streaming_active = False  # unlocked once we confirm text is not a tool call
 
-                # Add AI response to state
-                if iteration_text:
+                async for chunk in stream:
+                    choice = chunk.choices[0] if chunk.choices else None
+                    if not choice:
+                        continue
+                    delta = choice.delta
+
+                    # ── Text token: split <think> from real content ──────────
+                    if delta.content:
+                        raw = delta.content
+                        text_out = ""
+                        think_out = ""
+
+                        i = 0
+                        while i < len(raw):
+                            if _in_think_tag:
+                                end_idx = raw.find("</think>", i)
+                                if end_idx != -1:
+                                    think_out += raw[i:end_idx]
+                                    _in_think_tag = False
+                                    # Emit the measured thinking duration
+                                    if _think_started_at is not None:
+                                        import time as _time
+                                        duration = round(_time.monotonic() - _think_started_at, 1)
+                                        yield {"type": "thinking_complete", "duration_seconds": duration}
+                                        _think_started_at = None
+                                    i = end_idx + len("</think>")
+                                else:
+                                    think_out += raw[i:]
+                                    i = len(raw)
+                            else:
+                                start_idx = raw.find("<think>", i)
+                                if start_idx != -1:
+                                    text_out += raw[i:start_idx]
+                                    _in_think_tag = True
+                                    if _think_started_at is None:
+                                        import time as _time
+                                        _think_started_at = _time.monotonic()
+                                    i = start_idx + len("<think>")
+                                else:
+                                    text_out += raw[i:]
+                                    i = len(raw)
+
+                        # Phase 1: stream thinking immediately (prevents UI hang)
+                        if think_out:
+                            yield {"type": "thinking", "text": think_out, "model": litellm_model}
+
+                        # Phase 2: stream or buffer post-think response text.
+                        # <think> is stripped so iteration_text only contains real text.
+                        # Check the first non-whitespace char — if it's `{` keep buffering
+                        # (likely a JSON tool call). Otherwise unlock streaming immediately.
+                        if text_out:
+                            iteration_text += text_out
+                            if _streaming_active:
+                                yield {
+                                    "type": "token",
+                                    "text": text_out,
+                                    "model": litellm_model,
+                                    "streaming": True,
+                                }
+                            else:
+                                text_token_buffer.append(text_out)
+                                stripped = iteration_text.lstrip()
+                                if stripped and not stripped.startswith("{"):
+                                    # Confirmed normal text — unlock streaming and flush buffer
+                                    _streaming_active = True
+                                    for tok in text_token_buffer:
+                                        yield {
+                                            "type": "token",
+                                            "text": tok,
+                                            "model": litellm_model,
+                                            "streaming": True,
+                                        }
+                                    text_token_buffer.clear()
+
+                    # ── Thinking via dedicated reasoning_content field ───────
+                    # (Anthropic, some OpenAI-compatible providers use this)
+                    thinking_text = getattr(delta, "reasoning_content", None)
+                    if thinking_text:
+                        if _think_started_at is None:
+                            import time as _time
+                            _think_started_at = _time.monotonic()
+                        yield {"type": "thinking", "text": thinking_text, "model": litellm_model}
+
+                    # ── Structured tool-call chunks ──────────────────────────
+                    if delta.tool_calls:
+                        for tc_chunk in delta.tool_calls:
+                            idx = tc_chunk.index
+                            if idx not in tool_call_buffers:
+                                tool_call_buffers[idx] = {"id": "", "name": "", "args": ""}
+                            buf = tool_call_buffers[idx]
+                            if tc_chunk.id:
+                                buf["id"] = tc_chunk.id
+                            if tc_chunk.function:
+                                if tc_chunk.function.name:
+                                    buf["name"] += tc_chunk.function.name
+                                if tc_chunk.function.arguments:
+                                    buf["args"] += tc_chunk.function.arguments
+
+                # ── Post-stream: resolve structured tool calls ────────────
+                # Build the OpenAI-format tool_calls list so we can include it
+                # in the AIMessage. This is REQUIRED by the spec: every
+                # role:tool message must be preceded by an assistant message
+                # that declares the corresponding tool call.
+                structured_tool_calls_meta = []
+                for idx in sorted(tool_call_buffers):
+                    buf = tool_call_buffers[idx]
+                    try:
+                        args = json.loads(buf["args"]) if buf["args"] else {}
+                    except json.JSONDecodeError:
+                        args = {}
+                    call_id = buf["id"] or f"call_{idx}_{iteration}"
+                    pending_tool_calls.append({"name": buf["name"], "args": args, "id": call_id})
+                    structured_tool_calls_meta.append({
+                        "id": call_id,
+                        "type": "function",
+                        "function": {"name": buf["name"], "arguments": json.dumps(args)},
+                    })
+                    yield {"type": "tool_call", "name": buf["name"], "args": args, "id": call_id}
+
+                # ── Text-encoded tool call detection ─────────────────────
+                # Some models (e.g. local Ollama-hosted LLMs) emit tool calls
+                # as plain JSON text in delta.content instead of delta.tool_calls.
+                # Example: {"name": "search_notes", "arguments": {}}
+                # If no structured tool_calls arrived but the buffered text
+                # parses as a tool call, redirect it into the ReAct loop and
+                # suppress the raw JSON from the client stream.
+                # NOTE: text_token_buffer is already flushed+cleared if streaming_active
+                # became True mid-stream, so we gate on iteration_text instead.
+                if not tool_call_buffers and iteration_text.strip() and self.tools_dict:
+                    parsed_tc = _try_parse_text_tool_call(iteration_text)
+                    if parsed_tc and parsed_tc["name"] in self.tools_dict:
+                        tc_args = parsed_tc["args"]
+
+                        # ── Empty-args fallback ──────────────────────────
+                        # When Ollama emits {"arguments": {}}, infer a
+                        # sensible default: use the user's original message
+                        # as the "query" parameter (covers search tools).
+                        if not tc_args:
+                            tool_schema = self.tools_dict[parsed_tc["name"]]
+                            tool_params = getattr(tool_schema, "parameters", {}) or {}
+                            required_params = tool_params.get("required", [])
+                            if "query" in required_params:
+                                tc_args = {"query": input}  # use user's original message
+                            self.logger.warning(
+                                "text_tc_empty_args_fallback",
+                                tool=parsed_tc["name"],
+                                inferred_args=tc_args,
+                            )
+
+                        self.logger.info(
+                            "text_encoded_tool_call_detected",
+                            tool=parsed_tc["name"],
+                            iteration=iteration + 1,
+                        )
+                        # Post-think text was never streamed to the client, so no
+                        # retraction needed — just clear the buffer and execute the tool.
+                        text_token_buffer.clear()
+                        call_id = f"call_text_{iteration}"
+                        parsed_tc["args"] = tc_args
+                        parsed_tc["id"] = call_id
+                        pending_tool_calls.append(parsed_tc)
+                        # Build the tool_calls metadata so the AIMessage is spec-compliant
+                        structured_tool_calls_meta.append({
+                            "id": call_id,
+                            "type": "function",
+                            "function": {"name": parsed_tc["name"], "arguments": json.dumps(tc_args)},
+                        })
+                        yield {"type": "tool_call", "name": parsed_tc["name"], "args": tc_args, "id": call_id}
+                        # Clear iteration_text so raw JSON is not saved as content
+                        iteration_text = ""
+
+                # ── Flush buffered text tokens to the client ──────────────
+                # Only reached if this was real text content (not a tool call).
+                for token_text in text_token_buffer:
+                    yield {
+                        "type": "token",
+                        "text": token_text,
+                        "model": litellm_model,
+                        "streaming": True,
+                    }
+
+                # ── Add assistant message to state ────────────────────────
+                # AIMessages with tool_calls MUST declare the call before the
+                # corresponding ToolMessage appears (OpenAI spec requirement).
+                if structured_tool_calls_meta:
+                    state.add_message(
+                        AIMessage(content=iteration_text or "", tool_calls=structured_tool_calls_meta)
+                    )
+                elif iteration_text:
                     state.add_message(AIMessage(content=iteration_text))
 
                 # If no tool calls, we're done
@@ -500,22 +798,35 @@ class BaseAgent(ABC):
                 for tool_call in pending_tool_calls:
                     tool_name = tool_call["name"]
                     tool_args = tool_call["args"]
+                    call_id = tool_call.get("id", f"call_{len(state.tool_calls)}")
 
                     if tool_name not in self.tools_dict:
                         self.logger.warning("unknown_tool_called", tool=tool_name)
                         continue
 
                     # Execute tool
-                    tool_result = await self._execute_tool(tool_name, tool_args)
+                    tool_result, elapsed_ms = await self._execute_tool(tool_name, tool_args, user_id)
 
                     # Track and yield tool result
+                    result_type = self._infer_result_type(tool_name)
                     state.add_tool_call(tool_name, tool_args, tool_result)
-                    yield {"type": "tool_result", "name": tool_name, "result": tool_result}
+                    yield {
+                        "type": "tool_result",
+                        "name": tool_name,
+                        "result": tool_result,
+                        "id": call_id,
+                        "result_type": result_type,
+                    }
 
-                    # Add to messages for next iteration
+                    # Add ToolMessage to state — tool_call_id MUST match the
+                    # id declared in the preceding AIMessage.tool_calls entry.
                     state.add_message(
                         ToolMessage(
-                            content=str(tool_result), tool_call_id=f"call_{len(state.tool_calls)}"
+                            content=str(tool_result),
+                            tool_call_id=call_id,
+                            tool_name=tool_name,
+                            execution_ms=elapsed_ms,
+                            result_type=result_type,
                         )
                     )
 
@@ -530,6 +841,15 @@ class BaseAgent(ABC):
             grounding_sources = state.metadata.get("grounding_sources")
 
             # Final completion message
+            # Use the runtime-resolved alias (litellm_model) not self.config.model,
+            # which is a deprecated placeholder that is almost always empty.
+            # Also wrap grounding_sources as {"sources": [...]} so ai_stream.py
+            # can correctly call .get("sources") during DB persistence.
+            _grounding_payload = (
+                {"sources": grounding_sources}
+                if isinstance(grounding_sources, list)
+                else grounding_sources
+            )
             yield {
                 "type": "complete",
                 "success": True,
@@ -537,8 +857,8 @@ class BaseAgent(ABC):
                 "tool_calls": state.tool_calls,
                 "total_tokens": self._count_tokens(state.messages),
                 "execution_time_ms": state.get_execution_time_ms(),
-                "model": self.config.model,
-                "grounding_sources": grounding_sources,
+                "model": litellm_model,
+                "grounding_sources": _grounding_payload,
             }
 
             self.logger.info(
@@ -557,25 +877,14 @@ class BaseAgent(ABC):
     # ReAct Loop Implementation
     # ============================================================================
 
-    async def _react_loop(self, state: AgentState, context: Dict[str, Any]) -> str:
+    async def _react_loop(self, state: AgentState, context: Dict[str, Any], user_id: int) -> str:
         """
-        Execute ReAct (Reasoning + Acting) loop
+        Execute ReAct (Reasoning + Acting) loop — non-streaming path.
 
-        Pattern:
-        1. Thought: Agent reasons about what to do
-        2. Action: Agent calls tool or provides answer
-        3. Observation: Agent processes tool result
-        4. Repeat until done or max iterations
-
-        Args:
-            state: Current agent state
-            context: Execution context
-
-        Returns:
-            Final answer from agent
+        Uses LiteLLM for standardized tool calling across providers.
         """
-        # Get provider via Cognitive Router
-        llm, model_id, routing_decision = self._get_routed_provider()
+        litellm_model = self._resolve_litellm_model(context)
+        litellm_tools = self._format_tools_for_litellm() or None
 
         for iteration in range(self.config.max_iterations):
             state.iterations = iteration + 1
@@ -584,67 +893,60 @@ class BaseAgent(ABC):
                 "react_iteration",
                 iteration=iteration + 1,
                 max_iterations=self.config.max_iterations,
-                model=model_id,
+                litellm_model=litellm_model,
             )
 
-            # ============================================================
-            # CALL LLM (with tools)
-            # ============================================================
             try:
-                response = await llm.generate_with_tools(
-                    prompt=self._format_messages(state.messages),
-                    tools=self._format_tools_for_gemini(),  # TODO: Make provider-agnostic
-                    model=model_id,
+                from app.core.ai.providers.litellm_router import get_llm_router
+                response = await get_llm_router().acompletion(
+                    model=litellm_model,
+                    messages=self._format_messages_for_litellm(state.messages),
+                    tools=litellm_tools,
                     temperature=self.config.temperature,
+                    timeout=float(self.config.timeout_seconds),
                 )
 
-                # Add AI message to state
-                state.add_message(AIMessage(content=response.get("text", "")))
+                message = response.choices[0].message
+                text = message.content or ""
+                state.add_message(AIMessage(content=text))
 
-                # ========================================================
-                # CHECK: Tool calls or final answer?
-                # ========================================================
-                tool_calls = response.get("tool_calls", [])
+                tool_calls = message.tool_calls or []
 
                 if not tool_calls:
-                    # No tool calls - agent provided final answer
-                    return response.get("text", "")
+                    return text
 
-                # ========================================================
-                # EXECUTE TOOLS
-                # ========================================================
-                for tool_call in tool_calls:
-                    tool_name = tool_call["name"]
-                    tool_args = tool_call["args"]
+                # Execute each tool call
+                for tc in tool_calls:
+                    tool_name = tc.function.name
+                    try:
+                        tool_args = json.loads(tc.function.arguments) if tc.function.arguments else {}
+                    except json.JSONDecodeError:
+                        tool_args = {}
 
                     if tool_name not in self.tools_dict:
                         self.logger.warning("unknown_tool_called", tool=tool_name)
                         continue
 
-                    # Execute tool
-                    tool_result = await self._execute_tool(tool_name, tool_args)
-
-                    # Track tool usage
+                    tool_result, elapsed_ms = await self._execute_tool(tool_name, tool_args, user_id)
                     state.add_tool_call(tool_name, tool_args, tool_result)
-
-                    # Add tool result to messages
                     state.add_message(
-                        ToolMessage(content=str(tool_result), tool_call_id=tool_call.get("id", ""))
+                        ToolMessage(
+                            content=str(tool_result),
+                            tool_call_id=tc.id or "",
+                            tool_name=tool_name,
+                            execution_ms=elapsed_ms,
+                            result_type=self._infer_result_type(tool_name),
+                        )
                     )
-
-                # Continue loop to let agent process tool results
 
             except Exception as e:
                 self.logger.error("react_iteration_failed", iteration=iteration + 1, error=str(e))
-
-                # Retry or fail
                 if iteration < self.config.retry_attempts:
-                    await asyncio.sleep(1)  # Brief delay before retry
+                    await asyncio.sleep(1)
                     continue
                 else:
                     raise
 
-        # Max iterations reached
         self.logger.warning("max_iterations_reached", iterations=self.config.max_iterations)
         return "I apologize, but I couldn't complete the task within the iteration limit."
 
@@ -652,32 +954,33 @@ class BaseAgent(ABC):
     # Tool Execution
     # ============================================================================
 
-    async def _execute_tool(self, tool_name: str, args: Dict[str, Any]) -> Any:
-        """Execute tool with error handling"""
+    async def _execute_tool(
+        self, tool_name: str, args: Dict[str, Any], user_id: int
+    ) -> tuple[Any, int]:
+        """Execute a Synapse BaseTool with error handling.
+
+        Returns:
+            Tuple of (result, elapsed_ms) so callers can stamp ToolMessage.
+        """
         tool = self.tools_dict[tool_name]
 
         self.logger.debug("tool_execution_started", tool=tool_name, args=args)
-
         start_time = time.time()
 
         try:
-            # Execute tool (sync or async)
-            if asyncio.iscoroutinefunction(tool.func):
-                result = await tool.func(**args)
-            else:
-                result = tool.func(**args)
-
-            execution_time = (time.time() - start_time) * 1000
-
+            result = await tool(user_id=user_id, validate=True, retry=True, **args)
+            elapsed_ms = int((time.time() - start_time) * 1000)
             self.logger.debug(
-                "tool_execution_completed", tool=tool_name, execution_time_ms=int(execution_time)
+                "tool_execution_completed",
+                tool=tool_name,
+                execution_time_ms=elapsed_ms,
             )
-
-            return result
+            return result, elapsed_ms
 
         except Exception as e:
+            elapsed_ms = int((time.time() - start_time) * 1000)
             self.logger.error("tool_execution_failed", tool=tool_name, error=str(e))
-            return f"Error executing {tool_name}: {str(e)}"
+            return f"Error executing {tool_name}: {str(e)}", elapsed_ms
 
     # ============================================================================
     # Middleware Pipeline
@@ -732,18 +1035,67 @@ class BaseAgent(ABC):
                 parts.append(f"Tool Result: {msg.content}")
         return "\n\n".join(parts)
 
-    def _format_tools_for_gemini(self) -> List[Dict]:
-        """Convert BaseTool to Gemini function declarations"""
-        declarations = []
-        for tool in self.config.tools:
-            declarations.append(
-                {
+    def _format_tools_for_litellm(self) -> List[Dict]:
+        """
+        Format tools as OpenAI function-calling schema for LiteLLM.
+
+        Includes all tools from config.tools PLUS any tools that were
+        dynamically injected into self.tools_dict at runtime (e.g.
+        ProposeCardPlanTool for card-designer sessions). Dynamic tools
+        take precedence: if a name exists in both, the tools_dict version wins.
+        """
+        config_names = {t.name for t in self.config.tools}
+        result = [
+            {
+                "type": "function",
+                "function": {
                     "name": tool.name,
                     "description": tool.description,
-                    "parameters": tool.args_schema.schema() if hasattr(tool, "args_schema") else {},
-                }
-            )
-        return declarations
+                    "parameters": tool.parameters,
+                },
+            }
+            for tool in self.config.tools
+        ]
+        # Append dynamically-injected tools not already in config
+        for name, tool in self.tools_dict.items():
+            if name not in config_names:
+                result.append(
+                    {
+                        "type": "function",
+                        "function": {
+                            "name": tool.name,
+                            "description": tool.description,
+                            "parameters": tool.parameters,
+                        },
+                    }
+                )
+        return result
+
+    def _format_messages_for_litellm(self, messages: List[AgentMessage]) -> List[Dict]:
+        """
+        Serialize AgentMessage objects to OpenAI-format dicts for LiteLLM.
+
+        Delegates to each message's ``to_litellm()`` method so serialization
+        logic lives on the model, not scattered across the agent.
+        """
+        return [msg.to_litellm() for msg in messages]
+
+    @staticmethod
+    def _infer_result_type(tool_name: str) -> str:
+        """Map tool names to semantic result types for frontend rendering."""
+        _TYPE_MAP = {
+            "search_notes": "notes",
+            "search_flashcards": "flashcards",
+            "analyze_document": "documents",
+            "search_documents": "documents",
+            "create_flashcard": "flashcard_created",
+            "create_note": "note_created",
+            "create_quiz": "quiz_created",
+            "get_user_context": "context",
+            "get_study_recommendations": "recommendations",
+            "get_related_content": "links",
+        }
+        return _TYPE_MAP.get(tool_name, "text")
 
     def _count_tokens(self, messages: List[Any]) -> int:
         """Rough token count (1 token ≈ 4 chars)"""

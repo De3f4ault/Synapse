@@ -198,7 +198,7 @@ export function AudioCommandBar() {
         exit={{ opacity: 0, y: -10, scale: 0.95 }}
         transition={{ duration: 0.15, ease: "easeOut" }}
       >
-        <div className="bg-[#0a0a0f]/95 border border-white/10 rounded-2xl shadow-2xl backdrop-blur-xl overflow-hidden">
+        <div className="bg-popover border border-border rounded-2xl shadow-2xl backdrop-blur-xl overflow-hidden">
           {/* Expanded Panel (appears above collapsed bar) */}
           <AnimatePresence>
             {isExpanded && (

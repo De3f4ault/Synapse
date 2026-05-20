@@ -49,15 +49,15 @@ export function AudioTrigger() {
         className={cn(
           "relative group p-2 rounded-full transition-colors",
           commandBarVisible 
-            ? "bg-white/10 text-cyan-400" 
-            : "hover:bg-white/10 hover:text-cyan-400 text-slate-400",
-          playIntent && !commandBarVisible && "text-cyan-500"
+            ? "bg-foreground/10 text-primary" 
+            : "hover:bg-muted hover:text-primary text-muted-foreground",
+          playIntent && !commandBarVisible && "text-primary"
         )}
         title={commandBarVisible ? "Hide Audio Controls" : "Show Audio Controls"}
       >
         <Headphones className="w-5 h-5" />
         {playIntent && (
-          <span className="absolute top-2.5 right-2 min-w-[6px] min-h-[6px] bg-cyan-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(6,182,212,0.6)]" />
+          <span className="absolute top-2.5 right-2 min-w-[6px] min-h-[6px] bg-primary rounded-full animate-pulse shadow-[0_0_8px_rgba(6,182,212,0.6)]" />
         )}
       </button>
 

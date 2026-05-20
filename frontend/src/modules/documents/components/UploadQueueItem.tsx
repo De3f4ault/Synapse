@@ -35,7 +35,7 @@ export function UploadQueueItem({
             className={cn(
                 "flex items-center gap-3 rounded-lg border p-3 transition-colors",
                 status === "error" && "border-destructive/50 bg-destructive/5",
-                status === "success" && "border-green-500/50 bg-green-500/5",
+                status === "success" && "border-green-500/50 bg-accent-olive/5",
                 status === "uploading" && "border-primary/30 bg-primary/5"
             )}
         >
@@ -44,7 +44,7 @@ export function UploadQueueItem({
                 className={cn(
                     "flex h-10 w-10 items-center justify-center rounded-lg",
                     status === "error" && "bg-destructive/10",
-                    status === "success" && "bg-green-500/10",
+                    status === "success" && "bg-accent-olive/10",
                     status === "uploading" && "bg-primary/10"
                 )}
             >
@@ -52,7 +52,7 @@ export function UploadQueueItem({
                     className={cn(
                         "h-5 w-5",
                         status === "error" && "text-destructive",
-                        status === "success" && "text-green-500",
+                        status === "success" && "text-accent-olive",
                         status === "uploading" && "text-primary"
                     )}
                 />
@@ -90,7 +90,7 @@ export function UploadQueueItem({
                     <Loader2 className="h-4 w-4 animate-spin text-primary" />
                 )}
                 {status === "success" && (
-                    <CheckCircle2 className="h-4 w-4 text-green-500" />
+                    <CheckCircle2 className="h-4 w-4 text-accent-olive" />
                 )}
                 {status === "error" && (
                     <AlertCircle className="h-4 w-4 text-destructive" />

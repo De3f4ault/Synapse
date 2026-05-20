@@ -28,18 +28,18 @@ export function ItemCard({ item, onClick, selected }: ItemCardProps) {
         className={cn(
           "cursor-pointer h-full relative p-6 rounded-xl flex flex-col transition-all duration-300",
           // Base styles
-          "bg-[#0F1115] border border-white/5 shadow-lg",
+          "bg-card border border-border shadow-lg",
           // Hover styles
-          "hover:border-cyan-500/30 hover:shadow-cyan-500/10",
+          "hover:border-primary/30 hover:shadow-cyan-500/10",
           // Selected styles
           selected
-            ? "border-cyan-500 bg-cyan-950/10 shadow-[0_0_15px_rgba(6,182,212,0.15)] ring-1 ring-cyan-500/50"
+            ? "border-primary bg-cyan-950/10  ring-1 ring-cyan-500/50"
             : "",
         )}
       >
         {/* Selection Indicator */}
         {selected && (
-          <div className="absolute top-3 right-3 w-2 h-2 rounded-full bg-cyan-400 shadow-[0_0_8px_rgba(6,182,212,0.8)]" />
+          <div className="absolute top-3 right-3 w-2 h-2 rounded-full bg-primary shadow-[0_0_8px_rgba(6,182,212,0.8)]" />
         )}
 
         <div className="space-y-4 flex-1">
@@ -51,32 +51,32 @@ export function ItemCard({ item, onClick, selected }: ItemCardProps) {
                 <span
                   className={cn(
                     "w-2 h-2 rounded-full",
-                    isOverdue ? "bg-red-400 animate-pulse" :
-                      isNew ? "bg-emerald-400" :
+                    isOverdue ? "bg-destructive animate-pulse" :
+                      isNew ? "bg-accent-olive" :
                         "bg-slate-500"
                   )}
                 />
-                <span className="text-[10px] uppercase tracking-wider text-slate-500 font-medium">
+                <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
                   {isOverdue ? "Overdue" : isNew ? "New" : item.type}
                 </span>
               </div>
-              <h4 className="font-bold text-white text-base line-clamp-2 leading-snug">
+              <h4 className="font-bold text-foreground text-base line-clamp-2 leading-snug">
                 {item.title}
               </h4>
             </div>
           </div>
 
           {/* Metadata */}
-          <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs font-mono text-slate-500">
+          <div className="flex flex-wrap gap-x-4 gap-y-2 text-xs font-mono text-muted-foreground">
             {item.estimatedTime && (
               <div className="flex items-center gap-1.5">
-                <Clock size={12} className="text-cyan-500/70" />
+                <Clock size={12} className="text-primary/70" />
                 {item.estimatedTime}m
               </div>
             )}
             {typeof item.masteryLevel === "number" && (
               <div className="flex items-center gap-1.5">
-                <TrendingUp size={12} className="text-cyan-500/70" />
+                <TrendingUp size={12} className="text-primary/70" />
                 {item.masteryLevel}% mastery
               </div>
             )}
@@ -90,15 +90,15 @@ export function ItemCard({ item, onClick, selected }: ItemCardProps) {
         </div>
 
         {/* Footer / Progress */}
-        <div className="mt-4 pt-4 border-t border-white/5 space-y-3">
+        <div className="mt-4 pt-4 border-t border-border space-y-3">
           {/* Mastery Progress Bar */}
           {typeof item.masteryLevel === "number" && (
             <div className="space-y-1">
-              <div className="flex justify-between text-[10px] uppercase font-bold tracking-wider text-slate-500">
+              <div className="flex justify-between text-[10px] uppercase font-bold tracking-wider text-muted-foreground">
                 <span>Mastery</span>
                 <span>{item.masteryLevel}%</span>
               </div>
-              <div className="h-1 bg-white/10 rounded-full overflow-hidden">
+              <div className="h-1 bg-foreground/10 rounded-full overflow-hidden">
                 <div
                   className={cn(
                     "h-full transition-all duration-500",
@@ -112,9 +112,9 @@ export function ItemCard({ item, onClick, selected }: ItemCardProps) {
 
           {/* Due date info */}
           {item.dueDate && (
-            <p className="text-[10px] text-right font-mono text-slate-600">
+            <p className="text-[10px] text-right font-mono text-muted-foreground">
               {isOverdue ? "Was due" : "Due"}{" "}
-              <span className={isOverdue ? "text-red-400" : "text-slate-400"}>
+              <span className={isOverdue ? "text-destructive" : "text-muted-foreground"}>
                 {formatDueDate(item.dueDate)}
               </span>
             </p>
@@ -137,10 +137,10 @@ function getDifficultyLabel(difficulty: number): string {
 }
 
 function getMasteryColor(mastery: number): string {
-  if (mastery >= 80) return "bg-emerald-500";
+  if (mastery >= 80) return "bg-accent-olive";
   if (mastery >= 60) return "bg-blue-500";
   if (mastery >= 40) return "bg-yellow-500";
-  return "bg-red-500";
+  return "bg-destructive";
 }
 
 function formatDueDate(dateStr: string): string {

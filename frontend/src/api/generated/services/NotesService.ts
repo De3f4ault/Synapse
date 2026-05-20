@@ -157,7 +157,7 @@ export class NotesService {
     }
     /**
      * Update note
-     * Update note and create new version
+     * Silent autosave — updates content in DB, no version insert, no embedding.
      * @param noteId
      * @param requestBody
      * @param token Auth token for image/file requests
@@ -226,6 +226,32 @@ export class NotesService {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/v1/notes/{note_id}/versions',
+            path: {
+                'note_id': noteId,
+            },
+            query: {
+                'token': token,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Checkpoint note
+     * Intentional save: cuts a version and triggers embedding only when content changed.
+     * @param noteId
+     * @param token Auth token for image/file requests
+     * @returns NoteResponse Successful Response
+     * @throws ApiError
+     */
+    public static checkpointNoteApiV1NotesNoteIdCheckpointPost(
+        noteId: number,
+        token?: (string | null),
+    ): CancelablePromise<NoteResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/v1/notes/{note_id}/checkpoint',
             path: {
                 'note_id': noteId,
             },

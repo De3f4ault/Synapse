@@ -49,7 +49,15 @@ async def search_notes(
     limit: int = 10,
 ) -> list[EntitySearchResult]:
     """Search for notes by title."""
-    stmt = select(Note).where(Note.user_id == user_id, Note.title.ilike(f"%{query}%")).limit(limit)
+    stmt = (
+        select(Note)
+        .where(
+            Note.user_id == user_id,
+            Note.title.ilike(f"%{query}%"),
+            Note.deleted_at.is_(None),
+        )
+        .limit(limit)
+    )
     result = await db.execute(stmt)
     notes = result.scalars().all()
 
@@ -60,6 +68,7 @@ async def search_notes(
             source_module=ModuleId.NOTES,
             title=note.title,
             created_at=note.created_at,
+            match_preview=(note.content_text or "")[:150] or None,
         )
         for note in notes
     ]

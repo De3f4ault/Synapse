@@ -18,10 +18,10 @@ from typing import List, Optional
 import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.schemas.search_identity import SearchEntityIdentity, IdentityAuthority
-from app.schemas.search_result import UnifiedSearchResult, SearchRole, AssertionType
-from app.schemas.search_context import SearchContext, get_participating_engines
-from app.schemas.search_response import EngineResult, UnifiedSearchResponse
+from app.schemas.search import SearchEntityIdentity, IdentityAuthority
+from app.schemas.search import UnifiedSearchResult, SearchRole, AssertionType
+from app.schemas.search import SearchContext, get_participating_engines
+from app.schemas.search import EngineResult, UnifiedSearchResponse
 from app.services.search.contract import enforce_contract
 from app.services.search.adapters import (
     adapt_hybrid_note_results,
@@ -55,28 +55,17 @@ class UnifiedSearchService:
             db: Database session for engine access
         """
         self.db = db
-        self._rag_pipeline = None
         logger.info("unified_search_service_initialized")
 
     @property
     def rag_pipeline(self):
-        """Lazy-load RAG pipeline."""
-        if self._rag_pipeline is None:
-            from app.core.ai.rag.pipeline.rag_pipeline import RAGPipeline
+        """Return the process-wide RAGPipeline singleton.
 
-            self._rag_pipeline = RAGPipeline(
-                # Phase 1: Reranking
-                enable_reranking=True,
-                # Phase 2: Personalization
-                enable_learning_aware=True,
-                enable_query_enhancement=True,
-                # Phase 3: Advanced features
-                enable_llm_enhancement=True,
-                enable_feedback_loops=True,
-                llm_provider="gemini",
-                llm_enhancement_strategy="rewrite",
-            )
-        return self._rag_pipeline
+        The pipeline is constructed once at startup (via _init_rag) and reused
+        across all requests.  Only the db session is per-request.
+        """
+        from app.core.ai.rag.pipeline.rag_pipeline import get_rag_pipeline
+        return get_rag_pipeline()
 
     async def search(
         self,

@@ -54,20 +54,20 @@ const actionConfig: Record<AuditLogAction, {
 }> = {
   [AuditLogAction.Create]: {
     icon: Plus,
-    color: "text-emerald-400",
-    bgColor: "bg-emerald-500/10",
+    color: "text-accent-olive",
+    bgColor: "bg-accent-olive/10",
     label: "Created",
   },
   [AuditLogAction.Update]: {
     icon: Pencil,
-    color: "text-blue-400",
-    bgColor: "bg-blue-500/10",
+    color: "text-info",
+    bgColor: "bg-info/10",
     label: "Modified",
   },
   [AuditLogAction.Delete]: {
     icon: Trash2,
-    color: "text-red-400",
-    bgColor: "bg-red-500/10",
+    color: "text-destructive",
+    bgColor: "bg-destructive/10",
     label: "Deleted",
   },
 };
@@ -107,7 +107,7 @@ export function DocumentHistory({ documentId }: DocumentHistoryProps) {
 
   if (isLoading) {
     return (
-      <div className="flex items-center gap-2 py-4 text-xs text-slate-500">
+      <div className="flex items-center gap-2 py-4 text-xs text-muted-foreground">
         <Loader2 size={13} className="animate-spin" />
         Loading history...
       </div>
@@ -116,7 +116,7 @@ export function DocumentHistory({ documentId }: DocumentHistoryProps) {
 
   if (entries.length === 0) {
     return (
-      <div className="text-xs text-slate-600 py-4">No history available</div>
+      <div className="text-xs text-muted-foreground py-4">No history available</div>
     );
   }
 
@@ -124,11 +124,11 @@ export function DocumentHistory({ documentId }: DocumentHistoryProps) {
     <div className="flex flex-col gap-1">
       {/* Header */}
       <div className="flex items-center gap-2 mb-2">
-        <Clock size={15} className="text-blue-400" />
-        <span className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
+        <Clock size={15} className="text-info" />
+        <span className="text-xs font-semibold text-foreground/80 uppercase tracking-wider">
           History
         </span>
-        <span className="text-[10px] text-slate-500 bg-white/5 px-1.5 py-0.5 rounded-full">
+        <span className="text-[10px] text-muted-foreground bg-foreground/5 px-1.5 py-0.5 rounded-full">
           {entries.length}
         </span>
       </div>
@@ -161,7 +161,7 @@ export function DocumentHistory({ documentId }: DocumentHistoryProps) {
                   <span className={cn("text-xs font-medium", config.color)}>
                     {config.label}
                   </span>
-                  <span className="text-[10px] text-slate-600">
+                  <span className="text-[10px] text-muted-foreground">
                     {new Date(entry.timestamp).toLocaleString()}
                   </span>
                 </div>
@@ -169,8 +169,8 @@ export function DocumentHistory({ documentId }: DocumentHistoryProps) {
                 {/* User */}
                 {entry.user && (
                   <div className="flex items-center gap-1 mt-0.5">
-                    <UserIcon size={9} className="text-slate-500" />
-                    <span className="text-[10px] text-slate-500">
+                    <UserIcon size={9} className="text-muted-foreground" />
+                    <span className="text-[10px] text-muted-foreground">
                       {entry.user.username}
                     </span>
                   </div>
@@ -181,14 +181,14 @@ export function DocumentHistory({ documentId }: DocumentHistoryProps) {
                   <GlassCard className="mt-1.5 p-2 text-[11px]">
                     {changes.map(([field, diff]) => (
                       <div key={field} className="flex items-start gap-2 py-0.5">
-                        <span className="text-slate-500 shrink-0 capitalize">
+                        <span className="text-muted-foreground shrink-0 capitalize">
                           {field.replace(/_/g, " ")}:
                         </span>
-                        <span className="text-red-400/70 line-through">
+                        <span className="text-destructive/70 line-through">
                           {String(diff.old ?? "—")}
                         </span>
-                        <span className="text-slate-600">→</span>
-                        <span className="text-emerald-400/70">
+                        <span className="text-muted-foreground">→</span>
+                        <span className="text-accent-olive/70">
                           {String(diff.new ?? "—")}
                         </span>
                       </div>

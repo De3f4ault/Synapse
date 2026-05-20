@@ -84,7 +84,7 @@ def semantic_link_scan_task(self) -> Dict[str, Any]:
                 UPDATE links
                 SET strength = strength * :decay_factor,
                     updated_at = NOW()
-                WHERE link_type = 'semantic'
+                WHERE link_type = 'SEMANTIC'
             """),
                 {"decay_factor": DECAY_FACTOR},
             )
@@ -99,7 +99,7 @@ def semantic_link_scan_task(self) -> Dict[str, Any]:
             result = db.execute(
                 text("""
                 DELETE FROM links
-                WHERE link_type = 'semantic'
+                WHERE link_type = 'SEMANTIC'
                   AND strength < :threshold
             """),
                 {"threshold": PRUNE_THRESHOLD},
@@ -214,9 +214,9 @@ def _scan_user_semantic_links(db, user_id: int) -> int:
             links_created += _upsert_semantic_link(
                 db,
                 user_id,
-                source_type="note",
+                source_type="NOTE",
                 source_id=note_id,
-                target_type="flashcard",
+                target_type="FLASHCARD",
                 target_id=flashcard_id,
                 strength=similarity,
             )
@@ -254,9 +254,9 @@ def _scan_user_semantic_links(db, user_id: int) -> int:
             links_created += _upsert_semantic_link(
                 db,
                 user_id,
-                source_type="note",
+                source_type="NOTE",
                 source_id=row[0],
-                target_type="note",
+                target_type="NOTE",
                 target_id=row[1],
                 strength=float(row[2]),
             )
@@ -290,7 +290,7 @@ def _upsert_semantic_link(
         )
         VALUES (
             :user_id, :source_type, :source_id,
-            :target_type, :target_id, 'semantic',
+            :target_type, :target_id, 'SEMANTIC',
             :strength, 'semantically similar', '{}'::jsonb,
             NOW(), NOW()
         )

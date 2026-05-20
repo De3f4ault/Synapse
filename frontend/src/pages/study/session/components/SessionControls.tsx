@@ -55,7 +55,7 @@ export function SessionControls({
             exit={{ opacity: 0 }}
             onClick={onFlip}
             disabled={isPaused}
-            className="px-8 py-4 rounded-full bg-white/5 border border-white/10 text-slate-300 font-medium hover:bg-white/10 transition-colors tracking-widest uppercase text-sm disabled:opacity-50"
+            className="px-8 py-4 rounded-full bg-foreground/5 border border-border text-foreground/80 font-medium hover:bg-muted transition-colors tracking-widest uppercase text-sm disabled:opacity-50"
           >
             Reveal Answer
           </motion.button>
@@ -71,14 +71,14 @@ export function SessionControls({
             <button
               onClick={() => onAnswer(false)}
               disabled={isPaused}
-              className="px-6 py-3 rounded-full bg-white/5 border border-white/10 text-slate-300 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/30 transition-colors uppercase text-sm tracking-wider disabled:opacity-50"
+              className="px-6 py-3 rounded-full bg-foreground/5 border border-border text-foreground/80 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-colors uppercase text-sm tracking-wider disabled:opacity-50"
             >
               Incorrect
             </button>
             <button
               onClick={() => onAnswer(true)}
               disabled={isPaused}
-              className="px-6 py-3 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 hover:bg-cyan-500/20 transition-colors uppercase text-sm tracking-wider disabled:opacity-50"
+              className="px-6 py-3 rounded-full bg-primary/10 border border-primary/20 text-primary hover:bg-primary/20 transition-colors uppercase text-sm tracking-wider disabled:opacity-50"
             >
               Correct
             </button>

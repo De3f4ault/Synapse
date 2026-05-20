@@ -26,7 +26,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
     return (
         <div className="flex items-center gap-3">
             {/* Sector Tabs */}
-            <div className="flex bg-black/20 rounded-xl p-1 border border-white/5">
+            <div className="flex bg-background/50 rounded-xl p-1 border border-border">
                 {sectors.map((sector) => (
                     <button
                         key={sector}
@@ -37,8 +37,8 @@ export const FilterBar: React.FC<FilterBarProps> = ({
                         className={cn(
                             "px-3 py-1.5 rounded-lg text-xs font-medium transition-all",
                             activeSector === sector
-                                ? "bg-cyan-500/20 text-cyan-400 shadow-sm"
-                                : "text-slate-500 hover:text-slate-300 hover:bg-white/5",
+                                ? "bg-primary/20 text-primary shadow-sm"
+                                : "text-muted-foreground hover:text-foreground/80 hover:bg-muted/50",
                         )}
                     >
                         {sector}
@@ -46,11 +46,11 @@ export const FilterBar: React.FC<FilterBarProps> = ({
                 ))}
             </div>
 
-            <div className="h-6 w-px bg-white/10 mx-1" />
+            <div className="h-6 w-px bg-foreground/10 mx-1" />
 
             {/* Search Bar */}
             <div className="flex-1 relative group">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 w-4 h-4 group-focus-within:text-cyan-400 transition-colors" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4 group-focus-within:text-primary transition-colors" />
                 <input
                     value={search}
                     onChange={(e) => onSearchChange(e.target.value)}

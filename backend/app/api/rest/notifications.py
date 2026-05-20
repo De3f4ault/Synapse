@@ -18,7 +18,7 @@ from app.api.deps import get_current_user
 from app.models.user import User
 from app.models.notification import NotificationCategory
 from app.services.notification.service import NotificationService
-from app.schemas.notification import (
+from app.schemas.notifications import (
     NotificationResponse,
     NotificationList,
     MarkAsReadRequest,

@@ -18,7 +18,7 @@ from app.api.deps import get_db, get_current_user, PaginationParams
 from app.models.user import User
 from app.models.webhook import Webhook
 from app.models.webhook_event import WebhookStatus
-from app.schemas.webhook import (
+from app.schemas.webhooks import (
     WebhookCreate,
     WebhookUpdate,
     WebhookResponse,

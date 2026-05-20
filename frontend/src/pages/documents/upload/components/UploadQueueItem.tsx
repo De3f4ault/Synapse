@@ -9,7 +9,8 @@ import {
     Copy,
     Loader2,
     HardDrive,
-    Calendar
+    Calendar,
+    SkipForward,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -31,11 +32,12 @@ function formatFileSize(bytes: number): string {
 }
 
 const statusConfig = {
-    queued: { icon: FileText, color: 'text-slate-400', bg: 'bg-slate-500/10', progressGradient: 'from-slate-500 to-slate-400' },
-    uploading: { icon: Loader2, color: 'text-violet-400', bg: 'bg-violet-500/10', progressGradient: 'from-violet-500 via-purple-500 to-indigo-500' },
-    success: { icon: Check, color: 'text-emerald-400', bg: 'bg-emerald-500/10', progressGradient: 'from-emerald-500 to-green-400' },
-    conflict: { icon: AlertTriangle, color: 'text-amber-400', bg: 'bg-amber-500/10', progressGradient: 'from-amber-500 to-orange-400' },
-    error: { icon: XCircle, color: 'text-red-400', bg: 'bg-red-500/10', progressGradient: 'from-red-500 to-rose-400' },
+    queued: { icon: FileText, color: 'text-muted-foreground', bg: 'bg-muted/30', progressGradient: 'from-muted-foreground to-muted-foreground' },
+    uploading: { icon: Loader2, color: 'text-primary', bg: 'bg-primary/10', progressGradient: 'from-primary via-primary/80 to-primary/60' },
+    success: { icon: Check, color: 'text-accent-olive', bg: 'bg-accent-olive/10', progressGradient: 'from-emerald-500 to-green-400' },
+    skipped: { icon: SkipForward, color: 'text-muted-foreground', bg: 'bg-muted/20', progressGradient: 'from-muted-foreground to-muted-foreground' },
+    conflict: { icon: AlertTriangle, color: 'text-warning', bg: 'bg-warning/10', progressGradient: 'from-amber-500 to-orange-400' },
+    error: { icon: XCircle, color: 'text-destructive', bg: 'bg-destructive/10', progressGradient: 'from-red-500 to-rose-400' },
 };
 
 export function UploadQueueItem({
@@ -46,9 +48,10 @@ export function UploadQueueItem({
     onRemove,
     isProcessing = false,
 }: UploadQueueItemProps) {
-    const config = statusConfig[item.status];
+    const config = statusConfig[item.status] ?? statusConfig.queued;
     const StatusIcon = config.icon;
-    const isExactDuplicate = item.conflict?.conflict_type === 'exact_duplicate';
+    // Only offer "Keep Both" when content differs (same_filename type)
+    const showKeepBoth = item.conflict?.conflict_type === 'same_filename';
 
     return (
         <motion.div
@@ -58,8 +61,8 @@ export function UploadQueueItem({
             className={cn(
                 "p-3 rounded-xl border transition-all relative overflow-hidden",
                 config.bg,
-                item.status === 'conflict' ? 'border-amber-500/30' : 'border-white/5',
-                item.status === 'success' && 'border-emerald-500/20'
+                item.status === 'conflict' ? 'border-amber-500/30' : 'border-border',
+                item.status === 'success' && 'border-accent-olive/20'
             )}
         >
             {/* Main Row */}
@@ -77,10 +80,10 @@ export function UploadQueueItem({
 
                 {/* File Info */}
                 <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-white truncate">
+                    <p className="text-sm font-medium text-foreground truncate">
                         {item.file.name}
                     </p>
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs text-muted-foreground">
                         {formatFileSize(item.file.size)}
                     </p>
                 </div>
@@ -88,7 +91,7 @@ export function UploadQueueItem({
                 {/* Progress / Status */}
                 {item.status === 'uploading' && (
                     <div className="w-24">
-                        <div className="h-1.5 bg-white/5 rounded-full overflow-hidden relative">
+                        <div className="h-1.5 bg-foreground/5 rounded-full overflow-hidden relative">
                             {/* Gradient Progress */}
                             <motion.div
                                 className={cn("h-full rounded-full bg-gradient-to-r", config.progressGradient)}
@@ -104,7 +107,7 @@ export function UploadQueueItem({
                                 transition={{ duration: 1.2, repeat: Infinity, ease: 'linear' }}
                             />
                         </div>
-                        <p className="text-xs text-slate-500 text-right mt-0.5 tabular-nums">
+                        <p className="text-xs text-muted-foreground text-right mt-0.5 tabular-nums">
                             {item.progress}%
                         </p>
                     </div>
@@ -114,18 +117,18 @@ export function UploadQueueItem({
                 {item.status !== 'conflict' && (
                     <button
                         onClick={onRemove}
-                        className="p-1.5 hover:bg-white/5 rounded-lg transition-colors"
+                        className="p-1.5 hover:bg-muted/50 rounded-lg transition-colors"
                     >
-                        <X size={14} className="text-slate-500" />
+                        <X size={14} className="text-muted-foreground" />
                     </button>
                 )}
             </div>
 
-            {/* Conflict Resolution Section */}
+            {/* Conflict Resolution — only for same_filename (user must decide) */}
             {item.status === 'conflict' && item.conflict && (
-                <div className="mt-3 pt-3 border-t border-white/5">
+                <div className="mt-3 pt-3 border-t border-border">
                     {/* Existing Document Info */}
-                    <div className="flex items-center gap-4 text-xs text-slate-400 mb-3">
+                    <div className="flex items-center gap-4 text-xs text-muted-foreground mb-3">
                         <span className="flex items-center gap-1">
                             <FileText size={12} />
                             Existing: {item.conflict.existing_filename}
@@ -141,7 +144,7 @@ export function UploadQueueItem({
                     </div>
 
                     {/* Conflict Message */}
-                    <p className="text-xs text-amber-400/80 mb-3">
+                    <p className="text-xs text-warning/80 mb-3">
                         {item.conflict.message}
                     </p>
 
@@ -150,17 +153,17 @@ export function UploadQueueItem({
                         <button
                             onClick={onReplace}
                             disabled={isProcessing}
-                            className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-xs font-medium transition-colors disabled:opacity-50"
+                            className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg bg-amber-600 hover:bg-warning text-foreground text-xs font-medium transition-colors disabled:opacity-50"
                         >
                             <Replace size={12} />
                             Replace
                         </button>
 
-                        {!isExactDuplicate && (
+                        {showKeepBoth && (
                             <button
                                 onClick={onKeepBoth}
                                 disabled={isProcessing}
-                                className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 text-white text-xs font-medium transition-colors disabled:opacity-50"
+                                className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg bg-foreground/5 border border-border hover:bg-muted text-foreground text-xs font-medium transition-colors disabled:opacity-50"
                             >
                                 <Copy size={12} />
                                 Keep Both
@@ -170,7 +173,7 @@ export function UploadQueueItem({
                         <button
                             onClick={onSkip}
                             disabled={isProcessing}
-                            className="py-2 px-3 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 text-xs font-medium transition-colors disabled:opacity-50"
+                            className="py-2 px-3 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 text-xs font-medium transition-colors disabled:opacity-50"
                         >
                             Skip
                         </button>
@@ -178,9 +181,16 @@ export function UploadQueueItem({
                 </div>
             )}
 
+            {/* Skipped label (auto-resolved) */}
+            {item.status === 'skipped' && item.conflict && (
+                <p className="mt-2 text-xs text-muted-foreground/70 italic">
+                    Already in library — skipped automatically
+                </p>
+            )}
+
             {/* Error Message */}
             {item.status === 'error' && item.error && (
-                <p className="mt-2 text-xs text-red-400">
+                <p className="mt-2 text-xs text-destructive">
                     {item.error}
                 </p>
             )}

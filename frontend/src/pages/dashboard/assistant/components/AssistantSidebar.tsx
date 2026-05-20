@@ -41,12 +41,12 @@ export function AssistantSidebar() {
     return (
         <div
             className={cn(
-                "border-r border-white/5 bg-[#050508]/50 transition-all duration-300 overflow-hidden flex flex-col",
+                "border-r border-border bg-card/50 transition-all duration-300 overflow-hidden flex flex-col",
                 showSidebar ? "w-[180px]" : "w-0"
             )}
         >
             {/* New Chat Button */}
-            <div className="p-3 border-b border-white/5">
+            <div className="p-3 border-b border-border">
                 <NeumorphicButton
                     variant="ghost"
                     size="sm"
@@ -67,25 +67,25 @@ export function AssistantSidebar() {
                             key={session.id}
                             className={cn(
                                 "group relative p-2 rounded-lg cursor-pointer transition-all text-xs border border-transparent",
-                                "hover:bg-white/5",
+                                "hover:bg-muted/50",
                                 session.id === sessionId
-                                    ? "bg-white/5 border-white/10 shadow-inner"
+                                    ? "bg-foreground/5 border-border shadow-inner"
                                     : ""
                             )}
                             onClick={() => switchSession(session.id)}
                         >
                             <div className="flex items-start gap-2">
-                                <MessageSquare className="h-3 w-3 mt-0.5 shrink-0 text-slate-500" />
+                                <MessageSquare className="h-3 w-3 mt-0.5 shrink-0 text-muted-foreground" />
                                 <div className="flex-1 min-w-0">
-                                    <div className="font-medium truncate text-slate-200">
+                                    <div className="font-medium truncate text-foreground/70">
                                         {session.title}
                                     </div>
-                                    <div className="text-[10px] text-slate-500 font-mono mt-0.5">
+                                    <div className="text-[10px] text-muted-foreground font-mono mt-0.5">
                                         {formatSessionDate(session.updated_at)}
                                     </div>
                                 </div>
                                 <button
-                                    className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-500/20 hover:text-red-400 rounded transition-all"
+                                    className="opacity-0 group-hover:opacity-100 p-1 hover:bg-destructive/20 hover:text-destructive rounded transition-all"
                                     onClick={(e) => handleDelete(session.id, e)}
                                 >
                                     <Trash2 className="h-3 w-3" />

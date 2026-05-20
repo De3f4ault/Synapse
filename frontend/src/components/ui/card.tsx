@@ -2,6 +2,17 @@ import * as React from "react";
 
 import { cn } from "@/lib/utils";
 
+/**
+ * Card — Warm design system
+ *
+ * Uses warm borders (border-subtle light / border-dark dark),
+ * ring-based depth, and editorial spacing.
+ *
+ * Radius scale:
+ *   rounded-lg  (12px) — standard cards
+ *   rounded-xl  (16px) — featured cards (add via className)
+ *   rounded-3xl (32px) — hero/media cards (add via className)
+ */
 const Card = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
@@ -9,7 +20,7 @@ const Card = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      "rounded-xl border bg-card text-card-foreground shadow",
+      "rounded-lg border bg-card text-card-foreground",
       className,
     )}
     {...props}
@@ -35,7 +46,10 @@ const CardTitle = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn("font-semibold leading-none tracking-tight", className)}
+    className={cn(
+      "font-serif font-medium leading-snug tracking-tight",
+      className,
+    )}
     {...props}
   />
 ));
@@ -47,7 +61,7 @@ const CardDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn("text-sm text-muted-foreground", className)}
+    className={cn("text-sm text-muted-foreground leading-relaxed", className)}
     {...props}
   />
 ));

@@ -9,7 +9,7 @@ No other module should import directly from this file.
 
 from datetime import datetime
 from decimal import Decimal
-from typing import Optional, List
+from typing import Optional, List, Literal
 import enum
 
 from sqlalchemy import (
@@ -83,6 +83,28 @@ class ChatSession(Base, TimestampMixin, SoftDeleteMixin, UserOwnedMixin):
         nullable=True,
         default=None,
         doc="List of modules to include in context (e.g., ['flashcards', 'notes'])",
+    )
+
+    # Session Source — discriminator so tutor sessions never appear in Chat sidebar.
+    # 'chat'  = normal user-initiated conversation (default, visible in sidebar)
+    # 'tutor' = Card Tutor session, deck-scoped (only visible from deck detail page)
+    source: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        default="chat",
+        server_default="chat",
+        index=True,
+        doc="Session source: 'chat' (normal) or 'tutor' (Card Tutor, hidden from main sidebar)",
+    )
+
+    # Deck anchor — for tutor sessions this links the session to one deck.
+    # When source='tutor', all messages in this session relate to cards of this deck.
+    deck_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("decks.id", ondelete="SET NULL"),
+        nullable=True,
+        default=None,
+        index=True,
+        doc="Deck this tutor session is anchored to (tutor sessions only)",
     )
 
     # Resource Tracking
@@ -176,6 +198,17 @@ class ChatMessage(Base):
         default=None,
         index=True,
         doc="Thread ID (NULL for main conversation, set for thread messages)",
+    )
+
+    # Card Tutor anchor — which flashcard this message is associated with.
+    # Set on all messages within a Card Tutor session so we can query
+    # "all conversations the user had while studying card 142".
+    card_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("flashcards.id", ondelete="SET NULL"),
+        nullable=True,
+        default=None,
+        index=True,
+        doc="Flashcard this message is anchored to (Card Tutor sessions only)",
     )
 
     # Version tracking for edits/regenerations

@@ -348,7 +348,7 @@ async def replace_document_file(db, doc, file: UploadFile, user_id: int):
 
 async def generate_ai_summary(doc, db) -> dict:
     """
-    Generate AI summary for a document using Gemini.
+    Generate AI summary for a document.
 
     Returns {"summary": str, "cached": bool}.
     """
@@ -358,11 +358,10 @@ async def generate_ai_summary(doc, db) -> dict:
     if not doc.content_text:
         raise ValueError("Document has no extracted text. Wait for processing to complete.")
 
-    from google import genai
-    from app.core.ai.registry.models import DEFAULT_TOKENIZER_MODEL
+    from app.core.ai.providers.litellm_router import get_llm_router
 
-    client = genai.Client(api_key=settings.GEMINI_API_KEY)
-    content = doc.content_text[:30000] if len(doc.content_text) > 30000 else doc.content_text
+    router = get_llm_router()
+    content = doc.content_text[:30000]
 
     prompt = f"""Provide a concise summary of this document in 3-5 paragraphs.
 Focus on the main topics, key takeaways, and important concepts.
@@ -372,8 +371,11 @@ Document Title: {doc.filename}
 Content:
 {content}"""
 
-    response = client.models.generate_content(model=DEFAULT_TOKENIZER_MODEL, contents=prompt)
-    summary = response.text
+    response = await router.acompletion(
+        model="synapse-utility",
+        messages=[{"role": "user", "content": prompt}],
+    )
+    summary = response.choices[0].message.content or ""
 
     doc.ai_summary = summary
     await db.commit()

@@ -179,12 +179,12 @@ export function DocumentDetailPanel({
   return (
     <div
       className={cn(
-        "flex flex-col h-full bg-card/80 backdrop-blur-xl border-l border-white/5",
+        "flex flex-col h-full bg-card/80 backdrop-blur-xl border-l border-border",
         className
       )}
     >
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border">
         <div className="flex items-center gap-2">
           {/* Navigation */}
           <div className="flex items-center gap-0.5">
@@ -210,12 +210,12 @@ export function DocumentDetailPanel({
             </Button>
           </div>
 
-          <h2 className="text-sm font-semibold text-slate-200 truncate max-w-[200px]" title={currentTitle}>
+          <h2 className="text-sm font-semibold text-foreground/70 truncate max-w-[200px]" title={currentTitle}>
             {currentTitle}
           </h2>
 
           {isDirty && (
-            <span className="text-amber-400 text-sm" title="Unsaved changes">
+            <span className="text-warning text-sm" title="Unsaved changes">
               *
             </span>
           )}
@@ -235,7 +235,7 @@ export function DocumentDetailPanel({
 
       {/* Save/discard bar */}
       {isDirty && (
-        <div className="flex items-center justify-end gap-2 px-4 py-2 bg-amber-500/5 border-b border-amber-500/20">
+        <div className="flex items-center justify-end gap-2 px-4 py-2 bg-warning/5 border-b border-warning/20">
           <Button
             variant="ghost"
             size="sm"
@@ -249,7 +249,7 @@ export function DocumentDetailPanel({
             size="sm"
             onClick={handleSave}
             disabled={isSaving}
-            className="h-7 text-xs bg-cyan-600 hover:bg-cyan-700"
+            className="h-7 text-xs bg-primary hover:bg-primary/80"
           >
             <Save size={12} className="mr-1" />
             {isSaving ? "Saving…" : "Save (⌘S)"}
@@ -273,7 +273,7 @@ export function DocumentDetailPanel({
           onChange={handleFieldChange}
         />
 
-        <Separator className="bg-white/10" />
+        <Separator className="bg-foreground/10" />
 
         {/* Classification */}
         <ClassificationEditor
@@ -295,7 +295,7 @@ export function DocumentDetailPanel({
           onCreateStoragePath={onCreateStoragePath}
         />
 
-        <Separator className="bg-white/10" />
+        <Separator className="bg-foreground/10" />
 
         {/* AI Suggestions */}
         <SuggestionsPanel
@@ -310,7 +310,7 @@ export function DocumentDetailPanel({
           }
         />
 
-        <Separator className="bg-white/10" />
+        <Separator className="bg-foreground/10" />
 
         {/* Notes */}
         <NotesSection

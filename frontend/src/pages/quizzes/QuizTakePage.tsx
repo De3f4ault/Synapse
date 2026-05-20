@@ -32,9 +32,9 @@ export function QuizTakePage() {
     attempt.state === QuizAttemptState.LOADING
   ) {
     return (
-      <div className="h-screen w-full flex flex-col items-center justify-center bg-[#08080c]">
-        <Loader2 className="w-12 h-12 text-cyan-400 animate-spin mb-4" />
-        <p className="text-slate-400 text-sm tracking-widest uppercase">
+      <div className="h-screen w-full flex flex-col items-center justify-center bg-muted">
+        <Loader2 className="w-12 h-12 text-primary animate-spin mb-4" />
+        <p className="text-muted-foreground text-sm tracking-widest uppercase">
           Initializing Quiz...
         </p>
       </div>
@@ -44,12 +44,12 @@ export function QuizTakePage() {
   // Error State
   if (attempt.state === QuizAttemptState.ERROR) {
     return (
-      <div className="h-screen w-full flex flex-col items-center justify-center bg-[#08080c]">
-        <p className="text-red-400 mb-4">Failed to load quiz</p>
-        <p className="text-slate-500 text-sm mb-6">{attempt.error}</p>
+      <div className="h-screen w-full flex flex-col items-center justify-center bg-muted">
+        <p className="text-destructive mb-4">Failed to load quiz</p>
+        <p className="text-muted-foreground text-sm mb-6">{attempt.error}</p>
         <button
           onClick={() => navigate("/quizzes")}
-          className="px-6 py-2 bg-white/[0.04] hover:bg-white/[0.08] text-white rounded-lg border border-white/[0.06]"
+          className="px-6 py-2 bg-white/[0.04] hover:bg-white/[0.08] text-foreground rounded-lg border border-border"
         >
           Return to Quizzes
         </button>
@@ -60,14 +60,14 @@ export function QuizTakePage() {
   // Completed State - Show Results
   if (attempt.state === QuizAttemptState.COMPLETED && attempt.results) {
     return (
-      <div className="h-screen bg-[#08080c]">
+      <div className="h-screen bg-muted">
         <QuizResults
           results={attempt.results}
           performance={
             resultsHook.performance || {
               score: Number(attempt.results.score),
               percentage: attempt.results.percentage,
-              rank: { grade: "?", color: "text-slate-400", bg: "bg-slate-500/10" },
+              rank: { grade: "?", color: "text-muted-foreground", bg: "bg-slate-500/10" },
               duration: attempt.results.time_taken_seconds,
               correctCount: attempt.results.answers.filter((a) => a.is_correct).length,
               totalCount: attempt.results.answers.length,

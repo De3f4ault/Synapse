@@ -10,6 +10,7 @@ UPDATED: Added DMS classification models (Phase 3) and saved views (Phase 4).
 
 from .base import Base
 from .user import User
+from .deck_collection import DeckCollection
 from .deck import Deck
 from .flashcard import Flashcard
 from .review import Review
@@ -69,9 +70,17 @@ from .document_permission import DocumentPermission, ShareLink, PermissionLevel
 # DMS Document Notes (Phase 8 — Sprint 8)
 from .document_note import DocumentNote
 
+# Agentic Learning Loop
+from .concept_mastery import ConceptMastery
+
+# Sprint 1/4/6 — Flashcard provenance + prerequisite graph
+from .card_source import CardSource
+from .card_prerequisite import CardPrerequisite
+
 __all__ = [
     "Base",
     "User",
+    "DeckCollection",
     "Deck",
     "Flashcard",
     "Review",
@@ -137,4 +146,9 @@ __all__ = [
     "PermissionLevel",
     # DMS Document Notes (Phase 8)
     "DocumentNote",
+    # Agentic Learning Loop
+    "ConceptMastery",
+    # Flashcard Provenance + Prerequisites (Sprint 4/6)
+    "CardSource",
+    "CardPrerequisite",
 ]

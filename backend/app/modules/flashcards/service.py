@@ -238,6 +238,9 @@ class FlashcardService:
             back_text=data["back_text"],
             front_media_url=data.get("front_media_url"),
             back_media_url=data.get("back_media_url"),
+            topic=data.get("topic"),  # noun-phrase for concept_mastery bridge
+            card_type=data.get("card_type", "basic"),   # basic | cloze | socratic | scenario
+            cloze_answer=data.get("cloze_answer"),       # cloze cards only
             ease_factor=DEFAULT_EASE_FACTOR,
             interval=INITIAL_INTERVAL,
             repetitions=0,
@@ -340,15 +343,15 @@ class FlashcardService:
 
     async def review_card(self, card_id: int, user_id: int, quality: int) -> Dict:
         """
-        Record a card review using SM-2 algorithm.
+        Record a card review, routing through the algorithm dispatcher.
 
-        This calls the PostgreSQL function `record_review` which:
-        1. Locks the card row
-        2. Calculates new SM-2 values
-        3. Updates the card
-        4. Creates review history record
+        Routes to the correct scheduling algorithm (SM-2 or FSRS) based on
+        deck.scheduling_algorithm. The dispatcher means adding FSRS later
+        requires zero changes here — implement FSRSScheduler and flip the flag.
 
-        UPDATED: Now broadcasts WebSocket event to dashboard.
+        UPDATED: Now routes through get_scheduler() dispatcher instead of
+                 calling repository.record_review() directly.
+        UPDATED: Broadcasts WebSocket event to dashboard.
 
         Args:
             card_id: Card ID
@@ -360,26 +363,35 @@ class FlashcardService:
         """
         from app.models.flashcard import Flashcard
         from app.models.deck import Deck
+        from app.services.flashcards.scheduler import get_scheduler
 
-        # Verify ownership
+        # Verify ownership and load deck to read scheduling_algorithm
         query = (
-            select(Flashcard)
-            .join(Deck)
+            select(Flashcard, Deck)
+            .join(Deck, Deck.id == Flashcard.deck_id)
             .where(
                 and_(
-                    Flashcard.id == card_id, Deck.user_id == user_id, Flashcard.deleted_at.is_(None)
+                    Flashcard.id == card_id,
+                    Deck.user_id == user_id,
+                    Flashcard.deleted_at.is_(None),
                 )
             )
         )
 
         result = await self.session.execute(query)
-        card = result.scalar_one_or_none()
+        row = result.one_or_none()
 
-        if not card:
+        if not row:
             raise Exception(f"Card {card_id} not found or access denied")
 
-        # Call repository to execute SQL function
-        review_result = await self.repository.record_review(card_id, user_id, quality)
+        card, deck = row
+
+        # Route through the scheduler dispatcher
+        # SM-2: delegates to PostgreSQL record_review function (existing behaviour)
+        # FSRS: will delegate to FSRSScheduler once implemented
+        algorithm = getattr(deck, "scheduling_algorithm", "sm2") or "sm2"
+        scheduler = get_scheduler(algorithm)
+        review_result = await scheduler.schedule(card_id, user_id, quality, self.session)
 
         # Commit transaction
         await self.session.commit()
@@ -391,6 +403,34 @@ class FlashcardService:
             quality=quality,
             next_review=review_result.get("next_review_date"),  # Already a string from JSONB
         )
+
+        # ── FSRS → concept_mastery bridge ─────────────────────────────
+        # Correct recall → reinforce concept. Failure → fire gap signal.
+        # Both paths are non-fatal — review always commits regardless.
+        if quality >= 4:  # Correct recall (SM-2 quality 4-5)
+            try:
+                await self._update_concept_mastery_from_review(
+                    user_id=user_id,
+                    card=card,
+                    quality=quality,
+                )
+            except Exception:
+                import structlog
+                structlog.get_logger().warning(
+                    "concept_mastery_bridge_failed",
+                    card_id=card_id,
+                    user_id=user_id,
+                )
+        elif quality <= 2:  # "Again" (0) or "Hard" (1-2) — demonstrates a gap
+            try:
+                await self._fire_gap_signal(user_id=user_id, card=card)
+            except Exception:
+                import structlog
+                structlog.get_logger().warning(
+                    "concept_mastery_gap_signal_failed",
+                    card_id=card_id,
+                    user_id=user_id,
+                )
 
         return review_result
 
@@ -412,6 +452,116 @@ class FlashcardService:
         return cards
 
     # ==================== HELPER METHODS ====================
+
+    async def _update_concept_mastery_from_review(
+        self,
+        user_id: int,
+        card,
+        quality: int,
+    ) -> None:
+        """
+        Bridge FSRS review → concept_mastery table (correct recall path).
+
+        Uses card.topic (noun-phrase) as the concept key if available,
+        falling back to front_text[:100] for legacy cards without a topic.
+        Only called for quality >= 4 (correct recall).
+        """
+        from sqlalchemy import text
+
+        # topic is the precise noun-phrase; front_text is a question string.
+        # Using topic eliminates mismatches with LLMExtractor which also produces noun-phrases.
+        concept = (card.topic or card.front_text or "").strip()[:100]
+        if len(concept) < 4:
+            return  # Too short to be a meaningful concept
+
+        # Get deck name for subject_area
+        from app.models.deck import Deck
+        deck_result = await self.session.execute(
+            select(Deck.name).where(Deck.id == card.deck_id)
+        )
+        deck_name = deck_result.scalar_one_or_none()
+
+        delta = 0.20 if quality == 5 else 0.15  # Perfect vs good recall
+
+        await self.session.execute(
+            text("""
+                INSERT INTO concept_mastery
+                    (user_id, concept, subject_area, mastery_score,
+                     exposure_count, source, last_exposure, first_exposure,
+                     created_at, updated_at)
+                VALUES
+                    (:user_id, :concept, :subject_area,
+                     GREATEST(0.0, LEAST(:delta, 1.0)),
+                     1, 'flashcard_review', NOW(), NOW(), NOW(), NOW())
+                ON CONFLICT (user_id, concept) DO UPDATE SET
+                    mastery_score = GREATEST(0.0, LEAST(
+                        concept_mastery.mastery_score + :delta, 1.0
+                    )),
+                    exposure_count = concept_mastery.exposure_count + 1,
+                    last_exposure = NOW(),
+                    source = 'flashcard_review',
+                    updated_at = NOW()
+            """),
+            {
+                "user_id": user_id,
+                "concept": concept,
+                "subject_area": deck_name,
+                "delta": delta,
+            },
+        )
+        await self.session.commit()
+
+    async def _fire_gap_signal(
+        self,
+        user_id: int,
+        card,
+    ) -> None:
+        """
+        Bridge FSRS review → concept_mastery table (failure/gap path).
+
+        Called when quality <= 2 (Again or Hard). Applies a -0.05 delta
+        so the conversational agent and session curator know the student
+        is currently struggling with this concept — even if SM-2 handles
+        the scheduling independently.
+        """
+        from sqlalchemy import text
+
+        concept = (card.topic or card.front_text or "").strip()[:100]
+        if len(concept) < 4:
+            return
+
+        from app.models.deck import Deck
+        deck_result = await self.session.execute(
+            select(Deck.name).where(Deck.id == card.deck_id)
+        )
+        deck_name = deck_result.scalar_one_or_none()
+
+        await self.session.execute(
+            text("""
+                INSERT INTO concept_mastery
+                    (user_id, concept, subject_area, mastery_score,
+                     exposure_count, source, last_exposure, first_exposure,
+                     created_at, updated_at)
+                VALUES
+                    (:user_id, :concept, :subject_area,
+                     GREATEST(0.0, -0.05),
+                     1, 'flashcard_review_failure', NOW(), NOW(), NOW(), NOW())
+                ON CONFLICT (user_id, concept) DO UPDATE SET
+                    mastery_score = GREATEST(0.0,
+                        concept_mastery.mastery_score - 0.05
+                    ),
+                    exposure_count = concept_mastery.exposure_count + 1,
+                    last_exposure = NOW(),
+                    source = 'flashcard_review_failure',
+                    updated_at = NOW()
+            """),
+            {
+                "user_id": user_id,
+                "concept": concept,
+                "subject_area": deck_name,
+            },
+        )
+        await self.session.commit()
 
     def _deck_to_dict(self, deck) -> Dict:
         """Convert Deck model to dict"""
@@ -479,6 +629,7 @@ class FlashcardService:
             "deck_id": card.deck_id,
             "front_text": card.front_text,
             "back_text": card.back_text,
+            "topic": card.topic,  # noun-phrase concept name, may be None for legacy cards
             "front_media_url": card.front_media_url,
             "back_media_url": card.back_media_url,
             "ease_factor": float(card.ease_factor),

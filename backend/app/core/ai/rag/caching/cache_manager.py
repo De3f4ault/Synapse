@@ -3,10 +3,17 @@ RAG cache manager using PostgreSQL-backed cache.
 
 Replaces the Redis-backed RedisCacheManager with PgCacheClient
 for caching embeddings, queries, and retrieval results.
+
+Now includes semantic query caching: near-miss queries (cosine sim > 0.92)
+reuse cached results, bypassing the full Qdrant + cross-encoder pipeline.
 """
 
 import hashlib
+import json
+from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional
+
+from sqlalchemy import text
 
 from app.utils.logging import get_logger
 
@@ -26,6 +33,13 @@ class PgRagCacheManager:
     EMBEDDING_TTL = 86400  # 24 hours
     QUERY_TTL = 3600  # 1 hour
     RETRIEVAL_TTL = 1800  # 30 minutes
+    SEMANTIC_TTL = 1800   # 30 minutes (matches exact-match cache)
+
+    # Cosine similarity threshold for semantic cache hits.
+    # 0.92 means queries must share ~92% of their semantic meaning.
+    # Lower = more aggressive (more hits, risk of stale data).
+    # Higher = more conservative (fewer hits, more precise).
+    SEMANTIC_SIMILARITY_THRESHOLD = 0.92
 
     # Key prefixes
     PREFIX_EMBEDDING = "rag:embedding"
@@ -115,7 +129,123 @@ class PgRagCacheManager:
         key = f"{self.PREFIX_QUERY}:{self._hash_key(query)}"
         await cache.set(key, result, ex=ttl or self.QUERY_TTL)
 
-    # ── Retrieval Cache ──────────────────────────────────────
+    # ── Semantic Query Cache ─────────────────────────────────
+
+    async def get_semantic_query_result(
+        self,
+        user_id: int,
+        query: str,
+        source_type: str = "documents",
+    ) -> Optional[Dict]:
+        """
+        Semantic cache lookup: finds a previous result whose query embedding
+        is within cosine distance of the current query.
+
+        Returns the cached result dict, or None on a cache miss.
+        Also bumps the hit_count on the matched row for analytics.
+        """
+        try:
+            from app.core.ai.embeddings.boundary import get_embedder
+            from app.db.session import AsyncSessionLocal
+
+            embedder = get_embedder()
+            embedding = embedder.encode_query(query).tolist()
+            emb_str = "[" + ",".join(str(v) for v in embedding) + "]"
+
+            async with AsyncSessionLocal() as session:
+                result = await session.execute(
+                    text("""
+                        SELECT id, cached_result
+                        FROM developer_schema.rag_semantic_cache
+                        WHERE user_id     = :user_id
+                          AND source_type = :source_type
+                          AND expires_at  > NOW()
+                          AND 1 - (embedding <=> CAST(:emb AS vector)) >= :threshold
+                        ORDER BY embedding <=> CAST(:emb AS vector)
+                        LIMIT 1
+                    """),
+                    {
+                        "user_id": user_id,
+                        "source_type": source_type,
+                        "emb": emb_str,
+                        "threshold": self.SEMANTIC_SIMILARITY_THRESHOLD,
+                    },
+                )
+                row = result.fetchone()
+
+                if row is None:
+                    return None
+
+                row_id, cached = row[0], row[1]
+
+                # Bump hit counter asynchronously (fire-and-forget pattern)
+                await session.execute(
+                    text("""
+                        UPDATE developer_schema.rag_semantic_cache
+                        SET hit_count = hit_count + 1
+                        WHERE id = :id
+                    """),
+                    {"id": row_id},
+                )
+                await session.commit()
+
+                # asyncpg returns JSONB as a Python dict already
+                if isinstance(cached, str):
+                    cached = json.loads(cached)
+                return cached
+
+        except Exception as e:
+            logger.warning("semantic_cache_get_failed", error=str(e)[:200])
+            return None
+
+    async def set_semantic_query_result(
+        self,
+        user_id: int,
+        query: str,
+        result: Dict,
+        source_type: str = "documents",
+        ttl: Optional[int] = None,
+    ) -> None:
+        """
+        Store a RAG pipeline result in the semantic cache alongside its
+        query embedding so future near-miss queries can retrieve it.
+        """
+        try:
+            from app.core.ai.embeddings.boundary import get_embedder
+            from app.db.session import AsyncSessionLocal
+
+            embedder = get_embedder()
+            embedding = embedder.encode_query(query).tolist()
+            emb_str = "[" + ",".join(str(v) for v in embedding) + "]"
+
+            seconds = ttl or self.SEMANTIC_TTL
+            expires_at = datetime.now(timezone.utc) + timedelta(seconds=seconds)
+
+            async with AsyncSessionLocal() as session:
+                await session.execute(
+                    text("""
+                        INSERT INTO developer_schema.rag_semantic_cache
+                            (user_id, source_type, query_text, embedding, cached_result, expires_at)
+                        VALUES
+                            (:user_id, :source_type, :query_text,
+                             CAST(:emb AS vector), CAST(:result AS jsonb), :expires_at)
+                        ON CONFLICT DO NOTHING
+                    """),
+                    {
+                        "user_id": user_id,
+                        "source_type": source_type,
+                        "query_text": query,
+                        "emb": emb_str,
+                        "result": json.dumps(result),
+                        "expires_at": expires_at,
+                    },
+                )
+                await session.commit()
+
+        except Exception as e:
+            logger.warning("semantic_cache_set_failed", error=str(e)[:200])
+
+    # ── Retrieval Cache ───────────────────────────────────────
 
     async def get_retrieval_result(self, key: str) -> Optional[Dict]:
         """

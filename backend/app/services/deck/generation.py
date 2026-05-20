@@ -10,7 +10,7 @@ Extracted from rest/decks.py — handles:
 
 import json
 import re
-from typing import List, Optional
+from typing import List, Optional, TYPE_CHECKING
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_
@@ -19,8 +19,28 @@ import structlog
 from app.models.deck import Deck
 from app.models.flashcard import Flashcard
 
+if TYPE_CHECKING:
+    from app.schemas.flashcards.card_design import CardDesignPlan
+
 logger = structlog.get_logger(__name__)
 
+
+def _fire_auto_categorise(deck_id: int, user_id: int) -> None:
+    """
+    Dispatch the auto-categorisation Celery task.
+
+    Wrapped in a try/except so a Celery broker issue never crashes generation.
+    """
+    try:
+        from app.services.background.learning_tasks import auto_categorise_deck
+        auto_categorise_deck.delay(deck_id=deck_id, user_id=user_id)
+    except Exception as exc:
+        logger.warning(
+            "auto_categorise_dispatch_failed",
+            deck_id=deck_id,
+            user_id=user_id,
+            error=str(exc),
+        )
 
 # ============================================================================
 # Document-Based Generation
@@ -41,7 +61,7 @@ async def generate_from_document(
 
     Returns dict with deck_id, deck_name, cards_generated, status, message.
     """
-    from app.models.document import Document
+    from app.models.document import Document, ProcessingStatus
     from app.core.ai.agents.factory import create_agent
     from app.modules.flashcards.service import FlashcardService
 
@@ -54,8 +74,12 @@ async def generate_from_document(
     document = doc_result.scalar_one_or_none()
     if not document:
         raise ValueError("Document not found")
-    if document.processing_status != "completed":
-        raise ValueError(f"Document processing status is '{document.processing_status}'. Must be 'completed'.")
+    if document.processing_status != ProcessingStatus.COMPLETED:
+        raise ValueError(
+            f"Document is not ready for flashcard generation "
+            f"(status: '{document.processing_status.value}'). "
+            f"Wait until status is 'completed'."
+        )
     if not document.content_text:
         raise ValueError("Document has no extractable text content")
 
@@ -88,8 +112,9 @@ Output JSON:
 {{
   "flashcards": [
     {{
-      "front": "Question or term",
-      "back": "Answer or definition"
+      "front": "Question or term (question-form, e.g. 'What is the Visibility Map?')",
+      "back": "Answer or definition",
+      "topic": "Noun-phrase concept name (e.g. 'PostgreSQL Visibility Map'). Specific, not vague."
     }}
   ]
 }}
@@ -107,6 +132,10 @@ Output JSON:
         db, user_id, "DECK", deck["id"], document.id,
         {"method": "ai", "source_filename": document.filename, "cards_generated": cards_created},
     )
+    await db.commit()
+
+    # Auto-categorise into a collection in the background
+    _fire_auto_categorise(deck["id"], user_id)
 
     return {
         "deck_id": deck["id"],
@@ -157,8 +186,9 @@ Return ONLY valid JSON in this exact format:
 {{
   "flashcards": [
     {{
-      "front": "Question or term",
-      "back": "Answer or definition"
+      "front": "Question or term (question-form, e.g. 'What is MVCC?')",
+      "back": "Answer or definition",
+      "topic": "Noun-phrase concept name (e.g. 'PostgreSQL MVCC'). Must be specific, not vague."
     }}
   ]
 }}
@@ -196,6 +226,16 @@ Return ONLY valid JSON in this exact format:
     await db.commit()
 
     logger.info("flashcards_generated_from_topic", topic=topic, deck_id=deck["id"], cards_created=cards_created)
+    logger.info(
+        "topic_deck_created_no_graph_edge",
+        deck_id=deck["id"],
+        topic=topic,
+        user_id=user_id,
+        reason="no_source_document",
+    )
+
+    # Auto-categorise into a collection in the background
+    _fire_auto_categorise(deck["id"], user_id)
 
     # Notification
     await _send_generation_notification(db, user_id, deck["id"], cards_created, topic)
@@ -206,6 +246,215 @@ Return ONLY valid JSON in this exact format:
         "cards_generated": cards_created,
         "status": "success",
         "message": f"Successfully generated {cards_created} flashcards about {topic}",
+    }
+
+
+# ============================================================================
+# Plan-Based Generation (AI Card Designer)
+# ============================================================================
+
+# Style-specific prompt instructions injected per subtopic block.
+_STYLE_INSTRUCTIONS = {
+    "basic": (
+        "Write clear, direct Q/A flashcards. "
+        "Front: question-form (e.g. 'What is X?' or 'How does X work?'). "
+        "Back: concise answer. No filler."
+    ),
+    "cloze": (
+        "Write fill-in-the-blank flashcards. "
+        "Front: a sentence with the key term replaced by __ (double underscore). "
+        "Back: the complete sentence with the answer filled in. "
+        "Set cloze_answer to the exact word(s) that fill the blank."
+    ),
+    "socratic": (
+        "Write reasoning-oriented flashcards that force the learner to THINK, not just recall. "
+        "Front: 'What would happen if...', 'Why does...', 'Explain the mechanism of...', "
+        "'Compare X and Y', 'What is the consequence of...'. "
+        "NEVER write simple definition lookups. "
+        "Back: a structured explanation, not a one-liner."
+    ),
+    "scenario": (
+        "Write situation-based flashcards that test application of knowledge. "
+        "Front: begins with 'You are...', 'A user asks...', 'Your application needs...', "
+        "'Given that X is true, what do you do?'. "
+        "Back: the correct action or response with brief rationale."
+    ),
+}
+
+
+async def generate_from_plan(
+    user_id: int,
+    plan: "CardDesignPlan",
+    db: AsyncSession,
+) -> dict:
+    """
+    Generate flashcards from a CardDesignPlan produced by the AI designer.
+
+    - If plan.deck_id is set, adds cards to that existing deck.
+    - If plan.deck_id is None, creates a new deck named plan.deck_name.
+    - Generates cards per subtopic using style-specific prompt instructions.
+    - Cloze cards populate the cloze_answer field.
+    - Returns the same dict shape as generate_from_topic for frontend consistency.
+    """
+    from app.core.ai.orchestrator import get_orchestrator
+    from app.modules.flashcards.service import FlashcardService
+
+    service = FlashcardService(db)
+
+    # ── 1. Resolve or create the target deck ─────────────────────────────────
+    if plan.deck_id:
+        deck = await _get_user_deck(db, plan.deck_id, user_id)
+        deck_dict = {"id": deck.id, "name": deck.name}
+    else:
+        deck_dict = await service.create_deck(
+            user_id=user_id,
+            data={
+                "name": plan.deck_name,
+                "description": f"AI-designed deck — {plan.learning_objective or 'mixed'}",
+                "tags": ["ai-designed"],
+                "is_public": False,
+                "ai_generated": True,
+                "ai_metadata": {
+                    "source": "card_designer",
+                    "learning_objective": plan.learning_objective,
+                    "subtopics": [s.model_dump() for s in plan.subtopics],
+                },
+            },
+        )
+
+    orchestrator = get_orchestrator()
+    total_created = 0
+    skipped_dupes = 0
+    skipped_cloze_invalid = 0
+
+    # ── 2. Pre-load existing front_text hashes (dupe guard) ─────────────────
+    existing_fronts: set[str] = set()
+    try:
+        existing_res = await db.execute(
+            select(Flashcard.front_text)
+            .where(and_(Flashcard.deck_id == deck_dict["id"], Flashcard.deleted_at.is_(None)))
+        )
+        existing_fronts = {
+            (row[0] or "").strip().lower() for row in existing_res.fetchall()
+        }
+    except Exception:
+        pass  # non-fatal — dupe guard degrades gracefully────
+    for spec in plan.subtopics:
+        style_key = spec.style.value if hasattr(spec.style, "value") else str(spec.style)
+        style_instr = _STYLE_INSTRUCTIONS.get(style_key, _STYLE_INSTRUCTIONS["basic"])
+        is_cloze = style_key == "cloze"
+
+        source_section = ""
+        if plan.source_material:
+            excerpt = plan.source_material[:6000]
+            source_section = f"\nSource material (use this exclusively):\n{excerpt}\n"
+
+        difficulty_hint = (
+            f"\nDifficulty note: {spec.difficulty_note}" if spec.difficulty_note else ""
+        )
+
+        cloze_field = (
+            '      "cloze_answer": "word(s) that fill the blank",'
+            if is_cloze
+            else ""
+        )
+
+        prompt = f"""Generate exactly {spec.count} flashcards about: {spec.topic}
+
+Card style instructions:
+{style_instr}{difficulty_hint}{source_section}
+
+Return ONLY valid JSON:
+{{
+  "flashcards": [
+    {{
+      "front": "...",
+      "back": "...",{cloze_field}
+      "topic": "{spec.topic}"
+    }}
+  ]
+}}"""
+
+        result = await orchestrator.handle_message(
+            user_id=user_id,
+            session_id=0,
+            message=prompt,
+            context={"intent": "flashcard_generation"},
+        )
+        if not result.success:
+            logger.warning(
+                "design_subtopic_generation_failed",
+                topic=spec.topic,
+                error=result.error,
+            )
+            continue
+
+        raw_cards = _parse_flashcards_json(result.output)
+
+        # Create each card with correct type + cloze_answer
+        for fc in raw_cards[: spec.count]:
+            if "front" not in fc or "back" not in fc:
+                continue
+
+            # ── Dupe guard ───────────────────────────────────────────────
+            front_norm = fc["front"].strip().lower()
+            if front_norm in existing_fronts:
+                skipped_dupes += 1
+                logger.debug(
+                    "design_card_duplicate_skipped",
+                    front_preview=fc["front"][:60],
+                    deck_id=deck_dict["id"],
+                )
+                continue
+            existing_fronts.add(front_norm)
+
+            # ── Cloze validator ─────────────────────────────────────────
+            if is_cloze:
+                has_blank = "__" in fc.get("front", "")
+                has_answer = bool((fc.get("cloze_answer") or "").strip())
+                if not has_blank or not has_answer:
+                    skipped_cloze_invalid += 1
+                    logger.warning(
+                        "cloze_card_invalid_skipped",
+                        has_blank=has_blank,
+                        has_answer=has_answer,
+                        front_preview=fc.get("front", "")[:60],
+                    )
+                    continue
+
+            card_data = {
+                "deck_id": deck_dict["id"],
+                "front_text": fc["front"],
+                "back_text": fc["back"],
+                "topic": fc.get("topic") or spec.topic,
+                "card_type": style_key,
+            }
+            if is_cloze and fc.get("cloze_answer"):
+                card_data["cloze_answer"] = fc["cloze_answer"]
+
+            await service.create_card(user_id=user_id, data=card_data)
+            total_created += 1
+
+    await db.commit()
+
+    logger.info(
+        "flashcards_generated_from_plan",
+        deck_id=deck_dict["id"],
+        total_created=total_created,
+        skipped_dupes=skipped_dupes,
+        skipped_cloze_invalid=skipped_cloze_invalid,
+        subtopics=len(plan.subtopics),
+    )
+
+    _fire_auto_categorise(deck_dict["id"], user_id)
+    await _send_generation_notification(db, user_id, deck_dict["id"], total_created, plan.deck_name)
+
+    return {
+        "deck_id": deck_dict["id"],
+        "deck_name": deck_dict["name"],
+        "cards_generated": total_created,
+        "status": "success",
+        "message": f"AI Designer created {total_created} cards in \"{deck_dict['name']}\"",
     }
 
 
@@ -294,7 +543,14 @@ async def _create_cards(service, user_id: int, deck_id: int, flashcards: list, l
         if "front" in fc and "back" in fc:
             await service.create_card(
                 user_id=user_id,
-                data={"deck_id": deck_id, "front_text": fc["front"], "back_text": fc["back"]},
+                data={
+                    "deck_id": deck_id,
+                    "front_text": fc["front"],
+                    "back_text": fc["back"],
+                    # topic is the noun-phrase concept name for concept_mastery precision.
+                    # Falls back gracefully if the AI didn't include it.
+                    "topic": fc.get("topic") or None,
+                },
             )
             count += 1
     return count
@@ -325,7 +581,15 @@ async def _wire_graph_link(db, user_id, entity_type_str, entity_id, source_doc_i
             link_type=LT.DERIVED, label="generated from", metadata=metadata,
         )
     except Exception as e:
-        logger.warning("graph_linker_failed", error=str(e), entity_id=entity_id)
+        logger.error(
+            "graph_linker_failed",
+            error=str(e),
+            exc_info=True,
+            entity_type=entity_type_str,
+            entity_id=entity_id,
+            source_doc_id=source_doc_id,
+            user_id=user_id,
+        )
 
 
 async def _send_generation_notification(db, user_id, deck_id, cards_created, topic):

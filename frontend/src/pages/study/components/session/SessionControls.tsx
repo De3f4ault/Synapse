@@ -23,7 +23,7 @@ export function SessionControls({
         disabled={disabled}
         className="flex-1 max-w-xs"
       >
-        <X className="h-5 w-5 mr-2 text-red-500" />
+        <X className="h-5 w-5 mr-2 text-destructive" />
         Incorrect
       </Button>
       <Button

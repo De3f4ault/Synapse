@@ -51,31 +51,31 @@ export function CommandBarCollapsed({
     <div className="flex items-center gap-4 px-4 py-2 h-14">
       {/* Context Badge */}
       <div className="flex items-center gap-2 min-w-[100px]">
-        <div className="h-2 w-2 rounded-full bg-cyan-500 animate-pulse" />
-        <span className="text-[10px] uppercase tracking-wider text-slate-400 font-medium">
+        <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+        <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
           {context}
         </span>
       </div>
 
       {/* Divider */}
-      <div className="w-px h-6 bg-white/10" />
+      <div className="w-px h-6 bg-foreground/10" />
 
       {/* Track Name */}
       <div className="flex-shrink-0 max-w-[140px]">
-        <span className="text-sm text-slate-300 truncate block">
+        <span className="text-sm text-foreground/80 truncate block">
           {trackName ?? "No track"}
         </span>
       </div>
 
       {/* Divider */}
-      <div className="w-px h-6 bg-white/10" />
+      <div className="w-px h-6 bg-foreground/10" />
 
       {/* Playback Controls */}
       <div className="flex items-center gap-1">
         <Button
           size="icon"
           variant="ghost"
-          className="h-8 w-8 text-slate-400 hover:text-white"
+          className="h-8 w-8 text-muted-foreground hover:text-foreground"
           onClick={onPrev}
         >
           <SkipBack className="h-4 w-4" />
@@ -86,8 +86,8 @@ export function CommandBarCollapsed({
           className={cn(
             "h-10 w-10 rounded-full transition-all",
             isPlaying
-              ? "bg-cyan-500 text-white hover:bg-cyan-400"
-              : "bg-white/10 text-white hover:bg-white/20"
+              ? "bg-primary text-foreground hover:bg-primary"
+              : "bg-foreground/10 text-foreground hover:bg-foreground/15"
           )}
           onClick={onPlayPause}
         >
@@ -100,7 +100,7 @@ export function CommandBarCollapsed({
         <Button
           size="icon"
           variant="ghost"
-          className="h-8 w-8 text-slate-400 hover:text-white"
+          className="h-8 w-8 text-muted-foreground hover:text-foreground"
           onClick={onNext}
         >
           <SkipForward className="h-4 w-4" />
@@ -108,25 +108,25 @@ export function CommandBarCollapsed({
       </div>
 
       {/* Divider */}
-      <div className="w-px h-6 bg-white/10" />
+      <div className="w-px h-6 bg-foreground/10" />
 
       {/* Mixer Sliders */}
       <div className="flex items-center gap-4 min-w-[200px]">
         {/* Music */}
         <div className="flex items-center gap-2 flex-1">
-          <Volume2 className="h-3.5 w-3.5 text-purple-400 flex-shrink-0" />
+          <Volume2 className="h-3.5 w-3.5 text-accent flex-shrink-0" />
           <Slider
             value={[musicLevel]}
             max={1}
             step={0.01}
             onValueChange={(val) => onMusicChange(val[0] ?? 0)}
-            className="w-20 [&_.absolute]:bg-purple-500"
+            className="w-20 [&_.absolute]:bg-accent"
           />
         </div>
 
         {/* Rain */}
         <div className="flex items-center gap-2 flex-1">
-          <span className="text-xs text-blue-400">🌧</span>
+          <span className="text-xs text-info">🌧</span>
           <Slider
             value={[rainLevel]}
             max={1}
@@ -138,7 +138,7 @@ export function CommandBarCollapsed({
       </div>
 
       {/* Divider */}
-      <div className="w-px h-6 bg-white/10" />
+      <div className="w-px h-6 bg-foreground/10" />
 
       {/* Settings Cog */}
       <Button
@@ -146,7 +146,7 @@ export function CommandBarCollapsed({
         variant="ghost"
         className={cn(
           "h-8 w-8 transition-transform",
-          isExpanded && "rotate-90 text-cyan-400"
+          isExpanded && "rotate-90 text-primary"
         )}
         onClick={onToggleExpand}
       >

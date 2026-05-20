@@ -46,21 +46,21 @@ export const MODES: Mode[] = [
     name: "Direct",
     icon: <Zap className="h-4 w-4" />,
     description: "Fast, concise responses",
-    color: "text-amber-400",
+    color: "text-warning",
   },
   {
     id: "tutor",
     name: "Tutor",
     icon: <GraduationCap className="h-4 w-4" />,
     description: "Socratic learning guidance",
-    color: "text-blue-400",
+    color: "text-info",
   },
   {
     id: "deep_think",
     name: "Deep Think",
     icon: <Brain className="h-4 w-4" />,
     description: "Extended reasoning for complex problems",
-    color: "text-purple-400",
+    color: "text-accent",
     hasThinking: true,
   },
   {
@@ -75,7 +75,7 @@ export const MODES: Mode[] = [
     name: "Research",
     icon: <Search className="h-4 w-4" />,
     description: "In-depth analysis with sources",
-    color: "text-emerald-400",
+    color: "text-accent-olive",
   },
 ];
 
@@ -276,7 +276,7 @@ export function MessageInput({
             initial={{ opacity: 0, y: 5 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -5 }}
-            className="flex items-center justify-center gap-2 text-xs text-purple-400/80"
+            className="flex items-center justify-center gap-2 text-xs text-accent/80"
           >
             <Brain className="h-3 w-3" />
             <span>Thinking enabled — AI will show reasoning process</span>
@@ -290,11 +290,11 @@ export function MessageInput({
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         className={cn(
-          "relative rounded-2xl border transition-all duration-200 bg-[#0d0d0d]",
+          "relative rounded-2xl border transition-all duration-200 bg-card",
           isFocused
-            ? "border-white/20 shadow-[0_4px_24px_rgba(0,0,0,0.4)]"
-            : "border-white/10 hover:border-white/15",
-          isDragOver && "border-cyan-500/50 bg-cyan-500/5 shadow-[0_0_20px_rgba(6,182,212,0.1)]",
+            ? "border-border shadow-[0_4px_24px_rgba(0,0,0,0.4)]"
+            : "border-border hover:border-white/15",
+          isDragOver && "border-primary/50 bg-primary/5 shadow-[0_0_20px_rgba(6,182,212,0.1)]",
         )}
       >
         {/* Drag overlay */}
@@ -304,9 +304,9 @@ export function MessageInput({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-cyan-500/10 border-2 border-dashed border-cyan-500/40"
+              className="absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-primary/10 border-2 border-dashed border-primary/40"
             >
-              <div className="flex items-center gap-2 text-cyan-400">
+              <div className="flex items-center gap-2 text-primary">
                 <Paperclip className="h-5 w-5" />
                 <span className="text-sm font-medium">Drop files here</span>
               </div>
@@ -343,10 +343,10 @@ export function MessageInput({
                     className={cn(
                       "relative group flex items-center gap-2 px-2 py-1.5 rounded-lg border text-xs",
                       pf.status === "error"
-                        ? "border-red-500/30 bg-red-500/10"
+                        ? "border-red-500/30 bg-destructive/10"
                         : pf.status === "uploaded"
-                          ? "border-emerald-500/30 bg-emerald-500/10"
-                          : "border-white/10 bg-white/5",
+                          ? "border-accent-olive/30 bg-accent-olive/10"
+                          : "border-border bg-foreground/5",
                     )}
                   >
                     {/* Thumbnail or icon */}
@@ -357,11 +357,11 @@ export function MessageInput({
                         className="h-8 w-8 rounded object-cover"
                       />
                     ) : (
-                      <FileText className="h-4 w-4 text-white/50" />
+                      <FileText className="h-4 w-4 text-foreground/50" />
                     )}
 
                     {/* Filename */}
-                    <span className="max-w-[120px] truncate text-white/70">
+                    <span className="max-w-[120px] truncate text-foreground/70">
                       {pf.file.name}
                     </span>
 
@@ -369,7 +369,7 @@ export function MessageInput({
                     {pf.status === "uploading" && (
                       <div className="absolute bottom-0 left-0 right-0 h-0.5 rounded-b-lg overflow-hidden">
                         <motion.div
-                          className="h-full bg-cyan-500"
+                          className="h-full bg-primary"
                           initial={{ width: "0%" }}
                           animate={{ width: `${pf.progress}%` }}
                           transition={{ duration: 0.2 }}
@@ -379,10 +379,10 @@ export function MessageInput({
 
                     {/* Status indicator */}
                     {pf.status === "uploading" && (
-                      <Loader2 className="h-3 w-3 animate-spin text-cyan-400" />
+                      <Loader2 className="h-3 w-3 animate-spin text-primary" />
                     )}
                     {pf.status === "error" && (
-                      <span className="text-red-400 text-[10px]" title={pf.error}>
+                      <span className="text-destructive text-[10px]" title={pf.error}>
                         ✕
                       </span>
                     )}
@@ -390,7 +390,7 @@ export function MessageInput({
                     {/* Remove button */}
                     <button
                       onClick={() => removeFile(pf.id)}
-                      className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-white/10 text-white/40 hover:text-white transition-all"
+                      className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-muted text-foreground/40 hover:text-foreground transition-all"
                     >
                       <X className="h-3 w-3" />
                     </button>
@@ -413,9 +413,9 @@ export function MessageInput({
               className={cn(
                 "p-2 rounded-xl transition-all",
                 canAttachMore
-                  ? "bg-white/5 text-white/40 hover:text-white hover:bg-white/10"
-                  : "bg-white/5 text-white/15 cursor-not-allowed",
-                hasFiles && "text-cyan-400 bg-cyan-500/10",
+                  ? "bg-foreground/5 text-foreground/40 hover:text-foreground hover:bg-muted"
+                  : "bg-foreground/5 text-foreground/15 cursor-not-allowed",
+                hasFiles && "text-primary bg-primary/10",
               )}
               title={canAttachMore ? "Attach file" : "Max 5 files"}
             >
@@ -456,8 +456,8 @@ export function MessageInput({
               className={cn(
                 "flex h-9 w-9 items-center justify-center rounded-xl transition-all duration-200",
                 canSend
-                  ? "bg-[var(--synapse-cyan)] text-black shadow-lg shadow-cyan-500/20"
-                  : "bg-white/5 text-white/20 cursor-not-allowed",
+                  ? "bg-[var(--synapse-cyan)] text-black shadow-lg "
+                  : "bg-foreground/5 text-foreground/20 cursor-not-allowed",
               )}
             >
               <AnimatePresence mode="wait">
@@ -496,8 +496,8 @@ export function MessageInput({
               className={cn(
                 "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all",
                 showToolsPanel
-                  ? "bg-white/15 text-white"
-                  : "bg-white/5 text-white/60 hover:bg-white/10 hover:text-white",
+                  ? "bg-white/15 text-foreground"
+                  : "bg-foreground/5 text-foreground/60 hover:bg-muted hover:text-foreground",
               )}
             >
               <Wrench className="h-3.5 w-3.5" />
@@ -512,8 +512,8 @@ export function MessageInput({
               className={cn(
                 "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all",
                 searchEnabled
-                  ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
-                  : "bg-white/5 text-white/60 hover:bg-white/10 hover:text-white",
+                  ? "bg-accent-olive/20 text-accent-olive border border-accent-olive/30"
+                  : "bg-foreground/5 text-foreground/60 hover:bg-muted hover:text-foreground",
               )}
             >
               <Search className="h-3.5 w-3.5" />
@@ -529,14 +529,14 @@ export function MessageInput({
               onClick={() => setShowModeDropdown(!showModeDropdown)}
               className={cn(
                 "flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all",
-                "bg-white/5 hover:bg-white/10 border border-white/10",
+                "bg-foreground/5 hover:bg-muted border border-border",
                 currentMode.color,
               )}
             >
               {currentMode.icon}
-              <span className="text-white">{currentMode.name}</span>
+              <span className="text-foreground">{currentMode.name}</span>
               <ChevronDown className={cn(
-                "h-3.5 w-3.5 text-white/50 transition-transform",
+                "h-3.5 w-3.5 text-foreground/50 transition-transform",
                 showModeDropdown && "rotate-180"
               )} />
             </motion.button>
@@ -549,9 +549,9 @@ export function MessageInput({
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 8, scale: 0.96 }}
                   transition={{ duration: 0.15 }}
-                  className="absolute bottom-full right-0 mb-2 w-64 rounded-xl border border-white/10 bg-[#1a1a1a] p-2 shadow-2xl z-50"
+                  className="absolute bottom-full right-0 mb-2 w-64 rounded-xl border border-border bg-card p-2 shadow-2xl z-50"
                 >
-                  <div className="text-[10px] uppercase tracking-wider text-white/40 px-2 py-1.5 mb-1">
+                  <div className="text-[10px] uppercase tracking-wider text-foreground/40 px-2 py-1.5 mb-1">
                     Select Mode
                   </div>
                   {MODES.map((mode) => (
@@ -562,8 +562,8 @@ export function MessageInput({
                       className={cn(
                         "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all",
                         mode.id === selectedMode
-                          ? "bg-white/10"
-                          : "hover:bg-white/5",
+                          ? "bg-foreground/10"
+                          : "hover:bg-muted/50",
                       )}
                     >
                       <div className={cn("flex-shrink-0", mode.color)}>
@@ -571,16 +571,16 @@ export function MessageInput({
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium text-white">
+                          <span className="text-sm font-medium text-foreground">
                             {mode.name}
                           </span>
                           {mode.hasThinking && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300">
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-accent/20 text-accent/80">
                               Thinking
                             </span>
                           )}
                         </div>
-                        <p className="text-xs text-white/50 truncate">
+                        <p className="text-xs text-foreground/50 truncate">
                           {mode.description}
                         </p>
                       </div>
@@ -605,12 +605,12 @@ export function MessageInput({
             exit={{ opacity: 0, height: 0 }}
             className="overflow-hidden"
           >
-            <div className="rounded-xl border border-white/10 bg-[#0d0d0d] p-3">
+            <div className="rounded-xl border border-border bg-card p-3">
               <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-medium text-white/60">Available Tools</span>
+                <span className="text-xs font-medium text-foreground/60">Available Tools</span>
                 <button 
                   onClick={() => setShowToolsPanel(false)}
-                  className="p-1 rounded hover:bg-white/10 text-white/40"
+                  className="p-1 rounded hover:bg-muted text-foreground/40"
                 >
                   <X className="h-3.5 w-3.5" />
                 </button>
@@ -624,12 +624,12 @@ export function MessageInput({
                 ].map((tool) => (
                   <button
                     key={tool.name}
-                    className="flex items-center gap-2 p-2.5 rounded-lg bg-white/5 hover:bg-white/10 text-left transition-all"
+                    className="flex items-center gap-2 p-2.5 rounded-lg bg-foreground/5 hover:bg-muted text-left transition-all"
                   >
                     <span className="text-lg">{tool.icon}</span>
                     <div>
-                      <div className="text-xs font-medium text-white">{tool.name}</div>
-                      <div className="text-[10px] text-white/40">{tool.desc}</div>
+                      <div className="text-xs font-medium text-foreground">{tool.name}</div>
+                      <div className="text-[10px] text-foreground/40">{tool.desc}</div>
                     </div>
                   </button>
                 ))}

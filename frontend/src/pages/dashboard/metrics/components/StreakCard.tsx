@@ -19,12 +19,12 @@ export interface StreakCardProps {
 
 function getStreakLevel(streakDays: number) {
     if (streakDays >= 100)
-        return { label: "Legendary", color: "from-purple-500 to-pink-500" };
+        return { label: "Legendary", color: "from-primary to-destructive" };
     if (streakDays >= 30)
         return { label: "Master", color: "from-orange-500 to-red-500" };
     if (streakDays >= 7)
         return { label: "Committed", color: "from-yellow-500 to-orange-500" };
-    return { label: "Building", color: "from-slate-500 to-slate-600" };
+    return { label: "Building", color: "from-muted-foreground to-muted-foreground" };
 }
 
 export function StreakCard({ streakDays, longestStreak }: StreakCardProps) {
@@ -43,19 +43,19 @@ export function StreakCard({ streakDays, longestStreak }: StreakCardProps) {
                                 "w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all",
                                 isActive
                                     ? "bg-orange-500/20 border-orange-500/50 shadow-[0_0_15px_rgba(249,115,22,0.3)]"
-                                    : "bg-slate-500/20 border-slate-500/30",
+                                    : "bg-muted border-border",
                             )}
                         >
                             <Flame
                                 className={cn(
                                     "w-5 h-5",
-                                    isActive ? "text-orange-400" : "text-slate-500",
+                                    isActive ? "text-orange-400" : "text-muted-foreground",
                                 )}
                             />
                         </div>
                         <div>
-                            <h3 className="text-sm font-semibold text-white">Study Streak</h3>
-                            <p className="text-xs text-slate-500">{level.label}</p>
+                            <h3 className="text-sm font-semibold text-foreground">Study Streak</h3>
+                            <p className="text-xs text-muted-foreground">{level.label}</p>
                         </div>
                     </div>
 
@@ -79,11 +79,11 @@ export function StreakCard({ streakDays, longestStreak }: StreakCardProps) {
                         )}
                     >
                         {streakDays}
-                        <span className="text-2xl ml-1 text-slate-400">days</span>
+                        <span className="text-2xl ml-1 text-muted-foreground">days</span>
                     </div>
 
                     {/* Progress bar */}
-                    <div className="mt-3 h-2 bg-white/10 rounded-full overflow-hidden">
+                    <div className="mt-3 h-2 bg-foreground/10 rounded-full overflow-hidden">
                         <motion.div
                             initial={{ width: 0 }}
                             animate={{
@@ -96,7 +96,7 @@ export function StreakCard({ streakDays, longestStreak }: StreakCardProps) {
                             )}
                         />
                     </div>
-                    <p className="text-xs text-slate-500 mt-2">
+                    <p className="text-xs text-muted-foreground mt-2">
                         {streakDays % 7 === 0
                             ? "Week complete!"
                             : `${7 - (streakDays % 7)} days to next week`}
@@ -105,12 +105,12 @@ export function StreakCard({ streakDays, longestStreak }: StreakCardProps) {
 
                 {/* Stats */}
                 {longestStreak && (
-                    <div className="flex items-center justify-between pt-3 border-t border-white/5">
-                        <div className="flex items-center gap-2 text-slate-400">
+                    <div className="flex items-center justify-between pt-3 border-t border-border">
+                        <div className="flex items-center gap-2 text-muted-foreground">
                             <Calendar className="w-4 h-4" />
                             <span className="text-xs">Longest Streak</span>
                         </div>
-                        <span className="text-sm font-bold text-white">
+                        <span className="text-sm font-bold text-foreground">
                             {longestStreak} days
                         </span>
                     </div>

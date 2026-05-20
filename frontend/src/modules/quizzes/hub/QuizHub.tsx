@@ -14,7 +14,7 @@ import { useQuizHub } from "./hooks/useQuizHub";
 import { QuizCard } from "./QuizCard";
 import { QuizGenerator } from "./QuizGenerator";
 import type { QuizResponse } from "@/api/generated";
-import { EmptyState, AuroraBackground } from "@/shared/ui";
+import { EmptyState } from "@/shared/ui";
 import { QuizzesSidebar } from "./QuizzesSidebar"; // New Sidebar
 import { QuizDock } from "./QuizDock"; // New Dock
 import { Sheet, SheetContent } from "@/components/ui/sheet"; // For Mobile Sidebar
@@ -28,24 +28,11 @@ export function QuizHub() {
     const [showGenerator, setShowGenerator] = useState(false);
     
     // Layout State
-    const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
     const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
     const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
     const [activeFilter, setActiveFilter] = useState("All");
 
-    // Load sidebar state
-    useEffect(() => {
-        const saved = localStorage.getItem("quizzesSidebarCollapsed");
-        if (saved) {
-            setSidebarCollapsed(JSON.parse(saved));
-        }
-    }, []);
 
-    const toggleSidebar = () => {
-        const newState = !sidebarCollapsed;
-        setSidebarCollapsed(newState);
-        localStorage.setItem("quizzesSidebarCollapsed", JSON.stringify(newState));
-    };
 
     // Filter quizzes
     const filteredQuizzes = (quizzes as QuizResponse[]).filter((quiz) =>
@@ -71,27 +58,20 @@ export function QuizHub() {
     };
 
     return (
-        <AuroraBackground className="fixed inset-0 min-h-screen flex flex-col pt-16" fixed>
+        <div className="fixed inset-0 min-h-screen flex flex-col pt-16 bg-background">
             <style>{`
                 .scrollbar-hide::-webkit-scrollbar { display: none; }
                 .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
             `}</style>
 
             <div className="flex flex-1 overflow-hidden">
-                {/* Desktop Sidebar */}
-                <div
-                    className={cn(
-                        "hidden lg:block transition-all duration-300 ease-in-out relative z-10 py-4 pl-3",
-                        sidebarCollapsed ? "w-0 p-0" : "w-[17rem]",
-                    )}
-                >
+                {/* Desktop Sidebar — SidebarShell handles collapse */}
+                <div className="hidden lg:flex transition-all duration-300 ease-in-out relative z-10">
                     <QuizzesSidebar
                         activeFilter={activeFilter}
                         onFilterChange={setActiveFilter}
                         totalQuizzes={quizzes?.length || 0}
                         onNewQuiz={() => setShowGenerator(true)}
-                        className="w-full h-full rounded-2xl"
-                        isCollapsed={sidebarCollapsed}
                     />
                 </div>
 
@@ -99,7 +79,7 @@ export function QuizHub() {
                 <Sheet open={mobileSidebarOpen} onOpenChange={setMobileSidebarOpen}>
                     <SheetContent
                         side="left"
-                        className="w-64 p-0 border-none [&>button]:hidden bg-[#050505]/95 backdrop-blur-xl"
+                        className="w-64 p-0 border-none [&>button]:hidden bg-background/95 backdrop-blur-xl"
                     >
                         <QuizzesSidebar
                             activeFilter={activeFilter}
@@ -118,16 +98,8 @@ export function QuizHub() {
                         <Button
                             variant="ghost"
                             size="icon"
-                            onClick={toggleSidebar}
-                            className="hidden lg:flex pointer-events-auto hover:bg-white/10 text-slate-400 hover:text-white rounded-xl transition-colors"
-                        >
-                            <PanelLeftIcon className="size-5" />
-                        </Button>
-                        <Button
-                            variant="ghost"
-                            size="icon"
                             onClick={() => setMobileSidebarOpen(true)}
-                            className="lg:hidden pointer-events-auto hover:bg-white/10 text-slate-400 hover:text-white rounded-xl transition-colors"
+                            className="lg:hidden pointer-events-auto hover:bg-muted text-muted-foreground hover:text-foreground rounded-xl transition-colors"
                         >
                             <MenuIcon className="size-5" />
                         </Button>
@@ -137,10 +109,10 @@ export function QuizHub() {
                          <div className="max-w-[1600px] mx-auto">
                             <div className="mb-8 pt-2 pl-12 lg:pl-0">
                                 {/* Page Header */}
-                                <h1 className="text-3xl font-bold text-white mb-2 tracking-tight">
+                                <h1 className="text-3xl font-bold text-foreground mb-2 tracking-tight">
                                     {activeFilter === "All" ? "All Quizzes" : activeFilter}
                                 </h1>
-                                <p className="text-slate-400">Test your knowledge and track your progress.</p>
+                                <p className="text-muted-foreground">Test your knowledge and track your progress.</p>
                             </div>
 
                             {/* Loading State */}
@@ -149,7 +121,7 @@ export function QuizHub() {
                                     {[...Array(8)].map((_, i) => (
                                         <div
                                             key={i}
-                                            className="h-64 rounded-2xl bg-white/[0.02] border border-white/[0.04] animate-pulse"
+                                            className="h-64 rounded-2xl bg-foreground/5 border border-border animate-pulse"
                                         />
                                     ))}
                                 </div>
@@ -229,6 +201,6 @@ export function QuizHub() {
                     </motion.div>
                 )}
             </AnimatePresence>
-        </AuroraBackground>
+        </div>
     );
 }

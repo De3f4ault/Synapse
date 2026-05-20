@@ -45,7 +45,7 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({
         <div className={cn('group relative rounded-lg overflow-hidden not-prose', className)}>
             {/* Header with language/filename and copy button */}
             <div className="flex items-center justify-between px-4 py-2 bg-zinc-800 border-b border-zinc-700">
-                <div className="flex items-center gap-2 text-sm text-zinc-400">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <FileCode className="size-4" />
                     <span className="font-mono">
                         {filename || normalizedLang || 'code'}
@@ -57,8 +57,8 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({
                     className={cn(
                         'flex items-center gap-1.5 px-2 py-1 rounded text-xs transition-all',
                         copied
-                            ? 'bg-green-500/20 text-green-400'
-                            : 'bg-zinc-700 text-zinc-300 hover:bg-zinc-600 hover:text-white'
+                            ? 'bg-accent-olive/20 text-accent-olive'
+                            : 'bg-zinc-700 text-foreground/80 hover:bg-zinc-600 hover:text-foreground'
                     )}
                     aria-label={copied ? 'Copied!' : 'Copy code'}
                 >

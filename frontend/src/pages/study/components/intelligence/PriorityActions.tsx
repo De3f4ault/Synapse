@@ -22,7 +22,7 @@ export function PriorityActions({ onExecuteAction, limit = 3 }: PriorityActionsP
     // Loading state
     if (isLoading) {
         return (
-            <div className="flex items-center justify-center py-8 text-slate-500">
+            <div className="flex items-center justify-center py-8 text-muted-foreground">
                 <Loader2 size={20} className="animate-spin mr-2" />
                 <span className="text-sm">Analyzing your learning state...</span>
             </div>
@@ -32,7 +32,7 @@ export function PriorityActions({ onExecuteAction, limit = 3 }: PriorityActionsP
     // Error state
     if (error) {
         return (
-            <div className="flex items-center justify-center py-8 text-slate-500">
+            <div className="flex items-center justify-center py-8 text-muted-foreground">
                 <AlertCircle size={20} className="mr-2" />
                 <span className="text-sm">Could not load recommendations</span>
             </div>
@@ -44,7 +44,7 @@ export function PriorityActions({ onExecuteAction, limit = 3 }: PriorityActionsP
         return (
             <div className="text-center py-8">
                 <div className="text-4xl mb-2">✨</div>
-                <p className="text-slate-400 text-sm">
+                <p className="text-muted-foreground text-sm">
                     You're all caught up! No urgent actions right now.
                 </p>
             </div>
@@ -80,11 +80,11 @@ export function PriorityActions({ onExecuteAction, limit = 3 }: PriorityActionsP
             {/* Section Header */}
             <div className="flex items-center justify-between">
                 <div>
-                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                        <span className="inline-block w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                    <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
+                        <span className="inline-block w-2 h-2 rounded-full bg-destructive animate-pulse" />
                         What Matters Now
                     </h3>
-                    <p className="text-xs text-slate-500 uppercase tracking-wider mt-1">
+                    <p className="text-xs text-muted-foreground uppercase tracking-wider mt-1">
                         {data.recommended_actions.length} priority action{data.recommended_actions.length !== 1 ? 's' : ''}
                     </p>
                 </div>

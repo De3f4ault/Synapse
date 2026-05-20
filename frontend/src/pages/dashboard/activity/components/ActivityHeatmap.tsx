@@ -27,22 +27,22 @@ export function ActivityHeatmap({ data, stats, isLoading }: ActivityHeatmapProps
 
     if (isLoading) {
         return (
-            <div className="dashboard-glass rounded-2xl p-6 h-full flex items-center justify-center">
-                <div className="w-8 h-8 border-2 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin" />
+            <div className="bg-card border border-border rounded-2xl p-6 h-full flex items-center justify-center">
+                <div className="w-8 h-8 border-2 border-primary/30 border-t-cyan-500 rounded-full animate-spin" />
             </div>
         );
     }
 
     return (
-        <div className="dashboard-glass rounded-2xl p-6 h-full flex flex-col relative overflow-hidden">
+        <div className="bg-card border border-border rounded-2xl p-6 h-full flex flex-col relative overflow-hidden">
             {/* Header */}
             <div className="mb-6 relative z-10 flex justify-between items-start">
                 <div>
-                    <h3 className="text-sm font-bold text-slate-200 flex items-center gap-2">
+                    <h3 className="text-sm font-bold text-foreground/70 flex items-center gap-2">
                         Consistency Matrix
-                        <Info className="w-3 h-3 text-slate-600" />
+                        <Info className="w-3 h-3 text-muted-foreground" />
                     </h3>
-                    <p className="text-[10px] text-slate-500 uppercase tracking-wider mt-1">
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider mt-1">
                         Temporal Habit Tracking
                     </p>
                 </div>
@@ -76,15 +76,15 @@ export function ActivityHeatmap({ data, stats, isLoading }: ActivityHeatmapProps
                                 </TooltipTrigger>
                                 <TooltipContent
                                     side="top"
-                                    className="bg-black/90 border-white/10 text-xs"
+                                    className="bg-black/90 border-border text-xs"
                                 >
-                                    <p className="font-bold text-emerald-400">
+                                    <p className="font-bold text-accent-olive">
                                         {day.date ? formatDate(new Date(day.date), {
                                             month: "short",
                                             day: "numeric",
                                         }) : "No date"}
                                     </p>
-                                    <p className="text-slate-400">{day.activity_count} Ops</p>
+                                    <p className="text-muted-foreground">{day.activity_count} Ops</p>
                                 </TooltipContent>
                             </Tooltip>
 
@@ -93,25 +93,25 @@ export function ActivityHeatmap({ data, stats, isLoading }: ActivityHeatmapProps
                 </div>
 
                 {/* Legend */}
-                <div className="flex justify-between items-center mt-6 pt-4 border-t border-white/5">
-                    <span className="text-[9px] text-slate-500 font-mono">
+                <div className="flex justify-between items-center mt-6 pt-4 border-t border-border">
+                    <span className="text-[9px] text-muted-foreground font-mono">
                         ACTIVITY_DENSITY
                     </span>
                     <div className="flex items-center gap-2">
-                        <span className="text-[9px] text-slate-600">IDLE</span>
+                        <span className="text-[9px] text-muted-foreground">IDLE</span>
                         <div className="flex gap-1">
-                            <div className="w-2 h-2 rounded-sm bg-white/5" />
+                            <div className="w-2 h-2 rounded-sm bg-foreground/5" />
                             <div className="w-2 h-2 rounded-sm bg-emerald-900/50" />
                             <div className="w-2 h-2 rounded-sm bg-emerald-600" />
-                            <div className="w-2 h-2 rounded-sm bg-emerald-400 shadow-[0_0_8px_rgba(10,185,129,0.5)]" />
+                            <div className="w-2 h-2 rounded-sm bg-accent-olive shadow-[0_0_8px_rgba(10,185,129,0.5)]" />
                         </div>
-                        <span className="text-[9px] text-slate-600">PEAK</span>
+                        <span className="text-[9px] text-muted-foreground">PEAK</span>
                     </div>
                 </div>
             </div>
 
             {/* Decorative Background Elements */}
-            <div className="absolute -right-10 -bottom-10 w-32 h-32 bg-emerald-500/5 blur-[50px] rounded-full pointer-events-none" />
+            <div className="absolute -right-10 -bottom-10 w-32 h-32 bg-accent-olive/5 blur-[50px] rounded-full pointer-events-none" />
         </div >
     );
 }
@@ -127,12 +127,12 @@ function getActivityLevel(count: number): number {
 
 function getLevelColor(level: number): string {
     switch (level) {
-        case 0: return "bg-white/5";
+        case 0: return "bg-foreground/5";
         case 1: return "bg-emerald-900/40";
         case 2: return "bg-emerald-700/60";
-        case 3: return "bg-emerald-500";
-        case 4: return "bg-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.4)]";
-        default: return "bg-white/5";
+        case 3: return "bg-accent-olive";
+        case 4: return "bg-accent-olive shadow-[0_0_10px_rgba(16,185,129,0.4)]";
+        default: return "bg-foreground/5";
     }
 }
 

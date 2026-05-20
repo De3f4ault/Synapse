@@ -9,34 +9,46 @@ export type UserStatistics = {
     /**
      * Total flashcards
      */
-    total_cards: number;
+    total_cards?: number;
     /**
      * Cards due for review
      */
-    due_cards: number;
+    due_cards?: number;
     /**
      * Total decks
      */
-    total_decks: number;
+    total_decks?: number;
     /**
      * Total notes
      */
-    total_notes: number;
+    total_notes?: number;
     /**
      * Total documents
      */
-    total_documents: number;
+    total_documents?: number;
     /**
      * Current study streak in days
      */
-    study_streak: number;
+    study_streak_days?: number;
     /**
-     * Total study time in seconds
+     * Reviews completed today
      */
-    total_study_time: number;
+    reviews_today?: number;
+    /**
+     * Total reviews completed
+     */
+    total_reviews?: number;
     /**
      * Overall accuracy rate
      */
     overall_accuracy?: (number | null);
+    /**
+     * Total study time in minutes
+     */
+    total_study_time_minutes?: number;
+    /**
+     * Total study sessions
+     */
+    study_sessions_count?: number;
 };
 

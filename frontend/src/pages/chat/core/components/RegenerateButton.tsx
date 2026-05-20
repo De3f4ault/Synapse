@@ -35,7 +35,7 @@ export function RegenerateButton({
                 onClick={onRegenerate}
                 disabled={isLoading}
                 className={cn(
-                    "p-1 rounded hover:bg-white/10 transition-colors text-muted-foreground hover:text-white",
+                    "p-1 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground",
                     isLoading && "opacity-50 cursor-not-allowed",
                     className
                 )}
@@ -53,7 +53,7 @@ export function RegenerateButton({
             onClick={onRegenerate}
             disabled={isLoading}
             className={cn(
-                'gap-1.5 text-muted-foreground hover:text-white',
+                'gap-1.5 text-muted-foreground hover:text-foreground',
                 className
             )}
         >

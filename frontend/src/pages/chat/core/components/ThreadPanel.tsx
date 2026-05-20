@@ -23,9 +23,42 @@ import { ThreadListItem } from './ThreadListItem';
 import { ChatMessage } from './ChatMessage';
 import { ChatInputBox } from './ChatInputBox';
 import { useThreads, useCreateThread, useThreadMessages } from '../hooks/useThreads';
-import { getWebSocketManager } from '@/api/websocket/manager';
 
 import type { ChatMessageResponse } from '@/api/generated';
+import type { UIMessage } from 'ai';
+
+// ── Adapter: ChatMessageResponse → UIMessage ──────────────────────────────────
+// ThreadPanel fetches messages from its own API (not from useSynapseChat),
+// so we adapt them here rather than threading useSynapseChat into ThreadPanel.
+function toUIMessage(msg: ChatMessageResponse): UIMessage {
+  const isUser = msg.role === 'user';
+  const content = msg.content || '';
+
+  // Parse stored <think> tags into proper reasoning parts
+  const parts: UIMessage['parts'] = [];
+  if (!isUser) {
+    const thinkMatch = content.match(/^<think>\n?([\s\S]*?)\n?<\/think>\s*([\s\S]*)$/);
+    if (thinkMatch) {
+      if (thinkMatch[1]?.trim()) parts.push({ type: 'reasoning', text: thinkMatch[1].trim() } as any);
+      if (thinkMatch[2]?.trim()) parts.push({ type: 'text', text: thinkMatch[2].trim() } as any);
+    } else {
+      parts.push({ type: 'text', text: content } as any);
+    }
+  } else {
+    parts.push({ type: 'text', text: content } as any);
+  }
+
+  return {
+    id: String(msg.id),
+    role: msg.role as 'user' | 'assistant',
+    parts,
+    metadata: {
+      dbId: msg.id,
+      sessionId: msg.session_id,
+      groundingSources: (msg as any).grounding_sources ?? [],
+    },
+  } as UIMessage;
+}
 
 interface ThreadPanelProps {
     sessionId: number;
@@ -127,19 +160,19 @@ export function ThreadPanel({ sessionId, panelWidth, onResize }: ThreadPanelProp
                     <div
                         onMouseDown={handleMouseDown}
                         className="absolute left-0 top-0 bottom-0 w-1 cursor-col-resize z-10
-                                   hover:bg-cyan-500/30 active:bg-cyan-500/50 transition-colors
+                                   hover:bg-primary/30 active:bg-primary/50 transition-colors
                                    group"
                     >
                         <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-full
-                                        bg-zinc-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                        bg-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                     </div>
 
-                    <div className="h-full flex flex-col bg-[#0a0a0e] border-l border-white/[0.06]" style={{ width: panelWidth }}>
+                    <div className="h-full flex flex-col bg-background border-l border-border" style={{ width: panelWidth }}>
                         {/* Header */}
-                        <div className="flex items-center justify-between px-3 py-2.5 border-b border-white/[0.06]">
+                        <div className="flex items-center justify-between px-3 py-2.5 border-b border-border">
                             <div className="flex items-center gap-2">
-                                <MessageSquarePlus className="size-3.5 text-cyan-400" />
-                                <h2 className="font-medium text-[13px] text-zinc-200">
+                                <MessageSquarePlus className="size-3.5 text-primary" />
+                                <h2 className="font-medium text-[13px] text-foreground/70">
                                     {isInThread && context.thread?.title
                                         ? context.thread.title
                                         : 'Threads'}
@@ -150,7 +183,7 @@ export function ThreadPanel({ sessionId, panelWidth, onResize }: ThreadPanelProp
                                     e.stopPropagation();
                                     closePanel();
                                 }}
-                                className="size-7 flex items-center justify-center rounded-full text-zinc-500 hover:text-white hover:bg-white/10 transition-colors relative z-20"
+                                className="size-7 flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors relative z-20"
                                 aria-label="Close thread panel"
                             >
                                 <X className="size-3.5" />
@@ -159,10 +192,10 @@ export function ThreadPanel({ sessionId, panelWidth, onResize }: ThreadPanelProp
 
                         {/* Back to threads list */}
                         {isInThread && (
-                            <div className="px-3 py-1.5 border-b border-white/[0.04]">
+                            <div className="px-3 py-1.5 border-b border-border">
                                 <button
                                     onClick={switchToMain}
-                                    className="flex items-center gap-1.5 text-xs text-cyan-400 hover:text-cyan-300 transition-colors"
+                                    className="flex items-center gap-1.5 text-xs text-primary hover:text-primary/80 transition-colors"
                                 >
                                     <ArrowLeft className="size-3" />
                                     Back to threads list
@@ -176,11 +209,11 @@ export function ThreadPanel({ sessionId, panelWidth, onResize }: ThreadPanelProp
                         ) : (
                             <>
                                 {/* New Thread button — compact */}
-                                <div className="px-2 py-2 border-b border-white/[0.04]">
+                                <div className="px-2 py-2 border-b border-border">
                                     <Button
                                         onClick={handleCreateThread}
                                         disabled={createThread.isPending}
-                                        className="w-full gap-1.5 bg-cyan-600/80 hover:bg-cyan-500/80 text-xs h-7 rounded-md"
+                                        className="w-full gap-1.5 bg-primary/80 hover:bg-primary/80 text-xs h-7 rounded-md"
                                     >
                                         {createThread.isPending ? (
                                             <Loader2 className="size-3 animate-spin" />
@@ -199,9 +232,9 @@ export function ThreadPanel({ sessionId, panelWidth, onResize }: ThreadPanelProp
                                         </div>
                                     ) : threads.length === 0 ? (
                                         <div className="text-center py-12 px-4">
-                                            <MessageSquarePlus className="size-8 mx-auto text-zinc-600 mb-3" />
-                                            <p className="text-sm text-zinc-500">Start a Thread</p>
-                                            <p className="text-xs text-zinc-600 mt-1">
+                                            <MessageSquarePlus className="size-8 mx-auto text-muted-foreground mb-3" />
+                                            <p className="text-sm text-muted-foreground">Start a Thread</p>
+                                            <p className="text-xs text-muted-foreground mt-1">
                                                 Reply to continue the conversation in this thread.
                                             </p>
                                         </div>
@@ -226,19 +259,21 @@ export function ThreadPanel({ sessionId, panelWidth, onResize }: ThreadPanelProp
     );
 }
 
-// ThreadConversation - Uses ChatMessage + ChatInputBox with its own WS streaming
+// ThreadConversation - Uses ChatMessage + ChatInputBox with SSE streaming
 // ============================================================================
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
 
 function ThreadConversation({ threadId }: { threadId: number }) {
     const { data: messagesData, isLoading } = useThreadMessages(threadId);
     const [threadMessage, setThreadMessage] = useState('');
-    const [threadMode, setThreadMode] = useState('direct');
     const [isSending, setIsSending] = useState(false);
     const [threadStreaming, setThreadStreaming] = useState(false);
     const [threadStreamContent, setThreadStreamContent] = useState('');
     const [threadStreamThinking, setThreadStreamThinking] = useState('');
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const queryClient = useQueryClient();
+    const abortRef = useRef<AbortController | null>(null);
 
     // Get session ID from the thread store context
     const context = useThreadStore((s) => s.context);
@@ -246,93 +281,100 @@ function ThreadConversation({ threadId }: { threadId: number }) {
         ? context.thread.sessionId
         : 0;
 
-    // ── WebSocket subscription for thread-scoped streaming ──
-    // Only processes events that carry OUR thread_id
-    useEffect(() => {
-        if (!sessionId || !threadId) return;
-
-        const manager = getWebSocketManager();
-        const channel = `chat:${sessionId}`;
-
-        const handleThreadEvent = (msg: any) => {
-            const eventType = msg.type || msg.event;
-            const eventData = msg.data || msg;
-
-            // Only process events for THIS thread
-            if (eventData.thread_id !== threadId) return;
-
-            switch (eventType) {
-                case 'token':
-                    setThreadStreaming(true);
-                    setThreadStreamContent(prev => prev + (eventData.text || ''));
-                    break;
-                case 'thinking':
-                    setThreadStreaming(true);
-                    setThreadStreamThinking(prev => prev + (eventData.text || ''));
-                    break;
-                case 'complete':
-                    setThreadStreaming(false);
-                    // Refetch thread messages to get the saved assistant message
-                    setTimeout(() => {
-                        queryClient.invalidateQueries({
-                            queryKey: ['threads', 'messages', threadId],
-                        });
-                        setThreadStreamContent('');
-                        setThreadStreamThinking('');
-                    }, 100);
-                    break;
-                case 'error':
-                    setThreadStreaming(false);
-                    setThreadStreamContent('');
-                    setThreadStreamThinking('');
-                    break;
-            }
-        };
-
-        const unsub = manager.subscribe(channel, handleThreadEvent);
-        return () => unsub();
-    }, [sessionId, threadId, queryClient]);
-
     // Auto-scroll when messages or streaming content change
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messagesData, threadStreamContent]);
 
-    const handleSend = () => {
+    const handleSend = useCallback(async () => {
         const text = threadMessage.trim();
         if (!text || isSending || !sessionId) return;
 
-        const manager = getWebSocketManager();
-        if (!manager.isConnected()) {
-            console.error('[Thread] WebSocket not connected');
-            return;
-        }
-
         setThreadMessage('');
         setIsSending(true);
+        setThreadStreaming(true);
+        setThreadStreamContent('');
+        setThreadStreamThinking('');
+
+        const token = (await import('@/stores/authStore')).useAuthStore.getState().token;
+        const controller = new AbortController();
+        abortRef.current = controller;
 
         try {
-            const channel = `chat:${sessionId}`;
-            manager.send({
-                type: 'thread_message',
-                channel,
-                threadId,
-                content: text,
-            });
+            // Send thread message via SSE endpoint (reuses the same protocol)
+            const res = await fetch(
+                `${API_BASE}/api/v1/chat/sessions/${sessionId}/stream`,
+                {
+                    method: 'POST',
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        messages: [{
+                            role: 'user',
+                            parts: [{ type: 'text', text }],
+                        }],
+                        mode: 'direct',
+                        thread_id: threadId,
+                    }),
+                    signal: controller.signal,
+                }
+            );
 
-            // Refetch to show optimistic user message
+            if (!res.ok) {
+                throw new Error(`Thread stream failed: ${res.status}`);
+            }
+
+            // Read SSE stream
+            const reader = res.body?.getReader();
+            const decoder = new TextDecoder();
+
+            if (reader) {
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    const chunk = decoder.decode(value, { stream: true });
+                    const lines = chunk.split('\n');
+
+                    for (const line of lines) {
+                        if (!line.startsWith('data: ')) continue;
+                        const data = line.slice(6).trim();
+                        if (data === '[DONE]') continue;
+
+                        try {
+                            const event = JSON.parse(data);
+                            if (event.type === 'text-delta') {
+                                setThreadStreamContent(prev => prev + (event.delta || ''));
+                            } else if (event.type === 'reasoning') {
+                                setThreadStreamThinking(prev => prev + (event.delta || event.text || ''));
+                            }
+                        } catch {
+                            // Skip malformed events
+                        }
+                    }
+                }
+            }
+        } catch (error) {
+            if ((error as Error).name !== 'AbortError') {
+                console.error('[Thread] Stream failed:', error);
+            }
+        } finally {
+            setThreadStreaming(false);
+            setIsSending(false);
+            abortRef.current = null;
+
+            // Refresh thread messages from server
             setTimeout(() => {
                 queryClient.invalidateQueries({
                     queryKey: ['threads', 'messages', threadId],
                 });
-                setIsSending(false);
-            }, 300);
-        } catch (error) {
-            console.error('Failed to send thread message:', error);
-            setThreadMessage(text);
-            setIsSending(false);
+                setThreadStreamContent('');
+                setThreadStreamThinking('');
+            }, 100);
         }
-    };
+    }, [threadMessage, isSending, sessionId, threadId, queryClient]);
 
     const messages: ChatMessageResponse[] = Array.isArray(messagesData)
         ? messagesData
@@ -345,13 +387,13 @@ function ThreadConversation({ threadId }: { threadId: number }) {
                 <div className="max-w-3xl mx-auto px-4 py-4 space-y-2">
                     {isLoading ? (
                         <div className="flex items-center justify-center py-12">
-                            <Loader2 className="size-5 animate-spin text-zinc-500" />
+                            <Loader2 className="size-5 animate-spin text-muted-foreground" />
                         </div>
                     ) : messages.length === 0 && !threadStreaming ? (
                         <div className="text-center py-16 px-4">
-                            <MessageSquarePlus className="size-10 mx-auto text-zinc-700 mb-3" />
-                            <p className="text-sm text-zinc-500">Start the conversation</p>
-                            <p className="text-xs text-zinc-600 mt-1">
+                            <MessageSquarePlus className="size-10 mx-auto text-muted-foreground mb-3" />
+                            <p className="text-sm text-muted-foreground">Start the conversation</p>
+                            <p className="text-xs text-muted-foreground mt-1">
                                 Messages in this thread stay separate from the main chat.
                             </p>
                         </div>
@@ -360,7 +402,7 @@ function ThreadConversation({ threadId }: { threadId: number }) {
                             {messages.map((msg) => (
                                 <ChatMessage
                                     key={msg.id}
-                                    message={msg}
+                                    message={toUIMessage(msg)}
                                 />
                             ))}
 
@@ -368,18 +410,17 @@ function ThreadConversation({ threadId }: { threadId: number }) {
                             {threadStreaming && threadStreamContent && (
                                 <ChatMessage
                                     message={{
-                                        id: -1,
-                                        session_id: sessionId,
-                                        role: 'assistant' as const,
-                                        content: threadStreamContent,
-                                        tokens: 0,
-                                        model_used: null,
-                                        function_calls: null,
-                                        grounding_sources: null,
-                                        created_at: new Date().toISOString(),
-                                    }}
+                                        id: 'thread-streaming',
+                                        role: 'assistant',
+                                        parts: [
+                                            ...(threadStreamThinking
+                                                ? [{ type: 'reasoning', text: threadStreamThinking } as any]
+                                                : []),
+                                            { type: 'text', text: threadStreamContent } as any,
+                                        ],
+                                        metadata: { sessionId },
+                                    } as UIMessage}
                                     isStreaming={true}
-                                    thinking={threadStreamThinking}
                                 />
                             )}
                         </>
@@ -397,12 +438,8 @@ function ThreadConversation({ threadId }: { threadId: number }) {
                     isStreaming={threadStreaming}
                     placeholder="Reply to thread..."
                     minimal
-                    mode={threadMode}
-                    onModeChange={setThreadMode}
                 />
             </div>
         </>
     );
 }
-
-

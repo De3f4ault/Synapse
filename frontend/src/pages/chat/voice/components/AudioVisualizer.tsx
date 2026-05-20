@@ -32,20 +32,20 @@ export const AudioVisualizer: React.FC<AudioVisualizerProps> = ({
                 // AI speaking - Purple/Violet
                 return {
                     bg: "from-purple-600/20 to-violet-600/20",
-                    border: "border-purple-500/50",
+                    border: "border-accent/50",
                     glow: "shadow-purple-500/30",
                     ring: "ring-purple-400/40",
-                    icon: "text-purple-400",
+                    icon: "text-accent",
                 };
             case "listening":
             case "connected":
                 // User speaking/ready - Cyan/Teal
                 return {
                     bg: "from-cyan-600/20 to-teal-600/20",
-                    border: "border-cyan-500/50",
+                    border: "border-primary/50",
                     glow: "shadow-cyan-500/30",
                     ring: "ring-cyan-400/40",
-                    icon: "text-cyan-400",
+                    icon: "text-primary",
                 };
             case "connecting":
                 // Connecting - Neutral gray
@@ -60,16 +60,16 @@ export const AudioVisualizer: React.FC<AudioVisualizerProps> = ({
                 // Error - Red
                 return {
                     bg: "from-red-600/20 to-rose-600/20",
-                    border: "border-red-500/50",
+                    border: "border-destructive/50",
                     glow: "shadow-red-500/30",
                     ring: "ring-red-400/40",
-                    icon: "text-red-400",
+                    icon: "text-destructive",
                 };
             default:
                 // Idle - Dim
                 return {
                     bg: "from-gray-700/10 to-slate-700/10",
-                    border: "border-white/10",
+                    border: "border-border",
                     glow: "shadow-white/5",
                     ring: "ring-white/10",
                     icon: "text-gray-500",
@@ -181,13 +181,13 @@ export const AudioVisualizer: React.FC<AudioVisualizerProps> = ({
                     className={cn(
                         "w-3 h-3 rounded-full",
                         state === "speaking"
-                            ? "bg-purple-500 animate-pulse"
+                            ? "bg-accent animate-pulse"
                             : state === "listening" || state === "connected"
-                                ? "bg-cyan-500"
+                                ? "bg-primary"
                                 : state === "connecting"
                                     ? "bg-yellow-500 animate-pulse"
                                     : state === "error"
-                                        ? "bg-red-500"
+                                        ? "bg-destructive"
                                         : "bg-gray-500"
                     )}
                 />

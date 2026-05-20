@@ -85,7 +85,7 @@ export const NodeDetailsPanel: React.FC<NodeDetailsPanelProps> = ({
 
   return (
     <div className={`w-80 absolute top-6 right-6 ${className}`}>
-      <GlassCard className="p-5 backdrop-blur-3xl bg-black/60 border border-white/10 relative overflow-hidden group">
+      <GlassCard className="p-5 backdrop-blur-xl bg-background/80 border border-border relative overflow-hidden group">
         {/* Decorative background glow */}
         <div
           className="absolute -top-10 -right-10 w-40 h-40 rounded-full blur-[80px] opacity-20 pointer-events-none transition-opacity duration-500 group-hover:opacity-30"
@@ -102,38 +102,38 @@ export const NodeDetailsPanel: React.FC<NodeDetailsPanelProps> = ({
               <Icon className="w-6 h-6" />
             </div>
             <div>
-              <h3 className="text-lg font-bold text-white leading-tight line-clamp-2">
+              <h3 className="text-lg font-bold text-foreground leading-tight line-clamp-2">
                 {node.label || `${config?.label || "Node"} ${node.entity_id}`}
               </h3>
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1 block">
+              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1 block">
                 {node.type}
               </span>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Connection Stats */}
-        <div className="space-y-3 mb-5 relative z-10 p-4 rounded-xl bg-white/5 border border-white/5">
+        <div className="space-y-3 mb-5 relative z-10 p-4 rounded-xl bg-foreground/5 border border-border">
           <div className="flex items-center justify-between text-sm">
-            <div className="flex items-center gap-2 text-slate-300">
-              <LinkIcon className="w-4 h-4 text-slate-500" />
+            <div className="flex items-center gap-2 text-foreground/80">
+              <LinkIcon className="w-4 h-4 text-muted-foreground" />
               <span>Connections</span>
             </div>
-            <span className="font-mono text-white font-bold">
+            <span className="font-mono text-foreground font-bold">
               {totalConnections}
             </span>
           </div>
 
           {linkTypes.length > 0 && (
             <div className="flex items-center justify-between text-sm">
-              <div className="flex items-center gap-2 text-slate-300">
-                <Share2 className="w-4 h-4 text-slate-500" />
+              <div className="flex items-center gap-2 text-foreground/80">
+                <Share2 className="w-4 h-4 text-muted-foreground" />
                 <span>Link Types</span>
               </div>
               <div className="flex gap-1.5">
@@ -155,11 +155,11 @@ export const NodeDetailsPanel: React.FC<NodeDetailsPanelProps> = ({
 
           {strongest && (
             <div className="flex items-center justify-between text-sm">
-              <div className="flex items-center gap-2 text-slate-300">
-                <Zap className="w-4 h-4 text-amber-500" />
+              <div className="flex items-center gap-2 text-foreground/80">
+                <Zap className="w-4 h-4 text-warning" />
                 <span>Strongest</span>
               </div>
-              <span className="font-mono text-emerald-400 font-bold">
+              <span className="font-mono text-accent-olive font-bold">
                 {Math.round(strongest.strength * 100)}%
               </span>
             </div>
@@ -169,7 +169,7 @@ export const NodeDetailsPanel: React.FC<NodeDetailsPanelProps> = ({
         {/* Related Entities */}
         {relatedEntities.length > 0 && (
           <div className="mb-5 relative z-10">
-            <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2 px-1">
+            <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2 px-1">
               Related
             </h4>
             <div className="space-y-1.5">
@@ -179,7 +179,7 @@ export const NodeDetailsPanel: React.FC<NodeDetailsPanelProps> = ({
                 return (
                   <div
                     key={`${rel.type}-${rel.id}-${i}`}
-                    className="flex items-center gap-2.5 p-2 rounded-lg hover:bg-white/5 transition-colors cursor-pointer group/rel"
+                    className="flex items-center gap-2.5 p-2 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer group/rel"
                     onClick={() => {
                       if (relConfig?.path) {
                         navigate(`${relConfig.path}/${rel.id}`);
@@ -196,7 +196,7 @@ export const NodeDetailsPanel: React.FC<NodeDetailsPanelProps> = ({
                       <RelIcon className="w-3.5 h-3.5" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <span className="text-xs text-slate-300 group-hover/rel:text-white transition-colors">
+                      <span className="text-xs text-foreground/80 group-hover/rel:text-foreground transition-colors">
                         {relConfig?.label || rel.type} #{rel.id}
                       </span>
                     </div>
@@ -209,7 +209,7 @@ export const NodeDetailsPanel: React.FC<NodeDetailsPanelProps> = ({
                     >
                       {rel.linkType}
                     </span>
-                    <ArrowRight className="w-3 h-3 text-slate-600 opacity-0 group-hover/rel:opacity-100 transition-opacity" />
+                    <ArrowRight className="w-3 h-3 text-muted-foreground opacity-0 group-hover/rel:opacity-100 transition-opacity" />
                   </div>
                 );
               })}
@@ -220,14 +220,14 @@ export const NodeDetailsPanel: React.FC<NodeDetailsPanelProps> = ({
         {/* Actions */}
         <div className="flex gap-3 relative z-10">
           <button
-            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black font-bold text-sm transition-all shadow-lg shadow-cyan-500/20"
+            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-primary hover:bg-primary text-black font-bold text-sm transition-all shadow-lg "
             onClick={handleOpen}
           >
             <span>Open</span>
             <ExternalLink className="w-4 h-4" />
           </button>
           <button
-            className="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white font-medium text-sm transition-colors flex items-center gap-2"
+            className="px-4 py-2.5 rounded-xl bg-foreground/5 hover:bg-muted border border-border text-foreground font-medium text-sm transition-colors flex items-center gap-2"
             onClick={() => {
               console.log("Focus on node", node.id);
             }}

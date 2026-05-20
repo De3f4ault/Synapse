@@ -1,10 +1,11 @@
 .PHONY: help install install-dev venv setup dev dev-bg dev-stop shell db-shell \
-	migrate migrate-create migrate-down migrate-history init-db seed reset-db \
+	migrate migrate-safe migrate-create migrate-down migrate-history init-db seed reset-db \
 	format lint ruff check test test-cov \
 	clean clean-all openapi openapi-serve logs ps \
 	supervisor-start supervisor-stop supervisor-status supervisor-restart \
 	prod-start prod-stop prod-status health \
-	celery-io celery-cpu celery-all backfill-embeddings
+	replica-start replica-stop replica-status \
+	celery-io celery-cpu celery-all download-models backfill-embeddings
 
 # ============================================================================
 # HELP
@@ -93,8 +94,27 @@ db-shell: ## PostgreSQL database shell
 # DATABASE & MIGRATIONS
 # ============================================================================
 
-migrate: ## Run all pending migrations
+migrate: ## Run all pending migrations against Primary (standard path)
 	alembic upgrade head
+
+migrate-safe: ## Run migrations Replica-first, then Primary (ALWAYS use this in production)
+	@echo "================================================================"
+	@echo "  Synapse — Safe Migration (Replica-first DDL ordering)"
+	@echo "================================================================"
+	@echo ""
+	@if [ -z "$$ANALYTICS_DATABASE_URL" ]; then \
+		echo "ERROR: ANALYTICS_DATABASE_URL is not set."; \
+		echo "       Set it to the Logical Replica DSN and retry."; \
+		exit 1; \
+	fi
+	@echo "[1/3] Applying DDL to Replica first..."
+	ALEMBIC_TARGET=replica alembic upgrade head
+	@echo "[2/3] Verifying Replica is at head..."
+	ALEMBIC_TARGET=replica alembic current
+	@echo "[3/3] Applying DDL to Primary..."
+	alembic upgrade head
+	@echo ""
+	@echo "SUCCESS: Migration complete. Replication stream intact."
 
 migrate-create: ## Create new migration (usage: make migrate-create MESSAGE="description")
 	@if [ -z "$(MESSAGE)" ]; then \
@@ -246,8 +266,11 @@ health: ## Check health of all services
 	@echo "  System Health Check"
 	@echo "========================================"
 	@echo ""
-	@echo "PostgreSQL:"
+	@echo "PostgreSQL (Primary):"
 	@pg_isready -h localhost -p 5432 > /dev/null 2>&1 && echo "  ✓ Running" || echo "  ✗ Stopped"
+	@echo ""
+	@echo "PostgreSQL (Replica):"
+	@pg_isready -h localhost -p 5434 > /dev/null 2>&1 && echo "  ✓ Running" || echo "  ✗ Stopped (or not started)"
 	@echo ""
 	@echo "Redis/Valkey:"
 	@redis-cli -h localhost -p 6379 ping > /dev/null 2>&1 && echo "  ✓ Running" || echo "  ✗ Stopped"
@@ -258,6 +281,34 @@ health: ## Check health of all services
 	@echo "Backend API:"
 	@curl -f http://localhost:8000/api/v1/health 2>/dev/null >/dev/null && echo "  ✓ Running" || echo "  ✗ Stopped"
 	@echo ""
+
+# ============================================================================
+# LOGICAL REPLICA (Admin Dashboard Analytics Node)
+# ============================================================================
+
+replica-start: ## Start the Logical Replica Docker container
+	@echo "Starting Logical Replica..."
+	@docker compose -f docker-compose.analytics.yml up -d postgres-replica
+	@echo "✓ Replica started on localhost:5434"
+	@echo "→ Next: run 'make replica-setup' to configure the subscription"
+
+replica-stop: ## Stop the Logical Replica Docker container
+	@docker compose -f docker-compose.analytics.yml down
+	@echo "✓ Replica stopped"
+
+replica-status: ## Show Logical Replica container status and replication lag
+	@echo "=== Replica Container Status ==="
+	@docker compose -f docker-compose.analytics.yml ps 2>/dev/null || echo "Replica not running"
+	@echo ""
+	@echo "=== Replication Subscription Status ==="
+	@PGPASSWORD=$$REPLICA_DB_PASSWORD psql -h localhost -p 5434 \
+		-U $$REPLICA_DB_USER -d $$REPLICA_DB_NAME \
+		-c "SELECT subname, subenabled, latest_end_time, \
+		    extract(epoch from (now() - latest_end_time))::int AS lag_seconds \
+		    FROM pg_stat_subscription;" 2>/dev/null \
+		|| echo "Cannot connect to replica — is it running?"
+
+
 
 logs: ## Tail all service logs
 	@tail -f logs/*.log 2>/dev/null || echo "No logs found. Start services first."
@@ -281,27 +332,27 @@ celery-io: ## Start IO-bound Celery worker (emails, webhooks)
 		--max-memory-per-child=300000 \
 		-n io_worker@%h
 
-celery-cpu: ## Start CPU-bound Celery worker (RAG, embeddings, OCR)
+celery-cpu: ## Start CPU-bound Celery worker (RAG, embeddings, OCR, ingestion)
 	@echo "Starting CPU-bound Celery worker..."
 	celery -A app.services.background.celery_app worker \
 		--pool=prefork \
-		--queues=rag,embeddings,documents,ocr \
+		--queues=rag,embeddings,documents,ocr,ingestion \
 		--loglevel=info \
 		--concurrency=1 \
 		--max-tasks-per-child=100 \
-		--max-memory-per-child=1500000 \
+		--max-memory-per-child=3000000 \
 		-n cpu_worker@%h
 
 celery-all: ## Start all Celery queues in one worker (dev only)
 	@echo "Starting Celery worker (all queues)..."
 	celery -A app.services.background.celery_app worker \
 		--pool=prefork \
-		--queues=emails,default,webhook,rag,embeddings,documents,ocr \
+		--queues=emails,default,webhook,rag,embeddings,documents,ocr,ingestion \
 		--loglevel=info \
 		--concurrency=1 \
 		--prefetch-multiplier=1 \
 		--max-tasks-per-child=100 \
-		--max-memory-per-child=1500000 \
+		--max-memory-per-child=3000000 \
 		-n dev_worker@%h
 
 celery-beat: ## Start Celery beat scheduler
@@ -315,12 +366,39 @@ celery-beat: ## Start Celery beat scheduler
 # EMBEDDING MANAGEMENT
 # ============================================================================
 
+download-models: ## Pre-download all AI models into .model_cache/ (run once before first start)
+	@echo "================================================================"
+	@echo "  Synapse — Model Pre-download"
+	@echo "  Downloads: Qdrant/bm25 (sparse embedder)"
+	@echo "  Cache dir : $$(pwd)/.model_cache"
+	@echo "================================================================"
+	@echo ""
+	@echo "NOTE: Network access is temporarily enabled for THIS script only."
+	@echo "      The running server remains in offline mode."
+	@echo ""
+	python scripts/fix_qdrant_and_cache.py
+
 backfill-embeddings: ## Backfill embeddings for existing notes/flashcards
 	@echo "Starting embedding backfill..."
 	@echo "This will queue embedding generation for all notes and flashcards."
 	@read -p "Continue? [y/N] " confirm; \
 	if [ "$$confirm" = "y" ] || [ "$$confirm" = "Y" ]; then \
 		python -c "from app.services.background import batch_backfill_notes_task, batch_backfill_flashcards_task; print('Queueing notes...'); batch_backfill_notes_task.apply_async(); print('Queueing flashcards...'); batch_backfill_flashcards_task.apply_async(); print('Done! Monitor with: celery -A app.services.background.celery_app inspect active')"; \
+	else \
+		echo "Cancelled."; \
+	fi
+
+backfill-colbert: ## Backfill ColBERT multivectors for all existing document chunks (Phase 3, run once)
+	@echo "================================================================"
+	@echo "  Synapse — ColBERT Backfill"
+	@echo "  Encodes all existing document chunks → synapse_colbert"
+	@echo "  Requires: SYNAPSE_RAG_COLBERT_ENABLE=false during backfill"
+	@echo "================================================================"
+	@echo ""
+	@echo "WARNING: This task runs on the RAG worker (can take 30-60 min)."
+	@read -p "Continue? [y/N] " confirm; \
+	if [ "$$confirm" = "y" ] || [ "$$confirm" = "Y" ]; then \
+		python -c "from app.services.background.celery_app import celery_app; result = celery_app.send_task('colbert.backfill_colbert'); print(f'Backfill task queued: {result.id}'); print('Monitor: celery -A app.services.background.celery_app inspect active')"; \
 	else \
 		echo "Cancelled."; \
 	fi

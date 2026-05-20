@@ -62,7 +62,7 @@ export const QuizGenerator: React.FC<QuizGeneratorProps> = ({
             className={cn(
                 "relative max-w-lg w-full p-10 text-center space-y-6",
                 // Dark solid card
-                "bg-[#0c0c12] border border-white/[0.08] rounded-2xl",
+                "bg-card border border-border rounded-2xl",
                 // Subtle glow
                 "shadow-[0_0_60px_rgba(168,85,247,0.06)]"
             )}
@@ -70,20 +70,20 @@ export const QuizGenerator: React.FC<QuizGeneratorProps> = ({
             {/* Close Button */}
             <button
                 onClick={onClose}
-                className="absolute top-4 right-4 text-slate-500 hover:text-white transition-colors"
+                className="absolute top-4 right-4 text-muted-foreground hover:text-foreground transition-colors"
             >
                 <X size={20} />
             </button>
 
             {/* Header */}
             <div>
-                <div className="w-16 h-16 mx-auto bg-purple-500/10 rounded-full flex items-center justify-center border border-purple-500/20 mb-6">
-                    <Brain size={28} className="text-purple-400" />
+                <div className="w-16 h-16 mx-auto bg-accent/10 rounded-full flex items-center justify-center border border-accent/20 mb-6">
+                    <Brain size={28} className="text-accent" />
                 </div>
-                <h2 className="text-2xl font-bold text-white mb-2 tracking-tight">
+                <h2 className="text-2xl font-bold text-foreground mb-2 tracking-tight">
                     Generate Quiz
                 </h2>
-                <p className="text-slate-400 text-sm">
+                <p className="text-muted-foreground text-sm">
                     Create a quiz on any topic using AI.
                 </p>
             </div>
@@ -98,9 +98,9 @@ export const QuizGenerator: React.FC<QuizGeneratorProps> = ({
                     placeholder="e.g. Molecular Biology, History of Rome..."
                     className={cn(
                         "w-full text-center text-lg py-3 px-4",
-                        "text-white placeholder:text-slate-600",
-                        "bg-[#08080c] border border-white/[0.08] rounded-xl",
-                        "focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/30",
+                        "text-foreground placeholder:text-muted-foreground",
+                        "bg-muted border border-border rounded-xl",
+                        "focus:border-accent/50 focus:ring-1 focus:ring-accent/30",
                         "outline-none transition-colors"
                     )}
                     disabled={isGenerating}
@@ -118,11 +118,11 @@ export const QuizGenerator: React.FC<QuizGeneratorProps> = ({
                                 "px-4 py-2 rounded-lg text-sm font-medium transition-all capitalize",
                                 difficulty === d
                                     ? d === QuizDifficulty.EASY
-                                        ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/40"
+                                        ? "bg-accent-olive/15 text-accent-olive border border-emerald-500/40"
                                         : d === QuizDifficulty.MEDIUM
-                                            ? "bg-amber-500/15 text-amber-400 border border-amber-500/40"
-                                            : "bg-red-500/15 text-red-400 border border-red-500/40"
-                                    : "bg-white/[0.03] text-slate-400 border border-white/[0.06] hover:border-white/[0.12]"
+                                            ? "bg-warning/15 text-warning border border-amber-500/40"
+                                            : "bg-destructive/15 text-destructive border border-red-500/40"
+                                    : "bg-muted/30 text-muted-foreground border border-border hover:border-white/[0.12]"
                             )}
                         >
                             {d}
@@ -132,7 +132,7 @@ export const QuizGenerator: React.FC<QuizGeneratorProps> = ({
 
                 {/* Question Count */}
                 <div className="flex items-center justify-center gap-4">
-                    <span className="text-slate-400 text-sm font-mono uppercase tracking-wider">
+                    <span className="text-muted-foreground text-sm font-mono uppercase tracking-wider">
                         Questions:
                     </span>
                     <div className="flex items-center gap-2">
@@ -143,11 +143,11 @@ export const QuizGenerator: React.FC<QuizGeneratorProps> = ({
                                 )
                             }
                             disabled={isGenerating || numQuestions <= QUIZ_INVARIANTS.AI_MIN_QUESTIONS}
-                            className="w-8 h-8 rounded bg-white/[0.04] text-slate-300 hover:bg-white/[0.08] disabled:opacity-50 transition-colors border border-white/[0.06]"
+                            className="w-8 h-8 rounded bg-white/[0.04] text-foreground/80 hover:bg-white/[0.08] disabled:opacity-50 transition-colors border border-border"
                         >
                             -
                         </button>
-                        <span className="text-white font-medium w-8 text-center">
+                        <span className="text-foreground font-medium w-8 text-center">
                             {numQuestions}
                         </span>
                         <button
@@ -157,7 +157,7 @@ export const QuizGenerator: React.FC<QuizGeneratorProps> = ({
                                 )
                             }
                             disabled={isGenerating || numQuestions >= QUIZ_INVARIANTS.AI_MAX_QUESTIONS}
-                            className="w-8 h-8 rounded bg-white/[0.04] text-slate-300 hover:bg-white/[0.08] disabled:opacity-50 transition-colors border border-white/[0.06]"
+                            className="w-8 h-8 rounded bg-white/[0.04] text-foreground/80 hover:bg-white/[0.08] disabled:opacity-50 transition-colors border border-border"
                         >
                             +
                         </button>
@@ -170,7 +170,7 @@ export const QuizGenerator: React.FC<QuizGeneratorProps> = ({
                 <button
                     onClick={onClose}
                     disabled={isGenerating}
-                    className="px-6 py-2.5 rounded-lg text-slate-400 hover:text-white bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.06] transition-colors"
+                    className="px-6 py-2.5 rounded-lg text-muted-foreground hover:text-foreground bg-muted/30 hover:bg-white/[0.06] border border-border transition-colors"
                 >
                     Cancel
                 </button>
@@ -179,10 +179,10 @@ export const QuizGenerator: React.FC<QuizGeneratorProps> = ({
                     disabled={isGenerating || !topic.trim()}
                     className={cn(
                         "px-8 py-2.5 rounded-lg font-medium flex items-center gap-2",
-                        "bg-gradient-to-r from-purple-600 to-indigo-600 text-white",
-                        "hover:from-purple-500 hover:to-indigo-500",
+                        "bg-primary text-primary-foreground",
+                        "hover:bg-primary/90",
                         "disabled:opacity-50 disabled:cursor-not-allowed",
-                        "transition-all shadow-lg shadow-purple-500/20"
+                        "transition-all shadow-lg "
                     )}
                 >
                     {isGenerating ? (

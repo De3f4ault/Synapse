@@ -33,7 +33,7 @@ export const LatexBlock: React.FC<LatexBlockProps> = ({
         } catch (error) {
             console.error('LaTeX rendering error:', error);
             // Return escaped content on error
-            return `<code class="text-red-400">${content}</code>`;
+            return `<code class="text-destructive">${content}</code>`;
         }
     }, [content, inline]);
 

@@ -9,6 +9,7 @@ Endpoints:
   GET /entities/{type}/{id}/capabilities - Get capability availability
 """
 
+import logging
 import asyncio
 from datetime import datetime
 from typing import Optional
@@ -16,9 +17,11 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.session import get_db
+from app.db.session import get_db, AsyncSessionLocal
 from app.api.deps import get_current_user
 from app.models.user import User
+
+_log = logging.getLogger(__name__)
 from app.schemas.platform import (
     EntityType,
     LearningEntity,
@@ -69,7 +72,6 @@ async def search_entities(
                 modules_to_query.append(module)
                 seen_modules.add(module.id)
     else:
-        # Query all modules that support search
         for module in get_all_modules():
             if module.search_entities:
                 modules_to_query.append(module)
@@ -77,29 +79,41 @@ async def search_entities(
     if not modules_to_query:
         return {"results": []}
 
-    # 2. Execute searches in parallel
-    search_tasks = [
-        module.search_entities(query=q, db=db, user_id=current_user.id, limit=limit)
-        for module in modules_to_query
-    ]
+    # 2. Execute searches in parallel, each with its OWN session.
+    #
+    # INVARIANT: AsyncSession is NOT concurrent-safe. Sharing a single session
+    # across asyncio.gather tasks causes
+    #   "InvalidRequestError: This session is provisioning a new connection;
+    #    concurrent operations are not permitted".
+    # Fix: each module coroutine opens and closes its own AsyncSessionLocal.
+    async def _search_one(module) -> list[EntitySearchResult]:
+        async with AsyncSessionLocal() as session:
+            return await module.search_entities(
+                query=q, db=session, user_id=current_user.id, limit=limit
+            )
+
+    search_tasks = [_search_one(module) for module in modules_to_query]
 
     # 3. Aggregate results
     module_results = await asyncio.gather(*search_tasks, return_exceptions=True)
 
     for i, res in enumerate(module_results):
         if isinstance(res, Exception):
-            # Log error but don't fail the entire search
-            # print(f"Error searching module {modules_to_query[i].id}: {res}")
+            _log.error(
+                "Entity search error in module %s: %s: %s",
+                modules_to_query[i].id,
+                type(res).__name__,
+                res,
+                exc_info=res,
+            )
             continue
-
         if res:
             results.extend(res)
 
-    # 4. Filter by requested types and Sort
+    # 4. Filter by requested types and sort by freshness
     if types:
         results = [r for r in results if r.type in types]
 
-    # Sort by created_at desc (freshness) or ID if created_at is missing
     results.sort(key=lambda x: x.created_at or datetime.min, reverse=True)
 
     return {"results": results}

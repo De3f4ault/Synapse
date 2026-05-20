@@ -3,7 +3,7 @@
 from typing import List, Dict, Optional
 from llama_index.core.node_parser import SemanticSplitterNodeParser, SentenceSplitter
 from llama_index.core.schema import Document, TextNode
-from app.core.ai.embeddings.boundary import get_llama_embedder
+from llama_index.core.embeddings import BaseEmbedding
 import structlog
 
 logger = structlog.get_logger(__name__)
@@ -30,9 +30,9 @@ class AdvancedSemanticChunker:
     def __init__(
         self,
         embed_model_name: str = "sentence-transformers/all-MiniLM-L6-v2",
-        buffer_size: int = 1,
-        breakpoint_percentile: int = 95,
-        max_chunk_size: int = 512,
+        buffer_size: int = 2,             # was 1 — groups 2 sentences for smoother boundary detection
+        breakpoint_percentile: int = 90,  # was 95 — more cuts on technical/mixed content
+        max_chunk_size: int = 350,        # was 512 — tokens; fits ColBERT (299) + ms-marco (512-query)
         min_chunk_size: int = 50,
         enable_safeguard: bool = True,
     ):
@@ -47,10 +47,12 @@ class AdvancedSemanticChunker:
             min_chunk_size: Minimum tokens per chunk
             enable_safeguard: Enable max size safeguard
         """
-        # Initialize embedding model via boundary adapter (shares singleton)
-        logger.info("initializing_semantic_chunker", model=embed_model_name)
+        # Use all-MiniLM-L6-v2 for boundary detection — purpose-built for sentence-pair
+        # cosine similarity, already cached, 3x faster than Nomic for this task.
+        # Nomic is reserved for actual document/query embedding.
+        logger.info("initializing_semantic_chunker", model="all-MiniLM-L6-v2")
 
-        self.embed_model = get_llama_embedder()
+        self.embed_model = _get_minilm_llama_embedder()
 
         # Semantic splitter with research-backed defaults
         self.semantic_splitter = SemanticSplitterNodeParser(
@@ -247,6 +249,35 @@ class AdvancedSemanticChunker:
             "oversized_chunks": sum(1 for s in sizes if s / 4 > self.max_chunk_size),
             "undersized_chunks": sum(1 for s in sizes if s < self.min_chunk_size),
         }
+
+
+def _get_minilm_llama_embedder() -> BaseEmbedding:
+    """
+    Return a LlamaIndex-compatible wrapper around all-MiniLM-L6-v2.
+
+    Uses the cached model (already on disk from pre-warm) — no download.
+    The model is shared with the semantic router (Sprint 2) so there is
+    zero additional RAM cost for the chunker swap.
+    """
+    from llama_index.embeddings.huggingface import HuggingFaceEmbedding
+    from app.core.ai.rag.config.model_config import get_model_config
+
+    config = get_model_config()
+    model_name = "sentence-transformers/all-MiniLM-L6-v2"
+    
+    # We instantiate explicitly because HuggingFaceEmbedding in llama-index
+    # tries to pass `safe_serialization` which crashes this transformers version.
+    from transformers import AutoModel, AutoTokenizer
+    model = AutoModel.from_pretrained(model_name, cache_dir=config.model_cache_dir)
+    tokenizer = AutoTokenizer.from_pretrained(model_name, cache_dir=config.model_cache_dir)
+    
+    return HuggingFaceEmbedding(
+        model_name=model_name,
+        model=model,
+        tokenizer=tokenizer,
+        cache_folder=config.model_cache_dir,
+        device=config.embedding_device,
+    )
 
 
 # Global instance

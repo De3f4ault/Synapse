@@ -27,7 +27,7 @@ export function StudyStats({
       label: "Items Due",
       value: dueCount,
       suffix: "items",
-      color: "text-red-500",
+      color: "text-destructive",
       bgColor: "bg-red-50 dark:bg-red-950",
     },
     {
@@ -35,15 +35,15 @@ export function StudyStats({
       label: "Recommended",
       value: recommendedCount,
       suffix: "items",
-      color: "text-purple-500",
-      bgColor: "bg-purple-50 dark:bg-purple-950",
+      color: "text-accent",
+      bgColor: "bg-accent/5 dark:bg-accent/10",
     },
     {
       icon: TrendingUp,
       label: "Avg Accuracy",
       value: avgAccuracy,
       suffix: "%",
-      color: "text-green-500",
+      color: "text-accent-olive",
       bgColor: "bg-green-50 dark:bg-green-950",
     },
     {

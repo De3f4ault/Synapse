@@ -19,8 +19,8 @@ function MessageBubble({ msg }: { msg: UIMessage }) {
         >
             <div
                 className={cn(
-                    "h-8 w-8 rounded-lg nm-inset flex items-center justify-center shrink-0",
-                    msg.role === "user" ? "text-slate-400" : "text-cyan-400"
+                    "h-8 w-8 rounded-lg bg-muted border border-border rounded-lg flex items-center justify-center shrink-0",
+                    msg.role === "user" ? "text-muted-foreground" : "text-primary"
                 )}
             >
                 {msg.role === "user" ? (
@@ -40,13 +40,13 @@ function MessageBubble({ msg }: { msg: UIMessage }) {
                     className={cn(
                         "rounded-2xl px-4 py-3 text-sm shadow-sm",
                         msg.role === "user"
-                            ? "bg-gradient-to-br from-purple-600/20 to-indigo-600/20 border border-purple-500/20 text-slate-100 rounded-tr-sm"
-                            : "bg-white/[0.03] border border-white/[0.05] text-slate-300 rounded-tl-sm"
+                            ? "bg-secondary border border-border text-secondary-foreground rounded-tr-sm"
+                            : "bg-muted/30 border border-border text-foreground/80 rounded-tl-sm"
                     )}
                 >
                     {msg.content}
                 </div>
-                <span className="text-[10px] text-slate-600 font-mono px-1">
+                <span className="text-[10px] text-muted-foreground font-mono px-1">
                     {msg.timestamp
                         ? new Date(msg.timestamp).toLocaleTimeString([], {
                             hour: "2-digit",
@@ -66,13 +66,13 @@ function MessageBubble({ msg }: { msg: UIMessage }) {
 function TypingIndicator() {
     return (
         <div className="flex w-full gap-3 animate-in fade-in slide-in-from-bottom-2">
-            <div className="h-8 w-8 rounded-lg nm-inset flex items-center justify-center shrink-0 text-cyan-400">
+            <div className="h-8 w-8 rounded-lg bg-muted border border-border rounded-lg flex items-center justify-center shrink-0 text-primary">
                 <Bot className="h-4 w-4" />
             </div>
-            <div className="bg-white/[0.03] border border-white/[0.05] rounded-2xl rounded-tl-sm px-4 py-3 flex items-center gap-1 h-[46px]">
-                <span className="w-1.5 h-1.5 bg-cyan-500/50 rounded-full animate-bounce [animation-delay:-0.3s]" />
-                <span className="w-1.5 h-1.5 bg-cyan-500/50 rounded-full animate-bounce [animation-delay:-0.15s]" />
-                <span className="w-1.5 h-1.5 bg-cyan-500/50 rounded-full animate-bounce" />
+            <div className="bg-muted/30 border border-border rounded-2xl rounded-tl-sm px-4 py-3 flex items-center gap-1 h-[46px]">
+                <span className="w-1.5 h-1.5 bg-primary/50 rounded-full animate-bounce [animation-delay:-0.3s]" />
+                <span className="w-1.5 h-1.5 bg-primary/50 rounded-full animate-bounce [animation-delay:-0.15s]" />
+                <span className="w-1.5 h-1.5 bg-primary/50 rounded-full animate-bounce" />
             </div>
         </div>
     );
@@ -104,7 +104,7 @@ export function AssistantMessages() {
             </ScrollArea>
 
             {/* Gradient Fade */}
-            <div className="absolute bottom-[72px] left-0 right-0 h-16 bg-gradient-to-t from-[#0a0a0f] to-transparent pointer-events-none" />
+            <div className="absolute bottom-[72px] left-0 right-0 h-16 bg-gradient-to-t from-background to-transparent pointer-events-none" />
         </div>
     );
 }

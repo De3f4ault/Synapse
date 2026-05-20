@@ -146,18 +146,18 @@ function RelatedSection({
                     className={cn(
                         "p-1.5 rounded-md",
                         variant === "primary"
-                            ? "bg-cyan-500/10 text-cyan-400"
-                            : "bg-purple-500/10 text-purple-400"
+                            ? "bg-primary/10 text-primary"
+                            : "bg-accent/10 text-accent"
                     )}
                 >
                     {icon}
                 </div>
                 <div>
                     <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-white">{title}</span>
-                        <span className="text-xs text-slate-500">({nodes.length})</span>
+                        <span className="text-sm font-medium text-foreground">{title}</span>
+                        <span className="text-xs text-muted-foreground">({nodes.length})</span>
                     </div>
-                    <p className="text-xs text-slate-500">{description}</p>
+                    <p className="text-xs text-muted-foreground">{description}</p>
                 </div>
             </div>
 
@@ -204,16 +204,16 @@ function NoteCard({ node, onClick, index }: NoteCardProps) {
             className={cn(
                 "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors group",
                 isPlaceholder
-                    ? "bg-white/[0.02] text-slate-500 cursor-not-allowed"
-                    : "bg-white/[0.03] hover:bg-white/[0.08] text-slate-300"
+                    ? "bg-foreground/5 text-muted-foreground cursor-not-allowed"
+                    : "bg-muted/30 hover:bg-white/[0.08] text-foreground/80"
             )}
         >
-            <FileText className="h-4 w-4 text-slate-500 flex-shrink-0" />
+            <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
             <span className="flex-1 truncate text-sm">
                 {node.label}
             </span>
             {!isPlaceholder && (
-                <ChevronRight className="h-4 w-4 text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+                <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
             )}
         </motion.button>
     );
@@ -245,7 +245,7 @@ export function RelatedNotesCompact({
 
     return (
         <div className={cn("space-y-2", className)}>
-            <div className="flex items-center gap-2 text-xs text-slate-500">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <Link2 className="h-3 w-3" />
                 <span>{connectionCount} connections</span>
             </div>
@@ -261,7 +261,7 @@ export function RelatedNotesCompact({
                         />
                     ))}
                     {backlinks.length > 3 && (
-                        <div className="text-xs text-slate-500 px-3 py-1">
+                        <div className="text-xs text-muted-foreground px-3 py-1">
                             +{backlinks.length - 3} more
                         </div>
                     )}

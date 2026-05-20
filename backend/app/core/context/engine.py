@@ -136,14 +136,6 @@ class ContextEngine:
         Returns:
             Context dict
         """
-        # Check if we're in a failed transaction
-        if self.session.is_active and not self.session.in_transaction():
-            logger.warning(
-                "session_not_in_transaction",
-                user_id=user_id,
-                msg="Session is active but not in transaction, starting new transaction"
-            )
-
         try:
             # Build the context
             context = await self._build_context(user_id, focus)
@@ -354,9 +346,11 @@ class ContextEngine:
         cache_key = self._get_cache_key(user_id)
 
         try:
-            cached_str = await self.cache_client.get(cache_key)
-            if cached_str:
-                return json.loads(cached_str)
+            cached_data = await self.cache_client.get(cache_key)
+            if cached_data is not None:
+                if isinstance(cached_data, (str, bytes, bytearray)):
+                    return json.loads(cached_data)
+                return cached_data
         except Exception as e:
             logger.error(
                 "cache_read_failed",
@@ -373,10 +367,10 @@ class ContextEngine:
 
         try:
             context_str = json.dumps(context)
-            await self.cache_client.setex(
+            await self.cache_client.set(
                 cache_key,
-                self.CACHE_TTL,
-                context_str
+                context_str,
+                ex=self.CACHE_TTL,  # PgCacheClient.set(key, value, ex=seconds)
             )
         except Exception as e:
             logger.error(

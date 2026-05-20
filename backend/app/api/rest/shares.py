@@ -28,7 +28,7 @@ from app.models.user import User
 from app.models.document import Document
 from app.models.document_permission import ShareLink, PermissionLevel
 from app.services.permissions.service import PermissionService
-from app.schemas.permission import (
+from app.schemas.documents import (
     ShareLinkCreate,
     ShareLinkResponse,
     DocumentPermissionResponse,

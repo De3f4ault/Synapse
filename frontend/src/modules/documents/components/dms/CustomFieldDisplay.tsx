@@ -120,16 +120,16 @@ export function CustomFieldDisplay({
 
   const renderValue = () => {
     if (value === null || value === undefined) {
-      return <span className="text-slate-600 italic">Not set</span>;
+      return <span className="text-muted-foreground italic">Not set</span>;
     }
 
     switch (field.data_type) {
       case CustomFieldDataType.String:
-        return <span className="text-slate-200">{String(value)}</span>;
+        return <span className="text-foreground/70">{String(value)}</span>;
 
       case CustomFieldDataType.LongText:
         return (
-          <p className="text-slate-200 text-xs leading-relaxed whitespace-pre-wrap line-clamp-3">
+          <p className="text-foreground/70 text-xs leading-relaxed whitespace-pre-wrap line-clamp-3">
             {String(value)}
           </p>
         );
@@ -140,7 +140,7 @@ export function CustomFieldDisplay({
             href={String(value)}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-cyan-400 hover:text-cyan-300 underline underline-offset-2 flex items-center gap-1"
+            className="text-primary hover:text-primary/80 underline underline-offset-2 flex items-center gap-1"
           >
             <LinkIcon size={10} />
             {String(value).replace(/^https?:\/\//, "").slice(0, 40)}
@@ -149,28 +149,28 @@ export function CustomFieldDisplay({
 
       case CustomFieldDataType.Date:
         return (
-          <span className="text-slate-200">
+          <span className="text-foreground/70">
             {new Date(String(value)).toLocaleDateString()}
           </span>
         );
 
       case CustomFieldDataType.Boolean:
         return value ? (
-          <Check size={14} className="text-emerald-400" />
+          <Check size={14} className="text-accent-olive" />
         ) : (
-          <X size={14} className="text-red-400" />
+          <X size={14} className="text-destructive" />
         );
 
       case CustomFieldDataType.Integer:
         return (
-          <span className="text-slate-200 font-mono">
+          <span className="text-foreground/70 font-mono">
             {Number(value).toLocaleString()}
           </span>
         );
 
       case CustomFieldDataType.Float:
         return (
-          <span className="text-slate-200 font-mono">
+          <span className="text-foreground/70 font-mono">
             {Number(value).toLocaleString(undefined, { maximumFractionDigits: 4 })}
           </span>
         );
@@ -178,7 +178,7 @@ export function CustomFieldDisplay({
       case CustomFieldDataType.Monetary: {
         const currency = field.extra_data?.default_currency || "USD";
         return (
-          <span className="text-slate-200 font-mono">
+          <span className="text-foreground/70 font-mono">
             {Number(value).toLocaleString(undefined, {
               style: "currency",
               currency,
@@ -189,7 +189,7 @@ export function CustomFieldDisplay({
 
       case CustomFieldDataType.DocumentLink:
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 text-xs">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-info/10 text-info text-xs">
             <FileText size={10} />
             Doc #{String(value)}
           </span>
@@ -199,22 +199,22 @@ export function CustomFieldDisplay({
         const options = field.extra_data?.select_options || [];
         const selected = options.find((o) => o.id === String(value));
         return (
-          <span className="inline-flex items-center px-2 py-0.5 rounded bg-purple-500/10 text-purple-400 text-xs">
+          <span className="inline-flex items-center px-2 py-0.5 rounded bg-accent/10 text-accent text-xs">
             {selected?.label || String(value)}
           </span>
         );
       }
 
       default:
-        return <span className="text-slate-200">{String(value)}</span>;
+        return <span className="text-foreground/70">{String(value)}</span>;
     }
   };
 
   return (
     <div className={cn("flex items-start gap-2", className)}>
-      <Icon size={13} className="text-slate-500 mt-0.5 shrink-0" />
+      <Icon size={13} className="text-muted-foreground mt-0.5 shrink-0" />
       <div className="min-w-0">
-        <p className="text-[10px] text-slate-500 uppercase tracking-wider font-medium mb-0.5">
+        <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium mb-0.5">
           {field.name}
         </p>
         <div className="text-sm">{renderValue()}</div>

@@ -1,11 +1,11 @@
 /**
  * Upload Store - FSM-based queue for document uploads
  *
- * Each upload item has a finite state:
- *   queued → uploading → success | conflict | error
+ * FSM per item:
+ *   queued → uploading → success | conflict | skipped | error
  *
- * Owns: upload queue, per-item state, conflict data
- * Does NOT own: active document (that's core)
+ * 'skipped' is used for auto-resolved duplicates (exact/same_content)
+ * 'conflict' is only for same_filename (genuinely ambiguous — needs human input)
  */
 
 import { create } from "zustand";
@@ -18,7 +18,8 @@ export type UploadStatus =
     | 'queued'      // Waiting to upload
     | 'uploading'   // Currently uploading
     | 'success'     // Upload complete
-    | 'conflict'    // Duplicate detected (409)
+    | 'skipped'     // Auto-skipped (exact/content duplicate)
+    | 'conflict'    // Ambiguous duplicate — needs human input (same_filename only)
     | 'error';      // Upload failed
 
 export interface ConflictInfo {
@@ -35,13 +36,18 @@ export interface UploadItem {
     file: File;                 // The file being uploaded
     status: UploadStatus;       // Current state
     progress: number;           // 0-100 upload progress
-    conflict?: ConflictInfo;    // Conflict data if status === 'conflict'
+    conflict?: ConflictInfo;    // Conflict data if status === 'conflict'|'skipped'
     error?: string;             // Error message if status === 'error'
 }
 
-// Legacy compatibility
-export interface UploadProgress {
-    [filename: string]: number;
+// Session-level summary (reset per batch, not per item)
+export interface SessionSummary {
+    totalQueued: number;
+    uploaded: number;
+    skipped: number;
+    conflicts: number;
+    errors: number;
+    completedAt: Date | null;
 }
 
 // ============================================================================
@@ -51,6 +57,9 @@ export interface UploadProgress {
 interface UploadState {
     // Queue
     queue: UploadItem[];
+
+    // Session summary (populated when all done)
+    session: SessionSummary | null;
 
     // Actions - Queue Management
     addToQueue: (files: File[]) => void;
@@ -62,20 +71,21 @@ interface UploadState {
     setUploading: (id: string) => void;
     setProgress: (id: string, progress: number) => void;
     setSuccess: (id: string) => void;
+    setSkipped: (id: string, conflict: ConflictInfo) => void;
     setConflict: (id: string, conflict: ConflictInfo) => void;
     setError: (id: string, error: string) => void;
 
-    // Actions - Conflict Resolution
-    resolveConflict: (id: string, action: 'replace' | 'keepBoth' | 'skip') => void;
+    // Actions - Conflict Resolution (human input)
+    resolveSkip: (id: string) => void;
 
-    // Computed
-    hasQueue: () => boolean;
-    hasConflicts: () => boolean;
-    isAnyUploading: () => boolean;
+    // Session
+    computeSession: () => void;
+    clearSession: () => void;
 }
 
 export const useUploadStore = create<UploadState>((set, get) => ({
     queue: [],
+    session: null,
 
     // --- Queue Management ---
 
@@ -86,7 +96,10 @@ export const useUploadStore = create<UploadState>((set, get) => ({
             status: 'queued',
             progress: 0,
         }));
-        set((state) => ({ queue: [...state.queue, ...newItems] }));
+        set((state) => ({
+            queue: [...state.queue, ...newItems],
+            session: null, // reset summary when new files come in
+        }));
     },
 
     removeFromQueue: (id) => {
@@ -97,7 +110,9 @@ export const useUploadStore = create<UploadState>((set, get) => ({
 
     clearCompleted: () => {
         set((state) => ({
-            queue: state.queue.filter((item) => item.status !== 'success'),
+            queue: state.queue.filter(
+                (item) => item.status !== 'success' && item.status !== 'skipped'
+            ),
         }));
     },
 
@@ -127,6 +142,16 @@ export const useUploadStore = create<UploadState>((set, get) => ({
         }));
     },
 
+    // Auto-resolved duplicate (no user action needed)
+    setSkipped: (id, conflict) => {
+        set((state) => ({
+            queue: state.queue.map((item) =>
+                item.id === id ? { ...item, status: 'skipped', conflict, progress: 100 } : item
+            ),
+        }));
+    },
+
+    // Only for same_filename — needs human resolution
     setConflict: (id, conflict) => {
         set((state) => ({
             queue: state.queue.map((item) =>
@@ -143,21 +168,26 @@ export const useUploadStore = create<UploadState>((set, get) => ({
         }));
     },
 
-    // --- Conflict Resolution (handled by hook, this just marks resolved) ---
-
-    resolveConflict: (id, action) => {
-        if (action === 'skip') {
-            // Just remove from queue
-            get().removeFromQueue(id);
-        }
-        // 'replace' and 'keepBoth' are handled by the hook, then marked success
+    // Human-driven skip from conflict state
+    resolveSkip: (id) => {
+        get().removeFromQueue(id);
     },
 
-    // --- Computed ---
+    // --- Session Summary ---
 
-    hasQueue: () => get().queue.length > 0,
+    computeSession: () => {
+        const q = get().queue;
+        set({
+            session: {
+                totalQueued: q.length,
+                uploaded: q.filter((i) => i.status === 'success').length,
+                skipped: q.filter((i) => i.status === 'skipped').length,
+                conflicts: q.filter((i) => i.status === 'conflict').length,
+                errors: q.filter((i) => i.status === 'error').length,
+                completedAt: new Date(),
+            },
+        });
+    },
 
-    hasConflicts: () => get().queue.some((item) => item.status === 'conflict'),
-
-    isAnyUploading: () => get().queue.some((item) => item.status === 'uploading'),
+    clearSession: () => set({ session: null }),
 }));

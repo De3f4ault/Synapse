@@ -49,7 +49,7 @@ export function FileCard({
       onContextMenu={onContextMenu}
       className={cn(
         "group cursor-pointer rounded-xl border bg-card transition-all duration-200 relative overflow-hidden",
-        "hover:shadow-lg hover:shadow-black/20 hover:-translate-y-0.5",
+        "hover:shadow-lg hover:shadow-lg hover:-translate-y-0.5",
         isSelected
           ? "ring-2 ring-primary/50 border-primary/30"
           : "border-border/50 hover:border-border",
@@ -61,9 +61,9 @@ export function FileCard({
         {...attributes}
         {...listeners}
         className="absolute top-2 left-2 z-10 size-6 flex items-center justify-center
-                   rounded-md bg-black/60 backdrop-blur-sm text-zinc-400
+                   rounded-md bg-background/80 backdrop-blur-sm text-muted-foreground
                    opacity-0 group-hover:opacity-100
-                   hover:text-white hover:bg-black/80 transition-all cursor-grab active:cursor-grabbing"
+                   hover:text-foreground hover:bg-black/80 transition-all cursor-grab active:cursor-grabbing"
       >
         <GripVertical className="size-3.5" />
       </div>
@@ -74,8 +74,8 @@ export function FileCard({
         className={cn(
           "absolute top-2 right-2 z-10 size-6 flex items-center justify-center rounded-md transition-all",
           isFavorite
-            ? "text-amber-400 opacity-100"
-            : "text-zinc-400 opacity-0 group-hover:opacity-100 hover:text-amber-400"
+            ? "text-warning opacity-100"
+            : "text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-warning"
         )}
       >
         <Star className="size-3.5" fill={isFavorite ? "currentColor" : "none"} />
@@ -103,8 +103,8 @@ export function FileCard({
         <button
           onClick={(e) => { e.stopPropagation(); onContextMenu(e); }}
           className="absolute bottom-2 right-2 size-7 flex items-center justify-center rounded-md
-                     bg-black/60 backdrop-blur-sm text-zinc-400
-                     opacity-0 group-hover:opacity-100 hover:text-white hover:bg-black/80 transition-all"
+                     bg-background/80 backdrop-blur-sm text-muted-foreground
+                     opacity-0 group-hover:opacity-100 hover:text-foreground hover:bg-black/80 transition-all"
         >
           <MoreVertical className="size-4" />
         </button>

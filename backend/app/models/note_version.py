@@ -6,6 +6,7 @@ Preserves complete history of note changes.
 """
 
 from datetime import datetime
+from typing import Optional
 
 from sqlalchemy import String, Integer, DateTime, ForeignKey, func
 from sqlalchemy.dialects.postgresql import JSONB
@@ -59,6 +60,13 @@ class NoteVersion(Base):
 
     format: Mapped[NoteFormat] = mapped_column(
         SQLEnum(NoteFormat, native_enum=False), nullable=False, doc="Format at this version"
+    )
+
+    content_text: Mapped[Optional[str]] = mapped_column(
+        String(),
+        nullable=True,
+        default=None,
+        doc="Plain text at this version. Mirrors the notes.content_text field.",
     )
 
     # Timestamp

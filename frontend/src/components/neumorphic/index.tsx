@@ -2,7 +2,14 @@ import React from "react";
 import { cn } from "@/lib/utils";
 import { motion, HTMLMotionProps } from "framer-motion";
 
-// --- Neumorphic Card ---
+/**
+ * Warm Primitive Components
+ * Replaces Neumorphic design system with warm surface tokens.
+ *
+ * Naming preserved for backwards compatibility.
+ */
+
+// --- Warm Card (was NeumorphicCard) ---
 
 interface NeumorphicCardProps extends HTMLMotionProps<"div"> {
   children: React.ReactNode;
@@ -16,9 +23,9 @@ export const NeumorphicCard = React.forwardRef<
   NeumorphicCardProps
 >(({ children, className, variant = "default", onClick, ...props }, ref) => {
   const variants = {
-    default: "nm-card",
-    flat: "nm-panel",
-    inset: "nm-input p-4",
+    default: "bg-card border border-border rounded-lg",
+    flat: "bg-card/50 border border-border rounded-lg",
+    inset: "bg-background border border-border rounded-lg p-4",
   };
 
   return (
@@ -34,7 +41,7 @@ export const NeumorphicCard = React.forwardRef<
 });
 NeumorphicCard.displayName = "NeumorphicCard";
 
-// --- Neumorphic Button ---
+// --- Warm Button (was NeumorphicButton) ---
 
 interface NeumorphicButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: "default" | "primary" | "ghost";
@@ -46,9 +53,12 @@ export const NeumorphicButton = React.forwardRef<
   NeumorphicButtonProps
 >(({ className, variant = "default", size = "md", ...props }, ref) => {
   const variants = {
-    default: "nm-btn",
-    primary: "nm-btn nm-btn-primary",
-    ghost: "hover:bg-white/5 text-slate-400 hover:text-white transition-colors",
+    default:
+      "bg-secondary text-secondary-foreground border border-border rounded-lg shadow-ring hover:shadow-ring-hover hover:bg-secondary/80 active:scale-[0.98] transition-all duration-200 ease-out",
+    primary:
+      "bg-primary text-primary-foreground rounded-lg shadow-ring-brand hover:bg-primary/90 active:scale-[0.98] transition-all duration-200 ease-out",
+    ghost:
+      "text-muted-foreground hover:bg-accent/10 hover:text-foreground transition-colors duration-200 ease-out",
   };
 
   const sizes = {
@@ -61,20 +71,20 @@ export const NeumorphicButton = React.forwardRef<
   return (
     <button
       ref={ref}
-      className={cn(variants[variant], sizes[size], "font-medium", className)}
+      className={cn(variants[variant], sizes[size], "font-medium cursor-pointer", className)}
       {...props}
     />
   );
 });
 NeumorphicButton.displayName = "NeumorphicButton";
 
-// --- Neumorphic Progress ---
+// --- Warm Progress (was NeumorphicProgress) ---
 
 interface NeumorphicProgressProps {
   value: number;
   max?: number;
   className?: string;
-  color?: "cyan" | "purple" | "emerald" | "blue" | "coral";
+  color?: "brand" | "olive" | "mist" | "coral" | "amber";
   size?: "sm" | "md" | "lg";
 }
 
@@ -82,17 +92,17 @@ export const NeumorphicProgress = ({
   value,
   max = 100,
   className,
-  color = "cyan",
+  color = "brand",
   size = "md",
 }: NeumorphicProgressProps) => {
   const percentage = Math.min(Math.max((value / max) * 100, 0), 100);
 
   const colors = {
-    cyan: "bg-cyan-500 shadow-[0_0_10px_rgba(6,182,212,0.5)]",
-    purple: "bg-purple-500 shadow-[0_0_10px_rgba(139,92,246,0.5)]",
-    emerald: "bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]",
-    blue: "bg-blue-500 shadow-[0_0_10px_rgba(0,212,255,0.5)]",
-    coral: "bg-red-400 shadow-[0_0_10px_rgba(248,113,113,0.5)]",
+    brand: "bg-terracotta",
+    olive: "bg-accent-olive",
+    mist: "bg-accent-mist",
+    coral: "bg-accent-coral",
+    amber: "bg-warning",
   };
 
   const heights = {
@@ -104,7 +114,7 @@ export const NeumorphicProgress = ({
   return (
     <div
       className={cn(
-        "w-full bg-black/40 rounded-full overflow-hidden shadow-[inset_0_1px_2px_rgba(0,0,0,0.5)] border border-white/5",
+        "w-full bg-muted rounded-full overflow-hidden border border-border",
         heights[size],
         className,
       )}
@@ -119,41 +129,40 @@ export const NeumorphicProgress = ({
   );
 };
 
-// --- Neumorphic Badge ---
+// --- Warm Badge (was NeumorphicBadge) ---
 
 interface NeumorphicBadgeProps {
   children: React.ReactNode;
-  variant?: "default" | "outline" | "gradient";
-  color?: "cyan" | "purple" | "emerald" | "blue" | "coral" | "slate";
+  variant?: "default" | "outline" | "muted";
+  color?: "brand" | "olive" | "mist" | "coral" | "amber" | "neutral";
   className?: string;
 }
 
 export const NeumorphicBadge = ({
   children,
   variant = "default",
-  color = "slate",
+  color = "neutral",
   className,
 }: NeumorphicBadgeProps) => {
   const colorStyles = {
-    cyan: "text-cyan-400 border-cyan-500/30 bg-cyan-500/10",
-    purple: "text-purple-400 border-purple-500/30 bg-purple-500/10",
-    emerald: "text-emerald-400 border-emerald-500/30 bg-emerald-500/10",
-    blue: "text-blue-400 border-blue-500/30 bg-blue-500/10",
-    coral: "text-rose-400 border-rose-500/30 bg-rose-500/10",
-    slate: "text-slate-400 border-slate-500/30 bg-slate-500/10",
+    brand: "text-terracotta border-terracotta/30 bg-terracotta/10",
+    olive: "text-accent-olive border-accent-olive/30 bg-accent-olive/10",
+    mist: "text-accent-mist border-accent-mist/30 bg-accent-mist/10",
+    coral: "text-accent-coral border-accent-coral/30 bg-accent-coral/10",
+    amber: "text-warning border-warning/30 bg-warning/10",
+    neutral: "text-muted-foreground border-border bg-muted/50",
   };
 
   const variants = {
-    default: "border shadow-sm",
+    default: "border",
     outline: "border bg-transparent",
-    gradient:
-      "border-none bg-gradient-to-r from-white/10 to-transparent text-white",
+    muted: "border-none bg-muted text-muted-foreground",
   };
 
   return (
     <span
       className={cn(
-        "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium backdrop-blur-sm",
+        "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium",
         colorStyles[color],
         variants[variant],
         className,
@@ -164,7 +173,7 @@ export const NeumorphicBadge = ({
   );
 };
 
-// --- Neumorphic Stats Card ---
+// --- Warm Stats Card (was NeumorphicStats) ---
 
 interface NeumorphicStatsProps {
   label: string;
@@ -188,20 +197,20 @@ export const NeumorphicStats = ({
       className={cn("p-4 flex flex-col justify-between h-full", className)}
     >
       <div className="flex justify-between items-start mb-2">
-        <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">
+        <span className="text-muted-foreground text-xs font-medium uppercase tracking-wider">
           {label}
         </span>
-        {icon && <div className="text-slate-400">{icon}</div>}
+        {icon && <div className="text-muted-foreground">{icon}</div>}
       </div>
       <div>
-        <div className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">
+        <div className="text-2xl font-serif font-medium text-foreground">
           {value}
         </div>
         {trend && (
           <div
             className={cn(
               "text-xs mt-1",
-              trendUp ? "text-emerald-400" : "text-rose-400",
+              trendUp ? "text-accent-olive" : "text-accent-coral",
             )}
           >
             {trend}
@@ -211,7 +220,8 @@ export const NeumorphicStats = ({
     </NeumorphicCard>
   );
 };
-// --- Neumorphic Input ---
+
+// --- Warm Input (was NeumorphicInput) ---
 
 interface NeumorphicInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   icon?: React.ElementType;
@@ -225,16 +235,16 @@ export const NeumorphicInput = React.forwardRef<
   return (
     <div className="relative">
       {Icon && (
-        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
           <Icon className="w-4 h-4" />
         </div>
       )}
       <input
         ref={ref}
         className={cn(
-          "w-full h-10 bg-[#0f172a] rounded-xl text-sm text-slate-200 placeholder:text-slate-500 transition-all outline-none",
-          "shadow-[inset_-2px_-2px_6px_rgba(255,255,255,0.05),inset_2px_2px_6px_rgba(0,0,0,0.5)]",
-          "focus:shadow-[inset_-2px_-2px_6px_rgba(255,255,255,0.02),inset_2px_2px_6px_rgba(0,0,0,0.3),0_0_0_1px_rgba(34,211,238,0.3)]",
+          "w-full h-10 bg-card rounded-lg text-sm text-foreground placeholder:text-muted-foreground",
+          "border border-border transition-all duration-200 ease-out outline-none",
+          "focus:border-[#3898ec] focus:ring-2 focus:ring-[#3898ec]/20",
           Icon ? "pl-10 pr-4" : "px-4",
           className,
         )}

@@ -27,12 +27,24 @@ from .mixins import TimestampMixin, SoftDeleteMixin, UserOwnedMixin
 
 
 class ProcessingStatus(str, enum.Enum):
-    """Enum for document processing states."""
+    """Document processing status — tracks progress through two distinct pipelines.
 
-    PENDING = "pending"
-    PROCESSING = "processing"
-    COMPLETED = "completed"
-    FAILED = "failed"
+    DMS pipeline (Paperless/ingestion):
+        PENDING → PARSING → PARSED
+
+    RAG pipeline (chunking + embedding):
+        PARSED → CHUNKING → COMPLETED
+
+    Either pipeline can transition to FAILED.
+    Only COMPLETED means the document is fully searchable in Qdrant.
+    """
+
+    PENDING   = "pending"    # Uploaded, queued — nothing has run yet
+    PARSING   = "parsing"    # DMS pipeline running: text extraction, OCR, store, classify
+    PARSED    = "parsed"     # DMS done: text in DB, classified, summarised — awaiting RAG
+    CHUNKING  = "chunking"   # RAG pipeline running: semantic chunk + embed + Qdrant upsert
+    COMPLETED = "completed"  # Both pipelines done — fully searchable
+    FAILED    = "failed"     # Any stage failed; logs contain the failing stage
 
 
 class Document(Base, TimestampMixin, SoftDeleteMixin, UserOwnedMixin):
@@ -138,8 +150,14 @@ class Document(Base, TimestampMixin, SoftDeleteMixin, UserOwnedMixin):
     )
 
     # Processing Status
+    # NOTE: values_callable is critical — tells SQLAlchemy to store the enum's
+    # .value (lowercase: 'pending', 'parsed', etc.) NOT the member name (PENDING, PARSED).
     processing_status: Mapped[ProcessingStatus] = mapped_column(
-        SQLEnum(ProcessingStatus, native_enum=False),
+        SQLEnum(
+            ProcessingStatus,
+            native_enum=False,
+            values_callable=lambda x: [e.value for e in x],
+        ),
         default=ProcessingStatus.PENDING,
         nullable=False,
         index=True,
@@ -237,7 +255,12 @@ class Document(Base, TimestampMixin, SoftDeleteMixin, UserOwnedMixin):
     tags = relationship("Tag", secondary="document_tags", back_populates="documents", lazy="selectin")
 
     # Other relationships
-    # chunks: One-to-many with DocumentChunk (defined in document_chunk.py)
+    chunks: Mapped[list["DocumentChunk"]] = relationship(
+        "DocumentChunk",
+        back_populates="document",
+        lazy="select",
+        cascade="all, delete-orphan",
+    )
     # user: Many-to-one with User (from UserOwnedMixin)
 
     def __repr__(self) -> str:
@@ -249,8 +272,22 @@ class Document(Base, TimestampMixin, SoftDeleteMixin, UserOwnedMixin):
 
     @property
     def is_processed(self) -> bool:
-        """Check if document processing is complete."""
+        """True only when both DMS and RAG pipelines have finished successfully."""
         return self.processing_status == ProcessingStatus.COMPLETED
+
+    @property
+    def is_searchable(self) -> bool:
+        """Alias for is_processed — document is fully embedded and queryable."""
+        return self.processing_status == ProcessingStatus.COMPLETED
+
+    @property
+    def is_text_ready(self) -> bool:
+        """True when DMS pipeline has finished (text in DB) even if RAG hasn't run yet."""
+        return self.processing_status in (
+            ProcessingStatus.PARSED,
+            ProcessingStatus.CHUNKING,
+            ProcessingStatus.COMPLETED,
+        )
 
     @property
     def gemini_file_expired(self) -> bool:

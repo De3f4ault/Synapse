@@ -23,15 +23,15 @@ export function EmptyState({ folderName, className, onUploadClick }: EmptyStateP
         className
       )}
     >
-      <div className="w-16 h-16 rounded-2xl bg-slate-800/50 border border-slate-700/50 flex items-center justify-center mb-4">
-        <Folder className="w-8 h-8 text-slate-500" />
+      <div className="w-16 h-16 rounded-2xl bg-slate-800/50 border border-border/50 flex items-center justify-center mb-4">
+        <Folder className="w-8 h-8 text-muted-foreground" />
       </div>
       
-      <h3 className="text-lg font-medium text-slate-300 mb-2">
+      <h3 className="text-lg font-medium text-foreground/80 mb-2">
         {folderName ? `${folderName} is empty` : 'This folder is empty'}
       </h3>
       
-      <p className="text-sm text-slate-500 max-w-xs mb-6">
+      <p className="text-sm text-muted-foreground max-w-xs mb-6">
         Drag documents here or upload new ones.
       </p>
       
@@ -40,9 +40,9 @@ export function EmptyState({ folderName, className, onUploadClick }: EmptyStateP
           onClick={onUploadClick}
           className={cn(
             "flex items-center gap-2 px-4 py-2 rounded-lg",
-            "bg-cyan-500/10 border border-cyan-500/30",
-            "text-cyan-400 text-sm font-medium",
-            "hover:bg-cyan-500/20 hover:border-cyan-500/50",
+            "bg-primary/10 border border-primary/30",
+            "text-primary text-sm font-medium",
+            "hover:bg-primary/20 hover:border-primary/50",
             "transition-all duration-150"
           )}
         >

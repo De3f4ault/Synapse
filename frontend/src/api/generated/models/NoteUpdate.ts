@@ -16,6 +16,14 @@ export type NoteUpdate = {
      */
     content?: (string | Record<string, any> | null);
     /**
+     * Updated plain text
+     */
+    content_text?: (string | null);
+    /**
+     * Editor version
+     */
+    editor_version?: (string | null);
+    /**
      * Content format
      */
     format?: (NoteFormat | null);

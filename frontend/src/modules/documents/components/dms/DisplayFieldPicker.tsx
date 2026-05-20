@@ -87,7 +87,7 @@ export function DisplayFieldPicker({
             </label>
           ))}
         </div>
-        <div className="border-t border-white/10 mt-2 pt-2">
+        <div className="border-t border-border mt-2 pt-2">
           <button
             onClick={resetToDefaults}
             className="w-full text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded-sm hover:bg-accent transition-colors text-left"

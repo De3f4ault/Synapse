@@ -1,16 +1,16 @@
 /**
  * DocumentsPage — Orchestrator (Paperless-ngx DMS Layout)
  *
- * Mounts DocumentsHub (the Paperless-style DMS view) instead of the
- * old Google Drive-style FileGrid/FileList layout.
- *
- * Owns: data fetching, upload, navigation.
- * Delegates: filter/sort/selection/display → DocumentsHub.
+ * Upload wiring:
+ *   - useUploadQueue (FSM-based, writes to uploadStore)
+ *   - GlobalDropZone catches page-wide drag-and-drop
+ *   - UploadModal is a polished overlay triggered by Upload button
+ *   - UploadQueueBar reads from uploadStore and routes conflict actions
+ *     back into useUploadQueue.replaceFile / keepBothFile
  */
 
 import { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { toast } from "sonner";
 
 // Data hooks
 import { useDocuments } from "./list/hooks/useDocuments";
@@ -21,9 +21,12 @@ import { useFolderStore } from "@/modules/documents/core/state/folderStore";
 import { DocumentsHub } from "@/modules/documents/components/DocumentsHub";
 
 // Upload
-import { UploadArea } from "./upload/components/UploadArea";
+import { UploadModal } from "./upload/components/UploadModal";
 import { UploadQueueBar } from "./upload/components/UploadQueueBar";
-import { useDocumentUpload } from "./upload/hooks/useDocumentUpload";
+import { useUploadQueue } from "./upload/hooks/useUploadQueue";
+
+// Global drag-and-drop overlay
+import { GlobalDropZone } from "@/modules/documents/components/dms/GlobalDropZone";
 
 // Sprint 5 wiring
 import { IngestionProgressList } from "@/modules/documents/components/dms/IngestionProgressBar";
@@ -48,8 +51,8 @@ export function DocumentsPage() {
   const { documents, isLoading, refetch } = useDocuments({ folderId: selectedFolderId });
   const { data: folderTree = [] } = useFolderTree();
 
-  // Upload hook
-  const upload = useDocumentUpload();
+  // --- Upload (FSM-based, backed by uploadStore) ---
+  const uploadQueue = useUploadQueue();
 
   // --- Handlers ---
   const handleDocumentClick = useCallback((doc: EnhancedDocument) => {
@@ -60,10 +63,18 @@ export function DocumentsPage() {
     // Folder navigation handled by sidebar
   }, []);
 
+  // Global drag-drop lands here - add to queue directly
+  const handleGlobalDrop = useCallback((files: File[]) => {
+    uploadQueue.addToQueue(files);
+  }, [uploadQueue]);
+
   // ─── Render ────────────────────────────────────────────────────────────────
 
   return (
     <>
+      {/* Global drag-and-drop overlay (page-wide) */}
+      <GlobalDropZone onDrop={handleGlobalDrop} />
+
       <DocumentsHub
         documents={documents}
         folders={folderTree as FolderTreeNode[]}
@@ -80,19 +91,25 @@ export function DocumentsPage() {
         onRefresh={refetch}
       />
 
-      {/* Upload integration */}
-      {showUpload && (
-        <UploadArea
-          getRootProps={upload.getRootProps}
-          getInputProps={upload.getInputProps}
-          isDragActive={upload.isDragActive}
-          onCancel={() => setShowUpload(false)}
-        />
-      )}
+      {/* Upload modal overlay */}
+      <UploadModal
+        open={showUpload}
+        onClose={() => setShowUpload(false)}
+        getRootProps={uploadQueue.getRootProps}
+        getInputProps={uploadQueue.getInputProps}
+        isDragActive={uploadQueue.isDragActive}
+        isProcessing={uploadQueue.isProcessing}
+      />
+
+      {/* Upload queue tray - reads from uploadStore, routes conflict actions */}
       <UploadQueueBar
-        onReplaceFile={() => upload.handleReplace()}
-        onKeepBothFile={() => upload.handleKeepBoth()}
-        isProcessing={upload.isUploading}
+        onReplaceFile={({ id, file, documentId }) =>
+          uploadQueue.replaceFile(id, file, documentId)
+        }
+        onKeepBothFile={({ id, file }) =>
+          uploadQueue.keepBothFile(id, file)
+        }
+        isProcessing={uploadQueue.isProcessing}
       />
 
       {/* Ingestion progress overlay */}

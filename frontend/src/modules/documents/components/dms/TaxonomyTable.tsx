@@ -143,20 +143,20 @@ export function TaxonomyTable<T extends TaxonomyItem>({
   return (
     <GlassCard className="p-0 overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-white/5">
-        <h2 className="text-lg font-bold text-white">{title}</h2>
+      <div className="flex items-center justify-between p-4 border-b border-border">
+        <h2 className="text-lg font-bold text-foreground">{title}</h2>
         <div className="flex items-center gap-2">
           {/* Search */}
           <div className="relative">
             <Search
               size={14}
-              className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-500"
+              className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground"
             />
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Filter..."
-              className="h-8 w-48 pl-7 bg-white/5 border-white/10 text-sm"
+              className="h-8 w-48 pl-7 bg-foreground/5 border-border text-sm"
             />
           </div>
 
@@ -172,7 +172,7 @@ export function TaxonomyTable<T extends TaxonomyItem>({
                 onBulkDelete(selectedItems);
                 setSelectedIds(new Set());
               }}
-              className="text-red-400 hover:text-red-300"
+              className="text-destructive hover:text-red-300"
             >
               <Trash2 size={14} className="mr-1" />
               Delete ({selectedIds.size})
@@ -183,7 +183,7 @@ export function TaxonomyTable<T extends TaxonomyItem>({
           <Button
             size="sm"
             onClick={onCreate}
-            className="bg-cyan-600 hover:bg-cyan-700 text-white"
+            className="bg-primary hover:bg-primary/80 text-foreground"
           >
             <Plus size={14} className="mr-1" />
             Create
@@ -195,7 +195,7 @@ export function TaxonomyTable<T extends TaxonomyItem>({
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-white/5 text-left">
+            <tr className="border-b border-border text-left">
               <th className="p-3 w-10">
                 <Checkbox
                   checked={allSelected}
@@ -204,7 +204,7 @@ export function TaxonomyTable<T extends TaxonomyItem>({
                 />
               </th>
               <th
-                className="p-3 text-slate-400 font-medium cursor-pointer hover:text-white transition-colors"
+                className="p-3 text-muted-foreground font-medium cursor-pointer hover:text-foreground transition-colors"
                 onClick={() => toggleSort("name")}
               >
                 <span className="flex items-center gap-1">
@@ -212,7 +212,7 @@ export function TaxonomyTable<T extends TaxonomyItem>({
                 </span>
               </th>
               <th
-                className="p-3 text-slate-400 font-medium cursor-pointer hover:text-white transition-colors"
+                className="p-3 text-muted-foreground font-medium cursor-pointer hover:text-foreground transition-colors"
                 onClick={() => toggleSort("matching_algorithm")}
               >
                 <span className="flex items-center gap-1">
@@ -220,7 +220,7 @@ export function TaxonomyTable<T extends TaxonomyItem>({
                 </span>
               </th>
               <th
-                className="p-3 text-slate-400 font-medium cursor-pointer hover:text-white transition-colors"
+                className="p-3 text-muted-foreground font-medium cursor-pointer hover:text-foreground transition-colors"
                 onClick={() => toggleSort("match")}
               >
                 <span className="flex items-center gap-1">
@@ -228,19 +228,19 @@ export function TaxonomyTable<T extends TaxonomyItem>({
                 </span>
               </th>
               {extraColumn && (
-                <th className="p-3 text-slate-400 font-medium">
+                <th className="p-3 text-muted-foreground font-medium">
                   {extraColumn.label}
                 </th>
               )}
               <th
-                className="p-3 text-slate-400 font-medium cursor-pointer hover:text-white transition-colors text-right"
+                className="p-3 text-muted-foreground font-medium cursor-pointer hover:text-foreground transition-colors text-right"
                 onClick={() => toggleSort("document_count")}
               >
                 <span className="flex items-center gap-1 justify-end">
                   Docs <SortIcon field="document_count" />
                 </span>
               </th>
-              <th className="p-3 w-24 text-slate-400 font-medium text-right">
+              <th className="p-3 w-24 text-muted-foreground font-medium text-right">
                 Actions
               </th>
             </tr>
@@ -248,9 +248,9 @@ export function TaxonomyTable<T extends TaxonomyItem>({
           <tbody>
             {isLoading ? (
               [...Array(5)].map((_, i) => (
-                <tr key={i} className="border-b border-white/[0.03]">
+                <tr key={i} className="border-b border-border">
                   <td colSpan={6 + (extraColumn ? 1 : 0)} className="p-3">
-                    <div className="h-5 rounded bg-white/5 animate-pulse" />
+                    <div className="h-5 rounded bg-foreground/5 animate-pulse" />
                   </td>
                 </tr>
               ))
@@ -258,7 +258,7 @@ export function TaxonomyTable<T extends TaxonomyItem>({
               <tr>
                 <td
                   colSpan={6 + (extraColumn ? 1 : 0)}
-                  className="p-8 text-center text-slate-500"
+                  className="p-8 text-center text-muted-foreground"
                 >
                   {search
                     ? "No items match your filter"
@@ -270,8 +270,8 @@ export function TaxonomyTable<T extends TaxonomyItem>({
                 <tr
                   key={item.id}
                   className={cn(
-                    "border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors cursor-pointer",
-                    selectedIds.has(item.id) && "bg-cyan-500/5"
+                    "border-b border-border hover:bg-muted/50 transition-colors cursor-pointer",
+                    selectedIds.has(item.id) && "bg-primary/5"
                   )}
                   onClick={() => onEdit(item)}
                 >
@@ -282,7 +282,7 @@ export function TaxonomyTable<T extends TaxonomyItem>({
                       className="h-4 w-4"
                     />
                   </td>
-                  <td className="p-3 text-slate-200 font-medium">
+                  <td className="p-3 text-foreground/70 font-medium">
                     {item.color && (
                       <span
                         className="inline-block w-3 h-3 rounded-full mr-2"
@@ -291,24 +291,24 @@ export function TaxonomyTable<T extends TaxonomyItem>({
                     )}
                     {item.name}
                     {item.is_inbox_tag && (
-                      <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300">
+                      <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-warning/20 text-amber-300">
                         inbox
                       </span>
                     )}
                   </td>
-                  <td className="p-3 text-slate-500 text-xs">
+                  <td className="p-3 text-muted-foreground text-xs">
                     {item.matching_algorithm !== undefined
                       ? MATCHING_ALGORITHM_LABELS[item.matching_algorithm]
                       : "—"}
                   </td>
-                  <td className="p-3 text-slate-500 text-xs font-mono truncate max-w-[200px]">
+                  <td className="p-3 text-muted-foreground text-xs font-mono truncate max-w-[200px]">
                     {item.match || "—"}
                   </td>
                   {extraColumn && (
                     <td className="p-3">{extraColumn.render(item)}</td>
                   )}
                   <td className="p-3 text-right">
-                    <span className="flex items-center gap-1 text-xs text-slate-400 justify-end">
+                    <span className="flex items-center gap-1 text-xs text-muted-foreground justify-end">
                       <FileText size={12} />
                       {item.document_count ?? 0}
                     </span>
@@ -322,7 +322,7 @@ export function TaxonomyTable<T extends TaxonomyItem>({
                         variant="ghost"
                         size="sm"
                         onClick={() => onEdit(item)}
-                        className="h-7 w-7 p-0 text-slate-400 hover:text-white"
+                        className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
                       >
                         <Pencil size={13} />
                       </Button>
@@ -330,7 +330,7 @@ export function TaxonomyTable<T extends TaxonomyItem>({
                         variant="ghost"
                         size="sm"
                         onClick={() => onDelete(item)}
-                        className="h-7 w-7 p-0 text-slate-400 hover:text-red-400"
+                        className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
                       >
                         <Trash2 size={13} />
                       </Button>

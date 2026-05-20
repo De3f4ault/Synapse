@@ -75,7 +75,7 @@ export function SearchCommand() {
   const { data: documents } = useQuery({
     queryKey: ["documents"],
     queryFn: () =>
-      DocumentsService.listDocumentsApiV1DocumentsGet(undefined, 1, 100),
+      DocumentsService.listDocumentsApiV1DocumentsGet(undefined, undefined, undefined, undefined, undefined, undefined, 1, 100),
     enabled: commandPaletteOpen,
     staleTime: 1000 * 60 * 5,
   });
@@ -83,7 +83,7 @@ export function SearchCommand() {
   const { data: notes } = useQuery({
     queryKey: ["notes"],
     queryFn: () =>
-      NotesService.listNotesApiV1NotesGet(undefined, undefined, 1, 100),
+      NotesService.listNotesApiV1NotesGet(undefined, undefined, undefined, undefined, 1, 100),
     enabled: commandPaletteOpen,
     staleTime: 1000 * 60 * 5,
   });
@@ -330,7 +330,7 @@ export function SearchCommand() {
           description: isWeak
             ? `⚠️ Weak area (${masteryPct} mastery)`
             : `📊 ${masteryPct} mastery`,
-          icon: isWeak ? <AlertTriangle className="h-4 w-4 text-amber-500" /> : <Brain className="h-4 w-4" />,
+          icon: isWeak ? <AlertTriangle className="h-4 w-4 text-warning" /> : <Brain className="h-4 w-4" />,
           href: `/study?focus=${encodeURIComponent(String(result.id.id))}`,
           category: "intelligence",
           resourceType: "concept",

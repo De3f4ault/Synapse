@@ -20,14 +20,14 @@ export const QuizDock = ({
     return (
         <FloatingPageDock className="justify-between">
             {/* View Toggle */}
-            <div className="flex bg-white/5 rounded-full p-0.5 border border-white/10">
+            <div className="flex bg-foreground/5 rounded-full p-0.5 border border-border">
                 <button
                     onClick={() => onViewChange('grid')}
                     className={cn(
                         'p-2 rounded-full transition-all',
                         viewMode === 'grid'
-                            ? 'bg-white/10 text-cyan-400'
-                            : 'text-slate-500 hover:text-white'
+                            ? 'bg-foreground/10 text-primary'
+                            : 'text-muted-foreground hover:text-foreground'
                     )}
                 >
                     <Grid size={16} />
@@ -37,8 +37,8 @@ export const QuizDock = ({
                     className={cn(
                         'p-2 rounded-full transition-all',
                         viewMode === 'list'
-                            ? 'bg-white/10 text-cyan-400'
-                            : 'text-slate-500 hover:text-white'
+                            ? 'bg-foreground/10 text-primary'
+                            : 'text-muted-foreground hover:text-foreground'
                     )}
                 >
                     <AlignLeft size={16} />
@@ -52,7 +52,7 @@ export const QuizDock = ({
                     value={searchQuery}
                     onChange={(e) => onSearchChange(e.target.value)}
                     placeholder="Search quizzes..."
-                    className="w-full h-10 bg-white/5 border border-white/10 rounded-full px-4 text-sm text-slate-200 placeholder:text-slate-500 focus:outline-none focus:border-cyan-500/50 transition-all"
+                    className="w-full h-10 bg-foreground/5 border border-border rounded-full px-4 text-sm text-foreground/70 placeholder:text-muted-foreground focus:outline-none focus:border-primary/50 transition-all"
                 />
             </div>
 
@@ -60,7 +60,7 @@ export const QuizDock = ({
             <div className="flex items-center gap-3">
                 <button
                     onClick={onImport}
-                    className="h-10 px-5 rounded-full bg-slate-700/50 border border-white/10 text-slate-300 flex items-center gap-2 hover:bg-slate-700 transition-colors text-sm font-medium"
+                    className="h-10 px-5 rounded-full bg-muted/50 border border-border text-foreground/80 flex items-center gap-2 hover:bg-muted transition-colors text-sm font-medium"
                 >
                     <Upload size={16} />
                     <span className="hidden sm:inline">Import</span>

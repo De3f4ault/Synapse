@@ -6,10 +6,8 @@ import { NodeDetailsPanel } from "./components/NodeDetailsPanel";
 import { GraphNode, ENTITY_CONFIG, LINK_COLORS } from "./types";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { MenuIcon, PanelLeftIcon } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { LoadingScreen } from "@/components/layout/LoadingScreen";
-import { AuroraBackground } from "@/shared/ui";
+import { MenuIcon, Loader2 } from "lucide-react";
+
 import { PlatformService } from "@/api/generated";
 import { toast } from "sonner";
 
@@ -31,21 +29,6 @@ export const KnowledgeGraphPage: React.FC = () => {
 
   // Sidebar State
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-
-  // Load sidebar state
-  useEffect(() => {
-    const saved = localStorage.getItem("knowledgeSidebarCollapsed");
-    if (saved) {
-      setSidebarCollapsed(JSON.parse(saved));
-    }
-  }, []);
-
-  const toggleSidebar = () => {
-    const newState = !sidebarCollapsed;
-    setSidebarCollapsed(newState);
-    localStorage.setItem("knowledgeSidebarCollapsed", JSON.stringify(newState));
-  };
 
   // Refs
   const containerRef = useRef<HTMLDivElement>(null);
@@ -81,11 +64,15 @@ export const KnowledgeGraphPage: React.FC = () => {
   };
 
   // Handle Resize
+  // NOTE: isLoading is intentionally included as a dependency.
+  // The early-return pattern causes containerRef.current to be null on first
+  // mount (the LoadingScreen renders instead of the full layout). Adding
+  // isLoading ensures the observer is (re-)attached once the real layout mounts.
   useEffect(() => {
     if (!containerRef.current) return;
 
     const resizeObserver = new ResizeObserver((entries) => {
-      for (let entry of entries) {
+      for (const entry of entries) {
         setContainerDimensions({
           width: entry.contentRect.width,
           height: entry.contentRect.height,
@@ -95,33 +82,41 @@ export const KnowledgeGraphPage: React.FC = () => {
 
     resizeObserver.observe(containerRef.current);
     return () => resizeObserver.disconnect();
-  }, []);
+  }, [isLoading]); // re-run when loading state changes so observer attaches after layout renders
 
   // Filter Data — entity type + link type filtering
   const { nodes, edges } = useMemo(() => {
     if (!data) return { nodes: [], edges: [] };
 
-    // 1. Filter by Entity Type
-    const validNodes = data.nodes.filter((n) =>
-      activeFilters.includes(n.type as string),
-    );
+    // 1. Filter by Entity Type — normalize type to lowercase so casing from
+    //    the API (e.g. "Note" vs "note") never causes false negatives.
+    //    Deep-clone each node/edge so D3 is free to mutate (add x, y, vx, vy)
+    //    without touching the React Query cached objects.
+    const validNodes = data.nodes
+      .filter((n) => activeFilters.includes((n.type as string).toLowerCase()))
+      .map((n) => ({ ...n, type: (n.type as string).toLowerCase() })) as GraphNode[];
+
     const validNodeIds = new Set(validNodes.map((n) => n.id));
 
     // 2. Filter Edges by both endpoints existing AND link type
-    const validEdges = data.edges.filter((e) => {
-      const sourceId =
-        typeof e.source === "object" ? (e.source as GraphNode).id : e.source;
-      const targetId =
-        typeof e.target === "object" ? (e.target as GraphNode).id : e.target;
+    const validEdges = data.edges
+      .filter((e) => {
+        const sourceId =
+          typeof e.source === "object" ? (e.source as GraphNode).id : e.source;
+        const targetId =
+          typeof e.target === "object" ? (e.target as GraphNode).id : e.target;
 
-      const nodesExist =
-        validNodeIds.has(sourceId as string) &&
-        validNodeIds.has(targetId as string);
+        const nodesExist =
+          validNodeIds.has(sourceId as string) &&
+          validNodeIds.has(targetId as string);
 
-      const linkTypeActive = activeLinkTypes.includes(e.type);
+        const linkTypeActive = activeLinkTypes.includes(
+          (e.type as string).toLowerCase(),
+        );
 
-      return nodesExist && linkTypeActive;
-    });
+        return nodesExist && linkTypeActive;
+      })
+      .map((e) => ({ ...e, type: (e.type as string).toLowerCase() })) as GraphEdge[];
 
     return { nodes: validNodes, edges: validEdges };
   }, [data, activeFilters, activeLinkTypes]);
@@ -152,23 +147,12 @@ export const KnowledgeGraphPage: React.FC = () => {
     );
   };
 
-  if (isLoading) {
-    return <LoadingScreen />;
-  }
 
   return (
-    <AuroraBackground
-      className="flex h-screen overflow-hidden text-slate-200"
-      fixed
-    >
+    <div className="flex h-screen overflow-hidden text-foreground/70 bg-background">
       <div className="flex flex-1 w-full h-full overflow-hidden">
-        {/* Desktop Sidebar - Retractable */}
-        <div
-          className={cn(
-            "hidden md:block transition-all duration-300 ease-in-out relative z-10 py-4 pl-3",
-            sidebarCollapsed ? "w-0 p-0" : "w-[17rem]",
-          )}
-        >
+        {/* Desktop Sidebar — SidebarShell handles collapse */}
+        <div className="hidden md:flex transition-all duration-300 ease-in-out relative z-10">
           <KnowledgeSidebar
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
@@ -179,8 +163,6 @@ export const KnowledgeGraphPage: React.FC = () => {
             onRefresh={handleSemanticRefresh}
             isRefreshing={isRefreshing}
             stats={data?.stats}
-            className="h-full rounded-2xl border border-white/5 w-full"
-            isCollapsed={sidebarCollapsed}
           />
         </div>
 
@@ -202,7 +184,6 @@ export const KnowledgeGraphPage: React.FC = () => {
                 isRefreshing={isRefreshing}
                 stats={data?.stats}
                 className="h-full w-64"
-                isCollapsed={sidebarCollapsed}
               />
             </SheetContent>
           </Sheet>
@@ -212,22 +193,12 @@ export const KnowledgeGraphPage: React.FC = () => {
         <div className="flex-1 flex flex-col overflow-hidden relative">
           {/* Floating Header Actions */}
           <div className="absolute top-4 left-4 z-50 flex items-center gap-2 pointer-events-none">
-            {/* Desktop Toggle */}
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={toggleSidebar}
-              className="hidden md:flex pointer-events-auto hover:bg-white/10 text-slate-400 hover:text-white rounded-xl transition-colors"
-            >
-              <PanelLeftIcon className="size-5" />
-            </Button>
-
             {/* Mobile Hamburger */}
             <Button
               variant="ghost"
               size="icon"
               onClick={() => setMobileSidebarOpen(true)}
-              className="md:hidden pointer-events-auto hover:bg-white/10 text-slate-400 hover:text-white rounded-xl transition-colors"
+              className="md:hidden pointer-events-auto hover:bg-muted text-muted-foreground hover:text-foreground rounded-xl transition-colors"
             >
               <MenuIcon className="size-5" />
             </Button>
@@ -235,16 +206,27 @@ export const KnowledgeGraphPage: React.FC = () => {
 
           {/* Graph Area */}
           <div ref={containerRef} className="flex-1 w-full h-full min-h-0">
-            {containerDimensions.width > 0 && containerDimensions.height > 0 && (
-              <KnowledgeGraph
-                nodes={nodes}
-                edges={edges}
-                width={containerDimensions.width}
-                height={containerDimensions.height}
-                onNodeClick={setSelectedNode}
-                onBackgroundClick={() => setSelectedNode(null)}
-                highlightedNodeId={highlightedNodeId}
-              />
+            {isLoading ? (
+              // Loading state rendered INSIDE the container so containerRef is
+              // always in the DOM when the ResizeObserver effect fires.
+              <div className="flex items-center justify-center w-full h-full">
+                <div className="flex flex-col items-center gap-3 text-muted-foreground">
+                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                  <span className="text-sm">Building knowledge graph…</span>
+                </div>
+              </div>
+            ) : (
+              containerDimensions.width > 0 && containerDimensions.height > 0 && (
+                <KnowledgeGraph
+                  nodes={nodes}
+                  edges={edges}
+                  width={containerDimensions.width}
+                  height={containerDimensions.height}
+                  onNodeClick={setSelectedNode}
+                  onBackgroundClick={() => setSelectedNode(null)}
+                  highlightedNodeId={highlightedNodeId}
+                />
+              )
             )}
           </div>
         </div>
@@ -258,7 +240,7 @@ export const KnowledgeGraphPage: React.FC = () => {
           className="z-50"
         />
       )}
-    </AuroraBackground>
+    </div>
   );
 };
 

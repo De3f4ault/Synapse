@@ -91,8 +91,8 @@ export function filterByPriorityThreshold(
  */
 export function getPriorityColor(priority: StudyPriority): string {
   const colors: Record<StudyPriority, string> = {
-    high: "text-red-500",
-    new: "text-purple-500",
+    high: "text-destructive",
+    new: "text-accent",
     normal: "text-blue-500",
     low: "text-gray-500",
   };

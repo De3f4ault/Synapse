@@ -1,0 +1,342 @@
+/* ============================================================
+   UnifiedNotePage — Dual-Face note session styles
+   Uses global tokens only.
+   ============================================================ */
+
+/* ── Root container ───────────────────────────────────────── */
+.unified-note {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  overflow: hidden;
+  position: relative;
+}
+
+/* ── Loading / error states ───────────────────────────────── */
+.unified-note__loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 12px;
+  color: var(--text-secondary);
+  font-size: var(--text-caption);
+}
+
+.unified-note__loading-pulse {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid var(--border-default);
+  border-top-color: var(--brand-primary);
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Top bar ──────────────────────────────────────────────── */
+.unified-note__topbar {
+  flex-shrink: 0;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-elevated);
+  gap: 12px;
+}
+
+.unified-note__topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.unified-note__topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+/* Title input */
+.unified-note__title-input {
+  background: transparent;
+  border: none;
+  outline: none;
+  font-size: var(--text-body-sm);
+  font-weight: 600;
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  flex: 1;
+  min-width: 0;
+  padding: 4px 6px;
+  border-radius: var(--radius-subtle);
+  transition: background var(--duration-micro);
+}
+
+.unified-note__title-input:focus {
+  background: var(--bg-surface-hover);
+}
+
+.unified-note__title-input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.unified-note__save-indicator {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+  animation: fade-in var(--duration-standard) ease;
+}
+
+/* Icon buttons (top bar) */
+.unified-note__icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-subtle);
+  border: none;
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: background var(--duration-micro), color var(--duration-micro);
+}
+
+.unified-note__icon-btn:hover {
+  background: var(--bg-surface-hover);
+  color: var(--text-primary);
+}
+
+.unified-note__icon-btn.active {
+  background: var(--bg-surface-hover);
+  color: var(--text-primary);
+}
+
+.unified-note__icon-btn.active-star {
+  color: #c9a642;
+}
+
+/* Dropdown menu */
+.unified-note__dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 160px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-default);
+  box-shadow: var(--shadow-whisper);
+  padding: 4px;
+  z-index: var(--z-dropdown);
+  animation: fade-in var(--duration-micro) var(--ease-enter);
+}
+
+.unified-note__dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 10px;
+  border-radius: var(--radius-subtle);
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: var(--text-caption);
+  cursor: pointer;
+  transition: background var(--duration-micro), color var(--duration-micro);
+  text-align: left;
+}
+
+.unified-note__dropdown-item:hover {
+  background: var(--bg-surface-hover);
+  color: var(--text-primary);
+}
+
+.unified-note__dropdown-item--danger:hover {
+  background: var(--status-error-bg);
+  color: var(--status-error);
+}
+
+/* ── Body / Editor area ───────────────────────────────────── */
+.unified-note__body {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Faces */
+.unified-note__face {
+  position: absolute;
+  inset: 0;
+}
+
+.unified-note__face--text {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.unified-note__face--canvas {
+  /* Excalidraw needs absolute positioning internally */
+}
+
+/* Tiptap scroll container */
+.unified-note__tiptap-scroll {
+  flex: 1;
+  overflow-y: auto;
+  /* Custom scrollbar */
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+.unified-note__tiptap-scroll::-webkit-scrollbar {
+  width: 5px;
+}
+
+.unified-note__tiptap-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.unified-note__tiptap-scroll::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: var(--radius-full);
+}
+
+.unified-note__tiptap-container {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 24px 32px 120px;
+}
+
+/* ── Floating bottom bar ──────────────────────────────────── */
+.unified-note__bottom-bar {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: var(--z-sticky);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-full);
+  box-shadow: var(--shadow-whisper);
+  backdrop-filter: blur(12px);
+}
+
+/* Face switcher within bottom bar */
+.unified-note__face-switcher {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.unified-note__face-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px;
+  border-radius: var(--radius-full);
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: var(--text-caption);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background var(--duration-standard) var(--ease-state),
+              color var(--duration-standard);
+}
+
+.unified-note__face-btn:hover {
+  color: var(--text-primary);
+}
+
+.unified-note__face-btn.active {
+  background: var(--bg-surface-hover);
+  color: var(--text-primary);
+}
+
+.unified-note__bottom-divider {
+  width: 1px;
+  height: 20px;
+  background: var(--border-default);
+  margin: 0 4px;
+}
+
+/* ── Animations ───────────────────────────────────────────── */
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Version History Drawer ───────────────────────────────── */
+.unified-note__history-drawer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 300px;
+  background: var(--bg-elevated);
+  border-left: 1px solid var(--border-default);
+  display: flex;
+  flex-direction: column;
+  z-index: var(--z-sticky);
+  animation: drawer-in var(--duration-deliberate) var(--ease-enter);
+  overflow: hidden;
+}
+
+@keyframes drawer-in {
+  from { opacity: 0; transform: translateX(20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.unified-note__history-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 14px 10px;
+  border-bottom: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+}
+
+.unified-note__history-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: var(--text-caption);
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: var(--tracking-label);
+}
+
+.unified-note__history-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+.unified-note__history-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 80px;
+  font-size: var(--text-caption);
+  color: var(--text-tertiary);
+}
+

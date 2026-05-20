@@ -133,8 +133,8 @@ export function GlobalDropZone({
             className={cn(
               "relative flex flex-col items-center justify-center gap-4",
               "w-[500px] h-[300px] rounded-2xl",
-              "border-2 border-dashed border-cyan-400/50",
-              "bg-cyan-950/30 backdrop-blur-xl",
+              "border-2 border-dashed border-primary/50",
+              "bg-primary/10 backdrop-blur-xl",
             )}
           >
             <div className="flex items-center gap-3">
@@ -142,16 +142,16 @@ export function GlobalDropZone({
                 animate={{ y: [0, -8, 0] }}
                 transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
               >
-                <Upload size={40} className="text-cyan-400" />
+                <Upload size={40} className="text-primary" />
               </motion.div>
-              <FileText size={28} className="text-cyan-300/50" />
+              <FileText size={28} className="text-primary/80/50" />
             </div>
 
             <div className="text-center">
-              <h3 className="text-lg font-semibold text-white">
+              <h3 className="text-lg font-semibold text-foreground">
                 Drop files to upload
               </h3>
-              <p className="text-sm text-slate-400 mt-1">
+              <p className="text-sm text-muted-foreground mt-1">
                 PDF, DOCX, images, and more
               </p>
             </div>

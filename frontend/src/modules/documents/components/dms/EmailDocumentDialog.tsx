@@ -105,7 +105,7 @@ export function EmailDocumentDialog({
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        className="absolute inset-0 bg-background/80 backdrop-blur-sm"
         onClick={onClose}
       />
 
@@ -114,25 +114,25 @@ export function EmailDocumentDialog({
         animate={{ opacity: 1, scale: 1, y: 0 }}
         className={cn(
           "relative z-10 w-full max-w-lg mx-4",
-          "bg-card/95 backdrop-blur-xl border border-white/10 rounded-2xl",
+          "bg-card/95 backdrop-blur-xl border border-border rounded-2xl",
           "shadow-2xl shadow-black/40"
         )}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.05]">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
           <div className="flex items-center gap-2.5">
-            <Mail size={18} className="text-cyan-400" />
-            <h2 className="text-base font-semibold text-white">
+            <Mail size={18} className="text-primary" />
+            <h2 className="text-base font-semibold text-foreground">
               Email document{documentIds.length > 1 ? "s" : ""}
             </h2>
-            <span className="text-xs text-slate-500 bg-white/5 px-1.5 py-0.5 rounded-full">
+            <span className="text-xs text-muted-foreground bg-foreground/5 px-1.5 py-0.5 rounded-full">
               <Paperclip size={9} className="inline mr-1" />
               {documentIds.length}
             </span>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
           >
             <X size={16} />
           </button>
@@ -142,7 +142,7 @@ export function EmailDocumentDialog({
         <div className="px-5 py-4 space-y-3">
           {/* To */}
           <div>
-            <label className="text-[10px] text-slate-500 uppercase tracking-wider font-medium mb-1 block">
+            <label className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium mb-1 block">
               To
             </label>
             <input
@@ -151,9 +151,9 @@ export function EmailDocumentDialog({
               onChange={(e) => setTo(e.target.value)}
               placeholder="recipient@example.com"
               className={cn(
-                "w-full px-3 py-2 rounded-lg text-sm bg-white/[0.03]",
-                "border border-white/10 text-slate-200 placeholder-slate-500",
-                "focus:outline-none focus:ring-1 focus:ring-cyan-500/50"
+                "w-full px-3 py-2 rounded-lg text-sm bg-muted/30",
+                "border border-border text-foreground/70 placeholder-slate-500",
+                "focus:outline-none focus:ring-1 focus:ring-primary/50"
               )}
               autoFocus
             />
@@ -161,7 +161,7 @@ export function EmailDocumentDialog({
 
           {/* Subject */}
           <div>
-            <label className="text-[10px] text-slate-500 uppercase tracking-wider font-medium mb-1 block">
+            <label className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium mb-1 block">
               Subject
             </label>
             <input
@@ -170,16 +170,16 @@ export function EmailDocumentDialog({
               onChange={(e) => setSubject(e.target.value)}
               placeholder="Document(s) attached"
               className={cn(
-                "w-full px-3 py-2 rounded-lg text-sm bg-white/[0.03]",
-                "border border-white/10 text-slate-200 placeholder-slate-500",
-                "focus:outline-none focus:ring-1 focus:ring-cyan-500/50"
+                "w-full px-3 py-2 rounded-lg text-sm bg-muted/30",
+                "border border-border text-foreground/70 placeholder-slate-500",
+                "focus:outline-none focus:ring-1 focus:ring-primary/50"
               )}
             />
           </div>
 
           {/* Body */}
           <div>
-            <label className="text-[10px] text-slate-500 uppercase tracking-wider font-medium mb-1 block">
+            <label className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium mb-1 block">
               Message
             </label>
             <textarea
@@ -188,22 +188,22 @@ export function EmailDocumentDialog({
               placeholder="Optional message..."
               rows={3}
               className={cn(
-                "w-full px-3 py-2 rounded-lg text-sm bg-white/[0.03]",
-                "border border-white/10 text-slate-200 placeholder-slate-500 resize-none",
-                "focus:outline-none focus:ring-1 focus:ring-cyan-500/50"
+                "w-full px-3 py-2 rounded-lg text-sm bg-muted/30",
+                "border border-border text-foreground/70 placeholder-slate-500 resize-none",
+                "focus:outline-none focus:ring-1 focus:ring-primary/50"
               )}
             />
           </div>
 
           {/* File version */}
           <div>
-            <label className="text-[10px] text-slate-500 uppercase tracking-wider font-medium mb-1 block">
+            <label className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium mb-1 block">
               Attachment version
             </label>
             <select
               value={fileVersion}
               onChange={(e) => setFileVersion(e.target.value as "archive" | "original")}
-              className="w-full px-3 py-1.5 rounded-lg text-sm bg-white/[0.04] border border-white/10 text-slate-200"
+              className="w-full px-3 py-1.5 rounded-lg text-sm bg-white/[0.04] border border-border text-foreground/70"
             >
               <option value="archive" className="bg-slate-800">Archive</option>
               <option value="original" className="bg-slate-800">Original</option>
@@ -212,22 +212,22 @@ export function EmailDocumentDialog({
 
           {/* Error */}
           {emailMutation.isError && (
-            <p className="text-xs text-red-400">
+            <p className="text-xs text-destructive">
               {emailMutation.error.message}
             </p>
           )}
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end gap-2 px-5 py-3 border-t border-white/[0.05]">
-          <Button variant="ghost" size="sm" onClick={onClose} className="text-slate-400">
+        <div className="flex justify-end gap-2 px-5 py-3 border-t border-border">
+          <Button variant="ghost" size="sm" onClick={onClose} className="text-muted-foreground">
             Cancel
           </Button>
           <Button
             onClick={handleSend}
             disabled={emailMutation.isPending || !to.trim()}
             size="sm"
-            className="bg-cyan-600 hover:bg-cyan-500 text-white"
+            className="bg-primary hover:bg-primary text-foreground"
           >
             {emailMutation.isPending ? (
               <Loader2 size={13} className="mr-1.5 animate-spin" />

@@ -105,6 +105,11 @@ class GroundingMiddleware:
             context["grounding"] = GroundingResult(evidence=[])
             return
 
+        # Pull conversation history injected by execute_stream/execute.
+        # Used by GroundingService to run the context-aware rewriter before
+        # the vector search, turning vague follow-ups into specific queries.
+        chat_history: list = context.get("chat_history") or []
+
         # Create isolated db session for search (same pattern as stream_ai_response)
         grounding_db: Optional["AsyncSessionLocal"] = None
         try:
@@ -121,11 +126,65 @@ class GroundingMiddleware:
                 max_chunks=self.max_chunks,
                 min_confidence=self.min_confidence,
                 max_latency_ms=self.max_latency_ms,
+                history=chat_history,
             )
 
             await grounding_db.commit()
 
-            # Inject into context
+            # === IMAGE RETRIEVAL ROUTING ===
+            # If any evidence chunk is an image, load the bytes from disk and
+            # inject them into context so base_agent sends a vision completion.
+            # The alias upgrade is non-fatal — if file loading fails, we still
+            # ground with the text snippet (surrounding_context) from Qdrant.
+            image_bytes_list = []
+            if result.has_grounding:
+                for ev_chunk in result.evidence:
+                    if ev_chunk.content_type == "image" and ev_chunk.storage_path:
+                        try:
+                            import os, base64, io
+                            from PIL import Image as _PILImage
+
+                            img_path = ev_chunk.storage_path
+                            if not os.path.exists(img_path):
+                                logger.warning(
+                                    "grounding_image_file_missing",
+                                    path=img_path,
+                                    chunk_id=ev_chunk.id,
+                                )
+                                continue
+
+                            with _PILImage.open(img_path) as img:
+                                img = img.convert("RGB")
+                                # Resize to 1024px max — same as captioner
+                                w, h = img.size
+                                if max(w, h) > 1024:
+                                    scale = 1024 / max(w, h)
+                                    img = img.resize(
+                                        (int(w * scale), int(h * scale)),
+                                        _PILImage.LANCZOS,
+                                    )
+                                buf = io.BytesIO()
+                                img.save(buf, format="JPEG", quality=85)
+                                b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
+                                image_bytes_list.append(b64)
+
+                        except Exception as _img_err:
+                            logger.warning(
+                                "grounding_image_load_failed",
+                                path=ev_chunk.storage_path,
+                                error=str(_img_err),
+                            )
+
+            if image_bytes_list:
+                context["image_bytes"] = image_bytes_list
+                context["litellm_alias"] = "synapse-vision"
+                logger.info(
+                    "grounding_vision_upgrade",
+                    images_loaded=len(image_bytes_list),
+                    alias="synapse-vision",
+                )
+
+            # Inject grounding evidence into context
             context["grounding"] = result
 
             # Pre-populate grounding_sources in state metadata so they

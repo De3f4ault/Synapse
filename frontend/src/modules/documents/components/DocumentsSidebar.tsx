@@ -3,6 +3,7 @@
  * 
  * Sidebar with folder tree, upload action, and smart views.
  * Phase 1.5b: Integrated context menu with create/rename/delete.
+ * Uses shared SidebarShell for consistent collapse/expand behavior.
  */
 
 import { useState, useCallback } from "react";
@@ -10,8 +11,7 @@ import { FolderOpen, Plus, Clock, Star, Archive, Hash } from "lucide-react";
 import { SavedViewSidebar } from "./dms/SavedViewSidebar";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { NeumorphicButton } from "@/components/neumorphic";
-import { GlassCard } from "@/shared/ui";
+import { SidebarShell } from "@/shared/ui";
 import { FolderTree } from "./FolderTree";
 import { FolderContextMenu } from "./tree/FolderContextMenu";
 import { CreateFolderDialog } from "./dialogs/CreateFolderDialog";
@@ -25,7 +25,6 @@ interface DocumentsSidebarProps {
     onSectorChange?: (sector: string) => void;
     totalDocuments: number;
     onUpload?: () => void;
-    isCollapsed?: boolean;
     onFolderSelect?: (folder: FolderTreeNode | null) => void;
 }
 
@@ -39,7 +38,6 @@ export const DocumentsSidebar = ({
     className,
     totalDocuments,
     onUpload,
-    isCollapsed = false,
     onFolderSelect,
 }: DocumentsSidebarProps) => {
     const { selectedFolderId, selectFolder, currentView, setView } = useFolderStore();
@@ -49,81 +47,80 @@ export const DocumentsSidebar = ({
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
     const [createDialogParent, setCreateDialogParent] = useState<{ id: number | null; name: string } | null>(null);
     const [renamingFolderId, setRenamingFolderId] = useState<number | null>(null);
-    
+
     // Mutations
     const createFolder = useCreateFolder();
     const updateFolder = useUpdateFolder();
     const deleteFolder = useDeleteFolder();
 
-    const handleFolderSelect = (folder: FolderTreeNode | null) => {
-        selectFolder(folder?.id ?? null);
-        onFolderSelect?.(folder);
-    };
-
-    // Open create folder dialog (root level)
-    const handleCreateFolder = useCallback(() => {
-        setCreateDialogParent(null);
-        setIsCreateDialogOpen(true);
-    }, []);
-
-    // Handle create folder submission
-    const handleCreateFolderSubmit = useCallback(async (name: string, parentId: number | null) => {
-        try {
-            await createFolder.mutateAsync({ name, parent_id: parentId });
-            toast.success(parentId ? 'Subfolder created' : 'Folder created');
-        } catch (error) {
-            console.error('Failed to create folder:', error);
-            toast.error('Failed to create folder');
+    // ── Folder selection ──
+    const handleFolderSelect = useCallback((folder: FolderTreeNode | null) => {
+        if (folder) {
+            selectFolder(folder.id);
+            setView({ type: 'folder', folderId: folder.id } as DocumentsView);
+        } else {
+            selectFolder(null);
+            setView({ type: 'recent' } as DocumentsView);
         }
-    }, [createFolder]);
+        onFolderSelect?.(folder);
+    }, [selectFolder, setView, onFolderSelect]);
 
-    // Context menu handlers
-    const handleContextMenu = useCallback((folder: FolderTreeNode, event: React.MouseEvent) => {
-        event.preventDefault();
-        setContextMenu({
-            folder,
-            position: { x: event.clientX, y: event.clientY },
-        });
+    // ── Context menu handlers ──
+    const handleContextMenu = useCallback((folder: FolderTreeNode, position: { x: number; y: number }) => {
+        setContextMenu({ folder, position });
     }, []);
 
     const handleCloseContextMenu = useCallback(() => {
         setContextMenu(null);
     }, []);
 
-    const handleCreateSubfolder = useCallback((parentId: number) => {
-        const parent = contextMenu?.folder;
-        setCreateDialogParent({ id: parentId, name: parent?.name || 'Folder' });
+    const handleCreateFolder = useCallback(() => {
+        setCreateDialogParent(null);
         setIsCreateDialogOpen(true);
-    }, [contextMenu]);
+    }, []);
+
+    const handleCreateSubfolder = useCallback((parentFolder: FolderTreeNode) => {
+        setCreateDialogParent({ id: parentFolder.id, name: parentFolder.name });
+        setIsCreateDialogOpen(true);
+        setContextMenu(null);
+    }, []);
 
     const handleRename = useCallback((folder: FolderTreeNode) => {
         setRenamingFolderId(folder.id);
+        setContextMenu(null);
     }, []);
 
-    const handleRenameSubmit = useCallback(async (id: number, newName: string) => {
-        if (!newName.trim()) {
-            setRenamingFolderId(null);
-            return;
-        }
-
-        try {
-            await updateFolder.mutateAsync({ id, name: newName });
-            toast.success('Folder renamed');
-        } catch (error) {
-            console.error('Failed to rename folder:', error);
-            toast.error('Failed to rename folder');
-        } finally {
-            setRenamingFolderId(null);
-        }
+    const handleRenameSubmit = useCallback((folderId: number, newName: string) => {
+        updateFolder.mutate(
+            { folderId, data: { name: newName } },
+            {
+                onSuccess: () => {
+                    toast.success('Folder renamed');
+                    setRenamingFolderId(null);
+                },
+                onError: () => toast.error('Failed to rename folder'),
+            }
+        );
     }, [updateFolder]);
 
-    const handleDelete = useCallback((folder: FolderTreeNode) => {
-        const confirmed = confirm(
-            `Delete "${folder.name}"?\n\nDocuments in this folder will be moved to the parent folder.`
+    const handleCreateFolderSubmit = useCallback((name: string, parentId: number | null) => {
+        createFolder.mutate(
+            { name, parent: parentId },
+            {
+                onSuccess: () => {
+                    toast.success('Folder created');
+                    setIsCreateDialogOpen(false);
+                },
+                onError: () => toast.error('Failed to create folder'),
+            }
         );
-        if (confirmed) {
+    }, [createFolder]);
+
+    const handleDelete = useCallback((folder: FolderTreeNode) => {
+        setContextMenu(null);
+        if (window.confirm(`Delete "${folder.name}"? All contents will be moved to the root.`)) {
             deleteFolder.mutate(
-                { id: folder.id, strategy: 'promote' },
+                { folderId: folder.id },
                 {
                     onSuccess: () => {
                         toast.success('Folder deleted');
@@ -146,48 +143,28 @@ export const DocumentsSidebar = ({
 
     return (
         <>
-            <GlassCard
-                className={cn(
-                    "flex h-full w-full flex-col bg-zinc-950/40 backdrop-blur-3xl border border-white/10 transition-all duration-300 ease-in-out",
-                    className
-                )}
+            <SidebarShell
+                storageKey="documentsSidebarCollapsed"
+                title="Library"
+                titleIcon={FolderOpen}
+                primaryAction={{
+                    label: "Upload",
+                    icon: Plus,
+                    onClick: () => onUpload?.(),
+                }}
+                statsLine={
+                    <span className="flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full bg-primary" />
+                        {totalDocuments} Items
+                    </span>
+                }
+                footerHint="Right-click folders to organize"
+                className={className}
             >
-                {/* Header / Upload Action */}
-                <div className="p-4 flex flex-col gap-4 shrink-0">
-                    <div className={cn("flex items-center gap-2 transition-opacity duration-200", isCollapsed ? "justify-center" : "")}>
-                        <FolderOpen className={cn("text-cyan-400 transition-all", isCollapsed ? "w-8 h-8" : "w-5 h-5")} />
+                {(isCollapsed) => (
+                    <>
+                        {/* Folder Tree with DnD */}
                         {!isCollapsed && (
-                            <h2 className="text-xl font-bold text-white whitespace-nowrap">Library</h2>
-                        )}
-                    </div>
-
-                    {!isCollapsed && (
-                        <div className="flex gap-4 text-xs text-slate-400 px-1">
-                            <span className="flex items-center gap-1">
-                                <span className="w-2 h-2 rounded-full bg-cyan-400" />
-                                {totalDocuments} Items
-                            </span>
-                        </div>
-                    )}
-
-                    {/* Primary Upload Button */}
-                    <NeumorphicButton
-                        onClick={onUpload}
-                        className={cn(
-                            "w-full flex items-center justify-center gap-2 font-semibold text-white bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 border-none shadow-lg shadow-cyan-900/20",
-                            isCollapsed ? "p-3 rounded-full aspect-square w-12" : "py-3 rounded-xl"
-                        )}
-                        title="Upload"
-                    >
-                        <Plus className="w-5 h-5" />
-                        {!isCollapsed && <span>Upload</span>}
-                    </NeumorphicButton>
-                </div>
-
-                {/* Navigation / Folder Tree */}
-                <div className="flex-1 overflow-y-auto overflow-x-hidden scrollbar-hide">
-                    {/* Folder Tree with DnD */}
-                    {!isCollapsed && (
                             <FolderTree 
                                 onFolderSelect={handleFolderSelect}
                                 onCreateFolder={handleCreateFolder}
@@ -196,67 +173,56 @@ export const DocumentsSidebar = ({
                                 onRenameSubmit={handleRenameSubmit}
                                 disableInternalDnd={true}
                             />
-                    )}
-
-                    {/* Smart Views */}
-                    <div className={cn("space-y-1 pt-4 border-t border-white/5 mx-3", isCollapsed && "border-none pt-2")}>
-                        {!isCollapsed && (
-                            <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-slate-500 font-bold px-2 mb-2">
-                                <Hash className="w-3 h-3" />
-                                <span>Views</span>
-                            </div>
                         )}
 
-                        {smartViews.map((view) => {
-                            const Icon = view.icon;
-                            const isActive = currentView.type === view.id;
-                            
-                            return (
-                                <div
-                                    key={view.id}
-                                    title={isCollapsed ? view.name : undefined}
-                                    onClick={() => {
-                                        setView({ type: view.id } as DocumentsView);
-                                    }}
-                                    className={cn(
-                                        "group flex items-center gap-3 py-2 px-3 rounded-lg cursor-pointer transition-all duration-150",
-                                        isCollapsed && "justify-center px-2",
-                                        isActive 
-                                            ? "bg-cyan-500/15 text-cyan-100" 
-                                            : "text-slate-400 hover:bg-white/5 hover:text-slate-200"
-                                    )}
-                                >
-                                    <Icon className={cn(
-                                        "shrink-0 transition-transform group-hover:scale-110",
-                                        isCollapsed ? "w-5 h-5" : "w-4 h-4",
-                                        isActive ? "text-cyan-400" : ""
-                                    )} />
-                                    {!isCollapsed && (
-                                        <span className={cn(
-                                            "text-sm font-medium transition-colors",
-                                            isActive ? "text-cyan-100" : "text-slate-400 group-hover:text-slate-200"
-                                        )}>
-                                            {view.name}
-                                        </span>
-                                    )}
+                        {/* Smart Views */}
+                        <div className={cn("space-y-1 pt-4 border-t border-border mx-1", isCollapsed && "border-none pt-2")}>
+                            {!isCollapsed && (
+                                <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-muted-foreground font-medium px-2 mb-2">
+                                    <Hash className="w-3 h-3" />
+                                    <span>Views</span>
                                 </div>
-                            );
-                        })}
-                    </div>
+                            )}
 
-                    {/* ─── Saved Views (DMS) ─── */}
-                    {!isCollapsed && <SavedViewSidebar views={[]} activeViewId={null} onViewClick={() => {}} className="mx-3 pt-3 border-t border-white/5" />}
-                </div>
+                            {smartViews.map((view) => {
+                                const Icon = view.icon;
+                                const isActive = currentView.type === view.id;
+                                
+                                return (
+                                    <div
+                                        key={view.id}
+                                        onClick={() => {
+                                            setView({ type: view.id } as DocumentsView);
+                                        }}
+                                        className={cn(
+                                            "group flex items-center gap-3 py-2 px-3 rounded-lg cursor-pointer text-sm transition-colors",
+                                            isActive
+                                                ? "bg-muted border border-border text-foreground" 
+                                                : "text-foreground/80 hover:bg-muted/50 hover:text-foreground border border-transparent"
+                                        )}
+                                    >
+                                        <Icon className={cn(
+                                            "shrink-0 w-4 h-4 transition-transform group-hover:scale-110",
+                                            isActive ? "text-primary" : ""
+                                        )} />
+                                        {!isCollapsed && (
+                                            <span className={cn(
+                                                "text-sm transition-colors",
+                                                isActive ? "text-foreground font-medium" : "text-muted-foreground group-hover:text-foreground/70"
+                                            )}>
+                                                {view.name}
+                                            </span>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
 
-                {/* Footer Hint */}
-                {!isCollapsed && (
-                    <div className="p-4 mx-4 mb-4 rounded-xl bg-white/5 border border-white/5 shrink-0">
-                        <p className="text-xs text-slate-400 text-center leading-relaxed">
-                            Right-click folders to organize
-                        </p>
-                    </div>
+                        {/* Saved Views (DMS) */}
+                        {!isCollapsed && <SavedViewSidebar views={[]} activeViewId={null} onViewClick={() => {}} className="mx-1 pt-3 border-t border-border" />}
+                    </>
                 )}
-            </GlassCard>
+            </SidebarShell>
 
             {/* Context Menu */}
             {contextMenu && (

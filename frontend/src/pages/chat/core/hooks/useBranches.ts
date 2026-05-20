@@ -124,42 +124,50 @@ export function useActivateBranch() {
 }
 
 /**
- * Create a new branch via WebSocket streaming.
+ * Create a new branch via REST API.
  *
- * Sends a 'branch' event through the unified WebSocket.
- * The streaming response comes through useChatStreaming.
+ * Sends a POST to /api/v1/chat/messages/{id}/branch.
+ * This replaced the old WebSocket-based branch creation.
  */
 export function useCreateBranch(sessionId?: number) {
     const queryClient = useQueryClient();
 
     return useMutation({
         mutationFn: async (params: { messageId: number; prompt?: string; model_override?: string }) => {
-            const { getWebSocketManager } = await import('@/api/websocket/manager');
-            const manager = getWebSocketManager();
+            const base = OpenAPI.BASE || '';
+            const token = typeof OpenAPI.TOKEN === 'function'
+                ? await OpenAPI.TOKEN({} as any)
+                : OpenAPI.TOKEN;
 
-            if (!manager.isConnected()) {
-                throw new Error('WebSocket not connected');
+            const res = await fetch(
+                `${base}/api/v1/chat/messages/${params.messageId}/branch`,
+                {
+                    method: 'POST',
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        prompt: params.prompt,
+                        model_override: params.model_override,
+                    }),
+                }
+            );
+
+            if (!res.ok) {
+                const detail = await res.text();
+                throw new Error(`Branch creation failed: ${res.status} ${detail}`);
             }
 
-            const channel = sessionId ? `chat:${sessionId}` : '';
-            if (!channel) {
-                throw new Error('No session ID for branch');
-            }
-
-            manager.send({
-                type: 'branch',
-                channel,
-                messageId: params.messageId,
-                prompt: params.prompt,
-                model_override: params.model_override,
-            });
-
-            // Resolve immediately — streaming comes via useChatStreaming
-            return { messageId: params.messageId };
+            return res.json();
         },
         onSuccess: (_result, params) => {
+            // Refresh branch siblings and messages
             queryClient.invalidateQueries({
                 queryKey: branchKeys.siblings(sessionId ?? 0, params.messageId),
+            });
+            queryClient.invalidateQueries({
+                queryKey: ['chat-messages', sessionId],
             });
         },
     });

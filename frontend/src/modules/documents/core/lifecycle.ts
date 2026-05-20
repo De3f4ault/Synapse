@@ -42,7 +42,7 @@ export type DocumentLifecycleState =
     | "loading"        // Fetching document
     | "ready"          // Document loaded, viewing
     | "uploading"      // Upload in progress
-    | "processing"     // Backend processing (OCR, chunking, embedding)
+    | "processing"     // Backend pipeline running (parsing → parsed → chunking)
     | "deleting"       // Deletion in progress
     | "done"           // Operation completed (transient)
     | "error";         // Operation failed
@@ -118,4 +118,26 @@ export function canDelete(lifecycle: DocumentLifecycle): boolean {
 
 export function isProcessing(lifecycle: DocumentLifecycle): boolean {
     return lifecycle.state === "processing";
+}
+
+/**
+ * Map a backend processing_status string to the UI lifecycle state.
+ * Use this when syncing backend status polls into the UI state machine.
+ */
+export function backendStatusToLifecycle(
+    status: string
+): DocumentLifecycleState {
+    switch (status) {
+        case "pending":
+        case "parsing":
+        case "parsed":
+        case "chunking":
+            return "processing";
+        case "completed":
+            return "done";
+        case "failed":
+            return "error";
+        default:
+            return "idle";
+    }
 }

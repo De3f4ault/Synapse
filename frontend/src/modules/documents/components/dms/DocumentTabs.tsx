@@ -61,7 +61,7 @@ export function DocumentTabs({
     <div
       className={cn(
         "flex items-center gap-0.5 px-2 py-1 overflow-x-auto",
-        "border-b border-white/[0.04] bg-black/20",
+        "border-b border-border bg-background/50",
         "scrollbar-none",
         className
       )}
@@ -79,20 +79,20 @@ export function DocumentTabs({
               "text-xs font-medium transition-all duration-150 max-w-[180px]",
               "hover:bg-white/[0.04]",
               isActive
-                ? "bg-white/[0.06] text-white"
-                : "text-slate-400 hover:text-slate-200"
+                ? "bg-white/[0.06] text-foreground"
+                : "text-muted-foreground hover:text-foreground/70"
             )}
           >
             {/* Active indicator */}
             {isActive && (
-              <div className="absolute bottom-0 left-2 right-2 h-[2px] bg-cyan-400 rounded-full" />
+              <div className="absolute bottom-0 left-2 right-2 h-[2px] bg-primary rounded-full" />
             )}
 
             {/* Dirty dot (matching Paperless dirty indicator) */}
             {isDirty && (
               <Circle
                 size={6}
-                className="fill-amber-400 text-amber-400 shrink-0"
+                className="fill-amber-400 text-warning shrink-0"
               />
             )}
 
@@ -107,7 +107,7 @@ export function DocumentTabs({
               className={cn(
                 "shrink-0 p-0.5 rounded transition-colors",
                 "opacity-0 group-hover:opacity-100",
-                "hover:bg-white/10 hover:text-white"
+                "hover:bg-muted hover:text-foreground"
               )}
             >
               <X size={12} />
@@ -121,8 +121,8 @@ export function DocumentTabs({
         <button
           onClick={handleCloseAll}
           className={cn(
-            "ml-1 px-2 py-1 rounded text-[10px] text-slate-500",
-            "hover:text-slate-300 hover:bg-white/[0.03] transition-colors",
+            "ml-1 px-2 py-1 rounded text-[10px] text-muted-foreground",
+            "hover:text-foreground/80 hover:bg-muted/30 transition-colors",
             "whitespace-nowrap"
           )}
         >

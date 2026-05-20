@@ -171,11 +171,11 @@ export function FolderNode({
           // Indentation based on depth
           depth > 0 && "ml-4",
           // Drop target highlight
-          isOver && "bg-cyan-500/20 border-cyan-500/50 ring-2 ring-cyan-500/30",
+          isOver && "bg-primary/20 border-primary/50 ring-2 ring-primary/30",
           // States
           isSelected && !isOver
-            ? "bg-cyan-500/15 border border-cyan-500/30 text-cyan-100" 
-            : !isOver && "hover:bg-white/5 border border-transparent text-slate-400 hover:text-slate-200",
+            ? "bg-primary/15 border border-primary/30 text-primary-foreground" 
+            : !isOver && "hover:bg-muted/50 border border-transparent text-muted-foreground hover:text-foreground/70",
           isDragging && "opacity-50",
           folder.is_system && "cursor-default",
         )}
@@ -185,7 +185,7 @@ export function FolderNode({
           onClick={handleExpandClick}
           className={cn(
             "w-4 h-4 flex items-center justify-center shrink-0",
-            "text-slate-500 hover:text-slate-300 transition-colors",
+            "text-muted-foreground hover:text-foreground/80 transition-colors",
             !hasChildren && "invisible"
           )}
         >
@@ -200,7 +200,7 @@ export function FolderNode({
         <div 
           className={cn(
             "w-5 h-5 flex items-center justify-center shrink-0",
-            isSelected ? "text-cyan-400" : "text-slate-500 group-hover:text-slate-300"
+            isSelected ? "text-primary" : "text-muted-foreground group-hover:text-foreground/80"
           )}
           style={{ color: folder.settings?.color }}
         >
@@ -221,12 +221,12 @@ export function FolderNode({
             }}
             onClick={(e) => e.stopPropagation()}
             autoFocus
-            className="flex-1 min-w-0 bg-slate-900 text-cyan-100 text-sm px-1 py-0.5 rounded border border-cyan-500/50 outline-none focus:ring-1 focus:ring-cyan-500/50"
+            className="flex-1 min-w-0 bg-slate-900 text-primary-foreground text-sm px-1 py-0.5 rounded border border-primary/50 outline-none focus:ring-1 focus:ring-primary/50"
           />
         ) : (
           <span className={cn(
             "flex-1 text-sm font-medium truncate",
-            isSelected ? "text-cyan-100" : "text-slate-400 group-hover:text-slate-200"
+            isSelected ? "text-primary-foreground" : "text-muted-foreground group-hover:text-foreground/70"
           )}>
             {folder.name}
           </span>
@@ -234,7 +234,7 @@ export function FolderNode({
 
         {/* Document Count Badge */}
         {folder.document_count > 0 && (
-          <span className="text-xs text-slate-500 tabular-nums">
+          <span className="text-xs text-muted-foreground tabular-nums">
             {folder.document_count}
           </span>
         )}
@@ -246,7 +246,7 @@ export function FolderNode({
               e.stopPropagation();
               onContextMenu?.(folder, e);
             }}
-            className="opacity-0 group-hover:opacity-100 w-5 h-5 flex items-center justify-center text-slate-500 hover:text-slate-300 transition-all"
+            className="opacity-0 group-hover:opacity-100 w-5 h-5 flex items-center justify-center text-muted-foreground hover:text-foreground/80 transition-all"
           >
             <MoreHorizontal className="w-3.5 h-3.5" />
           </button>

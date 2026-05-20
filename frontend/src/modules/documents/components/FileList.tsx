@@ -132,8 +132,8 @@ export function FileList({
                 className={cn(
                   "size-6 flex items-center justify-center rounded-md transition-all",
                   isFavorite
-                    ? "text-amber-400"
-                    : "text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-amber-400"
+                    ? "text-warning"
+                    : "text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-warning"
                 )}
               >
                 <Star className="size-3.5" fill={isFavorite ? "currentColor" : "none"} />

@@ -31,7 +31,7 @@ export function AssistantQuickActions() {
     const { sendMessage } = useAssistant();
 
     return (
-        <div className="px-3 py-3 border-b border-white/5 flex gap-2 overflow-x-auto scrollbar-hide">
+        <div className="px-3 py-3 border-b border-border flex gap-2 overflow-x-auto scrollbar-hide">
             {QUICK_ACTIONS.map((action, i) => (
                 <NeumorphicButton
                     key={i}
@@ -41,7 +41,7 @@ export function AssistantQuickActions() {
                     onClick={() => sendMessage(action.prompt)}
                     disabled={isTyping || isInitializing}
                 >
-                    <action.icon className="h-3 w-3 mr-1.5 text-cyan-400" />
+                    <action.icon className="h-3 w-3 mr-1.5 text-primary" />
                     {action.label}
                 </NeumorphicButton>
             ))}

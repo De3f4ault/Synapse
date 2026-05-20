@@ -60,55 +60,55 @@ export function DuplicateConflictModal({
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.95 }}
-                    className="bg-[#0a0a0f] border border-white/10 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl"
+                    className="bg-popover border border-border rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl"
                 >
                     {/* Header */}
-                    <div className="flex items-center gap-3 p-6 border-b border-white/5">
-                        <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center">
+                    <div className="flex items-center gap-3 p-6 border-b border-border">
+                        <div className="w-10 h-10 rounded-xl bg-warning/20 text-warning flex items-center justify-center">
                             <AlertTriangle className="w-5 h-5" />
                         </div>
                         <div>
-                            <h2 className="text-lg font-bold text-white">
+                            <h2 className="text-lg font-bold text-foreground">
                                 {conflictTitles[conflict.conflict_type]}
                             </h2>
-                            <p className="text-sm text-slate-400">{conflict.message}</p>
+                            <p className="text-sm text-muted-foreground">{conflict.message}</p>
                         </div>
                         <button
                             onClick={onClose}
-                            className="ml-auto p-2 hover:bg-white/5 rounded-full transition-colors"
+                            className="ml-auto p-2 hover:bg-muted/50 rounded-full transition-colors"
                         >
-                            <X size={18} className="text-slate-400" />
+                            <X size={18} className="text-muted-foreground" />
                         </button>
                     </div>
 
                     {/* Content */}
                     <div className="p-6 space-y-4">
                         {/* Existing Document Info */}
-                        <div className="p-4 bg-white/5 rounded-xl border border-white/10">
-                            <div className="flex items-center gap-2 text-sm text-slate-400 mb-3">
+                        <div className="p-4 bg-foreground/5 rounded-xl border border-border">
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
                                 {conflictIcons[conflict.conflict_type]}
                                 <span>Existing Document</span>
                             </div>
                             <div className="space-y-2 text-sm">
                                 <div className="flex justify-between">
-                                    <span className="text-slate-500">Filename</span>
-                                    <span className="text-white font-medium truncate max-w-[200px]">
+                                    <span className="text-muted-foreground">Filename</span>
+                                    <span className="text-foreground font-medium truncate max-w-[200px]">
                                         {conflict.existing_filename}
                                     </span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="text-slate-500 flex items-center gap-1">
+                                    <span className="text-muted-foreground flex items-center gap-1">
                                         <HardDrive size={12} /> Size
                                     </span>
-                                    <span className="text-slate-300">
+                                    <span className="text-foreground/80">
                                         {formatFileSize(conflict.existing_file_size)}
                                     </span>
                                 </div>
                                 <div className="flex justify-between">
-                                    <span className="text-slate-500 flex items-center gap-1">
+                                    <span className="text-muted-foreground flex items-center gap-1">
                                         <Calendar size={12} /> Uploaded
                                     </span>
-                                    <span className="text-slate-300">
+                                    <span className="text-foreground/80">
                                         {format(new Date(conflict.existing_uploaded_at), 'MMM d, yyyy HH:mm')}
                                     </span>
                                 </div>
@@ -117,21 +117,21 @@ export function DuplicateConflictModal({
 
                         {/* New File Info */}
                         {newFile && (
-                            <div className="p-4 bg-cyan-500/5 rounded-xl border border-cyan-500/20">
-                                <div className="flex items-center gap-2 text-sm text-cyan-400 mb-3">
+                            <div className="p-4 bg-primary/5 rounded-xl border border-primary/20">
+                                <div className="flex items-center gap-2 text-sm text-primary mb-3">
                                     <FileText size={14} />
                                     <span>New File</span>
                                 </div>
                                 <div className="space-y-2 text-sm">
                                     <div className="flex justify-between">
-                                        <span className="text-slate-500">Filename</span>
-                                        <span className="text-white font-medium truncate max-w-[200px]">
+                                        <span className="text-muted-foreground">Filename</span>
+                                        <span className="text-foreground font-medium truncate max-w-[200px]">
                                             {newFile.name}
                                         </span>
                                     </div>
                                     <div className="flex justify-between">
-                                        <span className="text-slate-500">Size</span>
-                                        <span className="text-slate-300">{formatFileSize(newFile.size)}</span>
+                                        <span className="text-muted-foreground">Size</span>
+                                        <span className="text-foreground/80">{formatFileSize(newFile.size)}</span>
                                     </div>
                                 </div>
                             </div>
@@ -139,12 +139,12 @@ export function DuplicateConflictModal({
                     </div>
 
                     {/* Actions */}
-                    <div className="p-6 border-t border-white/5 space-y-3">
+                    <div className="p-6 border-t border-border space-y-3">
                         {/* Replace */}
                         <button
                             onClick={onReplace}
                             disabled={isSubmitting}
-                            className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-amber-600 hover:bg-warning text-foreground font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             <Replace size={18} />
                             Replace Existing Document
@@ -155,7 +155,7 @@ export function DuplicateConflictModal({
                             <button
                                 onClick={onKeepBoth}
                                 disabled={isSubmitting}
-                                className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-white font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-foreground/5 border border-border hover:bg-muted text-foreground font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 <Copy size={18} />
                                 Keep Both (Auto-rename)
@@ -166,7 +166,7 @@ export function DuplicateConflictModal({
                         <button
                             onClick={onClose}
                             disabled={isSubmitting}
-                            className="w-full py-2 text-slate-400 hover:text-white transition-colors text-sm"
+                            className="w-full py-2 text-muted-foreground hover:text-foreground transition-colors text-sm"
                         >
                             Cancel Upload
                         </button>

@@ -11,8 +11,8 @@ from typing import List, Optional
 from datetime import datetime
 import structlog
 
-from app.schemas.search_feedback import FeedbackEvent
-from app.schemas.search_identity import SearchEntityIdentity, IdentityAuthority
+from app.schemas.search import FeedbackEvent
+from app.schemas.search import SearchEntityIdentity, IdentityAuthority
 from app.schemas.intelligence import QualifiedSignal
 
 logger = structlog.get_logger(__name__)

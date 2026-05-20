@@ -1,3 +1,2 @@
 
-export * from './WhiteboardEditor';
-export * from './tldraw.config';
+export * from './ExcalidrawEditor';

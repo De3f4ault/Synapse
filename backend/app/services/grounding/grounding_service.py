@@ -15,14 +15,15 @@ from typing import List, Optional
 import structlog
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.schemas.grounding import (
+from app.schemas.intelligence import (
     EvidenceChunk,
     EvidenceUsage,
     GroundingResult,
 )
-from app.schemas.search_context import SearchContext, SearchIntent
-from app.schemas.search_result import UnifiedSearchResult
+from app.schemas.search import SearchContext, SearchIntent
+from app.schemas.search import UnifiedSearchResult
 from app.services.search.unified_service import UnifiedSearchService
+from app.core.ai.rag.query_enhancement.context_rewriter import get_context_rewriter
 
 
 logger = structlog.get_logger(__name__)
@@ -146,7 +147,7 @@ def select_evidence(
     for result in results:
         # Contract enforcement: only evidence role
         if result.role != "evidence":
-            logger.warning(
+            logger.debug(
                 "grounding_non_evidence_filtered", role=result.role, id=str(result.id.id)
             )
             continue
@@ -190,6 +191,9 @@ def select_evidence(
             root_id=str(result.id.root_id) if result.id.root_id else None,
             confidence=confidence,
             similarity=similarity,
+            # Image routing fields — only present for rag-sourced image chunks
+            content_type=result.metadata.get("content_type", "text") if result.metadata else "text",
+            storage_path=result.metadata.get("storage_path") if result.metadata else None,
         )
         evidence.append(chunk)
 
@@ -267,30 +271,50 @@ class GroundingService:
         max_chunks: int = 5,
         min_confidence: float = 0.3,
         max_latency_ms: int = 15000,
+        history: Optional[List[dict]] = None,
     ) -> GroundingResult:
         """
         Retrieve and format evidence for LLM grounding.
 
-        This method:
-        1. Calls unified search with intent=retrieve_context
-        2. Filters and selects evidence
-        3. Formats evidence for prompt injection
-        4. Creates usage signal for feedback
+        When ``history`` is provided and the query is context-dependent
+        (pronouns, continuation phrases, bare references), the
+        ``ContextAwareRewriter`` resolves it into a self-contained search
+        string before retrieval.  The rewrite step replaces HyDE in those
+        cases — an already-resolved query doesn't need further expansion.
 
         Args:
-            query: User's question
-            user_id: User ID for context
+            query: User's raw question
+            user_id: User ID for access control / personalisation
             surface: Surface making the request (chat, study, etc.)
-            max_chunks: Maximum evidence chunks
-            min_confidence: Minimum confidence threshold
-            max_latency_ms: Maximum latency budget
+            max_chunks: Maximum evidence chunks to return
+            min_confidence: Minimum cross-encoder confidence threshold
+            max_latency_ms: Latency budget for the full search call
+            history: Recent conversation turns in
+                     ``[{"role": str, "content": str}]`` format,
+                     chronological order (oldest first).
 
         Returns:
-            GroundingResult with evidence and formatted prompt
+            GroundingResult with evidence and formatted prompt block
         """
         start_time = time.time()
+        original_query = query
 
         try:
+            # ── Context-aware query rewriting ────────────────────────────────
+            # For short ambiguous queries (pronouns, "build on this", etc.)
+            # resolve the implicit reference using conversation history BEFORE
+            # hitting the vector store.  This turns a -1.4 cross-encoder score
+            # into a -0.5 by searching for something semantically meaningful.
+            rewriter = get_context_rewriter()
+            if history and rewriter.is_context_dependent(query):
+                query = await rewriter.rewrite(query, history)
+                logger.info(
+                    "grounding_query_rewritten",
+                    original=original_query,
+                    resolved=query,
+                    user_id=user_id,
+                )
+
             # Build search context (query is NOT a field on SearchContext)
             context = SearchContext(
                 user_id=user_id,
@@ -326,10 +350,13 @@ class GroundingService:
 
             latency_ms = (time.time() - start_time) * 1000
 
+            query_rewritten = query != original_query
             logger.info(
                 "grounding_complete",
                 user_id=user_id,
-                query_len=len(query),
+                original_query=original_query[:80],
+                resolved_query=query[:80] if query_rewritten else None,
+                query_rewritten=query_rewritten,
                 evidence_count=len(evidence),
                 has_grounding=len(evidence) > 0,
                 latency_ms=round(latency_ms, 2),

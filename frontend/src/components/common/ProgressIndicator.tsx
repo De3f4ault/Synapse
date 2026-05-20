@@ -101,9 +101,9 @@ function LinearProgress({
   // Color classes
   const colorClasses = {
     primary: "bg-primary",
-    success: "bg-green-500",
-    warning: "bg-amber-500",
-    danger: "bg-red-500",
+    success: "bg-accent-olive",
+    warning: "bg-warning",
+    danger: "bg-destructive",
   };
 
   const displayLabel = label || `${Math.round(value)}%`;

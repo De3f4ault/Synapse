@@ -2,7 +2,6 @@
 
 from typing import List, Union, Optional
 import numpy as np
-from sentence_transformers import SentenceTransformer
 import structlog
 
 from app.core.ai.rag.embeddings.models.base_embedder import BaseEmbedder
@@ -47,6 +46,10 @@ class AllMiniLMEmbedder(BaseEmbedder):
             device=config.embedding_device
         )
         
+        # Deferred import: sentence_transformers takes ~10s on first load.
+        # Kept here to avoid silent cost at module import time.
+        from sentence_transformers import SentenceTransformer
+
         self.model = SentenceTransformer(
             config.embedding_model_name,
             device=config.embedding_device,

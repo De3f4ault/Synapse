@@ -1,0 +1,229 @@
+/* ============================================================
+   Tiptap AI Bubble Menu + Preview Panel
+   Uses global tokens only.
+   ============================================================ */
+
+/* ── Floating action row ──────────────────────────────────── */
+.tiptap-ai-bubble {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-full);
+  padding: 4px 6px;
+  box-shadow: var(--shadow-whisper);
+  animation: bubble-in var(--duration-deliberate) var(--ease-spring);
+  flex-wrap: wrap;
+  max-width: 480px;
+}
+
+@keyframes bubble-in {
+  from { opacity: 0; transform: translateY(6px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.tiptap-ai-bubble__label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: var(--tracking-overline);
+  text-transform: uppercase;
+  color: var(--brand-primary);
+  padding: 0 6px;
+  flex-shrink: 0;
+}
+
+.tiptap-ai-bubble__btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 9px;
+  border-radius: var(--radius-full);
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: var(--text-caption);
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--duration-micro), color var(--duration-micro);
+}
+
+.tiptap-ai-bubble__btn:hover {
+  background: var(--bg-surface-hover);
+  color: var(--text-primary);
+}
+
+.tiptap-ai-bubble__sep {
+  width: 1px;
+  height: 16px;
+  background: var(--border-default);
+  margin: 0 2px;
+  flex-shrink: 0;
+}
+
+/* Custom input row */
+.tiptap-ai-bubble__custom {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 4px 6px 2px;
+  border-top: 1px solid var(--border-subtle);
+  margin-top: 4px;
+}
+
+.tiptap-ai-bubble__custom-input {
+  flex: 1;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-default);
+  padding: 5px 10px;
+  font-size: var(--text-caption);
+  color: var(--text-primary);
+  outline: none;
+  font-family: var(--font-sans);
+  transition: border-color var(--duration-micro);
+}
+
+.tiptap-ai-bubble__custom-input:focus {
+  border-color: var(--brand-primary);
+}
+
+.tiptap-ai-bubble__custom-input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.tiptap-ai-bubble__custom-submit {
+  padding: 5px 12px;
+  border-radius: var(--radius-default);
+  border: none;
+  background: var(--brand-primary);
+  color: #fff;
+  font-size: var(--text-caption);
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity var(--duration-micro);
+}
+
+.tiptap-ai-bubble__custom-submit:hover {
+  opacity: 0.88;
+}
+
+/* ── Streaming preview panel ──────────────────────────────── */
+.tiptap-ai-preview {
+  position: fixed;
+  bottom: 80px;         /* above the floating bottom bar */
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(600px, 90vw);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-large);
+  box-shadow: var(--shadow-whisper);
+  overflow: hidden;
+  z-index: 350;
+  animation: preview-in var(--duration-deliberate) var(--ease-enter);
+}
+
+@keyframes preview-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(10px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+.tiptap-ai-preview__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-surface);
+}
+
+.tiptap-ai-preview__title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--text-caption);
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.tiptap-ai-preview__actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tiptap-ai-preview__apply-btn,
+.tiptap-ai-preview__discard-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px;
+  border-radius: var(--radius-default);
+  border: 1px solid var(--border-default);
+  font-size: var(--text-caption);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--duration-micro);
+}
+
+.tiptap-ai-preview__apply-btn {
+  background: var(--brand-primary);
+  border-color: var(--brand-primary);
+  color: #fff;
+}
+
+.tiptap-ai-preview__apply-btn:hover {
+  opacity: 0.88;
+}
+
+.tiptap-ai-preview__discard-btn {
+  background: transparent;
+  color: var(--text-secondary);
+}
+
+.tiptap-ai-preview__discard-btn:hover {
+  background: var(--bg-surface-hover);
+  color: var(--text-primary);
+}
+
+.tiptap-ai-preview__body {
+  padding: 14px;
+  min-height: 60px;
+  max-height: 200px;
+  overflow-y: auto;
+  font-size: var(--text-body-sm);
+  line-height: var(--leading-relaxed);
+  color: var(--text-primary);
+  white-space: pre-wrap;
+  font-family: var(--font-sans);
+}
+
+/* Streaming cursor blink */
+.tiptap-ai-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  background: var(--brand-primary);
+  border-radius: 1px;
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  animation: blink 0.8s step-end infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+
+/* Spinner for Loader2 */
+.tiptap-ai-spin {
+  animation: spin var(--duration-deliberate) linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }

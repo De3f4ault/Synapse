@@ -12,7 +12,7 @@ import { QuestionReview } from "./QuestionReview";
 import { AIInsights } from "./AIInsights";
 import type { QuizPerformance } from "../core";
 import type { QuizResultResponse, QuizInsightsResponse } from "@/api/generated";
-import { AuroraBackground } from "@/shared/ui";
+
 
 interface QuizResultsProps {
     results: QuizResultResponse;
@@ -36,14 +36,14 @@ export const QuizResults: React.FC<QuizResultsProps> = ({
     const [view, setView] = useState<"summary" | "review">("summary");
 
     return (
-        <AuroraBackground className="h-full flex flex-col relative overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" fixed={false}>
+        <div className="h-full flex flex-col relative overflow-y-auto bg-background [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <style>{`.quiz-review-scroll { scrollbar-width: none; } .quiz-review-scroll::-webkit-scrollbar { display: none; }`}</style>
             {/* Back to Summary Button (when in review) */}
             {view === "review" && (
-                <div className="absolute top-0 left-0 right-0 z-20 p-6 bg-gradient-to-b from-[#08080c] to-transparent pointer-events-none">
+                <div className="absolute top-0 left-0 right-0 z-20 p-6 bg-gradient-to-b from-background to-transparent pointer-events-none">
                     <button
                         onClick={() => setView("summary")}
-                        className="pointer-events-auto flex items-center gap-2 text-slate-400 hover:text-white transition-colors bg-white/[0.04] hover:bg-white/[0.08] px-4 py-2 rounded-lg border border-white/[0.06]"
+                        className="pointer-events-auto flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors bg-muted/50 hover:bg-muted px-4 py-2 rounded-lg border border-border"
                     >
                         <ArrowLeft size={16} />
                         <span className="text-sm font-medium">Back to Summary</span>
@@ -62,10 +62,10 @@ export const QuizResults: React.FC<QuizResultsProps> = ({
                     />
 
                     {/* Review Link */}
-                    <div className="pt-4 border-t border-white/[0.04]">
+                    <div className="pt-4 border-t border-border">
                         <button
                             onClick={() => setView("review")}
-                            className="text-slate-400 hover:text-white text-sm flex items-center gap-2 justify-center mx-auto transition-colors"
+                            className="text-muted-foreground hover:text-foreground text-sm flex items-center gap-2 justify-center mx-auto transition-colors"
                         >
                             Review Detailed Answers
                             <ArrowRight size={14} />
@@ -78,20 +78,20 @@ export const QuizResults: React.FC<QuizResultsProps> = ({
                         {/* Header */}
                         <div className="flex items-center justify-between mb-8">
                             <div>
-                                <h2 className="text-3xl font-bold text-white mb-2">
+                                <h2 className="text-3xl font-bold text-foreground mb-2">
                                     Detailed Review
                                 </h2>
-                                <p className="text-slate-400">
+                                <p className="text-muted-foreground">
                                     Review your answers to improve retention
                                 </p>
                             </div>
                             <div className="flex gap-2">
-                                <div className="px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-medium flex items-center gap-2">
-                                    <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                                <div className="px-3 py-1 rounded-full bg-accent-olive/10 border border-accent-olive/20 text-accent-olive text-xs font-medium flex items-center gap-2">
+                                    <div className="w-2 h-2 rounded-full bg-accent-olive" />
                                     Correct
                                 </div>
-                                <div className="px-3 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-medium flex items-center gap-2">
-                                    <div className="w-2 h-2 rounded-full bg-red-500" />
+                                <div className="px-3 py-1 rounded-full bg-destructive/10 border border-destructive/20 text-destructive text-xs font-medium flex items-center gap-2">
+                                    <div className="w-2 h-2 rounded-full bg-destructive" />
                                     Incorrect
                                 </div>
                             </div>
@@ -114,6 +114,6 @@ export const QuizResults: React.FC<QuizResultsProps> = ({
                     </div>
                 </div>
             )}
-        </AuroraBackground>
+        </div>
     );
 };

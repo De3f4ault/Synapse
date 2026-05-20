@@ -4,9 +4,9 @@ from typing import List, Dict, Optional, Union
 from enum import Enum
 import asyncio
 import structlog
-from app.core.ai.registry.models import DEFAULT_CHAT_MODEL
 
 logger = structlog.get_logger(__name__)
+
 
 
 class EnhancementStrategy(Enum):
@@ -36,74 +36,30 @@ class LLMQueryExpander:
 
     def __init__(
         self,
-        llm_provider: str = "gemini",
-        model: str = None,
+        llm_provider: str = "litellm",   # kept for API compatibility, ignored
+        model: str = "synapse-utility",  # LiteLLM alias with auto-fallback
         temperature: float = 0.3,
         max_tokens: int = 500,
         enable_caching: bool = True,
+        ollama_fallback_model: Optional[str] = None,  # kept for API compat, ignored
     ):
         """
         Initialize LLM query expander.
 
-        Args:
-            llm_provider: "gemini", "openai" or "anthropic"
-            model: Model name (auto-selected based on provider if None)
-            temperature: Creativity (0.0-1.0, lower = more focused)
-            max_tokens: Maximum response length
-            enable_caching: Enable prompt caching (saves costs)
+        Uses LiteLLM Router (synapse-utility alias) which:
+        - Routes to gemini-2.5-flash-lite as primary (4s timeout)
+        - Auto-falls back to ollama/gemma4:31b-cloud on failure
+        No manual per-SDK setup required.
         """
-        self.llm_provider = llm_provider
         self.temperature = temperature
         self.max_tokens = max_tokens
         self.enable_caching = enable_caching
-
-        # Set default model based on provider
-        if model is None:
-            model_defaults = {
-                "gemini": DEFAULT_CHAT_MODEL,
-                "openai": "gpt-4-turbo-preview",
-                "anthropic": "claude-3-sonnet-20240229",
-            }
-            model = model_defaults.get(llm_provider, DEFAULT_CHAT_MODEL)
-        self.model = model
-
-        # Initialize LLM client
-        if llm_provider == "gemini":
-            try:
-                from google import genai
-                from app.core.config import settings
-
-                self.client = genai.Client(api_key=settings.GEMINI_API_KEY)
-                self._gemini_model = model  # Store model name for later use
-                logger.info("llm_expander_initialized", provider="gemini", model=model)
-            except ImportError:
-                logger.error("google_genai_not_installed", help="pip install google-genai")
-                raise
-        elif llm_provider == "openai":
-            try:
-                from openai import AsyncOpenAI
-
-                self.client = AsyncOpenAI()
-                logger.info("llm_expander_initialized", provider="openai", model=model)
-            except ImportError:
-                logger.error("openai_not_installed", help="pip install openai")
-                raise
-        elif llm_provider == "anthropic":
-            try:
-                from anthropic import AsyncAnthropic
-
-                self.client = AsyncAnthropic()
-                logger.info("llm_expander_initialized", provider="anthropic", model=model)
-            except ImportError:
-                logger.error("anthropic_not_installed", help="pip install anthropic")
-                raise
-        else:
-            raise ValueError(
-                f"Unsupported LLM provider: {llm_provider}. Use 'gemini', 'openai', or 'anthropic'"
-            )
-
-        # Prompt cache (simple in-memory for now)
+        # Deferred import: litellm_router → litellm (~8s). Only instantiated during _init_rag.
+        from app.core.ai.providers.litellm_router import get_llm_router
+        self._router = get_llm_router()
+        self._model_alias = model if "/" in model or model.startswith("synapse-") else "synapse-utility"
         self._cache: Dict[str, str] = {}
+        logger.info("llm_expander_initialized", model_alias=self._model_alias)
 
     async def enhance_query(
         self,
@@ -133,30 +89,27 @@ class LLMQueryExpander:
             logger.debug("cache_hit", strategy=strategy.value)
             return self._parse_response(self._cache[cache_key], strategy)
 
-        # Call LLM
-        try:
-            response = await self._call_llm(prompt)
+        # Call LiteLLM — timeout and Ollama fallback handled natively by the Router
+        result_text = await self._call_llm(prompt)
 
-            # Cache response
+        if result_text:
             if self.enable_caching:
-                self._cache[cache_key] = response
-
-            # Parse response
-            result = self._parse_response(response, strategy)
-
+                self._cache[cache_key] = result_text
+            result = self._parse_response(result_text, strategy)
             logger.info(
                 "query_enhanced",
                 strategy=strategy.value,
                 original_length=len(query),
                 enhanced=result if isinstance(result, str) else f"{len(result)} queries",
             )
-
             return result
 
-        except Exception as e:
-            logger.error("enhancement_failed", strategy=strategy.value, error=str(e))
-            # Fallback to original query
-            return query
+        # LLM failed entirely — return original query to avoid blocking search
+        logger.warning(
+            "llm_enhancement_failed_returning_original",
+            strategy=strategy.value,
+        )
+        return query if strategy in (EnhancementStrategy.REWRITE, EnhancementStrategy.HYDE) else [query]
 
     def _build_prompt(
         self, query: str, strategy: EnhancementStrategy, user_context: Optional[Dict] = None
@@ -202,45 +155,37 @@ Provide sub-questions, one per line, numbered."""
         return query
 
     async def _call_llm(self, prompt: str) -> str:
-        """Call LLM API."""
+        """
+        Call LiteLLM with the synapse-utility alias.
 
-        if self.llm_provider == "gemini":
-            # Use new google-genai SDK async API
-            system_prompt = (
-                "You are an educational content expert helping students learn more effectively."
-            )
-            full_prompt = f"{system_prompt}\n\n{prompt}"
+        The Router handles:
+        - Primary: gemini/gemini-2.5-flash-lite (6s timeout)
+        - Fallback: ollama/gemma4:31b-cloud (auto on any failure)
+        - Cooldown per deployment after repeated failures
 
-            response = await self.client.aio.models.generate_content(
-                model=self._gemini_model,
-                contents=full_prompt,
-                config={"temperature": self.temperature, "max_output_tokens": self.max_tokens},
-            )
-            return response.text.strip()
-
-        elif self.llm_provider == "openai":
-            response = await self.client.chat.completions.create(
-                model=self.model,
+        Returns:
+            Generated text, or empty string on failure.
+        """
+        _SYSTEM = "You are an educational content expert helping students learn more effectively."
+        try:
+            response = await self._router.acompletion(
+                model=self._model_alias,
                 messages=[
-                    {
-                        "role": "system",
-                        "content": "You are an educational content expert helping students learn more effectively.",
-                    },
+                    {"role": "system", "content": _SYSTEM},
                     {"role": "user", "content": prompt},
                 ],
                 temperature=self.temperature,
                 max_tokens=self.max_tokens,
             )
-            return response.choices[0].message.content.strip()
-
-        elif self.llm_provider == "anthropic":
-            response = await self.client.messages.create(
-                model=self.model,
-                max_tokens=self.max_tokens,
-                temperature=self.temperature,
-                messages=[{"role": "user", "content": prompt}],
+            return (response.choices[0].message.content or "").strip()
+        except Exception as err:
+            logger.warning(
+                "llm_expander_call_failed",
+                model=self._model_alias,
+                error=str(err)[:120],
             )
-            return response.content[0].text.strip()
+            return ""
+
 
     def _parse_response(
         self, response: str, strategy: EnhancementStrategy

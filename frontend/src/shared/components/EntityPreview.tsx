@@ -55,22 +55,22 @@ const ENTITY_TYPE_META: Record<EntityType, EntityTypeMeta> = {
     document: {
         icon: FileText,
         color: "text-blue-500",
-        bgColor: "bg-blue-500/10",
+        bgColor: "bg-info/10",
     },
     note: {
         icon: StickyNote,
-        color: "text-emerald-500",
-        bgColor: "bg-emerald-500/10",
+        color: "text-accent-olive",
+        bgColor: "bg-accent-olive/10",
     },
     flashcard: {
         icon: Layers,
-        color: "text-purple-500",
-        bgColor: "bg-purple-500/10",
+        color: "text-accent",
+        bgColor: "bg-accent/10",
     },
     quiz: {
         icon: HelpCircle,
-        color: "text-amber-500",
-        bgColor: "bg-amber-500/10",
+        color: "text-warning",
+        bgColor: "bg-warning/10",
     },
     concept: {
         icon: Brain,

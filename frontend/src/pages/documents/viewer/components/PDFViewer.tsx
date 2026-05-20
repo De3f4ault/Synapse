@@ -129,7 +129,7 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({
     >
       <button
         onClick={props.toggle}
-        className="px-3 py-1.5 rounded-lg bg-zinc-800/95 backdrop-blur-sm border border-white/10 text-[12px] text-zinc-200 hover:bg-zinc-700 transition-all shadow-xl flex items-center gap-1.5"
+        className="px-3 py-1.5 rounded-lg bg-popover backdrop-blur-sm border border-border text-[12px] text-foreground/70 hover:bg-muted transition-all shadow-xl flex items-center gap-1.5"
       >
         <span className="w-2.5 h-2.5 rounded-full bg-yellow-400/70" />
         Highlight
@@ -161,7 +161,7 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({
           transform: "translate(0, 8px)",
           zIndex: 20,
         }}
-        className="w-72 rounded-xl bg-zinc-900/95 backdrop-blur-xl border border-white/10 shadow-2xl p-3"
+        className="w-72 rounded-xl bg-popover backdrop-blur-xl border border-border shadow-2xl p-3"
       >
         {/* Color picker */}
         <div className="flex items-center gap-1.5 mb-2.5">
@@ -185,24 +185,24 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           placeholder="Add a note (optional)…"
-          className="w-full bg-zinc-800/80 border border-white/10 rounded-lg px-2.5 py-2 text-[12px] text-zinc-200 placeholder:text-zinc-600 outline-none resize-none"
+          className="w-full bg-muted border border-border rounded-lg px-2.5 py-2 text-[12px] text-foreground/70 placeholder:text-muted-foreground outline-none resize-none"
           onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); addNote(); } }}
         />
 
         <div className="flex items-center gap-2 mt-2">
           <button
             onClick={addNote}
-            className="px-3 py-1 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-[12px] font-medium transition-colors"
+            className="px-3 py-1 rounded-lg bg-primary hover:bg-primary text-foreground text-[12px] font-medium transition-colors"
           >
             Save
           </button>
           <button
             onClick={props.cancel}
-            className="px-3 py-1 rounded-lg text-zinc-400 hover:text-zinc-200 text-[12px] transition-colors"
+            className="px-3 py-1 rounded-lg text-muted-foreground hover:text-foreground/70 text-[12px] transition-colors"
           >
             Cancel
           </button>
-          <span className="text-[10px] text-zinc-600 ml-auto">Enter to save</span>
+          <span className="text-[10px] text-muted-foreground ml-auto">Enter to save</span>
         </div>
       </div>
     );
@@ -249,16 +249,16 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({
   const sidebarNotes = useMemo(() => (
     <div className="p-3 text-[12px]" style={{ fontFamily: "system-ui, -apple-system, sans-serif" }}>
       {notes.length === 0 ? (
-        <p className="text-zinc-500 text-center py-6">
+        <p className="text-muted-foreground text-center py-6">
           Select text to highlight
         </p>
       ) : (
         <div className="space-y-2.5">
           <div className="flex items-center justify-between mb-3">
-            <span className="text-zinc-400 font-medium">{notes.length} highlight{notes.length !== 1 ? "s" : ""}</span>
+            <span className="text-muted-foreground font-medium">{notes.length} highlight{notes.length !== 1 ? "s" : ""}</span>
             <button
               onClick={() => { if (confirm("Clear all highlights?")) setNotes([]); }}
-              className="text-[11px] text-red-400/70 hover:text-red-400 transition-colors"
+              className="text-[11px] text-destructive/70 hover:text-destructive transition-colors"
             >
               Clear all
             </button>
@@ -266,17 +266,17 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({
           {notes.map((note) => (
             <div
               key={note.id}
-              className="rounded-lg border border-white/[0.06] p-2.5 hover:bg-white/[0.02] transition-colors cursor-pointer"
+              className="rounded-lg border border-border p-2.5 hover:bg-muted/50 transition-colors cursor-pointer"
               onClick={() => { const area = note.highlightAreas[0]; if (area) highlightPluginInstance.jumpToHighlightArea(area); }}
             >
               <div className="flex items-start gap-2">
                 <span className="w-2 h-2 rounded-full shrink-0 mt-1" style={{ background: note.color }} />
                 <div className="min-w-0">
-                  <p className="text-zinc-300 text-[11px] leading-relaxed line-clamp-3 italic">
+                  <p className="text-foreground/80 text-[11px] leading-relaxed line-clamp-3 italic">
                     "{note.quote}"
                   </p>
                   {note.content && (
-                    <p className="text-zinc-400 text-[11px] mt-1.5">{note.content}</p>
+                    <p className="text-muted-foreground text-[11px] mt-1.5">{note.content}</p>
                   )}
                 </div>
               </div>
@@ -286,7 +286,7 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({
                     e.stopPropagation();
                     setNotes((prev) => prev.filter((n) => n.id !== note.id));
                   }}
-                  className="text-[10px] text-zinc-600 hover:text-red-400 transition-colors"
+                  className="text-[10px] text-muted-foreground hover:text-destructive transition-colors"
                 >
                   Remove
                 </button>
@@ -329,7 +329,7 @@ export const PDFViewer: React.FC<PDFViewerProps> = ({
 
   return (
     <div
-      className={`w-full h-full bg-zinc-950 ${className}`}
+      className={`w-full h-full bg-background ${className}`}
       style={{ fontFamily: "'Roboto', sans-serif" }}
     >
       <style>{`

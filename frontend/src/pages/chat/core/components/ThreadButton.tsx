@@ -26,8 +26,8 @@ export function ThreadButton({ className }: ThreadButtonProps) {
             onClick={togglePanel}
             className={cn(
                 "gap-2 h-8 px-3 relative",
-                isPanelOpen && "bg-cyan-500/10 text-cyan-400",
-                isInThread && "ring-1 ring-cyan-500/30",
+                isPanelOpen && "bg-primary/10 text-primary",
+                isInThread && "ring-1 ring-primary/30",
                 className
             )}
         >
@@ -41,7 +41,7 @@ export function ThreadButton({ className }: ThreadButtonProps) {
                     "text-[10px] font-medium rounded-full",
                     "flex items-center justify-center",
                     isInThread
-                        ? "bg-cyan-500 text-white"
+                        ? "bg-primary text-foreground"
                         : "bg-muted text-muted-foreground"
                 )}>
                     {threadCount > 99 ? '99+' : threadCount}

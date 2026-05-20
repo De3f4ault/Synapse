@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils";
 import { QuizAttemptState, type LocalQuestionState } from "../core";
 import { QuestionRenderer } from "./components";
 import type { QuizAttemptStart } from "@/api/generated";
-import { AuroraBackground } from "@/shared/ui";
+
 
 interface QuizSessionProps {
     state: QuizAttemptState;
@@ -120,11 +120,11 @@ export const QuizSession: React.FC<QuizSessionProps> = ({
 
 
     return (
-        <AuroraBackground className="h-screen flex flex-col overflow-hidden" fixed>
+        <div className="h-screen flex flex-col overflow-hidden bg-background">
             {/* Floating Exit Button - Top Left */}
             <button
                 onClick={handleExit}
-                className="fixed top-6 left-6 flex items-center gap-2 px-3 py-2 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors z-20 opacity-60 hover:opacity-100"
+                className="fixed top-6 left-6 flex items-center gap-2 px-3 py-2 rounded-full bg-foreground/5 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors z-20 opacity-60 hover:opacity-100"
             >
                 <ArrowLeft size={18} />
                 <span className="text-sm font-medium">Exit</span>
@@ -132,29 +132,29 @@ export const QuizSession: React.FC<QuizSessionProps> = ({
 
             {/* Floating Progress - Top Center */}
             <div className="fixed top-6 left-1/2 -translate-x-1/2 flex items-center gap-2 z-20 opacity-60 hover:opacity-100 transition-opacity">
-                <span className="text-cyan-400 font-mono text-lg font-bold">
+                <span className="text-primary font-mono text-lg font-bold">
                     Q{currentIndex + 1}
                 </span>
-                <span className="text-slate-600 font-mono">/</span>
-                <span className="text-slate-500 font-mono">{questions.length}</span>
+                <span className="text-muted-foreground font-mono">/</span>
+                <span className="text-muted-foreground font-mono">{questions.length}</span>
             </div>
 
             {/* Floating Stats - Top Right */}
             <div className="fixed top-6 right-6 flex flex-col items-end gap-2 z-20 opacity-60 hover:opacity-100 transition-opacity">
                 <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-2 text-slate-400 bg-white/[0.05] px-3 py-1.5 rounded-full text-sm font-mono">
-                        <Clock size={14} className="text-cyan-500" />
+                    <div className="flex items-center gap-2 text-muted-foreground bg-muted/50 px-3 py-1.5 rounded-full text-sm font-mono">
+                        <Clock size={14} className="text-primary" />
                         {formatTime(elapsedTime)}
                     </div>
-                    <div className="flex items-center gap-2 text-emerald-400 bg-emerald-500/10 px-3 py-1.5 rounded-full text-sm font-mono">
+                    <div className="flex items-center gap-2 text-accent-olive bg-accent-olive/10 px-3 py-1.5 rounded-full text-sm font-mono">
                         <CheckCircle size={14} />
                         {correctCount}
                     </div>
                 </div>
                 {/* Mini Progress Bar */}
-                <div className="w-32 h-1 bg-white/10 rounded-full overflow-hidden">
+                <div className="w-32 h-1 bg-foreground/10 rounded-full overflow-hidden">
                     <div
-                        className="h-full bg-cyan-500 transition-all duration-500"
+                        className="h-full bg-primary transition-all duration-500"
                         style={{ width: `${((currentIndex + 1) / questions.length) * 100}%` }}
                     />
                 </div>
@@ -188,7 +188,7 @@ export const QuizSession: React.FC<QuizSessionProps> = ({
                         <div className="flex justify-end">
                             <button
                                 onClick={() => setShowHint(!showHint)}
-                                className="text-xs font-medium text-slate-500 hover:text-cyan-400 flex items-center gap-1.5 transition-colors"
+                                className="text-xs font-medium text-muted-foreground hover:text-primary flex items-center gap-1.5 transition-colors"
                             >
                                 <Lightbulb size={14} />
                                 {showHint ? "Hide Hint" : "Show Hint"}
@@ -202,7 +202,7 @@ export const QuizSession: React.FC<QuizSessionProps> = ({
                             initial={{ opacity: 0, height: 0 }}
                             animate={{ opacity: 1, height: "auto" }}
                             exit={{ opacity: 0, height: 0 }}
-                            className="bg-cyan-500/5 border border-cyan-500/20 rounded-xl p-4 text-cyan-200/80 text-sm italic"
+                            className="bg-primary/5 border border-primary/20 rounded-xl p-4 text-primary/80/80 text-sm italic"
                         >
                             Think about the core concept being tested. Eliminate obviously
                             incorrect answers first.
@@ -215,7 +215,7 @@ export const QuizSession: React.FC<QuizSessionProps> = ({
             <button
                 onClick={previous}
                 disabled={currentIndex === 0}
-                className="fixed bottom-6 left-6 flex items-center gap-2 px-4 py-2.5 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white disabled:opacity-30 disabled:hover:text-slate-400 disabled:hover:bg-white/5 transition-colors z-20 opacity-60 hover:opacity-100"
+                className="fixed bottom-6 left-6 flex items-center gap-2 px-4 py-2.5 rounded-full bg-foreground/5 hover:bg-muted text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:hover:text-muted-foreground disabled:hover:bg-muted/50 transition-colors z-20 opacity-60 hover:opacity-100"
             >
                 <ArrowLeft size={16} />
                 <span className="text-sm font-medium">Previous</span>
@@ -232,12 +232,12 @@ export const QuizSession: React.FC<QuizSessionProps> = ({
                             className={cn(
                                 "w-2.5 h-2.5 rounded-full transition-all",
                                 idx === currentIndex
-                                    ? "bg-cyan-400 scale-125 shadow-[0_0_8px_rgba(34,211,238,0.6)]"
+                                    ? "bg-primary scale-125 shadow-[0_0_8px_hsl(var(--primary)/0.6)]"
                                     : qState.answered
                                         ? qState.isCorrect
-                                            ? "bg-emerald-500/50"
-                                            : "bg-red-500/50"
-                                        : "bg-white/10 hover:bg-white/30"
+                                            ? "bg-accent-olive/50"
+                                            : "bg-destructive/50"
+                                        : "bg-foreground/10 hover:bg-muted"
                             )}
                             title={`Question ${idx + 1}`}
                         />
@@ -252,10 +252,10 @@ export const QuizSession: React.FC<QuizSessionProps> = ({
                     disabled={isSubmitting}
                     className={cn(
                         "fixed bottom-6 right-6 px-6 py-2.5 rounded-full font-medium flex items-center gap-2 z-20",
-                        "bg-gradient-to-r from-cyan-600 to-blue-600 text-white",
-                        "hover:from-cyan-500 hover:to-blue-500",
+                        "bg-primary text-primary-foreground",
+                        "hover:bg-primary/90",
                         "disabled:opacity-50 disabled:cursor-not-allowed",
-                        "transition-all shadow-lg shadow-cyan-500/20"
+                        "transition-all shadow-lg "
                     )}
                 >
                     {isSubmitting ? (
@@ -273,12 +273,12 @@ export const QuizSession: React.FC<QuizSessionProps> = ({
             ) : (
                 <button
                     onClick={next}
-                    className="fixed bottom-6 right-6 flex items-center gap-2 px-6 py-2.5 rounded-full bg-white/5 hover:bg-white/10 text-white transition-colors z-20 opacity-60 hover:opacity-100"
+                    className="fixed bottom-6 right-6 flex items-center gap-2 px-6 py-2.5 rounded-full bg-foreground/5 hover:bg-muted text-foreground transition-colors z-20 opacity-60 hover:opacity-100"
                 >
                     <span className="text-sm font-medium">Next</span>
                     <ArrowRight size={16} />
                 </button>
             )}
-        </AuroraBackground>
+        </div>
     );
 };

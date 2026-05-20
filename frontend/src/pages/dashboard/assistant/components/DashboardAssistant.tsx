@@ -68,14 +68,14 @@ export function DashboardAssistant({ className }: DashboardAssistantProps) {
         <>
             {/* Backdrop */}
             <div
-                className="fixed inset-0 bg-black/40 backdrop-blur-[2px] z-40 animate-in fade-in duration-200"
+                className="fixed inset-0 bg-background/70 backdrop-blur-[2px] z-40 animate-in fade-in duration-200"
                 onClick={close}
             />
 
             <NeumorphicCard
                 className={cn(
                     "fixed bottom-6 right-6 z-50 flex flex-col transition-all duration-300 ease-in-out p-0 border-0 overflow-hidden",
-                    "h-[680px] bg-[#0a0a0f]/95 backdrop-blur-xl border border-white/10",
+                    "h-[680px] bg-popover backdrop-blur-xl border border-border",
                     "animate-in slide-in-from-bottom-4 fade-in duration-300",
                     showSidebar ? "w-[600px]" : "w-[420px]",
                     className
@@ -87,7 +87,7 @@ export function DashboardAssistant({ className }: DashboardAssistantProps) {
                     <AssistantSidebar />
 
                     {/* Main Chat Area */}
-                    <div className="flex-1 flex flex-col overflow-hidden bg-[#0a0a0f]/50">
+                    <div className="flex-1 flex flex-col overflow-hidden bg-popover/50">
                         <AssistantQuickActions />
                         <AssistantMessages />
                         <AssistantInput />

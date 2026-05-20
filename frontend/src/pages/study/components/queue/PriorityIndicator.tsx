@@ -47,8 +47,8 @@ export function PriorityDot({
   showLabel?: boolean;
 }) {
   const colors = {
-    high: "bg-red-500",
-    new: "bg-purple-500",
+    high: "bg-destructive",
+    new: "bg-accent",
     normal: "bg-blue-500",
     low: "bg-gray-400",
   };
@@ -84,8 +84,8 @@ export function PriorityBar({ priority }: { priority: StudyPriority }) {
   };
 
   const colors = {
-    high: "bg-red-500",
-    new: "bg-purple-500",
+    high: "bg-destructive",
+    new: "bg-accent",
     normal: "bg-blue-500",
     low: "bg-gray-400",
   };

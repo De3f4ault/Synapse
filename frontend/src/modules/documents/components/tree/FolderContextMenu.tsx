@@ -38,8 +38,8 @@ function MenuItem({ icon, label, onClick, variant = 'default', disabled = false 
         "w-full flex items-center gap-3 px-3 py-2 text-sm rounded-lg",
         "transition-colors duration-100",
         disabled && "opacity-50 cursor-not-allowed",
-        variant === 'default' && "text-slate-300 hover:bg-white/10 hover:text-white",
-        variant === 'danger' && "text-red-400 hover:bg-red-500/10 hover:text-red-300"
+        variant === 'default' && "text-foreground/80 hover:bg-muted hover:text-foreground",
+        variant === 'danger' && "text-destructive hover:bg-destructive/10 hover:text-red-300"
       )}
     >
       {icon}
@@ -92,7 +92,7 @@ export function FolderContextMenu({
       className={cn(
         "fixed z-[100] min-w-[180px] p-1.5",
         "bg-slate-900/95 backdrop-blur-xl",
-        "border border-white/10 rounded-xl shadow-2xl",
+        "border border-border rounded-xl shadow-2xl",
         "animate-in fade-in-0 zoom-in-95 duration-100"
       )}
       style={{
@@ -119,7 +119,7 @@ export function FolderContextMenu({
         disabled={folder.is_system}
       />
       
-      <div className="my-1 border-t border-white/10" />
+      <div className="my-1 border-t border-border" />
       
       <MenuItem
         icon={<Trash2 className="w-4 h-4" />}

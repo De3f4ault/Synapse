@@ -48,7 +48,7 @@ const SimpleDropdownMenuItem = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-slate-100 focus:bg-slate-100 dark:hover:bg-slate-800 dark:focus:bg-slate-800",
+      "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-muted focus:bg-muted dark:hover:bg-slate-800 dark:focus:bg-slate-800",
       className,
     )}
     {...props}
@@ -62,7 +62,7 @@ const SimpleDropdownMenuSeparator = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn("-mx-1 my-1 h-px bg-slate-100 dark:bg-slate-800", className)}
+    className={cn("-mx-1 my-1 h-px bg-muted dark:bg-slate-800", className)}
     {...props}
   />
 ));

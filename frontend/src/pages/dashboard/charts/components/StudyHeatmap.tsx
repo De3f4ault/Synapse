@@ -15,9 +15,9 @@ interface StudyHeatmapProps {
 }
 
 function getIntensity(count: number, maxActivity: number): string {
-    if (count === 0) return "bg-white/5";
+    if (count === 0) return "bg-foreground/5";
     const ratio = count / maxActivity;
-    if (ratio > 0.75) return "bg-green-500";
+    if (ratio > 0.75) return "bg-accent-olive";
     if (ratio > 0.5) return "bg-green-400";
     if (ratio > 0.25) return "bg-green-300";
     return "bg-green-200";
@@ -57,12 +57,12 @@ export function StudyHeatmap({ data, className }: StudyHeatmapProps) {
                 {/* Header */}
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                        <Calendar className="w-5 h-5 text-purple-400" />
-                        <h3 className="text-lg font-semibold text-white">
+                        <Calendar className="w-5 h-5 text-accent" />
+                        <h3 className="text-lg font-semibold text-foreground">
                             Activity Heatmap
                         </h3>
                     </div>
-                    <div className="text-xs text-slate-500">
+                    <div className="text-xs text-muted-foreground">
                         {activeDays} active days
                     </div>
                 </div>
@@ -89,25 +89,25 @@ export function StudyHeatmap({ data, className }: StudyHeatmapProps) {
                 </div>
 
                 {/* Legend */}
-                <div className="flex items-center justify-between pt-4 border-t border-white/5">
+                <div className="flex items-center justify-between pt-4 border-t border-border">
                     <div className="flex items-center gap-2">
-                        <span className="text-xs text-slate-500">Less</span>
+                        <span className="text-xs text-muted-foreground">Less</span>
                         <div className="flex gap-1">
                             {[
-                                "bg-white/5",
+                                "bg-foreground/5",
                                 "bg-green-200",
                                 "bg-green-300",
                                 "bg-green-400",
-                                "bg-green-500",
+                                "bg-accent-olive",
                             ].map((color, i) => (
                                 <div key={i} className={cn("w-3 h-3 rounded-sm", color)} />
                             ))}
                         </div>
-                        <span className="text-xs text-slate-500">More</span>
+                        <span className="text-xs text-muted-foreground">More</span>
                     </div>
 
                     {hoveredDay && (
-                        <div className="text-xs text-white">
+                        <div className="text-xs text-foreground">
                             {new Date(hoveredDay.date).toLocaleDateString("en-US", {
                                 month: "short",
                                 day: "numeric",

@@ -52,13 +52,50 @@ mermaid.initialize({
 function sanitizeMermaidContent(content: string): string {
     let sanitized = content.trim();
 
-    // Fix common cycle issue: duplicate node definitions with same name
-    // Pattern: "A --> A" creates cycle, rewrite as "A --> A_1"
-    // Also handle self-referential subgraph issues
+    // Strip ``` fences if the content still has them (e.g., from text path)
+    sanitized = sanitized.replace(/^```(?:mermaid)?\s*\n?/i, '');
+    sanitized = sanitized.replace(/\n?```\s*$/i, '');
 
-    // Remove duplicate node IDs pointing to themselves
-    sanitized = sanitized.replace(/(\w+)\s*-->\s*\1(?!\w)/g, (match, node) => {
-        console.warn(`[Mermaid] Removed self-reference: ${match}`);
+    // Replace <br/> with space — literal newlines inside labels break mermaid's parser
+    sanitized = sanitized.replace(/<br\s*\/?>/gi, ' ');
+
+    // Strip any other stray HTML tags
+    sanitized = sanitized.replace(/<\/?[a-z][a-z0-9]*\b[^>]*>/gi, '');
+
+    // Clean up multiple consecutive spaces
+    sanitized = sanitized.replace(/ {2,}/g, ' ');
+
+    // Quote labels inside [...] that contain special mermaid characters: ( ) | < > { }
+    // Mermaid uses double-quoted labels ["like this"] to escape special chars
+    sanitized = sanitized.replace(
+        /(\w+)\[(?!")((?:[^\]\\]|\\.)+)\]/g,
+        (_match, nodeId, label) => {
+            if (/[()|\/<>{}]/.test(label)) {
+                const escaped = label.replace(/"/g, "'");
+                return `${nodeId}["${escaped}"]`;
+            }
+            return _match;
+        }
+    );
+
+    // Sanitize edge labels: -->|label text| or -- label text -->
+    // Edge labels with embedded pipes or parens break the parser
+    // Example: |POST /api/chat (JSON + JWT)| → pipes inside conflict with delimiter
+    sanitized = sanitized.replace(
+        /(--|-->|-.->|==>)\|((?:[^|])+)\|/g,
+        (_match, arrow, label) => {
+            // Remove inner pipes (they terminate the label), escape parens by stripping
+            const cleanLabel = label
+                .replace(/\|/g, ' ')      // stray pipes inside edge label
+                .replace(/[()]/g, '')     // parens conflict with node shapes
+                .replace(/ {2,}/g, ' ')   // collapse spaces
+                .trim();
+            return `${arrow}|${cleanLabel}|`;
+        }
+    );
+
+    // Fix self-references (A --> A creates a cycle)
+    sanitized = sanitized.replace(/(\w+)\s*-->\s*\1(?!\w)/g, (_match, node) => {
         return `${node} --> ${node}_ref`;
     });
 
@@ -67,7 +104,6 @@ function sanitizeMermaidContent(content: string): string {
     const hasType = diagramTypes.some(type => sanitized.toLowerCase().startsWith(type.toLowerCase()));
     
     if (!hasType) {
-        // Default to flowchart TD if no type specified
         sanitized = `flowchart TD\n${sanitized}`;
     }
 
@@ -128,10 +164,10 @@ export const MermaidBlock: React.FC<MermaidBlockProps> = ({ content, className }
     if (error) {
         return (
             <div className={cn('my-4 rounded-lg border border-red-500/30 bg-red-950/20 overflow-hidden', className)}>
-                <div className="px-3 py-2 text-xs text-red-400 bg-red-950/40 border-b border-red-500/20">
+                <div className="px-3 py-2 text-xs text-destructive bg-red-950/40 border-b border-destructive/20">
                     ⚠ Diagram Error: {error}
                 </div>
-                <pre className="p-3 text-xs text-slate-400 overflow-x-auto">
+                <pre className="p-3 text-xs text-muted-foreground overflow-x-auto">
                     <code>{content}</code>
                 </pre>
             </div>
@@ -141,9 +177,9 @@ export const MermaidBlock: React.FC<MermaidBlockProps> = ({ content, className }
     // Loading state
     if (isLoading) {
         return (
-            <div className={cn('my-4 p-6 rounded-lg bg-slate-900/50 border border-slate-700/50', className)}>
-                <div className="flex items-center justify-center text-slate-500 text-sm">
-                    <div className="w-4 h-4 border-2 border-slate-500 border-t-transparent rounded-full animate-spin mr-2" />
+            <div className={cn('my-4 p-6 rounded-lg bg-slate-900/50 border border-border/50', className)}>
+                <div className="flex items-center justify-center text-muted-foreground text-sm">
+                    <div className="w-4 h-4 border-2 border-border border-t-transparent rounded-full animate-spin mr-2" />
                     Rendering...
                 </div>
             </div>
@@ -152,7 +188,7 @@ export const MermaidBlock: React.FC<MermaidBlockProps> = ({ content, className }
 
     // Success: render SVG
     return (
-        <div className={cn('my-4 rounded-lg bg-slate-900/50 border border-slate-700/50 overflow-hidden', className)}>
+        <div className={cn('my-4 rounded-lg bg-slate-900/50 border border-border/50 overflow-hidden', className)}>
             <div
                 dangerouslySetInnerHTML={{ __html: svg || '' }}
                 className="w-full flex justify-center p-4 [&>svg]:max-w-full [&>svg]:h-auto"

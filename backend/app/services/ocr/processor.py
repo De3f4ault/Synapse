@@ -306,7 +306,10 @@ class OcrProcessor:
         logger.debug(f"Running OCRmyPDF with args: {args}")
 
         try:
-            ocrmypdf.ocr(**args)
+            # New ocrmypdf API: input_file and output_file are positional
+            input_file_arg = args.pop("input_file")
+            output_file_arg = args.pop("output_file")
+            ocrmypdf.ocr(input_file_arg, output_file_arg, **args)
 
             # Read text from sidecar file
             if os.path.exists(sidecar_file):

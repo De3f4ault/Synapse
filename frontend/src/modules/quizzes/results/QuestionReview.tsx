@@ -33,27 +33,27 @@ export const QuestionReview: React.FC<QuestionReviewProps> = ({
         <GlassCard
             className={cn(
                 "p-5",
-                isCorrect ? "border-emerald-500/20" : "border-red-500/20"
+                isCorrect ? "border-accent-olive/20" : "border-destructive/20"
             )}
         >
             <div className="flex items-start gap-3">
                 <div className="shrink-0 mt-1">
                     {isCorrect ? (
-                        <CheckCircle size={20} className="text-emerald-400" />
+                        <CheckCircle size={20} className="text-accent-olive" />
                     ) : (
-                        <XCircle size={20} className="text-red-400" />
+                        <XCircle size={20} className="text-destructive" />
                     )}
                 </div>
                 <div className="flex-1">
-                    <p className="text-slate-200 mb-3">{questionText}</p>
+                    <p className="text-foreground/70 mb-3">{questionText}</p>
 
                     <div className="space-y-2 text-sm">
                         <div className="flex gap-2">
-                            <span className="text-slate-500">Your answer:</span>
+                            <span className="text-muted-foreground">Your answer:</span>
                             <span
                                 className={cn(
                                     "font-medium",
-                                    isCorrect ? "text-emerald-400" : "text-red-400"
+                                    isCorrect ? "text-accent-olive" : "text-destructive"
                                 )}
                             >
                                 {userAnswer}
@@ -61,14 +61,14 @@ export const QuestionReview: React.FC<QuestionReviewProps> = ({
                         </div>
                         {!isCorrect && (
                             <div className="flex gap-2">
-                                <span className="text-slate-500">Correct:</span>
-                                <span className="font-medium text-emerald-400">
+                                <span className="text-muted-foreground">Correct:</span>
+                                <span className="font-medium text-accent-olive">
                                     {correctAnswer}
                                 </span>
                             </div>
                         )}
                         {explanation && (
-                            <p className="text-slate-400 mt-2 pt-2 border-t border-white/[0.04]">
+                            <p className="text-muted-foreground mt-2 pt-2 border-t border-border">
                                 {explanation}
                             </p>
                         )}

@@ -32,7 +32,7 @@ export const AMBIENCE_PRESETS: AmbiencePreset[] = [
     icon: 'cafe',
     // Coffee shop ambience
     url: 'https://files.freemusicarchive.org/storage-freemusicarchive-org/music/ccCommunity/Podington_Bear/Solo_Instruments/Podington_Bear_-_Rubber_Plant.mp3',
-    color: 'bg-amber-500',
+    color: 'bg-warning',
   },
   {
     id: 'forest',
@@ -40,7 +40,7 @@ export const AMBIENCE_PRESETS: AmbiencePreset[] = [
     icon: 'forest',
     // Nature sounds
     url: 'https://files.freemusicarchive.org/storage-freemusicarchive-org/music/no_curator/A_A_Aalto/Naturesound/A_A_Aalto_-_01_-_Forest.mp3',
-    color: 'bg-emerald-500',
+    color: 'bg-accent-olive',
   },
   {
     id: 'fire',

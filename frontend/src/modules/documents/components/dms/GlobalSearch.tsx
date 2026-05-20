@@ -55,12 +55,12 @@ const TYPE_LABELS: Record<SearchResult["type"], string> = {
 };
 
 const TYPE_BADGE_CLASSES: Record<SearchResult["type"], string> = {
-  document: "bg-cyan-500/10 text-cyan-300",
-  correspondent: "bg-blue-500/10 text-blue-300",
-  documentType: "bg-emerald-500/10 text-emerald-300",
-  tag: "bg-purple-500/10 text-purple-300",
-  savedView: "bg-amber-500/10 text-amber-300",
-  storagePath: "bg-slate-500/10 text-slate-300",
+  document: "bg-primary/10 text-primary/80",
+  correspondent: "bg-info/10 text-blue-300",
+  documentType: "bg-accent-olive/10 text-accent-olive/80",
+  tag: "bg-accent/10 text-accent/80",
+  savedView: "bg-warning/10 text-amber-300",
+  storagePath: "bg-slate-500/10 text-foreground/80",
 };
 
 // ============================================================================
@@ -148,10 +148,10 @@ export function GlobalSearch({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] p-0 bg-card/95 backdrop-blur-2xl border-white/10 shadow-2xl overflow-hidden">
+      <DialogContent className="sm:max-w-[600px] p-0 bg-card/95 backdrop-blur-2xl border-border shadow-2xl overflow-hidden">
         {/* Search input */}
-        <div className="flex items-center gap-3 px-4 h-14 border-b border-white/5">
-          <Search size={18} className="text-slate-500 shrink-0" />
+        <div className="flex items-center gap-3 px-4 h-14 border-b border-border">
+          <Search size={18} className="text-muted-foreground shrink-0" />
           <input
             value={query}
             onChange={(e) => {
@@ -160,11 +160,11 @@ export function GlobalSearch({
             }}
             onKeyDown={handleKeyDown}
             placeholder="Search documents, correspondents, tags…"
-            className="flex-1 bg-transparent text-slate-200 text-sm placeholder:text-slate-500 outline-none"
+            className="flex-1 bg-transparent text-foreground/70 text-sm placeholder:text-muted-foreground outline-none"
             autoFocus
           />
-          {isLoading && <Loader2 size={16} className="text-cyan-400 animate-spin" />}
-          <kbd className="hidden sm:inline px-1.5 py-0.5 rounded border border-white/10 bg-white/5 text-[10px] text-slate-500 font-mono">
+          {isLoading && <Loader2 size={16} className="text-primary animate-spin" />}
+          <kbd className="hidden sm:inline px-1.5 py-0.5 rounded border border-border bg-foreground/5 text-[10px] text-muted-foreground font-mono">
             ESC
           </kbd>
         </div>
@@ -179,7 +179,7 @@ export function GlobalSearch({
 
             return (
               <div key={groupKey}>
-                <div className="px-4 py-1.5 text-[10px] uppercase tracking-wider font-bold text-slate-500">
+                <div className="px-4 py-1.5 text-[10px] uppercase tracking-wider font-bold text-muted-foreground">
                   {TYPE_LABELS[groupType]}
                 </div>
                 {items.map((result, i) => {
@@ -195,15 +195,15 @@ export function GlobalSearch({
                       className={cn(
                         "w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors",
                         isActive
-                          ? "bg-cyan-500/10 text-white"
-                          : "text-slate-300 hover:bg-white/[0.03]"
+                          ? "bg-primary/10 text-foreground"
+                          : "text-foreground/80 hover:bg-muted/30"
                       )}
                     >
                       <Icon
                         size={16}
                         className={cn(
                           "shrink-0",
-                          isActive ? "text-cyan-400" : "text-slate-500"
+                          isActive ? "text-primary" : "text-muted-foreground"
                         )}
                       />
                       <div className="flex-1 min-w-0">
@@ -211,7 +211,7 @@ export function GlobalSearch({
                           {result.name}
                         </span>
                         {result.detail && (
-                          <span className="text-xs text-slate-500 truncate block">
+                          <span className="text-xs text-muted-foreground truncate block">
                             {result.detail}
                           </span>
                         )}
@@ -233,10 +233,10 @@ export function GlobalSearch({
 
           {/* Empty state */}
           {showEmpty && (
-            <div className="flex flex-col items-center justify-center py-12 text-slate-500">
-              <Search size={32} strokeWidth={1} className="mb-3 text-slate-600" />
+            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+              <Search size={32} strokeWidth={1} className="mb-3 text-muted-foreground" />
               <p className="text-sm">No results for "{query}"</p>
-              <p className="text-xs text-slate-600 mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 Try a different search term
               </p>
             </div>
@@ -244,13 +244,13 @@ export function GlobalSearch({
 
           {/* Hint when empty query */}
           {query.length < 2 && (
-            <div className="flex flex-col items-center justify-center py-12 text-slate-500">
+            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
               <p className="text-sm">Type to search across everything</p>
               <div className="flex gap-2 mt-3">
                 {["Documents", "Tags", "Correspondents"].map((tip) => (
                   <span
                     key={tip}
-                    className="text-[10px] px-2 py-0.5 rounded-full bg-white/5 text-slate-500"
+                    className="text-[10px] px-2 py-0.5 rounded-full bg-foreground/5 text-muted-foreground"
                   >
                     {tip}
                   </span>
@@ -262,17 +262,17 @@ export function GlobalSearch({
 
         {/* Footer */}
         {hasResults && (
-          <div className="px-4 py-2 border-t border-white/5 flex items-center gap-4 text-[10px] text-slate-600">
+          <div className="px-4 py-2 border-t border-border flex items-center gap-4 text-[10px] text-muted-foreground">
             <span>
-              <kbd className="px-1 py-0.5 rounded border border-white/10 bg-white/5 font-mono">↑↓</kbd>{" "}
+              <kbd className="px-1 py-0.5 rounded border border-border bg-foreground/5 font-mono">↑↓</kbd>{" "}
               navigate
             </span>
             <span>
-              <kbd className="px-1 py-0.5 rounded border border-white/10 bg-white/5 font-mono">↵</kbd>{" "}
+              <kbd className="px-1 py-0.5 rounded border border-border bg-foreground/5 font-mono">↵</kbd>{" "}
               select
             </span>
             <span>
-              <kbd className="px-1 py-0.5 rounded border border-white/10 bg-white/5 font-mono">esc</kbd>{" "}
+              <kbd className="px-1 py-0.5 rounded border border-border bg-foreground/5 font-mono">esc</kbd>{" "}
               close
             </span>
           </div>

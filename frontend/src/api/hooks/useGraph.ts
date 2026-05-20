@@ -4,48 +4,52 @@ import { PlatformService } from "../generated";
 import { queryKeys } from "@/lib/queryKeys";
 
 // ============================================================================
-// Types
+// Types — aligned to actual backend responses
 // ============================================================================
 
 export interface GraphStats {
   total_nodes: number;
   total_edges: number;
   density: number;
-  avg_connections: number;
+  avg_connections_per_node: number;
+  avg_link_strength: number;
   nodes_by_type: Record<string, number>;
 }
 
 export interface GraphHub {
   entity_type: string;
   entity_id: number;
-  entity_label: string;
-  outgoing: number;
-  incoming: number;
-  total: number;
+  label: string;
+  connections: number;
 }
 
 export interface ClusterSummary {
-  total_clusters: number;
+  cluster_count: number;
   largest_cluster_size: number;
   avg_cluster_size: number;
-  singleton_count: number;
+  clusters: Array<{ size: number; members: string[]; truncated?: boolean }>;
 }
 
 export interface LinkTypeDistribution {
   link_type: string;
   count: number;
   percentage: number;
+  avg_strength: number;
 }
 
 export interface GrowthPoint {
   date: string;
   links_created: number;
+  entities_touched: number;
 }
+
+/** Orphans: Dict keyed by entity_type → list of orphan entities */
+export type OrphanMap = Record<string, Array<{ entity_id: number; label: string }>>;
 
 export interface GraphAnalyticsData {
   stats: GraphStats;
   hubs: GraphHub[];
-  orphans: Array<{ entity_type: string; count: number }>;
+  orphans: OrphanMap;
   clusters: ClusterSummary;
   link_type_distribution: LinkTypeDistribution[];
   growth_trend: GrowthPoint[];

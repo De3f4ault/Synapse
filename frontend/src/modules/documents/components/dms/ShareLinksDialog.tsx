@@ -121,7 +121,7 @@ export function ShareLinksDialog({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        className="absolute inset-0 bg-background/80 backdrop-blur-sm"
         onClick={onClose}
       />
 
@@ -132,30 +132,30 @@ export function ShareLinksDialog({
         exit={{ opacity: 0, scale: 0.95, y: 10 }}
         className={cn(
           "relative z-10 w-full max-w-lg mx-4",
-          "bg-card/95 backdrop-blur-xl border border-white/10 rounded-2xl",
+          "bg-card/95 backdrop-blur-xl border border-border rounded-2xl",
           "shadow-2xl shadow-black/40"
         )}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.05]">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
           <div className="flex items-center gap-2.5">
-            <Link2 size={18} className="text-cyan-400" />
-            <h2 className="text-base font-semibold text-white">Share Links</h2>
+            <Link2 size={18} className="text-primary" />
+            <h2 className="text-base font-semibold text-foreground">Share Links</h2>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+            className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
           >
             <X size={16} />
           </button>
         </div>
 
         {/* Create section */}
-        <div className="px-5 py-4 border-b border-white/[0.05] space-y-3">
+        <div className="px-5 py-4 border-b border-border space-y-3">
           <div className="flex items-center gap-3">
             {/* Expiration dropdown — matching Paperless L24-29 */}
             <div className="flex-1">
-              <label className="text-[10px] text-slate-500 uppercase tracking-wider font-medium mb-1 block">
+              <label className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium mb-1 block">
                 Expires in
               </label>
               <select
@@ -167,8 +167,8 @@ export function ShareLinksDialog({
                 }
                 className={cn(
                   "w-full px-3 py-1.5 rounded-lg text-sm bg-white/[0.04]",
-                  "border border-white/10 text-slate-200",
-                  "focus:outline-none focus:ring-1 focus:ring-cyan-500/50"
+                  "border border-border text-foreground/70",
+                  "focus:outline-none focus:ring-1 focus:ring-primary/50"
                 )}
               >
                 {EXPIRATION_OPTIONS.map((opt) => (
@@ -186,7 +186,7 @@ export function ShareLinksDialog({
             {/* Archive/Original toggle — matching Paperless L44-54 */}
             {hasArchiveVersion && (
               <div className="flex-1">
-                <label className="text-[10px] text-slate-500 uppercase tracking-wider font-medium mb-1 block">
+                <label className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium mb-1 block">
                   Version
                 </label>
                 <select
@@ -196,8 +196,8 @@ export function ShareLinksDialog({
                   }
                   className={cn(
                     "w-full px-3 py-1.5 rounded-lg text-sm bg-white/[0.04]",
-                    "border border-white/10 text-slate-200",
-                    "focus:outline-none focus:ring-1 focus:ring-cyan-500/50"
+                    "border border-border text-foreground/70",
+                    "focus:outline-none focus:ring-1 focus:ring-primary/50"
                   )}
                 >
                   <option value="archive" className="bg-slate-800">Archive</option>
@@ -210,7 +210,7 @@ export function ShareLinksDialog({
           <Button
             onClick={handleCreate}
             disabled={createMutation.isPending}
-            className="w-full bg-cyan-600 hover:bg-cyan-500 text-white"
+            className="w-full bg-primary hover:bg-primary text-foreground"
             size="sm"
           >
             {createMutation.isPending ? (
@@ -225,11 +225,11 @@ export function ShareLinksDialog({
         {/* Links list */}
         <div className="max-h-[300px] overflow-y-auto">
           {isLoading ? (
-            <div className="py-8 text-center text-slate-500 text-sm">
+            <div className="py-8 text-center text-muted-foreground text-sm">
               Loading...
             </div>
           ) : links.length === 0 ? (
-            <div className="py-8 text-center text-slate-500 text-sm">
+            <div className="py-8 text-center text-muted-foreground text-sm">
               No share links yet
             </div>
           ) : (
@@ -241,24 +241,24 @@ export function ShareLinksDialog({
                 return (
                   <div
                     key={link.id}
-                    className="flex items-center gap-2.5 px-5 py-3 hover:bg-white/[0.02] transition-colors"
+                    className="flex items-center gap-2.5 px-5 py-3 hover:bg-muted/50 transition-colors"
                   >
-                    <ExternalLink size={14} className="text-slate-500 shrink-0" />
+                    <ExternalLink size={14} className="text-muted-foreground shrink-0" />
 
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs text-slate-300 font-mono truncate">
+                      <p className="text-xs text-foreground/80 font-mono truncate">
                         /share/{link.slug}
                       </p>
                       <div className="flex items-center gap-2 mt-0.5">
-                        <span className="text-[10px] text-slate-500">
+                        <span className="text-[10px] text-muted-foreground">
                           {link.file_version}
                         </span>
                         {daysLeft && (
                           <>
-                            <span className="text-[10px] text-slate-600">·</span>
+                            <span className="text-[10px] text-muted-foreground">·</span>
                             <span className={cn(
                               "text-[10px] flex items-center gap-0.5",
-                              daysLeft === "Expired" ? "text-red-400" : "text-slate-500"
+                              daysLeft === "Expired" ? "text-destructive" : "text-muted-foreground"
                             )}>
                               <Clock size={9} />
                               {daysLeft}
@@ -272,11 +272,11 @@ export function ShareLinksDialog({
                     <div className="flex items-center gap-1 shrink-0">
                       <button
                         onClick={() => copyLink(link)}
-                        className="p-1.5 rounded-md text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+                        className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                         title="Copy link"
                       >
                         {isCopied ? (
-                          <Check size={13} className="text-emerald-400" />
+                          <Check size={13} className="text-accent-olive" />
                         ) : (
                           <Copy size={13} />
                         )}
@@ -285,7 +285,7 @@ export function ShareLinksDialog({
                       {canNativeShare && (
                         <button
                           onClick={() => nativeShare(link)}
-                          className="p-1.5 rounded-md text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+                          className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                           title="Share"
                         >
                           <Share2 size={13} />
@@ -295,7 +295,7 @@ export function ShareLinksDialog({
                       <button
                         onClick={() => handleDelete(link)}
                         disabled={revokeMutation.isPending}
-                        className="p-1.5 rounded-md text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                        className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
                         title="Revoke link"
                       >
                         <Trash2 size={13} />
@@ -309,8 +309,8 @@ export function ShareLinksDialog({
         </div>
 
         {/* Footer */}
-        <div className="px-5 py-3 border-t border-white/[0.05]">
-          <p className="text-[10px] text-slate-600">
+        <div className="px-5 py-3 border-t border-border">
+          <p className="text-[10px] text-muted-foreground">
             Anyone with the link can view this document without signing in.
           </p>
         </div>

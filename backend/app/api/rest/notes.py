@@ -24,7 +24,7 @@ router = APIRouter()
 
 
 # Schemas — single source of truth: app/schemas/note.py
-from app.schemas.note import (
+from app.schemas.notes import (
     NoteCreate,
     NoteUpdate,
     NoteResponse,
@@ -104,6 +104,8 @@ async def list_notes(
             journal_date=note.journal_date,
             is_favorite=note.is_favorite,
             is_archived=note.is_archived,
+            content_text=note.content_text,
+            editor_version=note.editor_version,
             created_at=note.created_at,
             updated_at=note.updated_at,
             children_count=children_count,
@@ -149,6 +151,8 @@ async def create_note(
         content=note_data.content,
         format=note_data.format,
         parent_id=note_data.parent_id,
+        content_text=note_data.content_text,
+        editor_version=note_data.editor_version,
     )
 
     db.add(new_note)
@@ -163,10 +167,54 @@ async def create_note(
         title=new_note.title,
         content=new_note.content,
         format=new_note.format,
+        content_text=new_note.content_text,
     )
 
     db.add(version)
     await db.commit()
+
+    # Wire knowledge graph
+    if note_data.parent_id is not None:
+        try:
+            from app.services.graph.linker import GraphLinker
+            from app.models.link import LinkEntityType as LET, LinkType as LT
+
+            linker = GraphLinker(db)
+            await linker.on_entity_created(
+                user_id=current_user.id,
+                entity_type=LET.NOTE,
+                entity_id=new_note.id,
+                source_refs=[(LET.NOTE, note_data.parent_id)],
+                link_type=LT.DERIVED,
+                label="child of",
+            )
+            await db.commit()
+        except Exception as e:
+            import structlog
+            structlog.get_logger(__name__).error(
+                "graph_linker_failed", error=str(e), exc_info=True,
+                note_id=new_note.id, user_id=current_user.id,
+            )
+
+    # Trigger embedding if content_text is available
+    if new_note.content_text:
+        try:
+            import asyncio
+            from app.core.ai.embeddings.boundary import embed_text_sync, EmbeddingStatus, EMBEDDING_VERSION
+
+            text_to_embed = f"{new_note.title or ''}\n\n{new_note.content_text}".strip()
+            embedding, emb_status = await asyncio.get_event_loop().run_in_executor(
+                None, embed_text_sync, text_to_embed
+            )
+            new_note.embedding = embedding
+            new_note.embedding_status = emb_status.value
+            new_note.embedding_model = EMBEDDING_VERSION if emb_status == EmbeddingStatus.READY else None
+            await db.commit()
+        except Exception as e:
+            import structlog
+            structlog.get_logger().warning("create_note_embedding_failed", note_id=new_note.id, error=str(e))
+
+    await db.refresh(new_note)
 
     return NoteResponse(
         id=new_note.id,
@@ -179,6 +227,8 @@ async def create_note(
         journal_date=new_note.journal_date,
         is_favorite=new_note.is_favorite,
         is_archived=new_note.is_archived,
+        content_text=new_note.content_text,
+        editor_version=new_note.editor_version,
         created_at=new_note.created_at,
         updated_at=new_note.updated_at,
         children_count=0,
@@ -249,7 +299,7 @@ async def search_notes(
     - Vector semantic search with Qdrant
     - Hybrid search combining both
     """
-    # Simple LIKE search (case-insensitive)
+    # Search title and content_text (plain text, not raw JSONB)
     search_pattern = f"%{query}%"
 
     search_query = (
@@ -258,7 +308,10 @@ async def search_notes(
             and_(
                 Note.user_id == current_user.id,
                 Note.deleted_at.is_(None),
-                or_(Note.title.ilike(search_pattern), Note.content.ilike(search_pattern)),
+                or_(
+                    Note.title.ilike(search_pattern),
+                    Note.content_text.ilike(search_pattern),
+                ),
             )
         )
         .limit(limit)
@@ -334,6 +387,8 @@ async def get_note(
         journal_date=note.journal_date,
         is_favorite=note.is_favorite,
         is_archived=note.is_archived,
+        content_text=note.content_text,
+        editor_version=note.editor_version,
         created_at=note.created_at,
         updated_at=note.updated_at,
         children_count=children_count,
@@ -386,7 +441,7 @@ async def get_note_versions(
     "/{note_id}",
     response_model=NoteResponse,
     summary="Update note",
-    description="Update note and create new version",
+    description="Silent autosave — updates content in DB, no version insert, no embedding.",
 )
 async def update_note(
     note_id: int,
@@ -394,67 +449,36 @@ async def update_note(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Update note and create version history."""
-    # Get note
+    """Silent autosave. Persists content only — versioning and embedding happen via /checkpoint."""
     result = await db.execute(
         select(Note).where(
             and_(Note.id == note_id, Note.user_id == current_user.id, Note.deleted_at.is_(None))
         )
     )
     note = result.scalar_one_or_none()
-
     if not note:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found")
 
-    # Track if content changed
-    content_changed = False
-
-    # Update fields
     if note_data.title is not None:
         note.title = note_data.title
-        content_changed = True
-
     if note_data.content is not None:
         note.content = note_data.content
-        content_changed = True
-
+    if note_data.content_text is not None:
+        note.content_text = note_data.content_text
+    if note_data.editor_version is not None:
+        note.editor_version = note_data.editor_version
     if note_data.format is not None:
         note.format = note_data.format
-        content_changed = True
-
-    # Update metadata fields (no version bump)
     if note_data.is_favorite is not None:
         note.is_favorite = note_data.is_favorite
-
     if note_data.is_archived is not None:
         note.is_archived = note_data.is_archived
-
     if note_data.journal_date is not None:
         note.journal_date = note_data.journal_date
-
-    # Create new version if content changed
-    if content_changed:
-        # Get latest version number
-        latest_version_result = await db.execute(
-            select(func.max(NoteVersion.version_number)).where(NoteVersion.note_id == note.id)
-        )
-        latest_version = latest_version_result.scalar() or 0
-
-        # Create new version
-        new_version = NoteVersion(
-            note_id=note.id,
-            created_by=current_user.id,
-            version_number=latest_version + 1,
-            title=note.title,
-            content=note.content,
-            format=note.format,
-        )
-        db.add(new_version)
 
     await db.commit()
     await db.refresh(note)
 
-    # Get children count
     children_count_result = await db.execute(
         select(func.count(Note.id)).where(
             and_(Note.parent_id == note.id, Note.deleted_at.is_(None))
@@ -473,6 +497,8 @@ async def update_note(
         journal_date=note.journal_date,
         is_favorite=note.is_favorite,
         is_archived=note.is_archived,
+        content_text=note.content_text,
+        editor_version=note.editor_version,
         created_at=note.created_at,
         updated_at=note.updated_at,
         children_count=children_count,
@@ -517,6 +543,119 @@ async def delete_note(
     await db.commit()
 
     return MessageResponse(message="Note and all children deleted successfully")
+
+
+@router.post(
+    "/{note_id}/checkpoint",
+    response_model=NoteResponse,
+    summary="Checkpoint note",
+    description="Intentional save: cuts a version and triggers embedding only when content changed.",
+)
+async def checkpoint_note(
+    note_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Intentional checkpoint (Ctrl+S / Save button).
+
+    Reads the current DB state, compares content_text with the last version's content_text.
+    Only inserts a new NoteVersion and triggers embedding if something changed.
+    """
+    import structlog
+    log = structlog.get_logger()
+
+    result = await db.execute(
+        select(Note).where(
+            and_(Note.id == note_id, Note.user_id == current_user.id, Note.deleted_at.is_(None))
+        )
+    )
+    note = result.scalar_one_or_none()
+    if not note:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found")
+
+    # Get last version's content_text for dirty-check
+    last_version_result = await db.execute(
+        select(NoteVersion)
+        .where(NoteVersion.note_id == note.id)
+        .order_by(NoteVersion.version_number.desc())
+        .limit(1)
+    )
+    last_version = last_version_result.scalar_one_or_none()
+    last_content_text = last_version.content_text if last_version else None
+
+    content_actually_changed = (
+        note.content_text is not None
+        and note.content_text.strip() != ""
+        and note.content_text != last_content_text
+    )
+
+    if not content_actually_changed:
+        log.info("checkpoint_skipped_no_change", note_id=note.id)
+    else:
+        # Cut a new version
+        latest_version_result = await db.execute(
+            select(func.max(NoteVersion.version_number)).where(NoteVersion.note_id == note.id)
+        )
+        latest_version = latest_version_result.scalar() or 0
+
+        new_version = NoteVersion(
+            note_id=note.id,
+            created_by=current_user.id,
+            version_number=latest_version + 1,
+            title=note.title,
+            content=note.content,
+            format=note.format,
+            content_text=note.content_text,
+        )
+        db.add(new_version)
+        await db.commit()
+        log.info("checkpoint_version_created", note_id=note.id, version=latest_version + 1)
+
+        # Trigger embedding
+        if note.content_text:
+            try:
+                import asyncio
+                from app.core.ai.embeddings.boundary import embed_text_sync, EmbeddingStatus, EMBEDDING_VERSION
+
+                text_to_embed = f"{note.title or ''}\n\n{note.content_text}".strip()
+                embedding, emb_status = await asyncio.get_event_loop().run_in_executor(
+                    None, embed_text_sync, text_to_embed
+                )
+                note.embedding = embedding
+                note.embedding_status = emb_status.value
+                note.embedding_model = EMBEDDING_VERSION if emb_status == EmbeddingStatus.READY else None
+                await db.commit()
+                log.info("checkpoint_embedding_updated", note_id=note.id, status=emb_status.value)
+            except Exception as e:
+                log.warning("checkpoint_embedding_failed", note_id=note.id, error=str(e))
+
+    await db.refresh(note)
+
+    children_count_result = await db.execute(
+        select(func.count(Note.id)).where(
+            and_(Note.parent_id == note.id, Note.deleted_at.is_(None))
+        )
+    )
+    children_count = children_count_result.scalar()
+
+    return NoteResponse(
+        id=note.id,
+        title=note.title,
+        content=note.content,
+        format=note.format,
+        parent_id=note.parent_id,
+        user_id=note.user_id,
+        embedding_id=note.embedding_id,
+        journal_date=note.journal_date,
+        is_favorite=note.is_favorite,
+        is_archived=note.is_archived,
+        content_text=note.content_text,
+        editor_version=note.editor_version,
+        created_at=note.created_at,
+        updated_at=note.updated_at,
+        children_count=children_count,
+    )
 
 
 # ============================================================================
@@ -609,6 +748,8 @@ async def get_or_create_journal(
             journal_date=note.journal_date,
             is_favorite=note.is_favorite,
             is_archived=note.is_archived,
+            content_text=note.content_text,
+            editor_version=note.editor_version,
             created_at=note.created_at,
             updated_at=note.updated_at,
             children_count=children_count,
@@ -622,9 +763,11 @@ async def get_or_create_journal(
     new_note = Note(
         user_id=current_user.id,
         title=formatted_title,
-        content={},  # Empty BlockSuite content
-        format=NoteFormat.BLOCKSUITE,
+        content={},
+        format=NoteFormat.TIPTAP,
         journal_date=date,
+        editor_version='tiptap@2',
+        content_text='',
     )
 
     db.add(new_note)
@@ -639,6 +782,7 @@ async def get_or_create_journal(
         title=new_note.title,
         content=new_note.content,
         format=new_note.format,
+        content_text=new_note.content_text,
     )
     db.add(version)
     await db.commit()
@@ -654,7 +798,106 @@ async def get_or_create_journal(
         journal_date=new_note.journal_date,
         is_favorite=new_note.is_favorite,
         is_archived=new_note.is_archived,
+        content_text=new_note.content_text,
+        editor_version=new_note.editor_version,
         created_at=new_note.created_at,
         updated_at=new_note.updated_at,
         children_count=0,
+    )
+
+@router.post(
+    "/{note_id}/versions/{version_number}/restore",
+    response_model=NoteResponse,
+    summary="Restore note version",
+    description="Restore a note to a specific version",
+)
+async def restore_note_version(
+    note_id: int,
+    version_number: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Restore a note to a specific version."""
+    import structlog
+    log = structlog.get_logger()
+    
+    # 1. Verify note ownership
+    note_result = await db.execute(
+        select(Note).where(
+            and_(Note.id == note_id, Note.user_id == current_user.id, Note.deleted_at.is_(None))
+        )
+    )
+    note = note_result.scalar_one_or_none()
+
+    if not note:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Note not found")
+
+    # 2. Get the specific version
+    version_result = await db.execute(
+        select(NoteVersion).where(
+            and_(NoteVersion.note_id == note_id, NoteVersion.version_number == version_number)
+        )
+    )
+    version = version_result.scalar_one_or_none()
+
+    if not version:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Version not found")
+
+    # 3. Restore content to Note
+    note.title = version.title
+    note.content = version.content
+    note.content_text = version.content_text
+    note.format = version.format
+    note.updated_at = func.now()
+
+    # Create a new version representing this restored state
+    max_v_result = await db.execute(
+        select(func.max(NoteVersion.version_number)).where(NoteVersion.note_id == note.id)
+    )
+    max_v = max_v_result.scalar() or 0
+    next_v = max_v + 1
+
+    restored_version = NoteVersion(
+        note_id=note.id,
+        created_by=current_user.id,
+        version_number=next_v,
+        title=note.title,
+        content=note.content,
+        format=note.format,
+        content_text=note.content_text,
+    )
+    db.add(restored_version)
+    await db.commit()
+    await db.refresh(note)
+    
+    # Trigger embedding update if content changed
+    from app.core.celery_app import celery_app
+    celery_app.send_task("generate_note_embedding", args=[note.id])
+    note.embedding_status = "pending"
+    await db.commit()
+    
+    # Count children for NoteResponse
+    children_result = await db.execute(
+        select(func.count(Note.id)).where(
+            and_(Note.parent_id == note.id, Note.deleted_at.is_(None))
+        )
+    )
+    children_count = children_result.scalar() or 0
+
+    return NoteResponse(
+        id=note.id,
+        title=note.title,
+        content=note.content,
+        format=note.format,
+        parent_id=note.parent_id,
+        user_id=note.user_id,
+        embedding_id=note.embedding_id,
+        journal_date=note.journal_date,
+        is_favorite=note.is_favorite,
+        is_archived=note.is_archived,
+        content_text=note.content_text,
+        editor_version=note.editor_version,
+        created_at=note.created_at,
+        updated_at=note.updated_at,
+        children_count=children_count,
     )

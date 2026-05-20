@@ -22,12 +22,12 @@ export function SuggestedTopics() {
    */
   const handleTopicClick = (conceptId: string) => {
     // Navigate to flashcard deck review
-    navigate(`/flashcards/decks/${conceptId}`);
+    navigate(`/flashcards/${conceptId}`);
   };
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-8 text-slate-500">
+      <div className="flex items-center justify-center py-8 text-muted-foreground">
         <Loader2 size={20} className="animate-spin mr-2" />
         <span className="text-sm">Analyzing your learning state...</span>
       </div>
@@ -36,7 +36,7 @@ export function SuggestedTopics() {
 
   if (error) {
     return (
-      <div className="flex items-center justify-center py-8 text-slate-500">
+      <div className="flex items-center justify-center py-8 text-muted-foreground">
         <AlertCircle size={20} className="mr-2" />
         <span className="text-sm">Could not load topic suggestions</span>
       </div>
@@ -53,7 +53,7 @@ export function SuggestedTopics() {
     return (
       <div className="text-center py-8">
         <div className="text-4xl mb-2">✨</div>
-        <p className="text-slate-400 text-sm">
+        <p className="text-muted-foreground text-sm">
           No weak areas detected. Keep up the great work!
         </p>
       </div>
@@ -70,8 +70,8 @@ export function SuggestedTopics() {
             className={cn(
               "border transition-colors cursor-pointer group",
               topic.status === "weak"
-                ? "border-red-500/20 hover:border-red-500/40 bg-red-500/5"
-                : "border-amber-500/20 hover:border-amber-500/40 bg-amber-500/5"
+                ? "border-destructive/20 hover:border-red-500/40 bg-destructive/5"
+                : "border-warning/20 hover:border-amber-500/40 bg-warning/5"
             )}
           >
             <CardContent className="pt-4">
@@ -79,13 +79,13 @@ export function SuggestedTopics() {
                 <div className="flex items-center gap-3">
                   <BookOpen className={cn(
                     "h-4 w-4",
-                    topic.status === "weak" ? "text-red-400" : "text-amber-400"
+                    topic.status === "weak" ? "text-destructive" : "text-warning"
                   )} />
                   <div>
-                    <p className="font-medium text-sm text-white">
+                    <p className="font-medium text-sm text-foreground">
                       {topic.concept_name || topic.concept_id}
                     </p>
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs text-muted-foreground">
                       {topic.status === "weak"
                         ? "Needs immediate attention"
                         : "At risk of being forgotten"}
@@ -98,13 +98,13 @@ export function SuggestedTopics() {
                     className={cn(
                       "text-xs border",
                       topic.status === "weak"
-                        ? "border-red-500/30 text-red-400"
-                        : "border-amber-500/30 text-amber-400"
+                        ? "border-red-500/30 text-destructive"
+                        : "border-amber-500/30 text-warning"
                     )}
                   >
                     {topic.status === "weak" ? "Weak" : "Fragile"}
                   </Badge>
-                  <div className="flex items-center gap-1 text-xs text-slate-500">
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
                     <TrendingDown className="h-3 w-3" />
                     {Math.round(topic.mastery * 100)}%
                   </div>
@@ -113,8 +113,8 @@ export function SuggestedTopics() {
 
               {/* Evidence if available */}
               {topic.weakness_evidence?.length > 0 && (
-                <div className="mt-2 pt-2 border-t border-white/5">
-                  <p className="text-xs text-slate-500">
+                <div className="mt-2 pt-2 border-t border-border">
+                  <p className="text-xs text-muted-foreground">
                     {topic.weakness_evidence?.[0]?.reason}
                   </p>
                 </div>

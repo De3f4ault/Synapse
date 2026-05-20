@@ -13,6 +13,7 @@
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
 import type { Flashcard, ReviewRating, ReviewProgress, StudySessionStats } from '../../core';
+import { RATING_TO_API_QUALITY, SM2_CORRECT_THRESHOLD } from '../../core';
 
 // ==================== TYPES ====================
 
@@ -180,12 +181,33 @@ export const useStudyStore = create<StudyStore>()(
         getSessionStats: () => {
             const state = get();
             const totalReviewed = state.completed.length;
-            const correct = state.completed.filter((r) => r.rating >= 2).length;
+
+            // Mirror backend: calculate_sm2.sql → IF p_quality >= 3 THEN (correct)
+            const correct = state.completed.filter(
+                (r) => RATING_TO_API_QUALITY[r.rating] >= SM2_CORRECT_THRESHOLD
+            ).length;
             const incorrect = totalReviewed - correct;
             const accuracy = totalReviewed > 0 ? correct / totalReviewed : 0;
+
             const durationMs = state.sessionStartTime
                 ? Date.now() - state.sessionStartTime
                 : 0;
+
+            // Rating breakdown — count each button press
+            const ratingBreakdown = {
+                again: state.completed.filter((r) => r.rating === 0).length,
+                hard:  state.completed.filter((r) => r.rating === 1).length,
+                good:  state.completed.filter((r) => r.rating === 2).length,
+                easy:  state.completed.filter((r) => r.rating === 3).length,
+            };
+
+            // Average time per card (from per-card timeTakenMs captured at review)
+            const totalTimeMs = state.completed.reduce((sum, r) => sum + r.timeTakenMs, 0);
+            const avgTimePerCardMs = totalReviewed > 0 ? totalTimeMs / totalReviewed : 0;
+
+            // Pace: cards per minute (based on wall-clock session duration)
+            const durationMinutes = durationMs / 60_000;
+            const cardsPerMinute = durationMinutes > 0 ? totalReviewed / durationMinutes : 0;
 
             return {
                 totalReviewed,
@@ -193,6 +215,9 @@ export const useStudyStore = create<StudyStore>()(
                 incorrect,
                 accuracy,
                 durationMs,
+                ratingBreakdown,
+                avgTimePerCardMs,
+                cardsPerMinute,
             };
         },
 

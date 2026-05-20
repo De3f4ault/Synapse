@@ -114,8 +114,16 @@ celery_app.conf.update(
         "storage.empty_trash": {"queue": "default"},
         # DMS workflows
         "workflows.check_scheduled_workflows": {"queue": "default"},
+        # Learning signals (conversational mastery extraction)
+        "learning.process_signals": {"queue": "default"},
+        # Flashcard auto-categorisation (fires after AI deck generation)
+        "flashcards.auto_categorise_deck": {"queue": "default"},
         # DMS sharing
         "sharing.cleanup_expired_links": {"queue": "default"},
+        # Pipeline watchdog — low-priority, default queue, never blocks document work
+        "tasks.recover_stalled_documents": {"queue": "default"},
+        # ColBERT backfill — one-shot operator task, runs on rag queue
+        "colbert.backfill_colbert": {"queue": "rag"},
     },
     # Queues
     task_queues=(
@@ -181,12 +189,33 @@ celery_app.conf.update(
             "schedule": 86400.0,  # Daily
             "options": {"expires": 82800.0},
         },
+        # Pipeline watchdog: recover documents stuck in PARSING/CHUNKING/PARSED/PENDING
+        # Runs every 5 minutes. Thresholds defined in recover_stalled_documents().
+        "recover-stalled-documents": {
+            "task": "tasks.recover_stalled_documents",
+            "schedule": 300.0,   # Every 5 minutes
+            "options": {"expires": 270.0},  # Expire before next run to prevent pileup
+        },
+        # Admin: 90-day retention sweep on agent_metrics (converted to LOGGED).
+        # Batched deletes — no table lock risk. Runs Sunday 02:00 UTC (low-traffic).
+        "admin-purge-agent-metrics": {
+            "task": "admin.purge_agent_metrics_retention",
+            "schedule": 604800.0,   # Every 7 days (weekly)
+            "options": {"expires": 600000.0},
+        },
     },
 )
 
 # Auto-discover tasks
 celery_app.autodiscover_tasks(["app.services.background"])
+celery_app.autodiscover_tasks(["app.services.workflows"], related_name="scheduler")
 
 # Import signals to register handlers
 # This MUST be after celery_app is created
 from app.services.background import signals  # noqa: F401, E402
+
+# Explicitly import task modules that are NOT auto-discovered.
+# autodiscover_tasks only finds 'tasks.py' (the default related_name).
+# All other task files must be imported here so the worker registers them.
+from app.services.background import learning_tasks  # noqa: F401, E402 — registers learning.process_signals, flashcards.auto_categorise_deck
+from app.services.background import data_retention_tasks  # noqa: F401, E402 — registers admin.purge_agent_metrics_retention

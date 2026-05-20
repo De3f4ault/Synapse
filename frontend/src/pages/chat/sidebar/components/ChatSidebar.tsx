@@ -1,11 +1,11 @@
 /**
- * ChatSidebar - Grok-Style Expandable Sidebar
+ * ChatSidebar - Expandable Sidebar
  *
  * Features:
  * - Collapsible: Icon rail (64px) ↔ Full sidebar (272px)
  * - Time-grouped chat history (Today, Yesterday, This Week, etc.)
  * - Search, New Chat, and collapse toggle actions
- * - Grok colors: #050505 (black), #363636 (glassy gray)
+ * - Warm design system tokens
  */
 
 import { useState, useMemo, useEffect, useRef } from "react";
@@ -184,12 +184,11 @@ export function ChatSidebar({ currentSessionId, className }: ChatSidebarProps) {
           "flex flex-col transition-all duration-300 ease-in-out overflow-hidden",
           isCollapsed ? "w-16" : "w-[272px]",
           isCollapsed
-            ? "my-3 ml-2 rounded-2xl border border-white/6 bg-[#0a0a0c]/90 backdrop-blur-xl"
-            : "h-full border-r border-white/[0.08]",
-          !isCollapsed && "bg-[#0a0a0a]",
+            ? "my-3 ml-2 rounded-2xl border border-border bg-card/90 backdrop-blur-xl"
+            : "h-full rounded-2xl border-r border-border",
+          !isCollapsed && "bg-background",
           className
         )}
-        style={isCollapsed ? {} : { backgroundColor: "#0a0a0a" }}
       >
         {/* ============================================================ */}
         {/* COLLAPSED — Grok-style icon rail                              */}
@@ -203,13 +202,13 @@ export function ChatSidebar({ currentSessionId, className }: ChatSidebarProps) {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-10 w-10 rounded-xl hover:bg-white/8 text-zinc-500 hover:text-white transition-colors"
+                    className="h-10 w-10 rounded-xl hover:bg-muted/50 text-muted-foreground hover:text-foreground transition-colors"
                     onClick={handleToggleCollapse}
                   >
                     <PanelLeft className="size-[18px]" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent side="right" className="bg-zinc-800 text-zinc-200 border-zinc-700">
+                <TooltipContent side="right" className="bg-popover text-popover-foreground border-border">
                   <p>Expand Sidebar</p>
                 </TooltipContent>
               </Tooltip>
@@ -222,13 +221,13 @@ export function ChatSidebar({ currentSessionId, className }: ChatSidebarProps) {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-10 w-10 rounded-xl hover:bg-white/8 text-zinc-500 hover:text-white transition-colors"
+                    className="h-10 w-10 rounded-xl hover:bg-muted/50 text-muted-foreground hover:text-foreground transition-colors"
                     onClick={handleCreateSession}
                   >
                     <Plus className="size-[18px]" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent side="right" className="bg-zinc-800 text-zinc-200 border-zinc-700">
+                <TooltipContent side="right" className="bg-popover text-popover-foreground border-border">
                   <p>New Chat</p>
                 </TooltipContent>
               </Tooltip>
@@ -241,20 +240,20 @@ export function ChatSidebar({ currentSessionId, className }: ChatSidebarProps) {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-10 w-10 rounded-xl hover:bg-white/8 text-zinc-500 hover:text-white transition-colors"
+                    className="h-10 w-10 rounded-xl hover:bg-muted/50 text-muted-foreground hover:text-foreground transition-colors"
                     onClick={searchPalette.open}
                   >
                     <Search className="size-[18px]" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent side="right" className="bg-zinc-800 text-zinc-200 border-zinc-700">
-                  <p>Search <kbd className="ml-1 px-1 py-0.5 bg-zinc-900 rounded text-[10px]">⌘K</kbd></p>
+                <TooltipContent side="right" className="bg-popover text-popover-foreground border-border">
+                  <p>Search <kbd className="ml-1 px-1 py-0.5 bg-muted rounded text-[10px]">⌘K</kbd></p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
 
             {/* Divider */}
-            <div className="w-6 h-px bg-white/6 my-1" />
+            <div className="w-6 h-px bg-border my-1" />
 
             {/* History — hover-triggered popover */}
             <Popover open={historyOpen} onOpenChange={setHistoryOpen}>
@@ -269,8 +268,8 @@ export function ChatSidebar({ currentSessionId, className }: ChatSidebarProps) {
                     className={cn(
                       "h-10 w-10 rounded-xl transition-colors",
                       historyOpen
-                        ? "bg-white/8 text-white"
-                        : "hover:bg-white/8 text-zinc-500 hover:text-white"
+                        ? "bg-muted/50 text-foreground"
+                        : "hover:bg-muted/50 text-muted-foreground hover:text-foreground"
                     )}
                   >
                     <HistoryIcon className="size-[18px]" />
@@ -283,28 +282,28 @@ export function ChatSidebar({ currentSessionId, className }: ChatSidebarProps) {
                 sideOffset={12}
                 avoidCollisions
                 collisionPadding={16}
-                className="w-[260px] max-h-[420px] p-0 border-white/6 bg-[#0e0e12]/98 backdrop-blur-2xl rounded-2xl overflow-hidden shadow-2xl shadow-black/50"
+                className="w-[260px] max-h-[420px] p-0 border-border bg-popover backdrop-blur-2xl rounded-2xl overflow-hidden shadow-2xl shadow-lg"
                 onMouseEnter={openHistory}
                 onMouseLeave={closeHistory}
               >
                 {/* Header */}
-                <div className="px-4 py-3 border-b border-white/5">
-                  <span className="text-[11px] font-semibold text-zinc-300 uppercase tracking-widest">History</span>
+                <div className="px-4 py-3 border-b border-border">
+                  <span className="text-[11px] font-semibold text-foreground/80 uppercase tracking-widest">History</span>
                 </div>
 
                 {/* Session list — invisible scrollbar */}
                 <div className="overflow-y-auto max-h-[340px] py-1.5 scrollbar-hide">
                   {isLoading ? (
                     <div className="flex items-center justify-center py-8">
-                      <div className="animate-spin size-4 border-2 border-zinc-500 border-t-transparent rounded-full" />
+                      <div className="animate-spin size-4 border-2 border-muted-foreground border-t-transparent rounded-full" />
                     </div>
                   ) : groupedSessions.length === 0 ? (
-                    <div className="text-center py-8 text-zinc-500 text-xs">No chats yet</div>
+                    <div className="text-center py-8 text-muted-foreground text-xs">No chats yet</div>
                   ) : (
                     groupedSessions.map(([label, groupItems]) => (
                       <div key={label} className="mb-1.5">
                         {/* Date group */}
-                        <div className="px-4 py-1 text-[10px] font-medium text-zinc-500 uppercase tracking-wider">
+                        <div className="px-4 py-1 text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
                           {label}
                         </div>
                         {/* Items */}
@@ -316,8 +315,8 @@ export function ChatSidebar({ currentSessionId, className }: ChatSidebarProps) {
                                   className={cn(
                                     "group flex items-center px-4 py-2 mx-1.5 rounded-lg cursor-pointer text-[12px] transition-all",
                                     currentSessionId === session.id
-                                      ? "bg-[rgba(56,189,248,0.08)] text-[rgba(56,189,248,0.85)] border border-[rgba(56,189,248,0.12)]"
-                                      : "text-zinc-400 hover:text-zinc-200 hover:bg-white/5 border border-transparent"
+                                      ? "bg-primary/10 text-primary border border-primary/20"
+                                      : "text-muted-foreground hover:text-foreground/70 hover:bg-muted/50 border border-transparent"
                                   )}
                                   onClick={() => navigate(`/chat/${session.id}`)}
                                 >
@@ -329,7 +328,7 @@ export function ChatSidebar({ currentSessionId, className }: ChatSidebarProps) {
                               <TooltipContent
                                 side="right"
                                 sideOffset={14}
-                                className="max-w-[260px] bg-[#141418]/97 backdrop-blur-xl text-zinc-200 border-white/7 rounded-lg text-xs px-3 py-2"
+                                className="max-w-[260px] bg-popover backdrop-blur-xl text-foreground/70 border-border rounded-lg text-xs px-3 py-2"
                               >
                                 <p className="break-words">{session.title || "New Chat"}</p>
                               </TooltipContent>
@@ -342,9 +341,9 @@ export function ChatSidebar({ currentSessionId, className }: ChatSidebarProps) {
                 </div>
 
                 {/* Footer */}
-                <div className="border-t border-white/5 px-4 py-2.5">
+                <div className="border-t border-border px-4 py-2.5">
                   <button
-                    className="text-[11px] text-zinc-500 hover:text-zinc-300 transition-colors"
+                    className="text-[11px] text-muted-foreground hover:text-foreground/80 transition-colors"
                     onClick={() => {
                       setIsCollapsed(false);
                       setHistoryOpen(false);
@@ -362,7 +361,7 @@ export function ChatSidebar({ currentSessionId, className }: ChatSidebarProps) {
         {/* EXPANDED — Header                                             */}
         {/* ============================================================ */}
         {!isCollapsed && (
-          <div className="flex items-center gap-2 p-3 border-b border-white/5">
+          <div className="flex items-center gap-2 p-3 border-b border-border">
             {/* Collapse Toggle */}
             <TooltipProvider delayDuration={0}>
               <Tooltip>
@@ -370,13 +369,13 @@ export function ChatSidebar({ currentSessionId, className }: ChatSidebarProps) {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-9 w-9 rounded-lg hover:bg-white/10 text-zinc-400 hover:text-white shrink-0"
+                    className="h-9 w-9 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground shrink-0"
                     onClick={handleToggleCollapse}
                   >
                     <PanelLeftClose className="size-5" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent side="right" className="bg-zinc-800 text-zinc-200 border-zinc-700">
+                <TooltipContent side="right" className="bg-popover text-popover-foreground border-border">
                   <p>Collapse</p>
                 </TooltipContent>
               </Tooltip>
@@ -385,7 +384,7 @@ export function ChatSidebar({ currentSessionId, className }: ChatSidebarProps) {
             {/* New Chat */}
             <Button
               variant="ghost"
-              className="flex-1 justify-start gap-2 h-9 rounded-lg hover:bg-white/10 text-zinc-300 hover:text-white text-sm"
+              className="flex-1 justify-start gap-2 h-9 rounded-lg hover:bg-muted text-foreground/80 hover:text-foreground text-sm"
               onClick={handleCreateSession}
             >
               <Plus className="size-4" />
@@ -399,14 +398,14 @@ export function ChatSidebar({ currentSessionId, className }: ChatSidebarProps) {
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-9 w-9 rounded-lg hover:bg-white/10 text-zinc-400 hover:text-white shrink-0"
+                    className="h-9 w-9 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground shrink-0"
                     onClick={searchPalette.open}
                   >
                     <Search className="size-4" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent side="right" className="bg-zinc-800 text-zinc-200 border-zinc-700">
-                  <p>Search <kbd className="ml-2 px-1 py-0.5 bg-zinc-900 rounded text-xs">⌘K</kbd></p>
+                <TooltipContent side="right" className="bg-popover text-popover-foreground border-border">
+                  <p>Search <kbd className="ml-2 px-1 py-0.5 bg-muted rounded text-xs">⌘K</kbd></p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -417,14 +416,14 @@ export function ChatSidebar({ currentSessionId, className }: ChatSidebarProps) {
         {!isCollapsed && (
           <>
             {/* Search Input */}
-            <div className="p-3 border-b border-white/5">
+            <div className="p-3 border-b border-border">
               <div className="relative">
-                <Search className="absolute left-2.5 top-2.5 size-4 text-zinc-500" />
+                <Search className="absolute left-2.5 top-2.5 size-4 text-muted-foreground" />
                 <Input
                   placeholder="Filter history..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9 bg-[#363636]/30 border-white/5 h-9 text-sm placeholder:text-zinc-500"
+                  className="pl-9 bg-muted/30 border-border h-9 text-sm placeholder:text-muted-foreground"
                 />
               </div>
             </div>
@@ -433,17 +432,17 @@ export function ChatSidebar({ currentSessionId, className }: ChatSidebarProps) {
             <div className="flex-1 overflow-y-auto p-2 scrollbar-hide">
               {isLoading ? (
                 <div className="flex items-center justify-center py-10">
-                  <div className="animate-spin size-5 border-2 border-zinc-500 border-t-transparent rounded-full" />
+                  <div className="animate-spin size-5 border-2 border-muted-foreground border-t-transparent rounded-full" />
                 </div>
               ) : groupedSessions.length === 0 ? (
-                <div className="text-center py-10 text-zinc-500">
+                <div className="text-center py-10 text-muted-foreground">
                   <p className="text-sm">No chats found</p>
                 </div>
               ) : (
                 groupedSessions.map(([label, groupItems]) => (
                   <div key={label} className="mb-4">
                     {/* Group Label */}
-                    <div className="px-3 py-1.5 text-[10px] font-medium text-zinc-500 uppercase tracking-wider">
+                    <div className="px-3 py-1.5 text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
                       {label}
                     </div>
 
@@ -455,9 +454,9 @@ export function ChatSidebar({ currentSessionId, className }: ChatSidebarProps) {
                           className={cn(
                             "group flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer text-sm transition-colors",
                             currentSessionId === session.id
-                              ? "text-white"
-                              : "text-zinc-300 hover:text-white hover:bg-white/[0.06]",
-                            currentSessionId === session.id && "bg-white/[0.08] border border-white/[0.06]"
+                              ? "text-foreground"
+                              : "text-foreground/80 hover:text-foreground hover:bg-muted/50",
+                            currentSessionId === session.id && "bg-muted border border-border"
                           )}
                           onClick={() => navigate(`/chat/${session.id}`)}
                         >
@@ -469,7 +468,7 @@ export function ChatSidebar({ currentSessionId, className }: ChatSidebarProps) {
                               <Input
                                 value={renameValue}
                                 onChange={(e) => setRenameValue(e.target.value)}
-                                className="h-6 text-xs bg-transparent border-white/20"
+                                className="h-6 text-xs bg-transparent border-border"
                                 autoFocus
                                 onKeyDown={(e) => {
                                   if (e.key === "Enter") saveRename(session.id);
@@ -477,7 +476,7 @@ export function ChatSidebar({ currentSessionId, className }: ChatSidebarProps) {
                                 }}
                               />
                               <Check
-                                className="size-4 text-green-400 cursor-pointer shrink-0"
+                                className="size-4 text-accent-olive cursor-pointer shrink-0"
                                 onClick={() => saveRename(session.id)}
                               />
                             </div>
@@ -491,14 +490,14 @@ export function ChatSidebar({ currentSessionId, className }: ChatSidebarProps) {
                                   <Button
                                     variant="ghost"
                                     size="icon"
-                                    className="h-5 w-5 opacity-0 group-hover:opacity-100 -mr-1 text-zinc-500 hover:text-white"
+                                    className="h-5 w-5 opacity-0 group-hover:opacity-100 -mr-1 text-muted-foreground hover:text-foreground"
                                   >
                                     <MoreVertical className="size-3" />
                                   </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent
                                   align="end"
-                                  className="w-32 bg-zinc-900 border-white/10"
+                                  className="w-32 bg-popover border-border"
                                 >
                                   <DropdownMenuItem
                                     onClick={(e) => {
@@ -509,7 +508,7 @@ export function ChatSidebar({ currentSessionId, className }: ChatSidebarProps) {
                                     <Pencil className="size-3 mr-2" /> Rename
                                   </DropdownMenuItem>
                                   <DropdownMenuItem
-                                    className="text-red-400"
+                                    className="text-destructive"
                                     onClick={(e) => handleDelete(session.id, e)}
                                   >
                                     <Trash2 className="size-3 mr-2" /> Delete

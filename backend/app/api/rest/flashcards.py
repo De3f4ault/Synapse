@@ -26,7 +26,7 @@ logger = structlog.get_logger()
 
 
 # Schemas — single source of truth: app/schemas/flashcard.py
-from app.schemas.flashcard import (
+from app.schemas.study import (
     FlashcardCreate,
     FlashcardUpdate,
     DueCardResponse as FlashcardResponse,  # SQL DTO, not ORM model
@@ -62,6 +62,7 @@ async def create_card(
                 "deck_id": card_data.deck_id,
                 "front_text": card_data.front_text,
                 "back_text": card_data.back_text,
+                "topic": card_data.topic,
                 "front_media_url": card_data.front_media_url,
                 "back_media_url": card_data.back_media_url,
             },
@@ -429,3 +430,77 @@ async def delete_card(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to delete card"
         )
+
+
+# ============================================================================
+# Card Tutor — Sprint 3
+# ============================================================================
+
+
+@router.post(
+    "/{card_id}/tutor",
+    status_code=status.HTTP_201_CREATED,
+    tags=["Card Tutor"],
+    summary="Open (or resume) a Card Tutor session for a flashcard",
+)
+async def open_card_tutor(
+    card_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Get or create a Card Tutor chat session anchored to a specific flashcard.
+
+    Returns:
+        session_id — pass to POST /chat/sessions/{id}/stream to start streaming
+        system_prompt — pre-built context to inject at session start
+        is_new — whether this is a fresh session or a resumed one
+        opening_message — the AI's opening Socratic question (shown immediately,
+                          before the student types anything)
+
+    The frontend flow:
+        1. Student fails a card (quality ≤ 2) → gap signal filed automatically
+        2. "Need Help?" button appears
+        3. POST /cards/{card_id}/tutor  → get session_id + opening_message
+        4. Render the opening_message in the side-panel chat
+        5. Student types → stream to POST /chat/sessions/{session_id}/stream
+           with card_id in the request body
+    """
+    from app.services.flashcards.card_tutor_service import CardTutorService
+
+    service = CardTutorService(db)
+    try:
+        return await service.get_or_create_session(
+            user_id=current_user.id,
+            card_id=card_id,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
+    except Exception as exc:
+        logger.error("card_tutor_open_failed", card_id=card_id, error=str(exc))
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to open Card Tutor session",
+        )
+
+
+@router.get(
+    "/{card_id}/tutor/history",
+    tags=["Card Tutor"],
+    summary="Get all Card Tutor sessions for a flashcard",
+)
+async def get_card_tutor_history(
+    card_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Return all Card Tutor conversations the user has had for a specific card.
+
+    Useful for the frontend to show "You discussed this concept 3 times"
+    with links to each session for review.
+    """
+    from app.services.flashcards.card_tutor_service import CardTutorService
+
+    service = CardTutorService(db)
+    return await service.get_card_history(card_id, current_user.id)

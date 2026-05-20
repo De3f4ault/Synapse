@@ -6,7 +6,6 @@
 import { useCallback } from "react";
 import { useNoteVersions as useVersionsQuery, useUpdateNote } from "@/api/hooks/useNotes";
 import { toast } from "sonner";
-import { emitNoteEvent, noteRestored } from "../../core";
 
 // ============================================================================
 // Types
@@ -60,7 +59,7 @@ export function useNoteVersions(noteId: number | null) {
                 });
 
                 // Emit restore event
-                emitNoteEvent(noteRestored(noteId, versionNumber));
+                console.info('[NoteVersions] restored', noteId, versionNumber);
 
                 toast.success(`Restored to version ${versionNumber}`);
             } catch (err) {

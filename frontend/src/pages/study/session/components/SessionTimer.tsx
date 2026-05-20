@@ -27,20 +27,20 @@ function formatTime(ms: number): string {
 
 export function SessionTimer({ elapsedTime, isPaused, onPause, onResume }: SessionTimerProps) {
   return (
-    <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-black/40 border border-white/10 backdrop-blur-sm">
-      <Clock size={14} className="text-slate-500" />
-      <span className="font-mono text-sm text-slate-300 w-14 text-center">
+    <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-background/70 border border-border backdrop-blur-sm">
+      <Clock size={14} className="text-muted-foreground" />
+      <span className="font-mono text-sm text-foreground/80 w-14 text-center">
         {formatTime(elapsedTime)}
       </span>
       <button
         onClick={isPaused ? onResume : onPause}
-        className="p-1 rounded-full hover:bg-white/10 transition-colors"
+        className="p-1 rounded-full hover:bg-muted transition-colors"
         aria-label={isPaused ? 'Resume' : 'Pause'}
       >
         {isPaused ? (
-          <Play size={12} className="text-cyan-400" fill="currentColor" />
+          <Play size={12} className="text-primary" fill="currentColor" />
         ) : (
-          <Pause size={12} className="text-slate-400" />
+          <Pause size={12} className="text-muted-foreground" />
         )}
       </button>
     </div>
