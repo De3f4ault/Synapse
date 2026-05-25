@@ -26,9 +26,7 @@ def upgrade() -> None:
                existing_type=sa.BOOLEAN(),
                server_default=None,
                existing_nullable=False)
-    op.drop_index('chat_messages_bm25_idx', table_name='chat_messages', postgresql_with={'key_field': 'id'}, postgresql_using='bm25')
-    op.drop_index('chat_messages_content_trgm_idx', table_name='chat_messages', postgresql_using='gin')
-    op.drop_index('chat_sessions_title_trgm_idx', table_name='chat_sessions', postgresql_using='gin')
+
     op.alter_column('documents', 'content_hash',
                existing_type=sa.VARCHAR(length=64),
                comment=None,
@@ -43,9 +41,7 @@ def downgrade() -> None:
                existing_type=sa.VARCHAR(length=64),
                comment='SHA256 hash of file content for duplicate detection',
                existing_nullable=True)
-    op.create_index('chat_sessions_title_trgm_idx', 'chat_sessions', ['title'], unique=False, postgresql_using='gin')
-    op.create_index('chat_messages_content_trgm_idx', 'chat_messages', ['content'], unique=False, postgresql_using='gin')
-    op.create_index('chat_messages_bm25_idx', 'chat_messages', ['id', 'content'], unique=False, postgresql_with={'key_field': 'id'}, postgresql_using='bm25')
+
     op.alter_column('chat_messages', 'is_active',
                existing_type=sa.BOOLEAN(),
                server_default=sa.text('true'),

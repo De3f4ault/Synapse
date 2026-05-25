@@ -36,11 +36,14 @@ def upgrade() -> None:
         WITH (key_field='id');
     """)
 
-    # Create vector index for fast semantic search
+    # Create vector index for fast semantic search.
+    # NOTE: DiskANN (vectorscale) removed — vectorscale is not available in the
+    # paradedb/paradedb Docker image. HNSW (pgvector) is equivalent at current scale.
     op.execute("""
         CREATE INDEX IF NOT EXISTS chat_messages_embedding_idx
         ON developer_schema.chat_messages
-        USING diskann (embedding)
+        USING hnsw (embedding vector_cosine_ops)
+        WITH (m=16, ef_construction=64)
         WHERE embedding IS NOT NULL;
     """)
 

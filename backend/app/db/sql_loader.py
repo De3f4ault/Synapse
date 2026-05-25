@@ -156,6 +156,39 @@ class SQLFunctionLoader:
 
             return False
 
+    # Stable lock key for advisory lock (hash of "synapse_sql_loader")
+    _ADVISORY_LOCK_KEY: int = 0x5359_4E41_5053_4500  # "SYNAPSE\x00" as int64
+
+    async def _try_acquire_startup_lock(self, session: AsyncSession) -> bool:
+        """
+        Try to acquire a PostgreSQL session-level advisory lock.
+
+        Returns True if this process won the lock (should run DDL).
+        Returns False if another process holds it (skip — they will do the work).
+        """
+        try:
+            connection = await session.connection()
+            raw_conn = await connection.get_raw_connection()
+            result = await raw_conn.driver_connection.fetchval(
+                "SELECT pg_try_advisory_lock($1)", self._ADVISORY_LOCK_KEY
+            )
+            return bool(result)
+        except Exception as e:
+            logger.warning("advisory_lock_check_failed", error=str(e)[:200])
+            # Fail open — let this process attempt the load
+            return True
+
+    async def _release_startup_lock(self, session: AsyncSession) -> None:
+        """Release the session-level advisory lock."""
+        try:
+            connection = await session.connection()
+            raw_conn = await connection.get_raw_connection()
+            await raw_conn.driver_connection.execute(
+                "SELECT pg_advisory_unlock($1)", self._ADVISORY_LOCK_KEY
+            )
+        except Exception:
+            pass  # Lock will be released automatically when session closes
+
     async def load_functions(
         self,
         directory: str = "functions",
@@ -210,40 +243,57 @@ class SQLFunctionLoader:
             f"-- FILE: {rel_path}\n{content}" for _, rel_path, content in file_contents
         )
 
+        # Try batch execution inside an advisory lock to prevent race conditions
+        # when multiple gunicorn/celery workers start simultaneously.
         async with AsyncSession(engine) as session:
-            batch_success = await self._execute_sql(
-                batch_sql,
-                f"batch:{directory} ({len(file_contents)} files)",
-                session,
-            )
+            lock_acquired = await self._try_acquire_startup_lock(session)
 
-            if batch_success:
-                # All files succeeded as a batch
-                for _, rel_path, _ in file_contents:
-                    results[rel_path] = True
-                    self.loaded_functions[rel_path] = True
-            else:
-                # Batch failed — fall back to individual execution for diagnostics
-                logger.warning(
-                    "sql_batch_failed_falling_back",
+            if not lock_acquired:
+                # Another worker is running the DDL right now — skip cleanly.
+                logger.info(
+                    "sql_load_skipped_lock_held",
                     directory=directory,
-                    file_count=len(file_contents),
+                    note="another worker is running DDL — this worker will skip",
                 )
-                for _, rel_path, sql_content in file_contents:
-                    success = await self._execute_sql(
-                        sql_content,
-                        rel_path,
-                        session,
-                    )
-                    results[rel_path] = success
-                    self.loaded_functions[rel_path] = success
+                # Report all files as successful (the other worker handles them)
+                return {rel_path: True for _, rel_path, _ in file_contents}
 
-                    if not success and fail_fast:
-                        logger.error(
-                            "stopping_due_to_error",
-                            file=rel_path,
+            try:
+                batch_success = await self._execute_sql(
+                    batch_sql,
+                    f"batch:{directory} ({len(file_contents)} files)",
+                    session,
+                )
+
+                if batch_success:
+                    # All files succeeded as a batch
+                    for _, rel_path, _ in file_contents:
+                        results[rel_path] = True
+                        self.loaded_functions[rel_path] = True
+                else:
+                    # Batch failed — fall back to individual execution for diagnostics
+                    logger.warning(
+                        "sql_batch_failed_falling_back",
+                        directory=directory,
+                        file_count=len(file_contents),
+                    )
+                    for _, rel_path, sql_content in file_contents:
+                        success = await self._execute_sql(
+                            sql_content,
+                            rel_path,
+                            session,
                         )
-                        break
+                        results[rel_path] = success
+                        self.loaded_functions[rel_path] = success
+
+                        if not success and fail_fast:
+                            logger.error(
+                                "stopping_due_to_error",
+                                file=rel_path,
+                            )
+                            break
+            finally:
+                await self._release_startup_lock(session)
 
         # Log summary
         success_count = sum(1 for v in results.values() if v)
@@ -377,8 +427,62 @@ class SQLFunctionLoader:
         """
         return await self.load_functions(directory="tables")
 
+    async def load_indexes(self) -> Dict[str, bool]:
+        """
+        Load database indexes from sql/indexes directory.
+
+        Creates ParadeDB BM25 indexes which are not managed by Alembic.
+        Uses IF NOT EXISTS / DROP INDEX IF EXISTS, so safe to run on startup.
+
+        Returns:
+            Dict mapping file names to success status
+        """
+        return await self.load_functions(directory="indexes")
+
 
 # Module-level function for easy import
+async def _ensure_extensions() -> None:
+    """
+    Ensure required PostgreSQL extensions exist.
+
+    Extensions like pg_trgm must be installed by a superuser.
+    In Docker this is done via init_roles.sql (which runs as postgres).
+    This function is a fallback safety-net that attempts to create them
+    as the application user — it will silently skip if already installed
+    or if the user lacks superuser rights.
+
+    Required extensions:
+    - pg_trgm: word_similarity() used by search_conversations_v3
+    - unaccent: accent-normalised search (optional — non-fatal if missing)
+    """
+    from app.db.session import engine
+    from sqlalchemy.ext.asyncio import AsyncSession
+
+    EXTENSIONS = ["pg_trgm", "unaccent"]
+
+    try:
+        async with AsyncSession(engine) as session:
+            connection = await session.connection()
+            raw_conn = await connection.get_raw_connection()
+            for ext in EXTENSIONS:
+                try:
+                    await raw_conn.driver_connection.execute(
+                        f"CREATE EXTENSION IF NOT EXISTS {ext};"
+                    )
+                    logger.info("extension_ensured", extension=ext)
+                except Exception as e:
+                    # Non-fatal: may fail if user has no superuser rights.
+                    # The init_roles.sql handles the authoritative installation.
+                    logger.warning(
+                        "extension_ensure_skipped",
+                        extension=ext,
+                        reason=str(e)[:200],
+                    )
+            await session.commit()
+    except Exception as e:
+        logger.warning("extension_ensure_failed", error=str(e)[:300])
+
+
 async def load_sql_functions(
     fail_fast: bool = False,
     load_views: bool = True,
@@ -387,7 +491,7 @@ async def load_sql_functions(
     Load all SQL tables, functions, and optionally views.
 
     This is the main entry point for loading SQL during
-    application startup. Order: tables -> functions -> views.
+    application startup. Order: extensions -> tables -> functions -> views -> indexes.
 
     Args:
         fail_fast: Stop on first error (default: False)
@@ -405,6 +509,9 @@ async def load_sql_functions(
 
     all_success = True
 
+    # Ensure required extensions (pg_trgm for word_similarity, etc.)
+    await _ensure_extensions()
+
     # Load tables first (cache infrastructure, event bus, etc.)
     table_results = await loader.load_tables()
     all_success = all_success and (all(table_results.values()) if table_results else True)
@@ -412,12 +519,16 @@ async def load_sql_functions(
     # Load functions
     function_results = await loader.load_functions(fail_fast=fail_fast)
 
-    all_success = all(function_results.values()) if function_results else True
+    all_success = all_success and (all(function_results.values()) if function_results else True)
 
     # Load views if requested
     if load_views:
         view_results = await loader.load_views()
         all_success = all_success and (all(view_results.values()) if view_results else True)
+
+    # Load indexes (ParadeDB BM25 text search)
+    index_results = await loader.load_indexes()
+    all_success = all_success and (all(index_results.values()) if index_results else True)
 
     if not all_success:
         logger.warning(

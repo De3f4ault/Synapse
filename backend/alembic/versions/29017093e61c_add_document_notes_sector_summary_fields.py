@@ -118,10 +118,7 @@ def upgrade() -> None:
                existing_type=sa.DOUBLE_PRECISION(precision=53),
                server_default=None,
                existing_nullable=False)
-    op.alter_column('links', 'link_metadata',
-               existing_type=postgresql.JSONB(astext_type=sa.Text()),
-               type_=sa.JSON(),
-               existing_nullable=True)
+    op.add_column('links', sa.Column('link_metadata', sa.JSON(), nullable=True))
     op.create_index(op.f('ix_links_user_id'), 'links', ['user_id'], unique=False)
     op.alter_column('quiz_attempts', 'answers',
                existing_type=postgresql.JSONB(astext_type=sa.Text()),
@@ -269,10 +266,7 @@ def downgrade() -> None:
                type_=postgresql.JSONB(astext_type=sa.Text()),
                existing_nullable=False)
     op.drop_index(op.f('ix_links_user_id'), table_name='links')
-    op.alter_column('links', 'link_metadata',
-               existing_type=sa.JSON(),
-               type_=postgresql.JSONB(astext_type=sa.Text()),
-               existing_nullable=True)
+    op.drop_column('links', 'link_metadata')
     op.alter_column('links', 'strength',
                existing_type=sa.DOUBLE_PRECISION(precision=53),
                server_default=sa.text('1.0'),

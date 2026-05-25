@@ -69,6 +69,9 @@ EXTERNAL_INDEXES = {
     "flashcards_bm25_idx",
     "flashcards_embedding_diskann_idx",
     "flashcards_deck_id_idx",
+    "chat_messages_bm25_idx",
+    "chat_messages_content_trgm_idx",
+    "chat_sessions_title_trgm_idx",
 }
 
 

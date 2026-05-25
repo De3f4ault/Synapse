@@ -57,8 +57,8 @@ def _autocommit_execute(sql: str) -> None:
 
 
 def upgrade():
-    _autocommit_execute(f"""
-        CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_note_chunks_embedding_hnsw
+    op.execute(f"""
+        CREATE INDEX IF NOT EXISTS idx_note_chunks_embedding_hnsw
             ON {_SCHEMA}.note_chunks
             USING hnsw (embedding vector_cosine_ops)
             WITH (m = 16, ef_construction = 64)
@@ -66,6 +66,6 @@ def upgrade():
 
 
 def downgrade():
-    _autocommit_execute(
-        f"DROP INDEX CONCURRENTLY IF EXISTS {_SCHEMA}.idx_note_chunks_embedding_hnsw"
+    op.execute(
+        f"DROP INDEX IF EXISTS {_SCHEMA}.idx_note_chunks_embedding_hnsw"
     )

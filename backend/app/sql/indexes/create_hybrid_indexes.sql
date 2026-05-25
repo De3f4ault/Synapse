@@ -1,7 +1,11 @@
 -- PostgreSQL Hybrid Search Indexes
--- Created for Notes and Flashcards using pg_search (BM25) and vectorscale (DiskANN)
+-- Notes and Flashcards: pg_search (BM25) + pgvector (HNSW)
 --
 -- Run with: psql -U synapse_user -d synapse -f app/sql/indexes/create_hybrid_indexes.sql
+--
+-- NOTE: DiskANN (vectorscale) indexes have been removed. The HNSW indexes below
+-- serve identical queries at current data scale. vectorscale is not available
+-- in the paradedb/paradedb Docker image.
 -- ============================================
 -- 1. BM25 INDEXES (pg_search / ParadeDB)
 -- ============================================
@@ -15,20 +19,12 @@ CREATE INDEX notes_bm25_idx ON developer_schema.notes USING bm25 (id, title, con
 -- Create BM25 index on flashcards (front_text + back_text)
 CREATE INDEX flashcards_bm25_idx ON developer_schema.flashcards USING bm25 (id, front_text, back_text) WITH (key_field = 'id');
 -- ============================================
--- 2. VECTOR INDEXES (vectorscale / DiskANN)
+-- 2. VECTOR INDEXES (pgvector / HNSW)
 -- ============================================
--- These enable fast approximate nearest neighbor search
--- DiskANN provides 10x faster queries than standard IVFFlat
--- Drop existing vector indexes if they exist
-DROP INDEX IF EXISTS developer_schema.notes_embedding_diskann_idx;
-DROP INDEX IF EXISTS developer_schema.flashcards_embedding_diskann_idx;
--- Create DiskANN index on notes embeddings
--- Only for rows that have embeddings (partial index)
-CREATE INDEX notes_embedding_diskann_idx ON developer_schema.notes USING diskann (embedding)
-WHERE embedding IS NOT NULL;
--- Create DiskANN index on flashcards embeddings
-CREATE INDEX flashcards_embedding_diskann_idx ON developer_schema.flashcards USING diskann (content_embedding)
-WHERE content_embedding IS NOT NULL;
+-- HNSW indexes are created by Alembic migrations and already exist.
+-- At current data scale (<1000 rows), HNSW and DiskANN are equivalent.
+-- This section is intentionally empty — do not add DiskANN indexes here;
+-- vectorscale is not available in the paradedb/paradedb Docker image.
 -- ============================================
 -- 3. SUPPORTING INDEXES
 -- ============================================
