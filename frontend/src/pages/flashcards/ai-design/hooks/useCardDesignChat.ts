@@ -172,11 +172,31 @@ export function useCardDesignChat(sessionId: number | null): UseCardDesignChatRe
                 // API returns ASC (oldest first) — do NOT reverse
                 const historical = rows
                     .filter((r) => r.role === 'user' || r.role === 'assistant')
-                    .map((r) => ({
-                        id: String(r.id),
-                        role: r.role as 'user' | 'assistant',
-                        parts: [{ type: 'text' as const, text: r.content ?? '' }],
-                    }));
+                    .map((r: any) => {
+                        const parts: any[] = [{ type: 'text', text: r.content ?? '' }];
+                        
+                        // Reconstruct tool-invocation parts from DB function_calls
+                        if (r.function_calls && Array.isArray(r.function_calls.calls)) {
+                            for (const call of r.function_calls.calls) {
+                                if (call.name === 'propose_card_plan' && call.result && call.result.data) {
+                                    parts.push({
+                                        type: 'tool-invocation',
+                                        toolInvocationId: `call_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+                                        toolName: call.name,
+                                        args: call.result.data,
+                                        state: 'result',
+                                        result: call.result
+                                    });
+                                }
+                            }
+                        }
+
+                        return {
+                            id: String(r.id),
+                            role: r.role as 'user' | 'assistant',
+                            parts,
+                        };
+                    });
 
                 if (!cancelled && historical.length > 0) {
                     setMessages(historical as Parameters<typeof setMessages>[0]);

@@ -18,7 +18,7 @@
 export { DocumentListItem, DocumentGrid, DocumentTable } from "./components";
 
 // Hooks
-export { useDocuments, useThumbnails } from "./hooks";
+export { useDocuments } from "./hooks";
 
 // State
 export { useListStore, type ViewMode } from "./state";

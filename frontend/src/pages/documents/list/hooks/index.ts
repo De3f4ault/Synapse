@@ -3,4 +3,4 @@
  */
 
 export { useDocuments } from "./useDocuments";
-export { useThumbnails } from "./useThumbnails";
+

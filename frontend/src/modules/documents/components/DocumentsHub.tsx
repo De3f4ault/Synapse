@@ -19,7 +19,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { EnhancedDocument } from "../core/types";
 import type { FolderTreeNode } from "../core/folders";
-import { useThumbnails } from "../hooks/useThumbnails";
+
 
 
 import { toast } from "sonner";
@@ -183,7 +183,7 @@ export const DocumentsHub = ({
 
   // ── Thumbnails ─────────────────────────────────────────────────────────
   const documentIds = documents.map((d) => d.id);
-  const { data: thumbnails } = useThumbnails(documentIds);
+
 
 
 
@@ -589,7 +589,7 @@ export const DocumentsHub = ({
                           {documents.map((doc) => {
                             const docId = typeof doc.id === "string" ? parseInt(doc.id) : doc.id;
                             const tDoc = toTableDoc(doc, correspondents, docTypes, tags);
-                            const thumbUrl = thumbnails?.[doc.id] || doc.thumbnail_url;
+                            const thumbUrl = doc.thumbnail_url;
                             return (
                               <DocumentCardLarge
                                 key={docId}
@@ -621,7 +621,7 @@ export const DocumentsHub = ({
                           {documents.map((doc) => {
                             const docId = typeof doc.id === "string" ? parseInt(doc.id) : doc.id;
                             const tDoc = toTableDoc(doc, correspondents, docTypes, tags);
-                            const thumbUrl = thumbnails?.[doc.id] || doc.thumbnail_url;
+                            const thumbUrl = doc.thumbnail_url;
                             return (
                               <DocumentCardSmall
                                 key={docId}
