@@ -550,13 +550,32 @@ class BaseAgent(ABC):
                          if m["role"] == "user"), None
                     )
                     if last_user_idx is not None:
-                        import base64, imghdr
+                        import base64, imghdr, io
+                        from PIL import Image
+                        
                         parts = []
                         orig_text = litellm_messages[last_user_idx].get("content", "")
                         if orig_text:
                             parts.append({"type": "text", "text": orig_text})
                         for img_data in image_bytes:
                             img_type = imghdr.what(None, h=img_data) or "jpeg"
+                            
+                            # Downscale image if too large to prevent OOM and speed up request
+                            try:
+                                img = Image.open(io.BytesIO(img_data))
+                                if img.mode in ("RGBA", "P"):
+                                    img = img.convert("RGB")
+                                    img_type = "jpeg"
+                                
+                                # Gemini/Vision models don't need raw 4K images
+                                img.thumbnail((1024, 1024), Image.Resampling.LANCZOS)
+                                
+                                buffer = io.BytesIO()
+                                img.save(buffer, format="JPEG" if img_type.lower() == "jpg" else img_type.upper())
+                                img_data = buffer.getvalue()
+                            except Exception as e:
+                                self.logger.warning("image_resize_failed", error=str(e))
+                                
                             mime = f"image/{img_type}"
                             b64 = base64.b64encode(img_data).decode()
                             parts.append({"type": "image_url", "image_url": {"url": f"data:{mime};base64,{b64}"}})

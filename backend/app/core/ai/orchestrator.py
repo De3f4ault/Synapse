@@ -289,7 +289,7 @@ class AgentOrchestrator:
             if image_bytes:
                 VISION_ALIAS = "synapse-vision"
                 # Text-only models that cannot handle images
-                _TEXT_ONLY_ALIASES = {"synapse-reasoning", "synapse-deepseek-explicit", "synapse-chat", "synapse-coding"}
+                _TEXT_ONLY_ALIASES = {"synapse-reasoning", "synapse-deepseek-explicit", "synapse-chat", "synapse-coding", "synapse-tutor"}
 
                 if litellm_alias in _TEXT_ONLY_ALIASES:
                     # User picked a text-only model (or default reasoning) but sent an image.

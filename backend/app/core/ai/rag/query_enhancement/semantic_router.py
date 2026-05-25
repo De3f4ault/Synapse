@@ -117,11 +117,18 @@ class MiniLMSemanticRouter:
         from sentence_transformers import SentenceTransformer
 
         if cache_dir is None:
-            # Mirror the path used by all other ST models in the stack
-            cache_dir = os.path.join(
-                os.path.dirname(__file__), "..", "..", "..", "..", "..", ".model_cache"
+            # Priority 1: SYNAPSE_MODEL_CACHE_DIR env var (set in .env.docker → /app/.model_cache)
+            # Priority 2: 5-level path walk from this file → backend/.model_cache (bare-metal)
+            # The singleton (get_semantic_router) always passes config.model_cache_dir so
+            # this fallback only fires on direct instantiation of MiniLMSemanticRouter().
+            cache_dir = os.environ.get(
+                "SYNAPSE_MODEL_CACHE_DIR",
+                os.path.normpath(
+                    os.path.join(
+                        os.path.dirname(__file__), "..", "..", "..", "..", "..", ".model_cache"
+                    )
+                ),
             )
-            cache_dir = os.path.normpath(cache_dir)
 
         logger.info(
             "semantic_router_loading",

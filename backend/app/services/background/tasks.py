@@ -1009,8 +1009,46 @@ def recover_stalled_documents(self) -> Dict[str, Any]:
 
 
 # =============================================================================
-# SPRINT 1 — IMAGE EMBEDDING TASK
+# DMS — Consumption directory scan (wired to Celery Beat every 30s)
 # =============================================================================
+
+@shared_task(
+    bind=True,
+    name="tasks.scan_consumption_directory",
+    max_retries=0,       # Never retry — next Beat tick handles it
+    soft_time_limit=25,
+    time_limit=30,
+)
+def scan_consumption_directory(self) -> dict:
+    """
+    Periodic Beat task: scan the consumption directory for new files and
+    dispatch them to the DMS ingestion pipeline via Celery.
+
+    Uses ConsumptionWatcher.run_once() — pure polling, no inotify required.
+    Works correctly across Docker volume mounts (no OS-specific watcher needed).
+
+    Files are only dispatched after they stop growing (2s stability window),
+    preventing partial-write ingestion of files still being copied in.
+
+    Schedule: every 30s (celery_app.py beat_schedule).
+    Expires: 25s — if Beat fires again before this task completes, the new
+    invocation runs immediately and this one is discarded. Tasks never queue up.
+    """
+    try:
+        from app.services.ingestion.watcher import ConsumptionWatcher
+        watcher = ConsumptionWatcher()
+        dispatched = watcher.run_once()
+        if dispatched:
+            logger.info(f"[ConsumeWatcher] Dispatched {dispatched} file(s) for ingestion")
+        return {"dispatched": dispatched}
+    except Exception as exc:
+        logger.warning(f"[ConsumeWatcher] Scan failed: {exc}")
+        # Do not raise — let next tick try again. Failure here must not
+        # block the Beat queue or affect other periodic tasks.
+        return {"dispatched": 0, "error": str(exc)}
+
+
+
 
 
 def _clean_filename_for_context(filename: str) -> str:

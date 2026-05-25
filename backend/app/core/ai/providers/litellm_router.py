@@ -66,7 +66,11 @@ import structlog
 logger = structlog.get_logger(__name__)
 
 # ── Ollama base URL ──────────────────────────────────────────────────────────
-_OLLAMA_BASE = os.environ.get("OLLAMA_API_BASE", "http://localhost:11434")
+# Standardized on OLLAMA_BASE_URL across the entire stack.
+# OLLAMA_API_BASE was the old name — removed to avoid silent misconfiguration
+# where one service picked up a different env var and used localhost while
+# another used host.docker.internal. One name, one value, one source of truth.
+_OLLAMA_BASE = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434")
 _GEMINI_KEY = os.environ.get("GEMINI_API_KEY", "")
 
 # ── Model registry for the Router ────────────────────────────────────────────
@@ -511,9 +515,12 @@ def get_llm_router() -> "Router":
             # simple-shuffle: recommended default. Uses RPM/TPM weights if
             # provided; otherwise picks randomly among equally-ordered models.
             routing_strategy="simple-shuffle",
-            # Cooldown a deployment after 2 consecutive failures for 30s.
-            # Prevents a rate-limited Gemini endpoint from monopolising retries.
-            allowed_fails=2,
+            # Cooldown a deployment after 1 failure for 30s.
+            # Prevents an offline Ollama or rate-limited Gemini endpoint from monopolising retries.
+            allowed_fails=1,
+            # Must be >= the number of models in a group for failover to work!
+            # Otherwise it exhausts retries before reaching the Gemini fallback.
+            num_retries=3,
             cooldown_time=30,
             set_verbose=False,
         )

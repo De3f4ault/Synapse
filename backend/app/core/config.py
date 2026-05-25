@@ -100,6 +100,7 @@ class Settings(BaseSettings):
     )
 
     # File Storage
+    DATA_DIR: str = Field(default="data", description="Base data directory")
     UPLOAD_DIR: str = Field(default="data/uploads", description="Directory for file uploads")
     MAX_UPLOAD_SIZE: int = Field(
         default=100 * 1024 * 1024,  # 100MB

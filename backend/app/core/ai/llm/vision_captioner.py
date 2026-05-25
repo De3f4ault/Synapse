@@ -29,6 +29,7 @@ Failure contract:
 
 import base64
 import io
+import os
 import structlog
 from typing import Optional
 
@@ -69,8 +70,9 @@ _CAPTION_MODEL_FALLBACKS = [
     "ollama/qwen3-vl:235b-cloud",   # cloud-backed via Ollama, no extra key
 ]
 
-# Ollama base URL — override via OLLAMA_BASE_URL env var if needed
-_OLLAMA_BASE_URL = "http://localhost:11434"
+# Ollama base URL — read from env, falls back to localhost for bare-metal dev.
+# In Docker, OLLAMA_BASE_URL=http://host.docker.internal:11434 (set in .env.docker).
+_OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434")
 
 # Kept for backward compat — callers that logged this value
 _CAPTION_MODEL = _CAPTION_MODEL_PRIMARY

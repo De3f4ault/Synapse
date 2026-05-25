@@ -211,7 +211,9 @@ async def stream_chat_message(
                 if mime.startswith("image/"):
                     file_path = doc.file_path
                     if not os.path.isabs(file_path):
-                        file_path = os.path.join("data", file_path)
+                        from app.core.config import settings
+                        data_dir = getattr(settings, "DATA_DIR", "data")
+                        file_path = os.path.join(data_dir, file_path)
                     try:
                         with open(file_path, "rb") as f:
                             image_bytes.append(f.read())

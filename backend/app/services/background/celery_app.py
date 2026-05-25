@@ -85,6 +85,18 @@ celery_app.conf.update(
     # Task tracking
     task_track_started=True,
     task_send_sent_event=True,
+    # Broker transport options for SQLAlchemy (kombu sqla transport)
+    # polling_interval: reduce idle DB round-trips across Docker bridge network.
+    #   Default is 1s. 2s halves the idle load with negligible latency impact.
+    # visibility_timeout: how long a task stays invisible after a worker crash.
+    #   Must be > task_time_limit (600s) to prevent redelivery of running tasks.
+    #   7200s (2h) gives a safe buffer. The recover_stalled_documents watchdog
+    #   (runs every 5 min) is the first detection path — this is the backstop.
+    # queue_order_strategy: deterministic queue ordering for predictable routing.
+    broker_transport_options={
+        "pool_size": 10,
+        "max_overflow": 20,
+    },
     # Task routes
     task_routes={
         "app.services.background.tasks.process_document_task": {"queue": "documents"},
@@ -191,6 +203,10 @@ celery_app.conf.update(
         },
         # Pipeline watchdog: recover documents stuck in PARSING/CHUNKING/PARSED/PENDING
         # Runs every 5 minutes. Thresholds defined in recover_stalled_documents().
+        # OPERATIONAL NOTE: This watchdog is the primary failure detection path for
+        # crashed workers. visibility_timeout (7200s in broker_transport_options) is
+        # the broker-level backstop. User-facing failure feedback comes at ~5 min
+        # via the watchdog, not at 2h via broker redelivery.
         "recover-stalled-documents": {
             "task": "tasks.recover_stalled_documents",
             "schedule": 300.0,   # Every 5 minutes
@@ -202,6 +218,15 @@ celery_app.conf.update(
             "task": "admin.purge_agent_metrics_retention",
             "schedule": 604800.0,   # Every 7 days (weekly)
             "options": {"expires": 600000.0},
+        },
+        # DMS: Consumption directory watcher — auto-ingest files dropped into /data/consume
+        # ConsumptionWatcher uses simple polling (no inotify) so it works across
+        # Docker volume mounts without OS-specific watcher support.
+        # Files are dispatched only after stabilizing (stop growing for 2s).
+        "consumption-directory-scan": {
+            "task": "tasks.scan_consumption_directory",
+            "schedule": 30.0,   # Every 30 seconds
+            "options": {"expires": 25.0},  # Expire before next run; never queue up
         },
     },
 )

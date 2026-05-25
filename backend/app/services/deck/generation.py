@@ -83,22 +83,6 @@ async def generate_from_document(
     if not document.content_text:
         raise ValueError("Document has no extractable text content")
 
-    service = FlashcardService(db)
-    deck = await service.create_deck(
-        user_id=user_id,
-        data={
-            "name": deck_name,
-            "description": f"AI-generated flashcards from {document.filename}",
-            "tags": tags or ["ai-generated"],
-            "is_public": False,
-            "ai_generated": True,
-            "ai_metadata": {
-                "source_document_id": document.id,
-                "generation_params": {"num_cards": num_cards, "difficulty": difficulty},
-            },
-        },
-    )
-
     agent = await create_agent("document")
     prompt = f"""
 Generate {num_cards} high-quality flashcards from this document.
@@ -124,6 +108,25 @@ Output JSON:
         raise ValueError(result.error)
 
     flashcards = _parse_flashcards_json(result.output)
+    if not flashcards:
+        raise ValueError("No flashcards could be parsed from AI response")
+
+    service = FlashcardService(db)
+    deck = await service.create_deck(
+        user_id=user_id,
+        data={
+            "name": deck_name,
+            "description": f"AI-generated flashcards from {document.filename}",
+            "tags": tags or ["ai-generated"],
+            "is_public": False,
+            "ai_generated": True,
+            "ai_metadata": {
+                "source_document_id": document.id,
+                "generation_params": {"num_cards": num_cards, "difficulty": difficulty},
+            },
+        },
+    )
+
     cards_created = await _create_cards(service, user_id, deck["id"], flashcards, num_cards)
     await db.commit()
 
@@ -199,7 +202,7 @@ Return ONLY valid JSON in this exact format:
         user_id=user_id, session_id=0, message=prompt, context={"intent": "flashcard_generation"},
     )
     if not result.success:
-        raise ValueError(result.error or "AI generation failed")
+        raise ValueError(result.output or "AI generation failed")
 
     flashcards = _parse_flashcards_json(result.output)
     if not flashcards:
@@ -296,49 +299,79 @@ async def generate_from_plan(
     - Cloze cards populate the cloze_answer field.
     - Returns the same dict shape as generate_from_topic for frontend consistency.
     """
-    from app.core.ai.orchestrator import get_orchestrator
     from app.modules.flashcards.service import FlashcardService
 
     service = FlashcardService(db)
 
-    # ── 1. Resolve or create the target deck ─────────────────────────────────
+    # ── 1. Resolve target deck (lazy creation) & dupe guard ─────────────────
+    existing_fronts: set[str] = set()
+
     if plan.deck_id:
         deck = await _get_user_deck(db, plan.deck_id, user_id)
         deck_dict = {"id": deck.id, "name": deck.name}
+        try:
+            existing_res = await db.execute(
+                select(Flashcard.front_text)
+                .where(and_(Flashcard.deck_id == deck_dict["id"], Flashcard.deleted_at.is_(None)))
+            )
+            existing_fronts = {
+                (row[0] or "").strip().lower() for row in existing_res.fetchall()
+            }
+        except Exception:
+            pass
     else:
-        deck_dict = await service.create_deck(
-            user_id=user_id,
-            data={
-                "name": plan.deck_name,
-                "description": f"AI-designed deck — {plan.learning_objective or 'mixed'}",
-                "tags": ["ai-designed"],
-                "is_public": False,
-                "ai_generated": True,
-                "ai_metadata": {
-                    "source": "card_designer",
-                    "learning_objective": plan.learning_objective,
-                    "subtopics": [s.model_dump() for s in plan.subtopics],
-                },
-            },
-        )
+        deck_dict = None
 
-    orchestrator = get_orchestrator()
     total_created = 0
     skipped_dupes = 0
     skipped_cloze_invalid = 0
+    accumulated_cards = []
 
-    # ── 2. Pre-load existing front_text hashes (dupe guard) ─────────────────
-    existing_fronts: set[str] = set()
-    try:
-        existing_res = await db.execute(
-            select(Flashcard.front_text)
-            .where(and_(Flashcard.deck_id == deck_dict["id"], Flashcard.deleted_at.is_(None)))
-        )
-        existing_fronts = {
-            (row[0] or "").strip().lower() for row in existing_res.fetchall()
-        }
-    except Exception:
-        pass  # non-fatal — dupe guard degrades gracefully────
+    # ── 3. Direct LiteLLM call for per-subtopic generation ───────────────────
+    # IMPORTANT: We do NOT use the orchestrator here. The orchestrator would
+    # re-classify the prompt as a "flashcard generation" intent and trigger
+    # the full workflow (generate_from_topic) which creates a NEW deck per
+    # subtopic — resulting in N decks instead of 1. We need raw JSON only.
+    import litellm
+
+    async def _call_llm_for_cards(prompt: str) -> str:
+        """Call the cloud LLM directly to get flashcard JSON."""
+        try:
+            from app.core.ai.providers.litellm_router import get_llm_router
+            router = get_llm_router()
+            if router:
+                response = await router.acompletion(
+                    model="synapse-chat",
+                    messages=[{"role": "user", "content": prompt}],
+                    temperature=0.7,
+                    max_tokens=4096,
+                )
+            else:
+                # Fallback 1: call litellm directly with gemini flash
+                response = await litellm.acompletion(
+                    model="gemini/gemini-2.0-flash",
+                    messages=[{"role": "user", "content": prompt}],
+                    temperature=0.7,
+                    max_tokens=4096,
+                )
+            return response.choices[0].message.content or ""
+        except Exception as primary_e:
+            logger.warning("subtopic_primary_llm_failed", error=str(primary_e))
+            # Fallback 2: Local Ollama wrapper for Qwen Cloud
+            import os
+            try:
+                ollama_base = os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434")
+                response = await litellm.acompletion(
+                    model="ollama/qwen3-next:80b-cloud",
+                    api_base=ollama_base,
+                    messages=[{"role": "user", "content": prompt}],
+                    temperature=0.7,
+                    max_tokens=4096,
+                )
+                return response.choices[0].message.content or ""
+            except Exception as fallback_e:
+                logger.warning("subtopic_fallback_llm_failed", error=str(fallback_e))
+                raise fallback_e
     for spec in plan.subtopics:
         style_key = spec.style.value if hasattr(spec.style, "value") else str(spec.style)
         style_instr = _STYLE_INSTRUCTIONS.get(style_key, _STYLE_INSTRUCTIONS["basic"])
@@ -375,21 +408,17 @@ Return ONLY valid JSON:
   ]
 }}"""
 
-        result = await orchestrator.handle_message(
-            user_id=user_id,
-            session_id=0,
-            message=prompt,
-            context={"intent": "flashcard_generation"},
-        )
-        if not result.success:
+        try:
+            llm_output = await _call_llm_for_cards(prompt)
+        except Exception as e:
             logger.warning(
                 "design_subtopic_generation_failed",
                 topic=spec.topic,
-                error=result.error,
+                error=str(e),
             )
             continue
 
-        raw_cards = _parse_flashcards_json(result.output)
+        raw_cards = _parse_flashcards_json(llm_output)
 
         # Create each card with correct type + cloze_answer
         for fc in raw_cards[: spec.count]:
@@ -423,7 +452,6 @@ Return ONLY valid JSON:
                     continue
 
             card_data = {
-                "deck_id": deck_dict["id"],
                 "front_text": fc["front"],
                 "back_text": fc["back"],
                 "topic": fc.get("topic") or spec.topic,
@@ -432,8 +460,33 @@ Return ONLY valid JSON:
             if is_cloze and fc.get("cloze_answer"):
                 card_data["cloze_answer"] = fc["cloze_answer"]
 
-            await service.create_card(user_id=user_id, data=card_data)
-            total_created += 1
+            accumulated_cards.append(card_data)
+
+    if not accumulated_cards and plan.deck_id is None:
+        raise ValueError("Failed to generate any valid cards. Deck creation aborted.")
+
+    # ── 4. Commit Phase (Create Deck & Cards) ────────────────────────────────
+    if not deck_dict:
+        deck_dict = await service.create_deck(
+            user_id=user_id,
+            data={
+                "name": plan.deck_name,
+                "description": f"AI-designed deck — {plan.learning_objective or 'mixed'}",
+                "tags": ["ai-designed"],
+                "is_public": False,
+                "ai_generated": True,
+                "ai_metadata": {
+                    "source": "card_designer",
+                    "learning_objective": plan.learning_objective,
+                    "subtopics": [s.model_dump() for s in plan.subtopics],
+                },
+            },
+        )
+
+    for card_data in accumulated_cards:
+        card_data["deck_id"] = deck_dict["id"]
+        await service.create_card(user_id=user_id, data=card_data)
+        total_created += 1
 
     await db.commit()
 
