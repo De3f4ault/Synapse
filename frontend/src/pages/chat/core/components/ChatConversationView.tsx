@@ -39,7 +39,7 @@ interface ChatConversationViewProps {
   sessionId: number;
   sessionTitle?: string;
   onMessageChange: (value: string) => void;
-  onSend: (attachmentIds?: number[]) => void;
+  onSend: (attachmentIds?: number[], previewUrls?: string[]) => void;
   onReset: () => void;
   onStop?: () => void;
   onVoiceClick?: () => void;

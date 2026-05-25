@@ -34,7 +34,7 @@ interface UseSynapseChatReturn {
   messages: UIMessage[];
   status: 'submitted' | 'streaming' | 'ready' | 'error';
   error: Error | undefined;
-  sendMessage: (content: string, options?: { attachmentIds?: number[] }) => void;
+  sendMessage: (content: string, options?: { attachmentIds?: number[]; previewUrls?: string[] }) => void;
   stop: () => void;
   regenerate: () => void;
   setMessages: (messages: UIMessage[]) => void;
@@ -82,8 +82,8 @@ function seedPartsFromContent(content: string, isUser: boolean): any[] {
     const before = remaining.slice(lastIndex, match.index).trim();
     if (before) parts.push({ type: 'text', text: before });
 
-    const lang = match[1];
-    const raw  = match[2].trim();
+    const lang = match[1] || '';
+    const raw  = (match[2] || '').trim();
     try {
       const payload = JSON.parse(raw);
       const artifactType = lang === 'synapse-flashcards' ? 'flashcard_set' : 'quiz';
@@ -217,18 +217,39 @@ export function useSynapseChat({
   // ── sendMessage ─────────────────────────────────────────────────────────
   // No optimistic update hack needed — the SDK appends the user message
   // to its own messages[] instantly before the first SSE byte arrives.
+  //
+  // IMPORTANT: We pass local blob: URLs (from the file preview) as
+  // experimental_attachments, NOT server thumbnail URLs. The Vercel SDK
+  // would try to fetch server URLs before sending the stream request —
+  // which can silently fail and abort the entire send. Local blob: URLs
+  // are already in memory and need zero network calls.
+  // The actual image bytes reach the backend via attachment_ids in the body.
   const sendMessage = useCallback(
-    (content: string, options?: { attachmentIds?: number[] }) => {
+    (content: string, options?: { attachmentIds?: number[]; previewUrls?: string[] }) => {
       useChatStore.getState().clearError();
 
+      // Hoist before the map so TypeScript knows both are defined in scope
+      const { attachmentIds, previewUrls } = options ?? {};
+
+      // Build experimental_attachments from local preview blob: URLs only
+      const sdkAttachments = attachmentIds?.map((id, idx) => ({
+        name: `Attachment ${id}`,
+        contentType: 'image/jpeg',
+        // Use the local blob: URL if available — avoids any network fetch by the SDK
+        url: previewUrls?.[idx] ?? `data:image/jpeg;base64,`,
+      }));
+
       sdkSendMessage(
-        { text: content },
+        { 
+          text: content,
+          ...(sdkAttachments?.length ? { experimental_attachments: sdkAttachments } : {})
+        },
         {
           body: {
             mode: useChatStore.getState().chatMode,
             model_id: useChatStore.getState().selectedModel || undefined,
-            ...(options?.attachmentIds?.length
-              ? { attachment_ids: options.attachmentIds }
+            ...(attachmentIds?.length
+              ? { attachment_ids: attachmentIds }
               : {}),
           },
         },

@@ -11,7 +11,7 @@ import { ChatInputBox } from "./ChatInputBox";
 interface ChatWelcomeScreenProps {
   message: string;
   onMessageChange: (value: string) => void;
-  onSend: (attachmentIds?: number[]) => void;
+  onSend: (attachmentIds?: number[], previewUrls?: string[]) => void;
   onVoiceClick?: () => void;
 }
 

@@ -130,6 +130,12 @@ const ChatMessageComponent = ({
   const [savingFlashcards, setSavingFlashcards] = useState(false);
   const [savingQuiz, setSavingQuiz] = useState(false);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+  // Track which attachment document IDs have permanently failed to load
+  // so we never retry them and stop the 404 infinite loop.
+  const [failedAttachments, setFailedAttachments] = useState<Set<number>>(new Set());
+  const handleAttachmentError = (docId: number) => {
+    setFailedAttachments((prev) => new Set(prev).add(docId));
+  };
 
   // Latch the last non-empty reasoning text so ThinkingBlock stays visible
   // even if the SDK briefly clears the reasoning part during stream finalization.
@@ -139,7 +145,7 @@ const ChatMessageComponent = ({
   const meta = message.metadata as SynapseMessageMeta | undefined;
   const dbId = meta?.dbId ?? (parseInt(message.id, 10) || -1);
   const sessionId = meta?.sessionId ?? 0;
-  const attachments: any[] = meta?.attachments ?? [];
+  const dbAttachments: any[] = meta?.attachments ?? [];
   const groundingSources: GroundingSource[] = meta?.groundingSources ?? [];
   const entities: EntityIdentity[] = meta?.entities ?? [];
   const comparisonData = !isUser ? meta?.functionCalls?.comparison : null;
@@ -147,6 +153,32 @@ const ChatMessageComponent = ({
   // Attachment helpers
   const API_BASE = import.meta.env.VITE_API_BASE_URL || "";
   const authToken = useAuthStore((s) => s.token);
+  
+  const sdkAttachments = ((message as any).experimental_attachments as any[] | undefined)?.map((att: any) => {
+    // Name is "Attachment {id}" — parse the doc id from there.
+    // We no longer use server URL patterns since we now pass blob: URLs.
+    const nameMatch = typeof att === 'object' && att.name
+      ? att.name.match(/Attachment (\d+)/)
+      : null;
+    return {
+      document_id: nameMatch ? parseInt(nameMatch[1], 10) : 0,
+      content_type: att.contentType || 'image/jpeg',
+      filename: att.name || 'Attachment',
+      // Store the blob: URL so we can use it for preview during streaming
+      // before the DB sync has completed and supplied a server thumbnail URL.
+      blobUrl: typeof att.url === 'string' && att.url.startsWith('blob:') ? att.url : undefined,
+    };
+  }) || [];
+
+  // Deduplicate: DB attachments take priority (they have server URLs).
+  // SDK blob attachments fill the gap during streaming.
+  const attachments = [
+    ...dbAttachments,
+    ...sdkAttachments.filter(
+      (s: any) => !dbAttachments.some((d: any) => d.document_id === s.document_id)
+    ),
+  ];
+
   const imageAttachments = attachments.filter((a: any) => a.content_type?.startsWith("image/"));
 
   const attachUrl = useMemo(() => {
@@ -515,23 +547,41 @@ const ChatMessageComponent = ({
 
         {/* User: image thumbnails above bubble */}
         {isUser && imageAttachments.length > 0 && (
-          <div className="flex flex-wrap gap-2 justify-end">
-            {imageAttachments.map((att: any, idx: number) => (
-              <button
-                key={att.document_id || idx}
-                onClick={() => setLightboxSrc(attachUrl.file(att.document_id))}
-                className="relative group rounded-xl overflow-hidden ring-1 ring-border hover:ring-primary/50 transition-all hover:scale-[1.02] active:scale-95"
-              >
-                <img
-                  src={attachUrl.thumb(att.document_id)}
-                  alt={att.filename || "attachment"}
-                  className="w-[120px] h-[120px] object-cover rounded-xl"
-                  loading="lazy"
-                  onError={(e) => { (e.target as HTMLImageElement).src = attachUrl.file(att.document_id); }}
-                />
-                <div className="absolute inset-0 bg-black/0 group-hover:bg-background/20 transition-colors rounded-xl" />
-              </button>
-            ))}
+          <div className="flex flex-nowrap gap-2 justify-end overflow-x-auto custom-scrollbar pb-1 max-w-full">
+            {imageAttachments.map((att: any, idx: number) => {
+              const docId: number = att.document_id;
+              if (failedAttachments.has(docId)) {
+                return (
+                  <div
+                    key={docId || idx}
+                    title={att.filename || "Attachment unavailable"}
+                    className="w-[120px] h-[120px] rounded-xl ring-1 ring-border flex flex-col items-center justify-center gap-1 bg-muted/50 text-muted-foreground"
+                  >
+                    <span className="text-2xl" aria-hidden>🖼️</span>
+                    <span className="text-[10px] text-center px-1 leading-tight opacity-60">Unavailable</span>
+                  </div>
+                );
+              }
+              // Use blob URL if we have one (during streaming, before DB sync).
+              // Once the DB syncs, dbAttachments populates and the blob is gone.
+              const thumbSrc = att.blobUrl ?? attachUrl.thumb(docId);
+              return (
+                <button
+                  key={docId || idx}
+                  onClick={() => setLightboxSrc(att.blobUrl ?? attachUrl.file(docId))}
+                  className="relative group rounded-xl overflow-hidden ring-1 ring-border hover:ring-primary/50 transition-all hover:scale-[1.02] active:scale-95"
+                >
+                  <img
+                    src={thumbSrc}
+                    alt={att.filename || "attachment"}
+                    className="w-[120px] h-[120px] object-cover rounded-xl"
+                    loading="lazy"
+                    onError={() => { if (!att.blobUrl) handleAttachmentError(docId); }}
+                  />
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-background/20 transition-colors rounded-xl" />
+                </button>
+              );
+            })}
           </div>
         )}
 
@@ -553,22 +603,38 @@ const ChatMessageComponent = ({
 
           {/* Assistant image attachments below text */}
           {!isUser && imageAttachments.length > 0 && (
-            <div className="flex flex-wrap gap-2 mt-3">
-              {imageAttachments.map((att: any, idx: number) => (
-                <button
-                  key={att.document_id || idx}
-                  onClick={() => setLightboxSrc(attachUrl.file(att.document_id))}
-                  className="relative group rounded-lg overflow-hidden border border-border hover:border-primary/40 transition-all"
-                >
-                  <img
-                    src={attachUrl.file(att.document_id)}
-                    alt={att.filename || "attachment"}
-                    className="max-w-[240px] max-h-[180px] object-cover rounded-lg"
-                    loading="lazy"
-                  />
-                  <div className="absolute inset-0 bg-black/0 group-hover:bg-background/50 transition-colors" />
-                </button>
-              ))}
+            <div className="flex flex-nowrap gap-2 mt-3 overflow-x-auto custom-scrollbar pb-1 max-w-full">
+              {imageAttachments.map((att: any, idx: number) => {
+                const docId: number = att.document_id;
+                if (failedAttachments.has(docId)) {
+                  return (
+                    <div
+                      key={docId || idx}
+                      title={att.filename || "Attachment unavailable"}
+                      className="max-w-[240px] h-[80px] rounded-lg border border-border flex flex-col items-center justify-center gap-1 bg-muted/50 text-muted-foreground"
+                    >
+                      <span className="text-2xl" aria-hidden>🖼️</span>
+                      <span className="text-[10px] text-center px-2 leading-tight opacity-60">Unavailable</span>
+                    </div>
+                  );
+                }
+                return (
+                  <button
+                    key={docId || idx}
+                    onClick={() => setLightboxSrc(attachUrl.file(docId))}
+                    className="relative group rounded-lg overflow-hidden border border-border hover:border-primary/40 transition-all"
+                  >
+                    <img
+                      src={attachUrl.file(docId)}
+                      alt={att.filename || "attachment"}
+                      className="max-w-[240px] max-h-[180px] object-cover rounded-lg"
+                      loading="lazy"
+                      onError={() => handleAttachmentError(docId)}
+                    />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-background/50 transition-colors" />
+                  </button>
+                );
+              })}
             </div>
           )}
 

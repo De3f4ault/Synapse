@@ -373,7 +373,7 @@ function ModelSelector() {
 interface ChatInputBoxProps {
   message: string;
   onMessageChange: (value: string) => void;
-  onSend: (attachmentIds?: number[]) => void;
+  onSend: (attachmentIds?: number[], previewUrls?: string[]) => void;
   onVoiceClick?: () => void;
   onStop?: () => void;
   isStreaming?: boolean;
@@ -509,7 +509,14 @@ export function ChatInputBox({
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       if ((message.trim() || hasFiles) && !disabled && !isStreaming && !isUploading) {
-        onSend(documentIds.length > 0 ? documentIds : undefined);
+        onSend(
+          documentIds.length > 0 ? documentIds : undefined,
+          documentIds.length > 0
+            ? pendingFiles
+                .filter((f) => f.status === 'uploaded' && f.documentId)
+                .map((f) => f.preview)
+            : undefined,
+        );
         clearFiles();
       }
     }
@@ -913,7 +920,14 @@ export function ChatInputBox({
                   <Button
                     size="icon"
                     onClick={() => {
-                      onSend(documentIds.length > 0 ? documentIds : undefined);
+                      onSend(
+                        documentIds.length > 0 ? documentIds : undefined,
+                        documentIds.length > 0
+                          ? pendingFiles
+                              .filter((f) => f.status === 'uploaded' && f.documentId)
+                              .map((f) => f.preview)
+                          : undefined,
+                      );
                       clearFiles();
                     }}
                     disabled={(!message.trim() && !hasFiles) || disabled || isUploading}

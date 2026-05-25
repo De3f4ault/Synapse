@@ -70,7 +70,7 @@ export function ChatMain({ sessionId, sessionTitle }: ChatMainProps) {
     voice.isActive ? voice.endSession() : voice.startSession();
   }, [voice.isActive, voice.endSession, voice.startSession]);
 
-  const handleSend = (attachmentIds?: number[]) => {
+  const handleSend = (attachmentIds?: number[], previewUrls?: string[]) => {
     if (!message.trim() && !(attachmentIds?.length)) return;
 
     if (voice.isActive) {
@@ -102,7 +102,7 @@ export function ChatMain({ sessionId, sessionTitle }: ChatMainProps) {
     }
 
     try {
-      sendStreamingMessage(message || "What is this?", { attachmentIds });
+      sendStreamingMessage(message || "What is in these images?", { attachmentIds, previewUrls });
       setMessage("");
     } catch (error) {
       console.error("[ChatMain] Failed to send message:", error);
