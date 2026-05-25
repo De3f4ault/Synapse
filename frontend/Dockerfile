@@ -8,6 +8,8 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci --prefer-offline
 COPY . .
+# Automatically generate the API client before building so missing generated files never break the build
+RUN npm run generate:api
 RUN npm run build:prod
 
 # ── Stage 2: Serve ────────────────────────────────────────────────────────────
