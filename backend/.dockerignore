@@ -1,0 +1,82 @@
+# =============================================================================
+# .dockerignore — Backend Build Context Exclusions
+# =============================================================================
+# CRITICAL: This file controls what gets sent to the Docker daemon as the build
+# context. A bloated context (>100MB) causes every build to take 30-120s just
+# uploading — regardless of whether layers are cached.
+#
+# Current exclusions save ~9GB of context on every build.
+# =============================================================================
+
+# ── Virtual environments ──────────────────────────────────────────────────────
+.venv/
+venv/
+env/
+
+# ── Python cache ──────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ── Data directories (LARGE — never needed in image) ─────────────────────────
+# These are mounted as Docker volumes at runtime, never baked into the image.
+data/
+data/qdrant/
+data/lancedb/
+data/uploads/
+data/originals/
+data/thumbnails/
+data/duckdb/
+data/logs/
+data/consume/
+data/consumption/
+data/blocksuite/
+data/archive/
+data/scratch/
+
+# ── Model cache (LARGE — mounted as named volume, not baked in) ───────────────
+.model_cache/
+*.model_cache/
+
+# ── Beat schedule ─────────────────────────────────────────────────────────────
+beat-schedule/
+celerybeat-schedule*
+celerybeat.pid
+
+# ── Logs ─────────────────────────────────────────────────────────────────────
+logs/
+*.log
+
+# ── IDE / Editor ──────────────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# ── Git ───────────────────────────────────────────────────────────────────────
+.git/
+.gitignore
+.gitattributes
+
+# ── Environment files (NEVER in image) ───────────────────────────────────────
+.env
+.env.*
+!.env.example
+
+# ── Tests / Dev artifacts ─────────────────────────────────────────────────────
+tests/
+*.test.py
+coverage.xml
+.coverage
+htmlcov/
+
+# ── Documentation ─────────────────────────────────────────────────────────────
+docs/
+*.md
+!README.md

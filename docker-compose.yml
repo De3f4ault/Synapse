@@ -1,9 +1,61 @@
 name: synapse
 
+# =============================================================================
+# Synapse Production Docker Compose
+#
+# Services:  postgres, qdrant, init-volumes, migrate, api, worker-cpu,
+#            worker-io, celery-beat, frontend
+# Volumes:   synapse_pg_data, synapse_qdrant, synapse_data,
+#            synapse_model_cache, synapse_beat_schedule
+# Networks:  data (db access), backend (api+workers), frontend (nginx→api)
+#
+# Start:     docker compose up -d
+# First run: bash docker/scripts/first-run.sh
+# Rollback:  docker compose down && cd backend && make start
+#
+# Ollama: remains on the host. Docker containers reach it via
+# host.docker.internal (extra_hosts: host-gateway on API + workers).
+# OLLAMA_BASE_URL=http://host.docker.internal:11434 in .env.docker.
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# Shared logging config — applied to every service via YAML anchors.
+# These are read-only after initial definition. If you need per-service
+# logging overrides, set them directly on the service, don't edit the anchor.
+# ---------------------------------------------------------------------------
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "50m"
+    max-file: "3"
+
+# ---------------------------------------------------------------------------
+# Shared backend env + build — api, workers, beat, migrate all use this base.
+# YAML anchor fields that may need per-service override:
+#   - command (always overridden)
+#   - volumes (overridden on api, workers)
+#   - networks (overridden per service)
+#   - depends_on (overridden per service)
+# ---------------------------------------------------------------------------
+x-backend: &backend
+  build:
+    context: ./backend
+    dockerfile: Dockerfile
+  env_file:
+    - ./backend/.env.docker
+  # Ollama on host, accessed via host.docker.internal
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
+  logging: *default-logging
+
 services:
-  # =========================================================
-  # Databases & Infrastructure
-  # =========================================================
+
+  # ===========================================================================
+  # postgres — Primary database + Celery broker (SQLAlchemy transport)
+  # Base image: paradedb/paradedb:0.23.4 (PostgreSQL 18.3)
+  # Pre-installed: pg_search, pgvector, pg_cron, pg_trgm, pg_stat_statements.
+  # No apt installs, no source compilation — builds in <30s.
+  # ===========================================================================
   postgres:
     build:
       context: ./docker/postgres
@@ -12,117 +64,231 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_DB: synapse
-      POSTGRES_USER: synapse_user
-      POSTGRES_PASSWORD: synapse_pass
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-synapse_dev_only}
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - synapse_pg_data:/var/lib/postgresql
+      - ./docker/postgres/wal_monitor.sql:/docker-entrypoint-initdb.d/wal_monitor.sql:ro
+      - ./docker/postgres/init_roles.sql:/docker-entrypoint-initdb.d/init_roles.sql:ro
     ports:
-      - "5432:5432"
+      - "5435:5432"
+    networks:
+      - data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U synapse_user -d synapse"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d synapse"]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 30s
+    logging: *default-logging
 
-  redis:
-    image: redis:7-alpine
-    container_name: synapse-redis
-    restart: unless-stopped
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
+  # ===========================================================================
+  # qdrant — Vector store for dense + sparse embeddings
+  # ===========================================================================
   qdrant:
-    image: qdrant/qdrant:v1.13.2
+    image: qdrant/qdrant:v1.9.4
     container_name: synapse-qdrant
     restart: unless-stopped
-    ports:
-      - "6333:6333"
-      - "6334:6334"
     volumes:
-      - qdrant_data:/qdrant/storage
-
-  # =========================================================
-  # Backend Services
-  # =========================================================
-  api:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    container_name: synapse-api
-    restart: unless-stopped
+      - synapse_qdrant:/qdrant/storage
     ports:
-      - "8000:8000"
-    env_file:
-      - ./backend/.env
-    environment:
-      - DATABASE_URL=postgresql+asyncpg://synapse_user:synapse_pass@postgres:5432/synapse
-      - PG_LISTEN_DSN=postgresql://synapse_user:synapse_pass@postgres:5432/synapse
+      - "6336:6333"
+      - "6337:6334"
+    networks:
+      - data
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/localhost/6333'"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    logging: *default-logging
+
+  # ===========================================================================
+  # init-volumes — One-shot: fix ownership on named volumes for uid 1001.
+  #
+  # Docker named volumes default to root ownership. The backend runs as uid
+  # 1001 (synapse user). Without this step, writes to /data and /app/.model_cache
+  # fail with "Permission denied" — which looks like a storage bug, not a
+  # permissions issue. This container runs as root, chowns, then exits.
+  # ===========================================================================
+  init-volumes:
+    image: busybox:1.36
+    container_name: synapse-init-volumes
+    restart: "no"
+    user: "0:0"
+    command:
+      - "sh"
+      - "-c"
+      - |
+        echo "Fixing volume ownership for uid 1001..."
+        chown -R 1001:1001 /data
+        chown -R 1001:1001 /model_cache
+        chown -R 1001:1001 /beat_schedule
+        echo "Done."
+    volumes:
+      - synapse_data:/data
+      - synapse_model_cache:/model_cache
+      - synapse_beat_schedule:/beat_schedule
+
+  # ===========================================================================
+  # migrate — Init container: runs Alembic migrations then exits 0.
+  # Alembic is idempotent — safe to re-run on partial failures.
+  # ===========================================================================
+  migrate:
+    <<: *backend
+    container_name: synapse-migrate
+    restart: "no"
+    command: ["alembic", "upgrade", "head"]
+    networks:
+      - data
     depends_on:
       postgres:
         condition: service_healthy
-      redis:
+      init-volumes:
+        condition: service_completed_successfully
+
+  # ===========================================================================
+  # api — Gunicorn / FastAPI (3 workers, preload_app=False)
+  # pre_fork/post_fork hooks in gunicorn.conf.py dispose SQLAlchemy engines
+  # before fork to prevent connection pool inheritance.
+  # ===========================================================================
+  api:
+    <<: *backend
+    container_name: synapse-api
+    restart: unless-stopped
+    command:
+      - "sh"
+      - "-c"
+      - "python docker/scripts/validate_model_cache.py && exec gunicorn app.main:app -c config/gunicorn.conf.py"
+    volumes:
+      - synapse_data:/data
+      - synapse_model_cache:/app/.model_cache
+      - ./docker/scripts:/app/docker/scripts:ro
+    ports:
+      - "8000:8000"
+    networks:
+      - data
+      - backend
+      - frontend
+    depends_on:
+      postgres:
         condition: service_healthy
       qdrant:
-        condition: service_started
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8000/ping || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 90s
+    logging: *default-logging
 
-  worker-io:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    container_name: synapse-worker-io
-    restart: unless-stopped
-    command: ["celery", "-A", "app.services.background.celery_app", "worker", "--queues=emails,default,webhook", "--loglevel=info", "--concurrency=2"]
-    env_file:
-      - ./backend/.env
-    environment:
-      - DATABASE_URL=postgresql+asyncpg://synapse_user:synapse_pass@postgres:5432/synapse
-      - PG_LISTEN_DSN=postgresql://synapse_user:synapse_pass@postgres:5432/synapse
-    depends_on:
-      - api
-      - redis
-
+  # ===========================================================================
+  # worker-cpu — Celery worker for CPU-bound tasks
+  # Queues: documents, embeddings, rag, ocr, ingestion
+  # Concurrency: 2 (matches cpus; avoid thrashing on embedding)
+  # stop_grace_period: 120s for long embedding tasks.
+  # ===========================================================================
   worker-cpu:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    <<: *backend
     container_name: synapse-worker-cpu
     restart: unless-stopped
-    command: ["celery", "-A", "app.services.background.celery_app", "worker", "--queues=rag,embeddings,documents,ocr,ingestion", "--loglevel=info", "--concurrency=1"]
-    env_file:
-      - ./backend/.env
-    environment:
-      - DATABASE_URL=postgresql+asyncpg://synapse_user:synapse_pass@postgres:5432/synapse
-      - PG_LISTEN_DSN=postgresql://synapse_user:synapse_pass@postgres:5432/synapse
+    command:
+      - "sh"
+      - "-c"
+      - >
+        python docker/scripts/validate_model_cache.py &&
+        exec celery -A app.services.background.celery_app worker
+        --queues=documents,embeddings,rag,ocr,ingestion
+        --loglevel=info
+        --concurrency=2
+        --max-tasks-per-child=50
+    volumes:
+      - synapse_data:/data
+      - synapse_model_cache:/app/.model_cache
+      - ./docker/scripts:/app/docker/scripts:ro
+    cpus: "2.0"
+    mem_limit: "4g"
+    networks:
+      - data
+      - backend
     depends_on:
-      - api
-      - redis
+      postgres:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    stop_signal: SIGTERM
+    stop_grace_period: 120s
+    logging: *default-logging
 
+  # ===========================================================================
+  # worker-io — Celery worker for I/O-bound tasks
+  # Queues: emails, webhooks, default
+  # Higher concurrency (4) — tasks are network-bound, not CPU-bound.
+  # ===========================================================================
+  worker-io:
+    <<: *backend
+    container_name: synapse-worker-io
+    restart: unless-stopped
+    command:
+      - "celery"
+      - "-A"
+      - "app.services.background.celery_app"
+      - "worker"
+      - "--queues=emails,webhooks,default"
+      - "--loglevel=info"
+      - "--concurrency=4"
+      - "--max-tasks-per-child=200"
+    volumes:
+      - synapse_data:/data
+    cpus: "1.0"
+    mem_limit: "1g"
+    networks:
+      - data
+      - backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    stop_grace_period: 60s
+    logging: *default-logging
+
+  # ===========================================================================
+  # celery-beat — Periodic task scheduler (one instance only — never scale)
+  # Schedule persisted to a named volume so tasks don't all fire on restart.
+  # ===========================================================================
   celery-beat:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    <<: *backend
     container_name: synapse-beat
     restart: unless-stopped
-    command: ["celery", "-A", "app.services.background.celery_app", "beat", "--loglevel=info"]
-    env_file:
-      - ./backend/.env
-    environment:
-      - DATABASE_URL=postgresql+asyncpg://synapse_user:synapse_pass@postgres:5432/synapse
-      - PG_LISTEN_DSN=postgresql://synapse_user:synapse_pass@postgres:5432/synapse
+    command:
+      - "celery"
+      - "-A"
+      - "app.services.background.celery_app"
+      - "beat"
+      - "--loglevel=info"
+      - "--schedule=/app/beat-schedule/celerybeat-schedule"
+    volumes:
+      - synapse_beat_schedule:/app/beat-schedule
+    networks:
+      - data
     depends_on:
-      - api
-      - redis
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    logging: *default-logging
 
-  # =========================================================
-  # Frontend Service
-  # =========================================================
+  # ===========================================================================
+  # frontend — Nginx serving the React SPA + proxying /api/* to api:8000
+  # ONLY on the frontend network — cannot reach postgres or qdrant directly.
+  # ===========================================================================
   frontend:
     build:
       context: ./frontend
@@ -130,11 +296,37 @@ services:
     container_name: synapse-frontend
     restart: unless-stopped
     ports:
-      - "80:80"
+      - "3000:80"
+    networks:
+      - frontend
     depends_on:
       - api
+    logging: *default-logging
 
+# =============================================================================
+# Networks — Explicit isolation
+# =============================================================================
+# data:     postgres + qdrant ↔ api, workers, beat, migrate
+# backend:  api ↔ workers (inter-service calls, if any)
+# frontend: nginx ↔ api ONLY (cannot reach postgres, qdrant, workers)
+#
+# Without this, every container is on one bridge and can reach every other
+# container on any port. Postgres reachable from frontend = unnecessary risk.
+# =============================================================================
+networks:
+  data:
+    driver: bridge
+  backend:
+    driver: bridge
+  frontend:
+    driver: bridge
+
+# =============================================================================
+# Named volumes
+# =============================================================================
 volumes:
-  postgres_data:
-  redis_data:
-  qdrant_data:
+  synapse_pg_data:
+  synapse_qdrant:
+  synapse_data:
+  synapse_model_cache:
+  synapse_beat_schedule:

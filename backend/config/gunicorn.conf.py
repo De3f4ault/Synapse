@@ -35,7 +35,7 @@ max_requests_jitter = 50  # Randomize restart to avoid all workers restarting si
 # ============================================================================
 # Timeouts
 # ============================================================================
-timeout = 30  # Worker timeout in seconds
+timeout = 120  # Worker timeout in seconds (increased for long model inference)
 graceful_timeout = 30  # Graceful shutdown timeout
 keepalive = 2  # Keep-alive connections
 
@@ -64,6 +64,19 @@ umask = 0o007
 user = None  # Run as current user (set in systemd service)
 group = None
 tmp_upload_dir = None
+
+# ============================================================================
+# App Loading
+# ============================================================================
+# CRITICAL: Keep preload_app=False.
+# SQLAlchemy engines (async + sync) in session.py are created at module level.
+# If preload_app=True, the master process imports the app and creates engines
+# BEFORE forking workers. Every child inherits the same connection pool and
+# underlying socket FDs — causing "SSL connection has been closed unexpectedly"
+# errors under load that are nearly impossible to diagnose.
+# With preload_app=False (default), each worker imports the app independently
+# after forking, creating its own isolated connection pool. This is correct.
+preload_app = False
 
 # ============================================================================
 # SSL (Optional - Nginx handles this)
@@ -102,13 +115,45 @@ def worker_abort(worker):
 
 
 def pre_fork(server, worker):
-    """Called just before a worker is forked."""
-    pass
+    """Dispose all SQLAlchemy engines before forking.
+
+    Although preload_app=False means engines aren't normally inherited,
+    this hook acts as a defensive safety net. If preload_app is ever
+    accidentally enabled, this prevents connection pool corruption across
+    forked processes.
+
+    Safe to call even if the app hasn't been imported yet (import guard).
+    """
+    try:
+        from app.db.session import engine, sync_engine
+
+        # Sync engine — standard synchronous dispose, no event loop needed
+        sync_engine.dispose()
+
+        # Async engine — needs a temporary event loop just for dispose()
+        import asyncio
+        _loop = asyncio.new_event_loop()
+        _loop.run_until_complete(engine.dispose())
+        _loop.close()
+
+        server.log.info("pre_fork: SQLAlchemy engines disposed before worker fork")
+    except ImportError:
+        # App module not yet imported (preload_app=False normal path)
+        # Nothing to dispose — this is expected and fine.
+        pass
+    except Exception as exc:
+        # Log but do not raise — a failed dispose should not block the fork
+        server.log.warning(f"pre_fork: engine dispose warning: {exc}")
 
 
 def post_fork(server, worker):
-    """Called just after a worker has been forked."""
-    server.log.info(f"Worker {worker.pid} spawned")
+    """Log worker spawn.
+
+    Engines are NOT recreated here — SQLAlchemy creates new connections
+    lazily on first use within the child process. Each worker builds its
+    own isolated connection pool independently.
+    """
+    server.log.info(f"Worker {worker.pid} spawned — isolated DB connection pool will be created on first use")
 
 
 def worker_exit(server, worker):
